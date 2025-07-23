@@ -3,7 +3,7 @@ import {HSep, VSep} from "./components/helper-components.tsx";
 import {keybindingsService} from "./services/keybindings.service.ts";
 
 function Sidebar() {
-    return <div className="v w-80 h-screen bg-zinc-900">
+    return <div className="v w-80 min-w-80 h-screen bg-zinc-900">
         Hello, this is the left side!
     </div>;
 }

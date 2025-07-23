@@ -21,6 +21,8 @@ class KeybindingsService {
 
     public signal = new Subject<AppCommand>;
 
+    public keypressSignal = new Subject<KeyboardEvent>();
+
     public pushKeybindings(state: KeybindingState, keybindings: Array<KeyBinding>) {
         this.keybindingsMap.set(state, keybindings);
         this.keybindingsOrder.push(state);
@@ -44,6 +46,8 @@ class KeybindingsService {
 
         console.log(`Key event: ${key} with state:`, keyState);
 
+        let executed = false;
+
         for (const bindingsState of [...this.keybindingsOrder].reverse()) {
             const bindings = this.keybindingsMap.get(bindingsState);
             if (!bindings) {
@@ -58,10 +62,16 @@ class KeybindingsService {
                     this.signal.next(binding.command);
 
                     console.log(`Command executed: ${binding.command} with key: ${key} in state: ${bindingsState}`);
+                    executed = true;
 
                     return;
                 }
             }
+        }
+
+        // If not executed, propagate the "keydown" event
+        if (!executed) {
+            this.keypressSignal.next(event);
         }
     }
 
@@ -80,16 +90,3 @@ class KeybindingsService {
 }
 
 export const keybindingsService = new KeybindingsService();
-
-keybindingsService.pushKeybindings("default" as KeybindingState, [
-    {
-        keyState: {
-            ctrl: false,
-            alt: false,
-            shift: false,
-            meta: false,
-        },
-        key: "t",
-        command: "test" as AppCommand
-    }
-])
