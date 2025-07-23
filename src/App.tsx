@@ -1,6 +1,7 @@
 import {Editor} from "./components/editor/editor.tsx";
 import {HSep, VSep} from "./components/helper-components.tsx";
 import {keybindingsService} from "./services/keybindings.service.ts";
+import {Debugger} from "./components/debugger/debugger.tsx";
 
 function Sidebar() {
     return <div className="v w-80 min-w-80 h-screen bg-zinc-900">
@@ -16,6 +17,7 @@ function EditorPanel() {
 
 function DebugPanel() {
     return <div className="h h-64 bg-zinc-900">
+        <Debugger />
     </div>;
 }
 

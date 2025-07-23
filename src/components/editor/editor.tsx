@@ -7,6 +7,7 @@ import {useMemo, useRef, useEffect} from "react";
 import {Tokenizer, tokenStyles} from "./tokenizer.ts";
 import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";
+import {interpreterStore} from "../debugger/interpreter.store.ts";
 
 // Constants for layout measurements
 
@@ -147,12 +148,12 @@ function Cursor() {
 }
 
 function DebugMarker() {
-    // const debugMarkerState = useStoreSubscribe(debugStore.debugMarkerState);
+    const debugMarkerState = useStoreSubscribe(interpreterStore.currentChar);
     const cw = useMemo(() => measureCharacterWidth(), []);
 
     const stl = {
-        left: `${LINE_PADDING_LEFT + 2 * cw}px`,
-        top: `${LINE_PADDING_TOP + 2 * CHAR_HEIGHT - 3}px`,
+        left: `${LINE_PADDING_LEFT + debugMarkerState.column * cw}px`,
+        top: `${LINE_PADDING_TOP + debugMarkerState.line * CHAR_HEIGHT - 3}px`,
         width: `${8}px`,
         height: `${CHAR_HEIGHT}px`,
     }

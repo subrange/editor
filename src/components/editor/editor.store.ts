@@ -1,7 +1,7 @@
 import {BehaviorSubject} from "rxjs";
 import {keybindingsService} from "../../services/keybindings.service.ts";
 
-type Position = {
+export type Position = {
     line: number;
     column: number;
 }
