@@ -32,6 +32,7 @@ export interface MacroExpanderResult {
   expanded: string;
   errors: MacroExpansionError[];
   tokens: MacroToken[];
+  macros: MacroDefinition[];
 }
 
 interface ParsedLine {
@@ -69,7 +70,8 @@ export class MacroExpanderImpl implements MacroExpander {
     return {
       expanded,
       errors: this.errors,
-      tokens: this.tokens
+      tokens: this.tokens,
+      macros: Array.from(this.macros.values())
     };
   }
 

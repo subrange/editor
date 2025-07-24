@@ -16,13 +16,15 @@ interface MacroTokenizerState {
     inMultiLineComment: boolean;
     expanderTokens: ExpanderToken[];
     expanderErrors: MacroExpansionError[];
+    macroDefinitions: MacroDefinition[];
 }
 
 export class EnhancedMacroTokenizer implements ITokenizer {
     public state: MacroTokenizerState = {
         inMultiLineComment: false,
         expanderTokens: [],
-        expanderErrors: []
+        expanderErrors: [],
+        macroDefinitions: []
     };
     
     private expander = createMacroExpander();
@@ -33,7 +35,8 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         this.state = {
             inMultiLineComment: false,
             expanderTokens: [],
-            expanderErrors: []
+            expanderErrors: [],
+            macroDefinitions: []
         };
         this.fullText = '';
         this.lineOffsets = [];
@@ -314,10 +317,11 @@ export class EnhancedMacroTokenizer implements ITokenizer {
             this.lineOffsets.push(offset);
         }
         
-        // Run macro expander to get tokens and errors
+        // Run macro expander to get tokens, errors, and macro definitions
         const result = this.expander.expand(this.fullText);
         this.state.expanderTokens = result.tokens;
         this.state.expanderErrors = result.errors;
+        this.state.macroDefinitions = result.macros;
         
         // Tokenize each line
         return lines.map((line, index) =>

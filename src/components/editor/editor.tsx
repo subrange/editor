@@ -8,7 +8,8 @@ import {tokenStyles} from "./tokenizer.ts";
 import {macroTokenStyles} from "./macro-tokenizer.ts";
 import {enhancedMacroTokenStyles, EnhancedMacroTokenizer} from "./macro-tokenizer-enhanced.ts";
 import {ErrorDecorations} from "./error-decorations.tsx";
-import {type MacroExpansionError} from "../../services/macro-expander.ts";
+import {type MacroExpansionError, type MacroDefinition} from "../../services/macro-expander.ts";
+import {MacroAutocomplete} from "./macro-autocomplete.tsx";
 import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";
 import {interpreterStore} from "../debugger/interpreter.store.ts";
@@ -261,10 +262,17 @@ function LinesPanel({ store }: LinesPanelProps) {
     const isEnhancedMacro = tokenizer instanceof EnhancedMacroTokenizer;
     const styles = isEnhancedMacro ? enhancedMacroTokenStyles : (isMacroEditor ? macroTokenStyles : tokenStyles);
     
-    // Extract errors if using enhanced tokenizer
+    // Extract errors and macros if using enhanced tokenizer
     const errors: MacroExpansionError[] = useMemo(() => {
         if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
             return (tokenizer as EnhancedMacroTokenizer).state.expanderErrors || [];
+        }
+        return [];
+    }, [tokenizedLines, isEnhancedMacro, tokenizer]);
+    
+    const availableMacros: MacroDefinition[] = useMemo(() => {
+        if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
+            return (tokenizer as EnhancedMacroTokenizer).state.macroDefinitions || [];
         }
         return [];
     }, [tokenizedLines, isEnhancedMacro, tokenizer]);
@@ -411,7 +419,7 @@ function LinesPanel({ store }: LinesPanelProps) {
 
     return <div
         ref={containerRef}
-        className="flex flex-col grow-1 overflow-visible py-1 relative cursor-text min-h-0"
+        className="flex flex-col grow-1 overflow-visible py-1 relative cursor-text min-h-0 pb-24"
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onMouseDown={handleMouseDown}
@@ -432,6 +440,13 @@ function LinesPanel({ store }: LinesPanelProps) {
         />
         {isEnhancedMacro && errors.length > 0 && (
             <ErrorDecorations store={store} errors={errors} />
+        )}
+        {isEnhancedMacro && (
+            <MacroAutocomplete 
+                store={store} 
+                macros={availableMacros}
+                charWidth={charWidth}
+            />
         )}
         <Cursor store={store}/>
         {

@@ -12,7 +12,7 @@ export type Selection = {
     focus: Position;
 }
 
-type Range = {
+export type Range = {
     start: Position;
     end: Position;
 }
@@ -1226,6 +1226,56 @@ export class EditorStore {
             mode: this.editorState.getValue().mode
         });
         this.undoRedo.clear();
+    }
+    
+    public replaceLine(lineIndex: number, newText: string) {
+        const state = this.editorState.getValue();
+        if (lineIndex < 0 || lineIndex >= state.lines.length) {
+            return;
+        }
+        
+        const newLines = [...state.lines];
+        newLines[lineIndex] = { text: newText };
+        
+        this.editorState.next({
+            ...state,
+            lines: newLines
+        });
+    }
+    
+    public replaceRange(start: Position, end: Position, replacement: string) {
+        const currentState = this.editorState.getValue();
+        const range: Range = { start, end };
+        const deletedText = CommandExecutor.extractText(range, currentState);
+        
+        // Create a composite command for undo/redo
+        const commands: CommandData[] = [];
+        
+        // First delete the range if it's not empty
+        if (start.line !== end.line || start.column !== end.column) {
+            commands.push({
+                type: "delete",
+                range,
+                deletedText
+            });
+        }
+        
+        // Then insert the replacement text
+        if (replacement.length > 0) {
+            commands.push({
+                type: "insert",
+                position: start,
+                text: replacement
+            });
+        }
+        
+        if (commands.length > 0) {
+            const command: CommandData = commands.length === 1 
+                ? commands[0] 
+                : { type: "composite", commands };
+                
+            this.editorState.next(this.undoRedo.execute(command, currentState));
+        }
     }
     
     public getTokenizer(): ITokenizer {
