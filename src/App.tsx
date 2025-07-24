@@ -135,9 +135,12 @@ function EditorPanel() {
 
 function DebugPanel() {
     const [collapsed, setCollapsed] = useLocalStorageState("debugCollapsed", true);
+    const settings = useStoreSubscribe(settingsStore.settings);
+    const compactView = settings?.debugger.compactView ?? false;
 
     return <div className={clsx("v bg-zinc-900 transition-all", {
-        "h-64 min-h-64": !collapsed,
+        "h-64 min-h-64": !collapsed && !compactView,
+        "h-36 min-h-36": !collapsed && compactView,
         "h-8 min-h-8": collapsed,
     })}>
         <button className={clsx(

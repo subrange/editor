@@ -56,18 +56,18 @@ function Tape() {
 
     // Determine cell size and display parameters
     const cellInfo = tape instanceof Uint8Array
-        ? { bits: 8, bytes: 1, max: 255, width: 100 }
+        ? { bits: 8, bytes: 1, max: 255, width: 100, compactWidth: 48 }
         : tape instanceof Uint16Array
-            ? { bits: 16, bytes: 2, max: 65535, width: 140 }
+            ? { bits: 16, bytes: 2, max: 65535, width: 140, compactWidth: 64 }
             : tape instanceof Uint32Array
-                ? { bits: 32, bytes: 4, max: 4294967295, width: 180 }
-                : { bits: 8, bytes: 1, max: 255, width: 100 };
+                ? { bits: 32, bytes: 4, max: 4294967295, width: 180, compactWidth: 84 }
+                : { bits: 8, bytes: 1, max: 255, width: 100, compactWidth: 48 };
 
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const CELL_WIDTH = compactView ? 60 : cellInfo.width;
-    const CELL_HEIGHT = compactView ? 60 : 120;
-    const GAP = compactView ? 4 : 8; // Increased gap for better spacing
+    const CELL_WIDTH = compactView ? cellInfo.compactWidth : cellInfo.width;
+    const CELL_HEIGHT = compactView ? 40 : 120;
+    const GAP = compactView ? 2 : 8; // Increased gap for better spacing
 
     const virtualizer = useVirtualizer({
         horizontal: true,
@@ -92,11 +92,14 @@ function Tape() {
     return (
         <div className="flex flex-col h-full bg-zinc-950">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900">
-                <div className="flex items-center gap-4">
-                    <h3 className="text-sm font-medium text-zinc-300">Memory Tape</h3>
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
-                        <span className="rounded-sm px-2 py-0.5 bg-zinc-800">
+            <div className={clsx(
+                "flex items-center justify-between border-b border-zinc-800 bg-zinc-900",
+                compactView ? "px-2 py-1" : "px-4 py-2"
+            )}>
+                <div className={clsx("flex items-center", compactView ? "gap-2" : "gap-4")}>
+                    <h3 className={clsx("font-medium text-zinc-300", compactView ? "text-xs" : "text-sm")}>Memory Tape</h3>
+                    <div className={clsx("flex items-center gap-2 text-zinc-500", compactView ? "text-[10px]" : "text-xs")}>
+                        <span className={clsx("rounded-sm bg-zinc-800", compactView ? "px-1 py-0" : "px-2 py-0.5")}>
                             {cellInfo.bits}-bit cells
                         </span>
                         <span>•</span>
@@ -105,18 +108,24 @@ function Tape() {
                         <span>Value: {tape[pointer]}</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={clsx("flex items-center", compactView ? "gap-1" : "gap-2")}>
                     <button
                         onClick={() => virtualizer.scrollToIndex(0)}
-                        className="rounded-sm text-xs px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                        className={clsx(
+                            "rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors",
+                            compactView ? "text-[10px] px-2 py-0.5" : "text-xs px-3 py-1"
+                        )}
                     >
-                        Go to Start
+                        {compactView ? "Start" : "Go to Start"}
                     </button>
                     <button
                         onClick={() => virtualizer.scrollToIndex(pointer, {align: 'center'})}
-                        className="rounded-sm text-xs px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                        className={clsx(
+                            "rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors",
+                            compactView ? "text-[10px] px-2 py-0.5" : "text-xs px-3 py-1"
+                        )}
                     >
-                        Go to Pointer
+                        {compactView ? "Pointer" : "Go to Pointer"}
                     </button>
                 </div>
             </div>
@@ -150,13 +159,13 @@ function Tape() {
                                 key={virtualItem.key}
                                 style={{
                                     position: 'absolute',
-                                    top: '50%',
+                                    top: compactView ? '50%' : '50%',
                                     left: `${virtualItem.start}px`,
                                     width: `${CELL_WIDTH}px`,
                                     height: `${CELL_HEIGHT}px`,
                                     transform: `translateY(-50%)`,
                                 }}
-                                className="p-1"
+                                className={compactView ? "p-0.5" : "p-1"}
                             >
                                 <div
                                     className={clsx(
@@ -164,7 +173,8 @@ function Tape() {
                                         compactView ? "flex flex-col items-center justify-center py-1 px-1" : "flex flex-col items-center justify-between py-2 px-1",
                                         {
                                             // Pointer styles take precedence
-                                            'border-yellow-500 bg-yellow-950/50 shadow-lg shadow-yellow-500/20 scale-105 z-10': isPointer,
+                                            'border-yellow-500 bg-yellow-950/50 shadow-lg shadow-yellow-500/20 z-10': isPointer,
+                                            'scale-105': isPointer && !compactView,
                                             // Lane colors for multi-lane mode (when not pointer)
                                             [laneColor?.border || '']: laneColor && !isPointer,
                                             [laneColor?.bg || '']: laneColor && !isPointer,
@@ -178,13 +188,14 @@ function Tape() {
                                         <>
                                             {/* Compact view: just index and value */}
                                             <div className={clsx(
-                                                "text-[10px] font-mono leading-none",
+                                                "text-[9px] font-mono leading-none",
                                                 isPointer ? 'text-yellow-400' : 'text-zinc-600'
                                             )}>
                                                 {index}
                                             </div>
                                             <div className={clsx(
-                                                "text-lg font-bold font-mono mt-1",
+                                                "font-bold font-mono",
+                                                cellInfo.bits > 16 ? "text-xs" : "text-sm",
                                                 {
                                                     'text-yellow-300': isPointer,
                                                     'text-blue-300': isNonZero && !isPointer,
@@ -253,7 +264,7 @@ function Tape() {
                                     )}
 
                                     {/* Pointer indicator */}
-                                    {isPointer && (
+                                    {isPointer && !compactView && (
                                         <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
                                             <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px]
                                                           border-transparent border-t-yellow-500"></div>
@@ -267,13 +278,16 @@ function Tape() {
             </div>
 
             {/* Status bar */}
-            <div className="flex items-center justify-between px-4 py-2 border-t border-zinc-800 bg-zinc-900 text-xs text-zinc-500">
+            <div className={clsx(
+                "flex items-center justify-between border-t border-zinc-800 bg-zinc-900 text-zinc-500",
+                compactView ? "px-2 py-0.5 text-[10px]" : "px-4 py-2 text-xs"
+            )}>
                 <div className="flex items-center gap-3">
                     <span>Memory: {tape.length.toLocaleString()} cells</span>
                     <span>•</span>
                     <span>Range: 0-{cellInfo.max.toLocaleString()}</span>
                 </div>
-                <span>Scroll horizontally or use mouse wheel</span>
+                {!compactView && <span>Scroll horizontally or use mouse wheel</span>}
             </div>
         </div>
     );
