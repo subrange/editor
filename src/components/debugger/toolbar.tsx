@@ -26,7 +26,7 @@ export function Toolbar() {
     };
 
     return (
-        <div className="h-10 border-t border-zinc-800 bg-zinc-900 text-zinc-400">
+        <div className="h-10 min-h-10 border-t border-zinc-800 bg-zinc-900 text-zinc-400">
             <div className="flex items-center px-2 h-full gap-1">
                 {/* Run modes group */}
                 <div className="flex items-center gap-1 pr-2 border-r border-zinc-700">

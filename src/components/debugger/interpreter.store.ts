@@ -67,25 +67,31 @@ class InterpreterStore {
     private editorSubscription: Subscription | null = null;
     
     constructor() {
-        // Subscribe to active editor changes
-        editorManager.activeEditorId$.subscribe(editorId => {
-            // Unsubscribe from previous editor
-            if (this.editorSubscription) {
-                this.editorSubscription.unsubscribe();
-            }
-            
-            // Subscribe to new active editor
-            const activeEditor = editorManager.activeEditor;
-            if (activeEditor) {
-                this.editorSubscription = activeEditor.editorState.subscribe(s => {
+        // Always subscribe to the main editor, not the active editor
+        // This ensures debugger always runs code from main editor
+        const checkMainEditor = () => {
+            const mainEditor = editorManager.getEditor('main');
+            if (mainEditor) {
+                // Unsubscribe from any previous subscription
+                if (this.editorSubscription) {
+                    this.editorSubscription.unsubscribe();
+                }
+                
+                // Subscribe to main editor only
+                this.editorSubscription = mainEditor.editorState.subscribe(s => {
                     if (JSON.stringify(s.lines) !== JSON.stringify(this.code)) { // Yep, I do not care about performance here
                         this.reset();
                         this.code = s.lines;
                         this.buildLoopMap();
                     }
                 });
+            } else {
+                // Main editor not created yet, check again later
+                setTimeout(checkMainEditor, 100);
             }
-        });
+        };
+        
+        checkMainEditor();
 
         // Load tape size from local storage if available
         const storedTapeSize = localStorage.getItem('tapeSize');
