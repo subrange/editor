@@ -53,7 +53,7 @@ function Tape() {
             >
                 <div
                     style={{
-                        width: `${virtualizer.getTotalSize()}px`,
+                        width: `${Math.min(virtualizer.getTotalSize(), 102400)}px`,
                         height: '100%',
                         position: 'relative',
                     }}
@@ -150,7 +150,7 @@ function Tape() {
                 </div>
             </div>
 
-            {/* Quick jump controls */}
+             {/*Quick jump controls */}
             <div className="h-10 bg-zinc-950 border-t border-zinc-800 flex items-center px-2 gap-2">
                 <button
                     onClick={() => virtualizer.scrollToIndex(0)}

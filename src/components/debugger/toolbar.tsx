@@ -4,11 +4,12 @@ import {
     ArrowPathIcon,
     BoltIcon,
     ClockIcon,
-    ChevronRightIcon
+    ChevronRightIcon, XMarkIcon
 } from '@heroicons/react/24/solid';
 import { interpreterStore } from "./interpreter.store.ts";
 import { useStoreSubscribeToField } from "../../hooks/use-store-subscribe.tsx";
 import { useState } from 'react';
+import {editorStore} from "../editor/editor.store.ts";
 
 type ToolbarButtonProps = {
     icon: React.ComponentType<{ className?: string }>;
@@ -143,6 +144,15 @@ function Toolbar() {
                     label="Reset"
                     onClick={() => interpreterStore.reset()}
                     variant="warning"
+                />
+
+                <div className="w-px h-6 bg-zinc-700 mx-1" />
+
+                <IconButton
+                    icon={XMarkIcon}
+                    label="Clear Editor"
+                    onClick={() => editorStore.clearEditor()}
+                    variant="danger"
                 />
 
                 {/* Status indicator */}

@@ -439,6 +439,8 @@ class EditorStore {
 
     private undoRedo = new UndoRedo();
 
+    private focused = false;
+
     constructor() {
         const savedState = localStorage.getItem("editorState");
         if (savedState) {
@@ -456,6 +458,11 @@ class EditorStore {
         });
 
         keybindingsService.signal.subscribe(s => {
+
+            if (!this.focused) {
+                return; // Ignore commands if editor is not focused
+            }
+
             clearTimeout(this.cursorBlinkRestoreTimeout);
 
             const currentState = this.editorState.getValue();
@@ -493,6 +500,42 @@ class EditorStore {
                     this.paste();
                     break;
 
+                case "editor.selectall":
+                    this.selectAll();
+                    break;
+
+                case "editor.selectright":
+                    this.updateSelection({
+                        line: currentState.selection.focus.line,
+                        column: currentState.selection.focus.column + 1
+                    });
+                    break;
+                case "editor.selectleft":
+                    this.updateSelection({
+                        line: currentState.selection.focus.line,
+                        column: currentState.selection.focus.column - 1
+                    });
+                    break;
+                case "editor.selectup":
+                    this.updateSelection({
+                        line: currentState.selection.focus.line - 1,
+                        column: currentState.selection.focus.column
+                    });
+                    break;
+                case "editor.selectdown":
+                    this.updateSelection({
+                        line: currentState.selection.focus.line + 1,
+                        column: currentState.selection.focus.column
+                    });
+                    break;
+
+                case "editor.selectwordleft":
+                    this.selectToTheBeginningOfWord();
+                    break;
+                case "editor.selectwordright":
+                    this.selectToTheEndOfWord();
+                    break;
+
                 default:
                     console.warn(`Unknown command: ${s}`);
             }
@@ -507,6 +550,10 @@ class EditorStore {
         keybindingsService.keypressSignal.subscribe(event => {
             const currentState = this.editorState.getValue();
             const selection = currentState.selection;
+
+            if (!this.focused) {
+                return; // Ignore commands if editor is not focused
+            }
 
             if (currentState.mode === "insert") {
                 const char = event.key;
@@ -832,6 +879,171 @@ class EditorStore {
         });
     }
 
+    private selectToTheBeginningOfWord() {
+        const currentState = this.editorState.getValue();
+        const selection = currentState.selection;
+
+        const range = selectionToRange(selection);
+        const line = currentState.lines[range.start.line];
+        if (!line) return;
+
+        const lineText = line.text;
+        const currentStart = range.start.column;
+
+        // If at beginning of line, move to previous line
+        if (currentStart === 0) {
+            if (range.start.line > 0) {
+                // Move to end of previous line
+                const prevLineLength = currentState.lines[range.start.line - 1].text.length;
+
+                this.editorState.next({
+                    ...currentState,
+                    selection: {
+                        anchor: selection.anchor,
+                        focus: {
+                            line: range.start.line - 1,
+                            column: prevLineLength
+                        }
+                    }
+                });
+            }
+            return;
+        }
+
+        // Get the character BEFORE current start position
+        const charBefore = lineText[currentStart - 1];
+        let newStart = currentStart;
+
+        // Define expansion rules (working backwards)
+        if (/\s/.test(charBefore)) {
+            // Before whitespace: skip all whitespace backwards
+            newStart--;
+            while (newStart > 0 && /\s/.test(lineText[newStart - 1])) {
+                newStart--;
+            }
+        } else if ('[]'.includes(charBefore)) {
+            // Brackets: expand by exactly one
+            newStart--;
+        } else if ('+-'.includes(charBefore)) {
+            // Arithmetic: expand to include all consecutive arithmetic ops
+            newStart--;
+            while (newStart > 0 && '+-'.includes(lineText[newStart - 1])) {
+                newStart--;
+            }
+        } else if ('><'.includes(charBefore)) {
+            // Pointer ops: expand to include all consecutive pointer ops
+            newStart--;
+            while (newStart > 0 && '><'.includes(lineText[newStart - 1])) {
+                newStart--;
+            }
+        } else if ('.,'.includes(charBefore)) {
+            // I/O: expand backwards through consecutive I/O
+            newStart--;
+            while (newStart > 0 && '.,'.includes(lineText[newStart - 1])) {
+                newStart--;
+            }
+        } else {
+            // Comments/other: expand backwards to next brainfuck token or whitespace
+            newStart--;
+            while (newStart > 0 &&
+            !'+-><[].,'.includes(lineText[newStart - 1]) &&
+            !/\s/.test(lineText[newStart - 1])) {
+                newStart--;
+            }
+        }
+
+        // Update selection - contract from current start
+        this.editorState.next({
+            ...currentState,
+            selection: {
+                anchor: selection.anchor,
+                focus: { line: range.start.line, column: newStart }
+            }
+        });
+    }
+
+    private selectToTheEndOfWord() {
+        const currentState = this.editorState.getValue();
+        const selection = currentState.selection;
+
+        const range = selectionToRange(selection);
+        const line = currentState.lines[range.end.line];
+        if (!line) return;
+
+        const lineText = line.text;
+        const currentEnd = range.end.column;
+
+        // If at end of line, move to next line
+        if (currentEnd >= lineText.length) {
+            if (range.end.line < currentState.lines.length - 1) {
+                // Find first non-whitespace on next line
+                const nextLine = currentState.lines[range.end.line + 1].text;
+                let col = 0;
+                while (col < nextLine.length && /\s/.test(nextLine[col])) {
+                    col++;
+                }
+
+                this.editorState.next({
+                    ...currentState,
+                    selection: {
+                        anchor: selection.anchor,
+                        focus: { line: range.end.line + 1, column: col }
+                    }
+                });
+            }
+            return;
+        }
+
+        // Get the character at current end position
+        const char = lineText[currentEnd];
+        let newEnd = currentEnd;
+
+        // Define expansion rules
+        if (/\s/.test(char)) {
+            // On whitespace: skip all whitespace, then stop at next token
+            while (newEnd < lineText.length && /\s/.test(lineText[newEnd])) {
+                newEnd++;
+            }
+            // Include one more character if not at end
+            if (newEnd < lineText.length) {
+                newEnd++;
+            }
+        } else if ('[]'.includes(char)) {
+            // Brackets: expand by exactly one
+            newEnd++;
+        } else if ('+-'.includes(char)) {
+            // Arithmetic: expand to include all consecutive arithmetic ops
+            while (newEnd < lineText.length && '+-'.includes(lineText[newEnd])) {
+                newEnd++;
+            }
+        } else if ('><'.includes(char)) {
+            // Pointer ops: expand to include all consecutive pointer ops
+            while (newEnd < lineText.length && '><'.includes(lineText[newEnd])) {
+                newEnd++;
+            }
+        } else if ('.,'.includes(char)) {
+            // I/O: usually single, but expand if multiple
+            while (newEnd < lineText.length && '.,'.includes(lineText[newEnd])) {
+                newEnd++;
+            }
+        } else {
+            // Comments/other: expand to next brainfuck token or whitespace
+            while (newEnd < lineText.length &&
+            !'+-><[].,'.includes(lineText[newEnd]) &&
+            !/\s/.test(lineText[newEnd])) {
+                newEnd++;
+            }
+        }
+
+        // Update selection - expand from current end
+        this.editorState.next({
+            ...currentState,
+            selection: {
+                anchor: selection.anchor,
+                focus: { line: range.end.line, column: newEnd }
+            }
+        });
+    }
     public selectLine(lineNumber: number) {
         const currentState = this.editorState.getValue();
 
@@ -846,6 +1058,20 @@ class EditorStore {
             selection: {
                 anchor: { line: lineNumber, column: 0 },
                 focus: { line: lineNumber, column: lineLength }
+            }
+        });
+    }
+
+    public selectAll() {
+        const currentState = this.editorState.getValue();
+        const lastLineIndex = currentState.lines.length - 1;
+        const lastLineLength = currentState.lines[lastLineIndex].text.length;
+
+        this.editorState.next({
+            ...currentState,
+            selection: {
+                anchor: { line: 0, column: 0 },
+                focus: { line: lastLineIndex, column: lastLineLength }
             }
         });
     }
@@ -916,6 +1142,7 @@ class EditorStore {
                 position: selection.focus,
                 text
             };
+            // Todo: here is the bug, it does not delete the text, and just overwrites the previous command
             this.editorState.next(this.undoRedo.execute(insertCommand, currentState));
         }).catch(err => {
             console.error("Failed to read clipboard:", err);
@@ -933,6 +1160,26 @@ class EditorStore {
 
     public getLines(): Line[] {
         return this.editorState.getValue().lines;
+    }
+
+    public focus() {
+        this.focused = true;
+    }
+
+    public blur() {
+        this.focused = false;
+    }
+
+    public clearEditor() {
+        this.editorState.next({
+            selection: {
+                anchor: { line: 0, column: 0 },
+                focus: { line: 0, column: 0 }
+            },
+            lines: [{ text: "" }],
+            mode: "insert"
+        });
+        this.undoRedo.clear();
     }
 }
 

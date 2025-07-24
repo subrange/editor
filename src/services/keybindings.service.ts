@@ -34,6 +34,11 @@ class KeybindingsService {
     }
 
     public handleKeyEvent(event: KeyboardEvent) {
+        // If we are in an input field, do not handle key events
+        if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+            return;
+        }
+
         event.preventDefault();
 
         const key = event.key.toLowerCase();

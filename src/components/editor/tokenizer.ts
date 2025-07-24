@@ -218,6 +218,8 @@ export const tokenStyles: Record<Token['type'], string> = {
     dot: 'text-teal-400 bg-zinc-700',
     comma: 'text-teal-500 bg-zinc-700',
     move: 'text-yellow-400',
-    unknown: 'text-red-500',
+
+    unknown: 'text-gray-500 italic',
+
     whitespace: ''
 };

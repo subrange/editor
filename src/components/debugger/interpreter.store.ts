@@ -4,7 +4,7 @@ import {BehaviorSubject} from "rxjs";
 import {editorStore, type Line, type Position} from "../editor/editor.store.ts";
 
 type InterpreterState = {
-    tape: Int8Array;
+    tape: Uint8Array;
     pointer: number;
     isRunning: boolean;
 
@@ -15,7 +15,7 @@ const TAPE_SIZE = 1024 * 1024; // 1 megabyte tape
 
 class InterpreterStore {
     public state = new BehaviorSubject<InterpreterState>({
-        tape: new Int8Array(TAPE_SIZE).fill(0),
+        tape: new Uint8Array(TAPE_SIZE).fill(0),
         pointer: 0,
         isRunning: false,
         output: ''
@@ -45,7 +45,7 @@ class InterpreterStore {
 
     public reset() {
         this.state.next({
-            tape: new Int8Array(TAPE_SIZE).fill(0),
+            tape: new Uint8Array(TAPE_SIZE).fill(0),
             pointer: 0,
             isRunning: false,
             output: ''
@@ -57,6 +57,11 @@ class InterpreterStore {
         if (this.runInterval) {
             clearInterval(this.runInterval);
             this.runInterval = null;
+        }
+
+        if (this.runAnimationFrameId) {
+            cancelAnimationFrame(this.runAnimationFrameId);
+            this.runAnimationFrameId = null;
         }
     }
 
@@ -117,6 +122,22 @@ class InterpreterStore {
         return true;
     }
 
+    private moveToNextLine() {
+        const current = this.currentChar.getValue();
+
+        if (current.line < this.code.length - 1) {
+            // Move to next line
+            this.currentChar.next({
+                line: current.line + 1,
+                column: 0
+            });
+            return true;
+        } else {
+            // End of code
+            return false;
+        }
+    }
+
     private getCharAt(pos: Position): string | null {
         if (pos.line >= this.code.length) return null;
         const line = this.code[pos.line];
@@ -135,6 +156,17 @@ class InterpreterStore {
 
         const char = this.getCurrentChar();
         const currentPos = this.currentChar.getValue();
+
+        if (char === '/') {
+            const hasMore = this.moveToNextLine();
+            if (!hasMore) {
+                console.log("Program finished.");
+                this.stop();
+                return false;
+            }
+            // Continue processing from the new line
+            return this.step();
+        }
 
         // Skip non-command characters
         if (char === null || (char && !'><+-[].,'.includes(char))) {
@@ -162,6 +194,7 @@ class InterpreterStore {
                 break;
             case '-':
                 currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] - 1 + 256) % 256;
+                console.log(currentState.tape)
                 break;
             case '[':
                 // If current cell is 0, jump to matching ]
@@ -256,23 +289,21 @@ class InterpreterStore {
 
         this.runAnimationFrameId = requestAnimationFrame(step);
 
-        this.runInterval = null; // Clear the interval since we're using requestAnimationFrame
+        this.runInterval = null;
     }
 
-    public runImmediately() {
-        // Run immediately without any delay
+    public async runImmediately() {
         this.state.next({
             ...this.state.getValue(),
             isRunning: true
         });
 
-        const r = this.step();
-
-        if (!r) {
-            this.stop();
-        } else {
-            // If we successfully stepped, continue running immediately
-            this.runImmediately();
+        while (this.step()) {
+            const current = this.currentChar.getValue();
+            if (current.line >= this.code.length) {
+                this.stop();
+                break;
+            }
         }
     }
 
@@ -290,12 +321,6 @@ class InterpreterStore {
         if (this.runAnimationFrameId) {
             cancelAnimationFrame(this.runAnimationFrameId);
             this.runAnimationFrameId = null;
-        }
-    }
-
-    public resume() {
-        if (!this.runInterval) {
-            this.run();
         }
     }
 }

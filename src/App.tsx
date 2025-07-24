@@ -2,10 +2,11 @@ import {Editor} from "./components/editor/editor.tsx";
 import {HSep, VSep} from "./components/helper-components.tsx";
 import {keybindingsService} from "./services/keybindings.service.ts";
 import {Debugger} from "./components/debugger/debugger.tsx";
+import {Sidebar} from "./components/sidebar/sidebar.tsx";
 
-function Sidebar() {
+function SidebarPanel() {
     return <div className="v w-80 min-w-80 h-screen bg-zinc-900">
-        Hello, this is the left side!
+        <Sidebar/>
     </div>;
 }
 
@@ -16,7 +17,7 @@ function EditorPanel() {
 }
 
 function DebugPanel() {
-    return <div className="h h-64 bg-zinc-900">
+    return <div className="h h-64 min-h-64 bg-zinc-900">
         <Debugger />
     </div>;
 }
@@ -32,7 +33,7 @@ function WorkspacePanel() {
 export default function App() {
   return (
     <div className="h grow-1 outline-0" tabIndex={0} onKeyDownCapture={e => keybindingsService.handleKeyEvent(e.nativeEvent)}>
-        <Sidebar/>
+        <SidebarPanel/>
         <VSep/>
         <WorkspacePanel/>
     </div>

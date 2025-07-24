@@ -3,7 +3,7 @@ import {useStoreSubscribe, useStoreSubscribeToField} from "../../hooks/use-store
 import {editorStore, type Line} from "./editor.store.ts";
 import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
-import {useMemo, useRef, useEffect} from "react";
+import {useMemo, useRef, useEffect, useLayoutEffect} from "react";
 import {Tokenizer, tokenStyles} from "./tokenizer.ts";
 import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";
@@ -29,7 +29,7 @@ function LineNumbersPanel() {
     const linesCount = editorState.lines.length;
 
     return <div
-        className="v bg-zinc-950 sticky top-0 left-0 w-16 min-w-16 text-zinc-700 select-none z-1 py-1">
+        className="flex flex-col overflow-visible bg-zinc-950 sticky left-0 w-16 min-w-16 text-zinc-700 select-none z-10 py-1">
         {
             Array.from({length: linesCount}, (_, i) => (
                 <div key={i} className="text-left pl-2" style={{ height: `${CHAR_HEIGHT}px` }}>
@@ -129,8 +129,16 @@ function Cursor() {
     const mode = useStoreSubscribeToField(editorStore.editorState, "mode");
     const isBlinking = useStoreSubscribe(editorStore.cursorBlinkState);
 
+    const cursorRef = useRef<HTMLDivElement>(null);
+
     const cursorWidth = mode === "insert" ? 1 : 8;
     const cw = useMemo(() => measureCharacterWidth(), []);
+
+    useLayoutEffect(() => {
+        if (cursorRef.current) {
+            cursorRef.current.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
+    }, [selection]);
 
     const stl = {
         left: `${LINE_PADDING_LEFT + selection.focus.column * cw}px`,
@@ -144,12 +152,22 @@ function Cursor() {
             "animate-blink": isBlinking,
         })}
         style={stl}
+        ref={cursorRef}
     />;
 }
 
 function DebugMarker() {
     const debugMarkerState = useStoreSubscribe(interpreterStore.currentChar);
     const cw = useMemo(() => measureCharacterWidth(), []);
+    const debugMarkerRef = useRef<HTMLDivElement>(null);
+
+    const isRunning = useStoreSubscribeToField(interpreterStore.state, "isRunning");
+
+    useLayoutEffect(() => {
+        if (debugMarkerRef.current) {
+            debugMarkerRef.current.scrollIntoView({ block: "center" });
+        }
+    });
 
     const stl = {
         left: `${LINE_PADDING_LEFT + debugMarkerState.column * cw}px`,
@@ -158,11 +176,12 @@ function DebugMarker() {
         height: `${CHAR_HEIGHT}px`,
     }
 
-    return <div
+    return (isRunning || debugMarkerState.line !== 0 || debugMarkerState.column !== 0) && <div
         className={clsx("absolute border border-green-500 pointer-events-none z-10", {
 
         })}
         style={stl}
+        ref={debugMarkerRef}
     />;
 }
 
@@ -329,7 +348,7 @@ function LinesPanel() {
             }
         }}
     >
-        <div>
+        <div className="">
             {lines.map(renderLine)}
         </div>
         <Selection />
@@ -360,25 +379,32 @@ export function Editor() {
             // Add selection keybindings
             keybindingsService.createKeybinding("meta+a", "editor.selectall" as AppCommand),
             keybindingsService.createKeybinding("shift+arrowright", "editor.selectright" as AppCommand),
+            keybindingsService.createKeybinding("shift+alt+arrowright", "editor.selectwordright" as AppCommand),
             keybindingsService.createKeybinding("shift+arrowleft", "editor.selectleft" as AppCommand),
+            keybindingsService.createKeybinding("shift+alt+arrowleft", "editor.selectwordleft" as AppCommand),
             keybindingsService.createKeybinding("shift+arrowup", "editor.selectup" as AppCommand),
+            keybindingsService.createKeybinding("shift+alt+arrowup", "editor.selectlineup" as AppCommand),
             keybindingsService.createKeybinding("shift+arrowdown", "editor.selectdown" as AppCommand),
+            keybindingsService.createKeybinding("shift+alt+arrowdown", "editor.selectlinedown" as AppCommand),
 
             // Copy/Cut/Paste
             keybindingsService.createKeybinding("meta+c", "editor.copy" as AppCommand),
             keybindingsService.createKeybinding("meta+x", "editor.cut" as AppCommand),
             keybindingsService.createKeybinding("meta+v", "editor.paste" as AppCommand),
         ])
+
+        editorStore.focus()
     }
 
     function removeEditorKeybindings() {
         keybindingsService.removeKeybindings("editor" as KeybindingState);
+        editorStore.blur();
     }
 
     // Auto-focus on mount
-    useEffect(() => {
-        editorRef.current?.focus();
-    }, []);
+    // useEffect(() => {
+    //     editorRef.current?.focus();
+    // }, []);
 
     return (
         <div
@@ -391,7 +417,7 @@ export function Editor() {
             onBlur={removeEditorKeybindings}
         >
             <LineNumbersPanel/>
-            <VSep className="sticky left-16 z-1"></VSep>
+            <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
             <LinesPanel/>
         </div>
     )
