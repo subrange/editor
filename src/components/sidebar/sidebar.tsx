@@ -51,6 +51,7 @@ export function Sidebar() {
     const [activeTab, setActiveTab] = useLocalStorageState<'settings' | null>("sidebarTab", null);
     const [tapeSize, setTapeSize] = useState(30000);
     const [cellSize, setCellSize] = useState(256);
+    const [laneCount, setLaneCount] = useLocalStorageState<number>("brainfuck-ide-lane-count", 1);
 
     const handleTapeSizeChange = (value: string) => {
         const size = parseInt(value) || 30000;
@@ -156,6 +157,53 @@ export function Sidebar() {
                                             </button>
                                         ))}
                                     </div>
+                                </div>
+
+                                {/* Lane Count */}
+                                <div className="space-y-2 mt-6">
+                                    <label className="text-sm font-medium text-zinc-300">
+                                        Lane Count
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="10"
+                                            value={laneCount}
+                                            onChange={e => {
+                                                const value = Number(e.target.value);
+                                                setLaneCount(value);
+                                                interpreterStore.setLaneCount(value);
+                                            }}
+                                            className="flex-1 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer
+                                                     [&::-webkit-slider-thumb]:appearance-none
+                                                     [&::-webkit-slider-thumb]:w-4
+                                                     [&::-webkit-slider-thumb]:h-4
+                                                     [&::-webkit-slider-thumb]:rounded-full
+                                                     [&::-webkit-slider-thumb]:bg-zinc-400
+                                                     [&::-webkit-slider-thumb]:cursor-pointer
+                                                     [&::-webkit-slider-thumb]:transition-colors
+                                                     [&::-webkit-slider-thumb]:hover:bg-zinc-300"
+                                        />
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="10"
+                                            value={laneCount}
+                                            onChange={e => {
+                                                const value = Number(e.target.value);
+                                                if (value >= 1 && value <= 10) {
+                                                    setLaneCount(value);
+                                                    interpreterStore.setLaneCount(value);
+                                                }
+                                            }}
+                                            className="w-16 px-2 py-1 text-sm bg-zinc-800 border border-zinc-700 rounded
+                                                     text-zinc-300 text-center focus:outline-none focus:border-zinc-600"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-zinc-500">
+                                        Visualize tape as interleaved lanes ({laneCount} {laneCount === 1 ? 'lane' : 'lanes'})
+                                    </p>
                                 </div>
                             </SettingSection>
 

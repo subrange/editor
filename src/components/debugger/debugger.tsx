@@ -4,6 +4,30 @@ import {useVirtualizer} from '@tanstack/react-virtual';
 import {useRef, useEffect} from 'react';
 import clsx from "clsx";
 
+// Lane color palette - 10 distinct colors that work with dark theme
+const LANE_COLORS = [
+    // Lane 0: Emerald
+    { border: 'border-emerald-500/50', bg: 'bg-emerald-950/30' },
+    // Lane 1: Sky
+    { border: 'border-sky-500/50', bg: 'bg-sky-950/30' },
+    // Lane 2: Violet
+    { border: 'border-violet-500/50', bg: 'bg-violet-950/30' },
+    // Lane 3: Rose
+    { border: 'border-rose-500/50', bg: 'bg-rose-950/30' },
+    // Lane 4: Amber
+    { border: 'border-amber-500/50', bg: 'bg-amber-950/30' },
+    // Lane 5: Cyan
+    { border: 'border-cyan-500/50', bg: 'bg-cyan-950/30' },
+    // Lane 6: Fuchsia
+    { border: 'border-fuchsia-500/50', bg: 'bg-fuchsia-950/30' },
+    // Lane 7: Lime
+    { border: 'border-lime-500/50', bg: 'bg-lime-950/30' },
+    // Lane 8: Orange
+    { border: 'border-orange-500/50', bg: 'bg-orange-950/30' },
+    // Lane 9: Indigo
+    { border: 'border-indigo-500/50', bg: 'bg-indigo-950/30' },
+];
+
 function formatBinary(value: number, bits: number): string {
     const binary = value.toString(2).padStart(bits, '0');
     // Split into groups of 8 for readability
@@ -25,6 +49,7 @@ function Tape() {
     const interpreterState = useStoreSubscribe(interpreterStore.state);
     const tape = interpreterState.tape;
     const pointer = interpreterState.pointer;
+    const laneCount = interpreterState.laneCount;
 
     // Determine cell size and display parameters
     const cellInfo = tape instanceof Uint8Array
@@ -114,6 +139,8 @@ function Tape() {
                         const value = tape[index];
                         const isPointer = index === pointer;
                         const isNonZero = value !== 0;
+                        const lane = laneCount > 1 ? index % laneCount : -1;
+                        const laneColor = lane >= 0 ? LANE_COLORS[lane] : null;
 
                         return (
                             <div
@@ -133,9 +160,14 @@ function Tape() {
                                         "relative h-full rounded border transition-all duration-200",
                                         "flex flex-col items-center justify-between py-2 px-1",
                                         {
+                                            // Pointer styles take precedence
                                             'border-yellow-500 bg-yellow-950/50 shadow-lg shadow-yellow-500/20 scale-105 z-10': isPointer,
-                                            'border-blue-500/50 bg-blue-950/30': isNonZero && !isPointer,
-                                            'border-zinc-700 bg-zinc-900/50': !isNonZero && !isPointer,
+                                            // Lane colors for multi-lane mode (when not pointer)
+                                            [laneColor?.border || '']: laneColor && !isPointer,
+                                            [laneColor?.bg || '']: laneColor && !isPointer,
+                                            // Default styles for single-lane mode (when not pointer)
+                                            'border-blue-500/50 bg-blue-950/30': !laneColor && isNonZero && !isPointer,
+                                            'border-zinc-700 bg-zinc-900/50': !laneColor && !isNonZero && !isPointer,
                                         }
                                     )}
                                 >

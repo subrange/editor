@@ -12,8 +12,8 @@
 
 <<< // Move pointer to cell 0 for easier goto() with absolute addressing
 
-// Let cell 7 contain total number of commands, we call it PBC — backwards program counter. It is required that BPC has two 0 cells on the left
->>>>>>> // goto(BPC) // TODO: Needed for the compiler
+// Let cell 7 contain total number of commands, we call it PBC — backwards program counter. It is required thaat BPC has two 0 cells on the left
+>>>>>>> // goto(BPC)
 ++ // poke(BPC, 2)
 <<<<<<< // goto(0)
 
@@ -22,19 +22,16 @@
 [ // Loop until we have no commands
 
   // Go to the next non-zero command on the left
-  << // goto(BPC-2), a second zeroed cell to the left
+  << // goto(BPC-2), secondzeroed cell to the left
 
   // Go to the leftmost non-zero cell
   +[<[>-]>[-<+>]<]<
 
-  // Command executor here
   -[ // This will not execute if the current command was 1, and will in other cases. Essentially our nop operation. The case of if(>1)
 
    -[ // This will not execute if the current command was 1 or 2. So this is the case of (>2). Not necessary here, but nice to have
        [-]
     ]
-
-    // -- EXECUTING COMMAND 2(Add) --
 
     // This will execute if > 1, so 2
     // And 2 is our addition operation
@@ -55,9 +52,7 @@
 
     < // goto(command_cell)
 
-    // -- END OF EXECUTING COMMAND 2(Add) --
-
-    [-]
+    [-] // This will zero the fuck out of our anchor
   ]
 
   > goto(anchor)

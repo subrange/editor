@@ -14,10 +14,12 @@ type InterpreterState = {
     breakpoints: Position[];
 
     output: string;
+    laneCount: number;
 }
 
 const DEFAULT_TAPE_SIZE = 1024 * 1024; // 1 megabyte tape
 const DEFAULT_CELL_SIZE = 256; // 8-bit cells
+const DEFAULT_LANE_COUNT = 1; // Single lane by default
 
 const sizeToTape = (size: number, tapeSize: number): Uint8Array | Uint16Array | Uint32Array => {
     switch (size) {
@@ -40,7 +42,8 @@ class InterpreterStore {
         isPaused: false,
         isStopped: false,
         breakpoints: [],
-        output: ''
+        output: '',
+        laneCount: DEFAULT_LANE_COUNT
     })
 
     private code: Array<Line> = [];
@@ -58,6 +61,7 @@ class InterpreterStore {
 
     private tapeSize: number = DEFAULT_TAPE_SIZE;
     private cellSize = DEFAULT_CELL_SIZE;
+    private laneCount: number = DEFAULT_LANE_COUNT;
 
     constructor() {
         // Sync the code with the editor store
@@ -88,6 +92,15 @@ class InterpreterStore {
             }
         }
 
+        // Load lane count from local storage if available
+        const storedLaneCount = localStorage.getItem('brainfuck-ide-lane-count');
+        if (storedLaneCount) {
+            const count = parseInt(storedLaneCount, 10);
+            if (!isNaN(count) && count >= 1 && count <= 10) {
+                this.laneCount = count;
+            }
+        }
+
         // Initialize tape with the correct size
         this.state.next({
             tape: sizeToTape(this.cellSize, this.tapeSize),
@@ -96,7 +109,8 @@ class InterpreterStore {
             isPaused: false,
             isStopped: false,
             breakpoints: [],
-            output: ''
+            output: '',
+            laneCount: this.laneCount
         });
     }
 
@@ -108,7 +122,8 @@ class InterpreterStore {
             isPaused: false,
             isStopped: false,
             breakpoints: this.state.getValue().breakpoints, // Keep existing breakpoints
-            output: ''
+            output: '',
+            laneCount: this.laneCount
         });
         this.currentChar.next({
             line: 0,
@@ -777,6 +792,18 @@ class InterpreterStore {
         this.cellSize = size;
         localStorage.setItem('cellSize', size.toString());
         this.reset();
+    }
+
+    public setLaneCount(count: number) {
+        if (count < 1 || count > 10) {
+            throw new Error("Lane count must be between 1 and 10");
+        }
+        this.laneCount = count;
+        localStorage.setItem('brainfuck-ide-lane-count', count.toString());
+        this.state.next({
+            ...this.state.getValue(),
+            laneCount: count
+        });
     }
 }
 
