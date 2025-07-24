@@ -4,7 +4,7 @@ import {BehaviorSubject} from "rxjs";
 import {editorStore, type Line, type Position} from "../editor/editor.store.ts";
 
 type InterpreterState = {
-    tape: Uint8Array;
+    tape: Uint8Array | Uint16Array | Uint32Array;
     pointer: number;
 
     isRunning: boolean;
@@ -16,11 +16,25 @@ type InterpreterState = {
     output: string;
 }
 
-const TAPE_SIZE = 1024 * 1024; // 1 megabyte tape
+const DEFAULT_TAPE_SIZE = 1024 * 1024; // 1 megabyte tape
+const DEFAULT_CELL_SIZE = 256; // 8-bit cells
+
+const sizeToTape = (size: number, tapeSize: number): Uint8Array | Uint16Array | Uint32Array => {
+    switch (size) {
+        case 256:
+            return new Uint8Array(tapeSize).fill(0);
+        case 65536:
+            return new Uint16Array(tapeSize).fill(0);
+        case 4294967296:
+            return new Uint32Array(tapeSize).fill(0);
+        default:
+            throw new Error(`Unsupported cell size: ${size}`);
+    }
+}
 
 class InterpreterStore {
     public state = new BehaviorSubject<InterpreterState>({
-        tape: new Uint8Array(TAPE_SIZE).fill(0),
+        tape: sizeToTape(DEFAULT_CELL_SIZE, DEFAULT_TAPE_SIZE),
         pointer: 0,
         isRunning: false,
         isPaused: false,
@@ -42,6 +56,9 @@ class InterpreterStore {
 
     private lastPausedBreakpoint: Position | null = null;
 
+    private tapeSize: number = DEFAULT_TAPE_SIZE;
+    private cellSize = DEFAULT_CELL_SIZE;
+
     constructor() {
         // Sync the code with the editor store
         editorStore.editorState.subscribe(s => {
@@ -51,11 +68,41 @@ class InterpreterStore {
                 this.buildLoopMap();
             }
         });
+
+        // Load tape size from local storage if available
+        const storedTapeSize = localStorage.getItem('tapeSize');
+        if (storedTapeSize) {
+            const size = parseInt(storedTapeSize, 10);
+            if (!isNaN(size) && size > 0) {
+                this.tapeSize = size;
+            }
+        }
+
+        // Load cell size from local storage if available
+        const storedCellSize = localStorage.getItem('cellSize');
+
+        if (storedCellSize) {
+            const size = parseInt(storedCellSize, 10);
+            if (!isNaN(size) && [256, 65536, 4294967296].includes(size)) {
+                this.cellSize = size;
+            }
+        }
+
+        // Initialize tape with the correct size
+        this.state.next({
+            tape: sizeToTape(this.cellSize, this.tapeSize),
+            pointer: 0,
+            isRunning: false,
+            isPaused: false,
+            isStopped: false,
+            breakpoints: [],
+            output: ''
+        });
     }
 
     public reset() {
         this.state.next({
-            tape: new Uint8Array(TAPE_SIZE).fill(0),
+            tape: sizeToTape(this.cellSize, this.tapeSize),
             pointer: 0,
             isRunning: false,
             isPaused: false,
@@ -263,10 +310,10 @@ class InterpreterStore {
                 currentState.pointer = (currentState.pointer - 1 + currentState.tape.length) % currentState.tape.length;
                 break;
             case '+':
-                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] + 1) % 256;
+                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] + 1) % this.cellSize;
                 break;
             case '-':
-                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] - 1 + 256) % 256;
+                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] - 1 + this.cellSize) % this.cellSize;
                 break;
             case '[':
                 if (currentState.tape[currentState.pointer] === 0) {
@@ -340,7 +387,8 @@ class InterpreterStore {
         this.state.next({
             ...this.state.getValue(),
             isRunning: true,
-            isPaused: false
+            isPaused: false,
+            isStopped: false
         });
 
         this.runInterval = window.setInterval(() => {
@@ -362,7 +410,8 @@ class InterpreterStore {
         this.state.next({
             ...this.state.getValue(),
             isRunning: true,
-            isPaused: false
+            isPaused: false,
+            isStopped: false
         });
 
         const step = () => {
@@ -390,7 +439,8 @@ class InterpreterStore {
         this.state.next({
             ...this.state.getValue(),
             isRunning: true,
-            isPaused: false
+            isPaused: false,
+            isStopped: false
         });
 
         while (true) {
@@ -541,7 +591,8 @@ class InterpreterStore {
         this.state.next({
             ...this.state.getValue(),
             isRunning: true,
-            isPaused: false
+            isPaused: false,
+            isStopped: false
         });
 
         const BATCH_SIZE = 100000; // Execute 100k instructions per batch
@@ -607,10 +658,11 @@ class InterpreterStore {
         this.state.next({
             ...this.state.getValue(),
             isRunning: true,
-            isPaused: false
+            isPaused: false,
+            isStopped: false
         });
 
-        const tape = new Uint8Array(TAPE_SIZE);
+        const tape = sizeToTape(this.cellSize, this.tapeSize);
         let pointer = 0;
         let output = '';
         let pc = 0; // Program counter
@@ -622,8 +674,8 @@ class InterpreterStore {
             const op = ops[pc];
 
             switch (op.type) {
-                case '>': pointer = (pointer + 1) % TAPE_SIZE; break;
-                case '<': pointer = (pointer - 1 + TAPE_SIZE) % TAPE_SIZE; break;
+                case '>': pointer = (pointer + 1) % this.tapeSize; break;
+                case '<': pointer = (pointer - 1 + this.tapeSize) % this.tapeSize; break;
                 case '+': tape[pointer] = (tape[pointer] + 1) & 255; break;
                 case '-': tape[pointer] = (tape[pointer] - 1 + 256) & 255; break;
                 case '[':
@@ -706,6 +758,25 @@ class InterpreterStore {
         return currentState.breakpoints.some(
             bp => bp.line === position.line && bp.column === position.column
         );
+    }
+
+    public setTapeSize(size: number) {
+        if (size <= 0) {
+            throw new Error("Tape size must be a positive integer");
+        }
+        this.tapeSize = size;
+        localStorage.setItem('tapeSize', size.toString());
+        this.reset();
+        console.log(`Tape size set to ${size} bytes`);
+    }
+
+    public setCellSize(size: number) {
+        if (![256, 65536, 4294967296].includes(size)) {
+            throw new Error("Unsupported cell size. Use 256, 65536, or 4294967296.");
+        }
+        this.cellSize = size;
+        localStorage.setItem('cellSize', size.toString());
+        this.reset();
     }
 }
 

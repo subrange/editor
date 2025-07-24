@@ -27,3 +27,33 @@
         }
     }
 }
+
+.slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.slider::-webkit-slider-thumb:hover {
+    background: #60a5fa;
+    transform: scale(1.2);
+}
+
+.slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.slider::-moz-range-thumb:hover {
+    background: #60a5fa;
+    transform: scale(1.2);
+}

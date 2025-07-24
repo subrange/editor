@@ -24,22 +24,6 @@ function measureCharacterWidth() {
     return width;
 }
 
-// function LineNumbersPanel() {
-//     const editorState = useStoreSubscribe(editorStore.editorState);
-//     const linesCount = editorState.lines.length;
-//
-//     return <div
-//         className="flex flex-col overflow-visible bg-zinc-950 sticky left-0 w-16 min-w-16 text-zinc-700 select-none z-10 py-1">
-//         {
-//             Array.from({length: linesCount}, (_, i) => (
-//                 <div key={i} className="text-left pl-2" style={{ height: `${CHAR_HEIGHT}px` }}>
-//                     {i + 1}
-//                 </div>
-//             ))
-//         }
-//     </div>;
-// }
-
 function LineNumbersPanel() {
     const editorState = useStoreSubscribe(editorStore.editorState);
     const currentChar = useStoreSubscribe(interpreterStore.currentChar);
@@ -51,14 +35,15 @@ function LineNumbersPanel() {
 
         for (let i = 0; i < line.text.length; i++) {
             if ('><+-[].,'.includes(line.text[i])) {
-                interpreterStore.toggleBreakpoint({ line: lineIndex, column: i });
+                interpreterStore.toggleBreakpoint({line: lineIndex, column: i});
                 break;
             }
         }
     };
 
     return (
-        <div className="v bg-zinc-950 sticky top-0 left-0 w-16 min-w-16 text-zinc-700 select-none z-1 py-1">
+        <div
+            className="flex flex-col overflow-visible bg-zinc-950 sticky left-0 w-16 min-w-16 min-h-0 text-zinc-700 select-none z-1 py-1">
             {editorState.lines.map((_, i) => {
                 const hasBreakpoint = breakpoints.some(bp => bp.line === i);
                 const isCurrentLine = currentChar.line === i;
@@ -66,7 +51,7 @@ function LineNumbersPanel() {
                 return (
                     <div
                         key={i}
-                        className={`flex justify-between align-center px-2 cursor-pointer hover:bg-zinc-800 ${
+                        className={`flex justify-between align-center px-2  hover:bg-zinc-800 ${
                             isCurrentLine ? 'bg-zinc-800 text-zinc-300' : ''
                         }`}
                         onClick={() => handleLineClick(i)}
@@ -167,16 +152,17 @@ function Selection() {
 function Cursor() {
     const selection = useStoreSubscribeToField(editorStore.editorState, "selection")
     const mode = useStoreSubscribeToField(editorStore.editorState, "mode");
+    const focused = useStoreSubscribe(editorStore.focused);
     const isBlinking = useStoreSubscribe(editorStore.cursorBlinkState);
 
     const cursorRef = useRef<HTMLDivElement>(null);
 
-    const cursorWidth = mode === "insert" ? 1 : 8;
+    const cursorWidth = mode === "insert" ? 2 : 8;
     const cw = useMemo(() => measureCharacterWidth(), []);
 
     useLayoutEffect(() => {
         if (cursorRef.current) {
-            cursorRef.current.scrollIntoView({ block: "nearest", inline: "nearest" });
+            cursorRef.current.scrollIntoView({block: "nearest", inline: "nearest"});
         }
     }, [selection]);
 
@@ -187,7 +173,7 @@ function Cursor() {
         height: `${CHAR_HEIGHT}px`,
     }
 
-    return <div
+    return focused && <div
         className={clsx("absolute bg-zinc-300 mix-blend-difference pointer-events-none z-10", {
             "animate-blink": isBlinking,
         })}
@@ -202,10 +188,11 @@ function DebugMarker() {
     const debugMarkerRef = useRef<HTMLDivElement>(null);
 
     const isRunning = useStoreSubscribeToField(interpreterStore.state, "isRunning");
+    const isFinished = useStoreSubscribeToField(interpreterStore.state, "isStopped");
 
     useLayoutEffect(() => {
-        if (debugMarkerRef.current) {
-            debugMarkerRef.current.scrollIntoView({ block: "center" });
+        if (debugMarkerRef.current && (isRunning || !isFinished)) {
+            debugMarkerRef.current.scrollIntoView({block: "center"});
         }
     });
 
@@ -217,9 +204,7 @@ function DebugMarker() {
     }
 
     return (isRunning || debugMarkerState.line !== 0 || debugMarkerState.column !== 0) && <div
-        className={clsx("absolute border border-green-500 pointer-events-none z-10", {
-
-        })}
+        className={clsx("absolute border border-green-500 pointer-events-none z-10", {})}
         style={stl}
         ref={debugMarkerRef}
     />;
@@ -264,7 +249,7 @@ function LinesPanel() {
         let column = Math.round(x / charWidth);
         column = Math.max(0, Math.min(column, lines[line].text.length));
 
-        return { line, column };
+        return {line, column};
     };
 
     const handleClick = (e: React.MouseEvent) => {
@@ -338,7 +323,7 @@ function LinesPanel() {
             let column = Math.round(x / charWidth);
             column = Math.max(0, Math.min(column, lines[line].text.length));
 
-            editorStore.updateSelection({ line, column });
+            editorStore.updateSelection({line, column});
         };
 
         const handleMouseUp = () => {
@@ -367,10 +352,10 @@ function LinesPanel() {
                 className={clsx(
                     "whitespace-pre pl-2 pr-4", {
                         "bg-zinc-900": isCurrentLine && isRunning && !hasBreakpoint,
-                       "bg-red-950": hasBreakpoint
+                        "bg-red-950": hasBreakpoint
                     }
                 )}
-                style={{ height: `${CHAR_HEIGHT}px`, lineHeight: `${CHAR_HEIGHT}px` }}
+                style={{height: `${CHAR_HEIGHT}px`, lineHeight: `${CHAR_HEIGHT}px`}}
             >
                 {tokens.length === 0 ? (
                     <span>&nbsp;</span>
@@ -390,7 +375,7 @@ function LinesPanel() {
 
     return <div
         ref={containerRef}
-        className="flex flex-col grow-1 overflow-visible py-1 relative cursor-text"
+        className="flex flex-col grow-1 overflow-visible py-1 relative cursor-text min-h-0"
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onMouseDown={handleMouseDown}
@@ -403,19 +388,20 @@ function LinesPanel() {
         <div className="">
             {lines.map(renderLine)}
         </div>
-        <Selection />
+        <Selection/>
         <BracketHighlights
             cursorPosition={selection.focus}
             lines={lines}
             charWidth={charWidth}
         />
-        <Cursor />
-        <DebugMarker />
+        <Cursor/>
+        <DebugMarker/>
     </div>;
 }
 
 export function Editor() {
     const editorRef = useRef<HTMLDivElement>(null);
+    const focused = useStoreSubscribe(editorStore.focused);
 
     function addEditorKeybindings() {
         keybindingsService.pushKeybindings("editor" as KeybindingState, [
@@ -453,24 +439,25 @@ export function Editor() {
         editorStore.blur();
     }
 
-    // Auto-focus on mount
-    // useEffect(() => {
-    //     editorRef.current?.focus();
-    // }, []);
-
     return (
         <div
             ref={editorRef}
             className={clsx(
                 "flex grow-1 bg-zinc-950 font-mono text-sm inset-shadow-sm overflow-auto relative select-none outline-0",
+                {
+                    "border border-zinc-700": focused,
+                    "border border-transparent": !focused
+                }
             )}
             onFocus={addEditorKeybindings}
             tabIndex={0}
             onBlur={removeEditorKeybindings}
         >
-            <LineNumbersPanel/>
-            <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
-            <LinesPanel/>
+            <div className="flex relative grow-1 overflow-visible min-h-0 h-fit relative">
+                <LineNumbersPanel/>
+                <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
+                <LinesPanel/>
+            </div>
         </div>
     )
 }

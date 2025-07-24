@@ -1,39 +1,213 @@
-import {useStoreSubscribeToField} from "../../hooks/use-store-subscribe.tsx";
+import {useLocalStorageState} from "../../hooks/use-local-storage-state.tsx";
+import clsx from "clsx";
+import {CogIcon} from "@heroicons/react/24/outline";
+import {useState} from "react";
 import {interpreterStore} from "../debugger/interpreter.store.ts";
-import {useLayoutEffect, useRef} from "react";
 
-function Output() {
-    const output = useStoreSubscribeToField(interpreterStore.state, "output");
+function SidebarTabButton({
+                              icon: Icon,
+                              label,
+                              active,
+                              onClick,
+                          }: {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    active: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            className={clsx(
+                "flex items-center justify-center w-full p-3 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-all duration-200",
+                {
+                    "bg-zinc-800 text-zinc-200": active,
+                    "hover:bg-zinc-800/50": !active
+                }
+            )}
+            onClick={onClick}
+            title={label}
+        >
+            <Icon className="h-8 w-8" />
+        </button>
+    );
+}
 
-    const outputContainer = useRef<HTMLDivElement>(null);
-
-    // Scroll to the bottom when output changes
-    useLayoutEffect(() => {
-        setTimeout(() => {
-        if (outputContainer.current) {
-            outputContainer.current.scrollTop = outputContainer.current.scrollHeight;
-        }
-        }, 10);
-    }, [output, outputContainer]);
-
-    return <div className="v h-32 bg-zinc-800">
-        <div className="v bg-zinc-700 text-white text-xs font-bold p-2 h-8 min-h-8">
-            Output
+function SettingSection({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div className="space-y-3">
+            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{title}</h3>
+            {children}
         </div>
-        <div className="flex flex-col p-2 bg-zinc-950 grow-1 overflow-auto" ref={outputContainer}>
-            <pre className="text-xs text-white overflow-x-auto whitespace-pre-wrap">
-                {output}
-            </pre>
-        </div>
-    </div>;
+    );
+}
+
+function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function Sidebar() {
+    const [activeTab, setActiveTab] = useLocalStorageState<'settings' | null>("sidebarTab", null);
+    const [tapeSize, setTapeSize] = useState(30000);
+    const [cellSize, setCellSize] = useState(256);
+
+    const handleTapeSizeChange = (value: string) => {
+        const size = parseInt(value) || 30000;
+        setTapeSize(Math.max(100, Math.min(10000000, size)));
+        interpreterStore.setTapeSize(Math.max(100, Math.min(10000000, size)));
+    };
+
+    const changeCellSize = (size: number) => {
+        setCellSize(size);
+        interpreterStore.setCellSize(size);
+    };
+
     return (
-        <div className="v w-80 min-w-80 h-screen bg-zinc-900">
-            <div className="v grow-1">
+        <div className={clsx(
+            "flex h-screen bg-zinc-900 transition-all duration-300 ease-in-out",
+            {
+                "w-80 min-w-80": activeTab,
+                "w-12 min-w-12": !activeTab,
+            }
+        )}>
+            {/* Sidebar buttons */}
+            <div className="w-12 flex flex-col bg-zinc-900">
+                <SidebarTabButton
+                    icon={CogIcon}
+                    label="Settings"
+                    active={activeTab === 'settings'}
+                    onClick={() => setActiveTab(activeTab === 'settings' ? null : 'settings')}
+                />
             </div>
-            <Output/>
+
+            {/* Content panel */}
+            <div className={clsx(
+                "flex-1 overflow-hidden transition-opacity duration-300",
+                {
+                    "opacity-0 pointer-events-none": !activeTab,
+                    "opacity-100": activeTab,
+                }
+            )}>
+                {activeTab === 'settings' && (
+                    <div className="h-full overflow-y-auto w-[268px] border-l border-zinc-800">
+                        {/* Header */}
+                        <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 px-6 py-4 z-10">
+                            <h2 className="text-lg font-semibold text-zinc-100 whitespace-nowrap">Settings</h2>
+                        </div>
+
+                        {/* Settings content */}
+                        <div className="p-6 space-y-8">
+                            {/* Interpreter Settings */}
+                            <SettingSection title="Interpreter">
+                                {/* Tape Size */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-medium text-zinc-300 whitespace-nowrap">
+                                            Tape Size
+                                        </label>
+                                        <span className="text-xs text-zinc-500 whitespace-nowrap">
+                                            {formatBytes(tapeSize)}
+                                        </span>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="range"
+                                            min="100"
+                                            max="10000000"
+                                            step="100"
+                                            value={tapeSize}
+                                            onChange={(e) => handleTapeSizeChange(e.target.value)}
+                                            className="w-full h-2 bg-zinc-700 rounded appearance-none cursor-pointer slider"
+                                        />
+                                        <input
+                                            type="number"
+                                            value={tapeSize}
+                                            onChange={(e) => handleTapeSizeChange(e.target.value)}
+                                            className="mt-2 w-full px-3 py-2 bg-zinc-800 text-zinc-200 text-sm rounded border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            placeholder="Tape size in bytes"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Cell Size */}
+                                <div className="flex flex-col space-y-2 mt-6">
+                                    <label className="text-sm font-medium text-zinc-300 whitespace-nowrap">
+                                        Cell Size
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { value: "256", label: "8-bit", desc: "0-255" },
+                                            { value: "65536", label: "16-bit", desc: "0-65,5K" },
+                                            { value: "4294967296", label: "32-bit", desc: "0-4.3B" }
+                                        ].map((option) => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => changeCellSize(parseInt(option.value, 10))}
+                                                className={clsx(
+                                                    "p-3 rounded border transition-all text-center",
+                                                    cellSize === parseInt(option.value)
+                                                        ? "bg-blue-500/20 border-blue-500 text-blue-400"
+                                                        : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:border-zinc-600"
+                                                )}
+                                            >
+                                                <div className="font-medium text-sm">{option.label}</div>
+                                                <div className="text-[10px] text-zinc-500 mt-1">{option.desc}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </SettingSection>
+
+                            {/* Editor Settings */}
+                            {/*<SettingSection title="Editor">*/}
+                            {/*    <div className="space-y-4">*/}
+                            {/*        <label className="flex items-center justify-between cursor-pointer">*/}
+                            {/*            <span className="text-sm font-medium text-zinc-300">Syntax highlighting</span>*/}
+                            {/*            <input*/}
+                            {/*                type="checkbox"*/}
+                            {/*                defaultChecked*/}
+                            {/*                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2"*/}
+                            {/*            />*/}
+                            {/*        </label>*/}
+
+                            {/*        <label className="flex items-center justify-between cursor-pointer">*/}
+                            {/*            <span className="text-sm font-medium text-zinc-300">Bracket matching</span>*/}
+                            {/*            <input*/}
+                            {/*                type="checkbox"*/}
+                            {/*                defaultChecked*/}
+                            {/*                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2"*/}
+                            {/*            />*/}
+                            {/*        </label>*/}
+                            {/*    </div>*/}
+                            {/*</SettingSection>*/}
+
+                            {/* Debug Settings */}
+                            {/*<SettingSection title="Debugger">*/}
+                            {/*    <div className="space-y-4">*/}
+                            {/*        <label className="flex items-center justify-between cursor-pointer">*/}
+                            {/*            <span className="text-sm font-medium text-zinc-300">Show execution marker</span>*/}
+                            {/*            <input*/}
+                            {/*                type="checkbox"*/}
+                            {/*                defaultChecked*/}
+                            {/*                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2"*/}
+                            {/*            />*/}
+                            {/*        </label>*/}
+
+                            {/*        <label className="flex items-center justify-between cursor-pointer">*/}
+                            {/*            <span className="text-sm font-medium text-zinc-300">Auto-scroll to pointer</span>*/}
+                            {/*            <input*/}
+                            {/*                type="checkbox"*/}
+                            {/*                defaultChecked*/}
+                            {/*                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2"*/}
+                            {/*            />*/}
+                            {/*        </label>*/}
+                            {/*    </div>*/}
+                            {/*</SettingSection>*/}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
-    )
+    );
 }

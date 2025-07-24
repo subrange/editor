@@ -16,11 +16,6 @@ type Range = {
     end: Position;
 }
 
-type TextChange = {
-    range: Range;
-    text: string;
-}
-
 export type Line = {
     text: string;
 }
@@ -55,31 +50,27 @@ class CommandExecutor {
         switch (command.type) {
             case "insert":
                 // Calculate the end position after the inserted text
-                const endPos = this.calculateEndPosition(command.position, command.text);
+                { const endPos = this.calculateEndPosition(command.position, command.text);
                 return this.executeDelete({
-                    type: "delete",
                     range: {
                         start: command.position,
                         end: endPos
                     },
                     deletedText: command.text
-                }, state);
+                }, state); }
 
             case "delete":
-                // Re-insert the deleted text
                 if (!command.deletedText) {
                     console.error("Cannot undo delete - no deleted text stored");
                     return state;
                 }
                 return this.executeInsert({
-                    type: "insert",
                     position: command.range.start,
                     text: command.deletedText
                 }, state);
 
             case "move":
                 return this.executeMove({
-                    type: "move",
                     from: command.to,
                     to: command.from
                 }, state);
@@ -90,7 +81,6 @@ class CommandExecutor {
         }
     }
 
-    // Public static method to extract text from a range
     static extractText(range: Range, state: EditorState): string {
         const { start, end } = range;
 
@@ -425,11 +415,10 @@ class EditorStore {
     public editorState = new BehaviorSubject<EditorState>({
         selection: {
             anchor: {line: 0, column: 0},
-            focus: {line: 1, column: 3}
+            focus: {line: 0, column: 0}
         },
         lines: [
-            {text: "sldgjk hdsflkjg hsdlkfjgnhsdlkfjghndskfjghnsdklf jnglksdfjnglksdfjngdlkfjng lkjngg lkjgnlksd jnlgsjdn ljdfs ljd ldjs gjlkdfn lgjds nflgjsdnf lgkjsndf lgksdn lkdf"},
-            {text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."},
+            {text: ""}
         ],
         mode: "insert"
     });
@@ -439,7 +428,7 @@ class EditorStore {
 
     private undoRedo = new UndoRedo();
 
-    private focused = false;
+    public focused = new BehaviorSubject(false);
 
     constructor() {
         const savedState = localStorage.getItem("editorState");
@@ -459,7 +448,7 @@ class EditorStore {
 
         keybindingsService.signal.subscribe(s => {
 
-            if (!this.focused) {
+            if (!this.focused.getValue()) {
                 return; // Ignore commands if editor is not focused
             }
 
@@ -551,7 +540,7 @@ class EditorStore {
             const currentState = this.editorState.getValue();
             const selection = currentState.selection;
 
-            if (!this.focused) {
+            if (!this.focused.getValue()) {
                 return; // Ignore commands if editor is not focused
             }
 
@@ -1163,11 +1152,11 @@ class EditorStore {
     }
 
     public focus() {
-        this.focused = true;
+        this.focused.next(true)
     }
 
     public blur() {
-        this.focused = false;
+        this.focused.next(false)
     }
 
     public clearEditor() {
