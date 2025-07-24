@@ -58,8 +58,8 @@ export function Sidebar() {
 
     const handleTapeSizeChange = (value: string) => {
         const size = parseInt(value) || 30000;
-        setTapeSize(Math.max(100, Math.min(10000000, size)));
-        interpreterStore.setTapeSize(Math.max(100, Math.min(10000000, size)));
+        setTapeSize(Math.max(100, Math.min(150000, size)));
+        interpreterStore.setTapeSize(Math.max(100, Math.min(150000, size)));
     };
 
     const changeCellSize = (size: number) => {
@@ -118,7 +118,7 @@ export function Sidebar() {
                                         <input
                                             type="range"
                                             min="100"
-                                            max="10000000"
+                                            max="150000"
                                             step="100"
                                             value={tapeSize}
                                             onChange={(e) => handleTapeSizeChange(e.target.value)}
