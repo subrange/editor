@@ -12,7 +12,6 @@ class BracketMatcher {
         { open: '[', close: ']' },
         { open: '{', close: '}' },
         { open: '(', close: ')' },
-        { open: '<', close: '>' },
     ];
 
     private openBrackets = new Set(this.pairs.map(p => p.open));

@@ -3,13 +3,15 @@ import {
     StopIcon,
     ArrowPathIcon,
     BoltIcon,
-    ClockIcon,
-    ChevronRightIcon, XMarkIcon
+    ClockIcon, XMarkIcon,
 } from '@heroicons/react/24/solid';
 import { interpreterStore } from "./interpreter.store.ts";
-import { useStoreSubscribeToField } from "../../hooks/use-store-subscribe.tsx";
+import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
 import { useState } from 'react';
-import {editorStore} from "../editor/editor.store.ts";
+import {
+    ForwardIcon,
+    PauseIcon
+} from '@heroicons/react/24/solid';
 
 type ToolbarButtonProps = {
     icon: React.ComponentType<{ className?: string }>;
@@ -44,14 +46,15 @@ function IconButton({icon: Icon, label, onClick, disabled = false, variant = 'de
     );
 }
 
-function Toolbar() {
-    const isRunning = useStoreSubscribeToField(interpreterStore.state, 'isRunning');
-    const [delay, setDelay] = useState(150);
+export function Toolbar() {
+    const interpreterState = useStoreSubscribe(interpreterStore.state);
+    const { isRunning, isPaused, isStopped } = interpreterState;
+    const [delay, setDelay] = useState(50);
     const [showDelayInput, setShowDelayInput] = useState(false);
 
     const handleDelayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value) || 0;
-        setDelay(Math.max(0, Math.min(1000, value))); // Clamp between 0-1000ms
+        setDelay(Math.max(0, Math.min(1000, value)));
     };
 
     return (
@@ -59,68 +62,88 @@ function Toolbar() {
             <div className="flex items-center px-2 h-full gap-1">
                 {/* Run modes group */}
                 <div className="flex items-center gap-1 pr-2 border-r border-zinc-700">
-                    <IconButton
-                        icon={BoltIcon}
-                        label="Run Fast"
-                        onClick={() => interpreterStore.runImmediately()}
-                        disabled={isRunning}
-                        variant="success"
-                    />
-
-                    <IconButton
-                        icon={PlayIcon}
-                        label="Run Normal"
-                        onClick={() => interpreterStore.runSmooth()}
-                        disabled={isRunning}
-                        variant="success"
-                    />
-
-                    {/* Run with custom delay */}
-                    <div className="flex items-center">
+                    {isPaused ? (
                         <IconButton
-                            icon={ClockIcon}
-                            label={`Run with ${delay}ms delay`}
-                            onClick={() => {
-                                interpreterStore.run(delay);
-                                setShowDelayInput(false);
-                            }}
-                            disabled={isRunning}
+                            icon={PlayIcon}
+                            label="Resume"
+                            onClick={() => interpreterStore.resume()}
                             variant="success"
                         />
-                        {showDelayInput ? (
-                            <input
-                                type="number"
-                                value={delay}
-                                onChange={handleDelayChange}
-                                onBlur={() => setShowDelayInput(false)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
+                    ) : (
+                        <>
+                            <IconButton
+                                icon={BoltIcon}
+                                label="Run Really Fast (No delay, rare UI updates, no breakpoints)"
+                                onClick={() => interpreterStore.runTurbo()}
+                                disabled={isRunning}
+                                variant="success"
+                            />
+
+                            <IconButton
+                                icon={PlayIcon}
+                                label="Run Smoothly (UI updates, breakpoints respected, slowest)"
+                                onClick={() => interpreterStore.runSmooth()}
+                                disabled={isRunning}
+                                variant="success"
+                            />
+
+                            {/* Run with custom delay */}
+                            <div className="flex items-center">
+                                <IconButton
+                                    icon={ClockIcon}
+                                    label={`Run with ${delay}ms delay`}
+                                    onClick={() => {
                                         interpreterStore.run(delay);
                                         setShowDelayInput(false);
-                                    }
-                                    if (e.key === 'Escape') {
-                                        setShowDelayInput(false);
-                                    }
-                                }}
-                                className="ml-1 w-16 px-1 py-0.5 text-xs bg-zinc-800 border border-zinc-700 rounded text-zinc-300 focus:outline-none focus:border-zinc-600"
-                                placeholder="ms"
-                                min="0"
-                                max="1000"
-                                autoFocus
-                            />
-                        ) : (
-                            <button
-                                onClick={() => setShowDelayInput(true)}
-                                className="ml-1 px-1 py-0.5 text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-zinc-400"
-                                disabled={isRunning}
-                            >
-                                {delay}ms
-                            </button>
-                        )}
-                    </div>
+                                    }}
+                                    disabled={isRunning}
+                                    variant="success"
+                                />
+                                {showDelayInput ? (
+                                    <input
+                                        type="number"
+                                        value={delay}
+                                        onChange={handleDelayChange}
+                                        onBlur={() => setShowDelayInput(false)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                interpreterStore.run(delay);
+                                                setShowDelayInput(false);
+                                            }
+                                            if (e.key === 'Escape') {
+                                                setShowDelayInput(false);
+                                            }
+                                        }}
+                                        className="ml-1 w-16 px-1 py-0.5 text-xs bg-zinc-800 border border-zinc-700 rounded text-zinc-300 focus:outline-none focus:border-zinc-600"
+                                        placeholder="ms"
+                                        min="0"
+                                        max="1000"
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <button
+                                        onClick={() => setShowDelayInput(true)}
+                                        className="ml-1 px-1 py-0.5 text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-zinc-400"
+                                        disabled={isRunning}
+                                    >
+                                        {delay}ms
+                                    </button>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Control buttons */}
+                {isRunning && !isPaused && (
+                    <IconButton
+                        icon={PauseIcon}
+                        label="Pause"
+                        onClick={() => interpreterStore.pause()}
+                        variant="warning"
+                    />
+                )}
+
                 <IconButton
                     icon={StopIcon}
                     label="Stop"
@@ -130,14 +153,21 @@ function Toolbar() {
                 />
 
                 <IconButton
-                    icon={ChevronRightIcon}
+                    icon={ForwardIcon}
                     label="Step"
                     onClick={() => interpreterStore.step()}
-                    disabled={isRunning}
+                    disabled={isRunning && !isPaused}
                     variant="info"
                 />
 
                 <div className="w-px h-6 bg-zinc-700 mx-1" />
+
+                <IconButton
+                    icon={XMarkIcon}
+                    label="Clear Breakpoints"
+                    onClick={() => interpreterStore.clearBreakpoints()}
+                    variant="warning"
+                />
 
                 <IconButton
                     icon={ArrowPathIcon}
@@ -146,27 +176,34 @@ function Toolbar() {
                     variant="warning"
                 />
 
-                <div className="w-px h-6 bg-zinc-700 mx-1" />
-
-                <IconButton
-                    icon={XMarkIcon}
-                    label="Clear Editor"
-                    onClick={() => editorStore.clearEditor()}
-                    variant="danger"
-                />
-
                 {/* Status indicator */}
                 <div className="ml-auto flex items-center gap-2 text-xs">
                     {isRunning && (
                         <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-green-500">Running</span>
+                            <div className={`w-2 h-2 rounded-full ${
+                                isPaused
+                                    ? 'bg-yellow-500'
+                                    : 'bg-green-500 animate-pulse'
+                            }`} />
+                            <span className={
+                                isPaused
+                                    ? 'text-yellow-500'
+                                    : 'text-green-500'
+                            }>
+                                {isPaused ? 'Paused' : 'Running'}
+                            </span>
                         </div>
                     )}
+                    {
+                        isStopped && (
+                            <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 rounded-full bg-red-500" />
+                                <span className="text-red-500">Finished</span>
+                            </div>
+                        )
+                    }
                 </div>
             </div>
         </div>
     );
 }
-
-export { Toolbar };

@@ -31,6 +31,8 @@ function Tape() {
         getScrollElement: () => containerRef.current,
         estimateSize: () => CELL_WIDTH + GAP,
         overscan: 10, // Render 10 extra items on each side
+        paddingStart: 24,
+        paddingEnd: 24,
     });
 
     // Auto-scroll to pointer when it changes
@@ -79,7 +81,7 @@ function Tape() {
                             >
                                 <div
                                     className={`
-                                        relative h-full rounded-lg border-2 transition-all duration-200
+                                        relative h-full  border transition-all duration-200
                                         grid grid-cols-1 grid-rows-4
                                         ${isPointer
                                         ? 'border-yellow-500 bg-yellow-950 shadow-lg shadow-yellow-500/20 scale-110 z-10'
@@ -154,18 +156,18 @@ function Tape() {
             <div className="h-10 bg-zinc-950 border-t border-zinc-800 flex items-center px-2 gap-2">
                 <button
                     onClick={() => virtualizer.scrollToIndex(0)}
-                    className="text-xs px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400"
+                    className="text-xs px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400"
                 >
                     Go to Start
                 </button>
                 <button
                     onClick={() => virtualizer.scrollToIndex(pointer, {align: 'center'})}
-                    className="text-xs px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400"
+                    className="text-xs px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400"
                 >
                     Go to Pointer
                 </button>
                 <div className="ml-auto text-xs text-zinc-500">
-                    Scroll with mouse wheel or drag
+                    Scroll horizontally to see more cells
                 </div>
             </div>
         </div>

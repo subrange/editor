@@ -24,20 +24,60 @@ function measureCharacterWidth() {
     return width;
 }
 
+// function LineNumbersPanel() {
+//     const editorState = useStoreSubscribe(editorStore.editorState);
+//     const linesCount = editorState.lines.length;
+//
+//     return <div
+//         className="flex flex-col overflow-visible bg-zinc-950 sticky left-0 w-16 min-w-16 text-zinc-700 select-none z-10 py-1">
+//         {
+//             Array.from({length: linesCount}, (_, i) => (
+//                 <div key={i} className="text-left pl-2" style={{ height: `${CHAR_HEIGHT}px` }}>
+//                     {i + 1}
+//                 </div>
+//             ))
+//         }
+//     </div>;
+// }
+
 function LineNumbersPanel() {
     const editorState = useStoreSubscribe(editorStore.editorState);
-    const linesCount = editorState.lines.length;
+    const currentChar = useStoreSubscribe(interpreterStore.currentChar);
+    const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
 
-    return <div
-        className="flex flex-col overflow-visible bg-zinc-950 sticky left-0 w-16 min-w-16 text-zinc-700 select-none z-10 py-1">
-        {
-            Array.from({length: linesCount}, (_, i) => (
-                <div key={i} className="text-left pl-2" style={{ height: `${CHAR_HEIGHT}px` }}>
-                    {i + 1}
-                </div>
-            ))
+    const handleLineClick = (lineIndex: number) => {
+        const line = editorState.lines[lineIndex];
+        if (!line) return;
+
+        for (let i = 0; i < line.text.length; i++) {
+            if ('><+-[].,'.includes(line.text[i])) {
+                interpreterStore.toggleBreakpoint({ line: lineIndex, column: i });
+                break;
+            }
         }
-    </div>;
+    };
+
+    return (
+        <div className="v bg-zinc-950 sticky top-0 left-0 w-16 min-w-16 text-zinc-700 select-none z-1 py-1">
+            {editorState.lines.map((_, i) => {
+                const hasBreakpoint = breakpoints.some(bp => bp.line === i);
+                const isCurrentLine = currentChar.line === i;
+
+                return (
+                    <div
+                        key={i}
+                        className={`flex justify-between align-center px-2 cursor-pointer hover:bg-zinc-800 ${
+                            isCurrentLine ? 'bg-zinc-800 text-zinc-300' : ''
+                        }`}
+                        onClick={() => handleLineClick(i)}
+                    >
+                        {hasBreakpoint ? <span className="text-red-500 mr-1">●</span> : <span/>}
+                        {i + 1}
+                    </div>
+                );
+            })}
+        </div>
+    );
 }
 
 function Selection() {
@@ -195,6 +235,10 @@ function LinesPanel() {
     const isDraggingRef = useRef(false);
     const dragStartedRef = useRef(false);
 
+    const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
+    const currentDebuggingLine = useStoreSubscribeToField(interpreterStore.currentChar, "line");
+    const isRunning = useStoreSubscribeToField(interpreterStore.state, "isRunning");
+
     // Create tokenizer instance
     const tokenizerRef = useRef(new Tokenizer());
 
@@ -314,10 +358,18 @@ function LinesPanel() {
     const renderLine = (line: Line, lineIndex: number) => {
         const tokens = tokenizedLines[lineIndex] || [];
 
+        const hasBreakpoint = breakpoints.some(bp => bp.line === lineIndex);
+        const isCurrentLine = currentDebuggingLine === lineIndex;
+
         return (
             <div
                 key={lineIndex}
-                className="whitespace-pre pl-2 pr-4"
+                className={clsx(
+                    "whitespace-pre pl-2 pr-4", {
+                        "bg-zinc-900": isCurrentLine && isRunning && !hasBreakpoint,
+                       "bg-red-950": hasBreakpoint
+                    }
+                )}
                 style={{ height: `${CHAR_HEIGHT}px`, lineHeight: `${CHAR_HEIGHT}px` }}
             >
                 {tokens.length === 0 ? (
