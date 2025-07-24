@@ -1215,6 +1215,19 @@ export class EditorStore {
         this.undoRedo.clear();
     }
     
+    public setContent(content: string) {
+        const lines = content.split('\n').map(text => ({ text }));
+        this.editorState.next({
+            selection: {
+                anchor: { line: 0, column: 0 },
+                focus: { line: 0, column: 0 }
+            },
+            lines: lines.length > 0 ? lines : [{ text: "" }],
+            mode: this.editorState.getValue().mode
+        });
+        this.undoRedo.clear();
+    }
+    
     public getTokenizer(): ITokenizer {
         return this.tokenizer;
     }

@@ -6,6 +6,9 @@ import {type AppCommand, keybindingsService, type KeybindingState} from "../../s
 import {useMemo, useRef, useLayoutEffect} from "react";
 import {tokenStyles} from "./tokenizer.ts";
 import {macroTokenStyles} from "./macro-tokenizer.ts";
+import {enhancedMacroTokenStyles, EnhancedMacroTokenizer} from "./macro-tokenizer-enhanced.ts";
+import {ErrorDecorations} from "./error-decorations.tsx";
+import {type MacroExpansionError} from "../../services/macro-expander.ts";
 import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";
 import {interpreterStore} from "../debugger/interpreter.store.ts";
@@ -255,7 +258,16 @@ function LinesPanel({ store }: LinesPanelProps) {
     
     // Determine which token styles to use based on tokenizer type
     const isMacroEditor = store.getId() === 'macro';
-    const styles = isMacroEditor ? macroTokenStyles : tokenStyles;
+    const isEnhancedMacro = tokenizer instanceof EnhancedMacroTokenizer;
+    const styles = isEnhancedMacro ? enhancedMacroTokenStyles : (isMacroEditor ? macroTokenStyles : tokenStyles);
+    
+    // Extract errors if using enhanced tokenizer
+    const errors: MacroExpansionError[] = useMemo(() => {
+        if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
+            return (tokenizer as EnhancedMacroTokenizer).state.expanderErrors || [];
+        }
+        return [];
+    }, [tokenizedLines, isEnhancedMacro, tokenizer]);
 
     // Helper to convert mouse position to text position
     const getPositionFromMouse = (e: React.MouseEvent) => {
@@ -418,6 +430,9 @@ function LinesPanel({ store }: LinesPanelProps) {
             lines={lines}
             charWidth={charWidth}
         />
+        {isEnhancedMacro && errors.length > 0 && (
+            <ErrorDecorations store={store} errors={errors} />
+        )}
         <Cursor store={store}/>
         {
             store.showDebug && <DebugMarker/>

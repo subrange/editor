@@ -12,6 +12,10 @@ import {editorManager} from "./services/editor-manager.service.ts";
 import {EditorStore} from "./components/editor/editor.store.ts";
 import {useEffect, useState} from "react";
 import {MacroTokenizer} from "./components/editor/macro-tokenizer.ts";
+import {EnhancedMacroTokenizer} from "./components/editor/macro-tokenizer-enhanced.ts";
+import {createMacroExpander} from "./services/macro-expander.ts";
+import {CpuChipIcon} from "@heroicons/react/24/solid";
+import {IconButton} from "./components/ui/icon-button.tsx";
 
 
 
@@ -35,12 +39,12 @@ function EditorPanel() {
         if (showMacroEditor) {
             const macro = editorManager.createEditor({
                 id: 'macro',
-                tokenizer: new MacroTokenizer(),
+                tokenizer: new EnhancedMacroTokenizer(),
                 mode: 'insert',
                 settings: {
                     showDebug: false
                 },
-                initialContent: '// Macro definitions\n// Example: @multiply($n) = [>+<-]$n\n\n'
+                initialContent: '#define clear [-]\n#define inc(n) {repeat(n, +)}\n#define dec(n) {repeat(n, -)}\n\n// Example usage:\n// @inc(5) @clear\n'
             });
             setMacroEditor(macro);
         }
@@ -62,9 +66,31 @@ function EditorPanel() {
         {showMacroEditor && macroEditor && (
             <>
                 <div className="v grow-1 min-w-1/2 bg-zinc-950">
-                    <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
-                        Macro Editor
-                        <button 
+                    <div className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
+                        <span className="mr-4">Macro Editor</span>
+
+                        <div className="w-px h-6 bg-zinc-700 mx-1" />
+
+                        <IconButton
+                            icon={CpuChipIcon}
+                            label="Expand Macros"
+                            onClick={() => {
+                                const expander = createMacroExpander();
+                                const macroCode = macroEditor.getText();
+                                const result = expander.expand(macroCode);
+                                
+                                if (result.errors.length > 0) {
+                                    // Show first error in console for now
+                                    console.error('Macro expansion errors:', result.errors);
+                                    alert(`Macro expansion failed: ${result.errors[0].message}`);
+                                } else {
+                                    // Set expanded code to main editor
+                                    mainEditor.setContent(result.expanded);
+                                    console.log('Macros expanded successfully');
+                                }
+                            }}
+                        />
+                        <button
                             className="ml-auto text-zinc-600 hover:text-zinc-400"
                             onClick={() => setShowMacroEditor(false)}
                         >
