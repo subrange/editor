@@ -8,13 +8,89 @@ import {Toolbar} from "./components/debugger/toolbar.tsx";
 import clsx from "clsx";
 import {ChevronDownIcon, ChevronUpIcon} from "@heroicons/react/16/solid";
 import {Sidebar} from "./components/sidebar/sidebar.tsx";
+import {editorManager} from "./services/editor-manager.service.ts";
+import {EditorStore} from "./components/editor/editor.store.ts";
+import {useEffect, useState} from "react";
+import {MacroTokenizer} from "./components/editor/macro-tokenizer.ts";
 
 
 
 function EditorPanel() {
-    return <div className="v grow-1 bg-zinc-950">
-        <Editor/>
-        <Output/>
+    const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
+    const [macroEditor, setMacroEditor] = useState<EditorStore | null>(null);
+    const [showMacroEditor, setShowMacroEditor] = useLocalStorageState("showMacroEditor", false);
+    
+    useEffect(() => {
+        // Create main editor on mount
+        const editor = editorManager.createEditor({
+            id: 'main',
+            mode: 'insert'
+        });
+        setMainEditor(editor);
+        
+        // Create macro editor if needed
+        if (showMacroEditor) {
+            const macro = editorManager.createEditor({
+                id: 'macro',
+                tokenizer: new MacroTokenizer(),
+                mode: 'insert',
+                initialContent: '// Macro definitions\n// Example: @multiply($n) = [>+<-]$n\n\n'
+            });
+            setMacroEditor(macro);
+        }
+        
+        // Cleanup on unmount
+        return () => {
+            editorManager.destroyEditor('main');
+            if (showMacroEditor) {
+                editorManager.destroyEditor('macro');
+            }
+        };
+    }, [showMacroEditor]);
+    
+    if (!mainEditor) {
+        return <div className="v grow-1 bg-zinc-950">Loading...</div>;
+    }
+    
+    return <div className="h grow-1">
+        {showMacroEditor && macroEditor && (
+            <>
+                <div className="v grow-1 bg-zinc-950">
+                    <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
+                        Macro Editor
+                        <button 
+                            className="ml-auto text-zinc-600 hover:text-zinc-400"
+                            onClick={() => setShowMacroEditor(false)}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <Editor 
+                        store={macroEditor}
+                        onFocus={() => editorManager.setActiveEditor('macro')}
+                    />
+                </div>
+                <VSep/>
+            </>
+        )}
+        <div className="v grow-1 bg-zinc-950">
+            <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
+                Main Editor
+                {!showMacroEditor && (
+                    <button 
+                        className="ml-auto text-zinc-600 hover:text-zinc-400"
+                        onClick={() => setShowMacroEditor(true)}
+                    >
+                        Show Macro Editor
+                    </button>
+                )}
+            </div>
+            <Editor 
+                store={mainEditor}
+                onFocus={() => editorManager.setActiveEditor('main')}
+            />
+            <Output/>
+        </div>
     </div>;
 }
 

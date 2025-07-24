@@ -1,16 +1,16 @@
 import {VSep} from "../helper-components.tsx";
 import {useStoreSubscribe, useStoreSubscribeToField} from "../../hooks/use-store-subscribe.tsx";
-import {editorStore, type Line} from "./editor.store.ts";
+import {EditorStore, type Line} from "./editor.store.ts";
 import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
-import {useMemo, useRef, useEffect, useLayoutEffect} from "react";
-import {Tokenizer, tokenStyles} from "./tokenizer.ts";
+import {useMemo, useRef, useLayoutEffect} from "react";
+import {tokenStyles} from "./tokenizer.ts";
+import {macroTokenStyles} from "./macro-tokenizer.ts";
 import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";
 import {interpreterStore} from "../debugger/interpreter.store.ts";
 
 // Constants for layout measurements
-
 
 function measureCharacterWidth() {
     const canvas = document.createElement("canvas");
@@ -24,8 +24,12 @@ function measureCharacterWidth() {
     return width;
 }
 
-function LineNumbersPanel() {
-    const editorState = useStoreSubscribe(editorStore.editorState);
+interface LineNumbersPanelProps {
+    store: EditorStore;
+}
+
+function LineNumbersPanel({ store }: LineNumbersPanelProps) {
+    const editorState = useStoreSubscribe(store.editorState);
     const currentChar = useStoreSubscribe(interpreterStore.currentChar);
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
 
@@ -65,9 +69,13 @@ function LineNumbersPanel() {
     );
 }
 
-function Selection() {
-    const selection = useStoreSubscribeToField(editorStore.editorState, "selection");
-    const lines = useStoreSubscribeToField(editorStore.editorState, "lines");
+interface SelectionProps {
+    store: EditorStore;
+}
+
+function Selection({ store }: SelectionProps) {
+    const selection = useStoreSubscribeToField(store.editorState, "selection");
+    const lines = useStoreSubscribeToField(store.editorState, "lines");
     const cw = useMemo(() => measureCharacterWidth(), []);
 
     // Don't render if selection is collapsed
@@ -149,11 +157,15 @@ function Selection() {
     );
 }
 
-function Cursor() {
-    const selection = useStoreSubscribeToField(editorStore.editorState, "selection")
-    const mode = useStoreSubscribeToField(editorStore.editorState, "mode");
-    const focused = useStoreSubscribe(editorStore.focused);
-    const isBlinking = useStoreSubscribe(editorStore.cursorBlinkState);
+interface CursorProps {
+    store: EditorStore;
+}
+
+function Cursor({ store }: CursorProps) {
+    const selection = useStoreSubscribeToField(store.editorState, "selection")
+    const mode = useStoreSubscribeToField(store.editorState, "mode");
+    const focused = useStoreSubscribe(store.focused);
+    const isBlinking = useStoreSubscribe(store.cursorBlinkState);
 
     const cursorRef = useRef<HTMLDivElement>(null);
 
@@ -210,8 +222,12 @@ function DebugMarker() {
     />;
 }
 
-function LinesPanel() {
-    const editorState = useStoreSubscribe(editorStore.editorState);
+interface LinesPanelProps {
+    store: EditorStore;
+}
+
+function LinesPanel({ store }: LinesPanelProps) {
+    const editorState = useStoreSubscribe(store.editorState);
     const lines = editorState.lines;
     const selection = editorState.selection;
 
@@ -224,14 +240,18 @@ function LinesPanel() {
     const currentDebuggingLine = useStoreSubscribeToField(interpreterStore.currentChar, "line");
     const isRunning = useStoreSubscribeToField(interpreterStore.state, "isRunning");
 
-    // Create tokenizer instance
-    const tokenizerRef = useRef(new Tokenizer());
+    // Get tokenizer from store
+    const tokenizer = store.getTokenizer();
 
     // Tokenize all lines whenever content changes
     const tokenizedLines = useMemo(() => {
         const lineTexts = lines.map(l => l.text);
-        return tokenizerRef.current.tokenizeAllLines(lineTexts);
-    }, [lines]);
+        return tokenizer.tokenizeAllLines(lineTexts);
+    }, [lines, tokenizer]);
+    
+    // Determine which token styles to use based on tokenizer type
+    const isMacroEditor = store.getId() === 'macro';
+    const styles = isMacroEditor ? macroTokenStyles : tokenStyles;
 
     // Helper to convert mouse position to text position
     const getPositionFromMouse = (e: React.MouseEvent) => {
@@ -266,9 +286,9 @@ function LinesPanel() {
 
             // Check if shift is held for extending selection
             if (e.shiftKey) {
-                editorStore.updateSelection(position);
+                store.updateSelection(position);
             } else {
-                editorStore.setCursorPosition(position);
+                store.setCursorPosition(position);
             }
         }
     };
@@ -277,14 +297,14 @@ function LinesPanel() {
         const position = getPositionFromMouse(e);
         if (!position) return;
 
-        editorStore.selectWord(position);
+        store.selectWord(position);
     };
 
     const handleTripleClick = (e: React.MouseEvent) => {
         const position = getPositionFromMouse(e);
         if (!position) return;
 
-        editorStore.selectLine(position.line);
+        store.selectLine(position.line);
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -298,7 +318,7 @@ function LinesPanel() {
 
         // Don't start new selection if shift is held
         if (!e.shiftKey) {
-            editorStore.startSelection(position);
+            store.startSelection(position);
         }
 
         dragStartedRef.current = false;
@@ -323,7 +343,7 @@ function LinesPanel() {
             let column = Math.round(x / charWidth);
             column = Math.max(0, Math.min(column, lines[line].text.length));
 
-            editorStore.updateSelection({line, column});
+            store.updateSelection({line, column});
         };
 
         const handleMouseUp = () => {
@@ -363,7 +383,7 @@ function LinesPanel() {
                     tokens.map((token, tokenIndex) => (
                         <span
                             key={tokenIndex}
-                            className={tokenStyles[token.type]}
+                            className={styles[token.type as keyof typeof styles] || ''}
                         >
                             {token.value}
                         </span>
@@ -388,23 +408,31 @@ function LinesPanel() {
         <div className="">
             {lines.map(renderLine)}
         </div>
-        <Selection/>
+        <Selection store={store}/>
         <BracketHighlights
             cursorPosition={selection.focus}
             lines={lines}
             charWidth={charWidth}
         />
-        <Cursor/>
+        <Cursor store={store}/>
         <DebugMarker/>
     </div>;
 }
 
-export function Editor() {
+export interface EditorProps {
+    store: EditorStore;
+    onFocus?: () => void;
+    onBlur?: () => void;
+}
+
+export function Editor({ store, onFocus, onBlur }: EditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
-    const focused = useStoreSubscribe(editorStore.focused);
+    const focused = useStoreSubscribe(store.focused);
 
     function addEditorKeybindings() {
-        keybindingsService.pushKeybindings("editor" as KeybindingState, [
+        // Use editor-specific keybinding state to avoid conflicts
+        const keybindingState = `editor_${store.getId()}` as KeybindingState;
+        keybindingsService.pushKeybindings(keybindingState, [
             keybindingsService.createKeybinding("arrowright", "editor.moveright" as AppCommand),
             keybindingsService.createKeybinding("arrowleft", "editor.moveleft" as AppCommand),
             keybindingsService.createKeybinding("arrowup", "editor.moveup" as AppCommand),
@@ -431,12 +459,15 @@ export function Editor() {
             keybindingsService.createKeybinding("meta+v", "editor.paste" as AppCommand),
         ])
 
-        editorStore.focus()
+        store.focus();
+        onFocus?.();
     }
 
     function removeEditorKeybindings() {
-        keybindingsService.removeKeybindings("editor" as KeybindingState);
-        editorStore.blur();
+        const keybindingState = `editor_${store.getId()}` as KeybindingState;
+        keybindingsService.removeKeybindings(keybindingState);
+        store.blur();
+        onBlur?.();
     }
 
     return (
@@ -454,9 +485,9 @@ export function Editor() {
             onBlur={removeEditorKeybindings}
         >
             <div className="flex relative grow-1 overflow-visible min-h-0 h-fit relative">
-                <LineNumbersPanel/>
+                <LineNumbersPanel store={store}/>
                 <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
-                <LinesPanel/>
+                <LinesPanel store={store}/>
             </div>
         </div>
     )

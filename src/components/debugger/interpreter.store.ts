@@ -1,7 +1,8 @@
 // Modified brainfuck interpreter with loop support
 
-import {BehaviorSubject} from "rxjs";
-import {editorStore, type Line, type Position} from "../editor/editor.store.ts";
+import {BehaviorSubject, Subscription} from "rxjs";
+import {type Line, type Position} from "../editor/editor.store.ts";
+import {editorManager} from "../../services/editor-manager.service.ts";
 
 type InterpreterState = {
     tape: Uint8Array | Uint16Array | Uint32Array;
@@ -63,13 +64,26 @@ class InterpreterStore {
     private cellSize = DEFAULT_CELL_SIZE;
     private laneCount: number = DEFAULT_LANE_COUNT;
 
+    private editorSubscription: Subscription | null = null;
+    
     constructor() {
-        // Sync the code with the editor store
-        editorStore.editorState.subscribe(s => {
-            if (JSON.stringify(s.lines) !== JSON.stringify(this.code)) { // Yep, I do not care about performance here
-                this.reset();
-                this.code = s.lines;
-                this.buildLoopMap();
+        // Subscribe to active editor changes
+        editorManager.activeEditorId$.subscribe(editorId => {
+            // Unsubscribe from previous editor
+            if (this.editorSubscription) {
+                this.editorSubscription.unsubscribe();
+            }
+            
+            // Subscribe to new active editor
+            const activeEditor = editorManager.activeEditor;
+            if (activeEditor) {
+                this.editorSubscription = activeEditor.editorState.subscribe(s => {
+                    if (JSON.stringify(s.lines) !== JSON.stringify(this.code)) { // Yep, I do not care about performance here
+                        this.reset();
+                        this.code = s.lines;
+                        this.buildLoopMap();
+                    }
+                });
             }
         });
 

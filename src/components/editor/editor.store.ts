@@ -1,5 +1,6 @@
-import {BehaviorSubject} from "rxjs";
+import {BehaviorSubject, Subscription} from "rxjs";
 import {keybindingsService} from "../../services/keybindings.service.ts";
+import { type ITokenizer } from "../../services/editor-manager.service.ts";
 
 export type Position = {
     line: number;
@@ -411,7 +412,11 @@ class UndoRedo {
     }
 }
 
-class EditorStore {
+export class EditorStore {
+    private id: string;
+    private tokenizer: ITokenizer;
+    private subscriptions: Subscription[] = [];
+    
     public editorState = new BehaviorSubject<EditorState>({
         selection: {
             anchor: {line: 0, column: 0},
@@ -430,8 +435,17 @@ class EditorStore {
 
     public focused = new BehaviorSubject(false);
 
-    constructor() {
-        const savedState = localStorage.getItem("editorState");
+    constructor(
+        id: string,
+        tokenizer: ITokenizer,
+        initialContent?: string,
+        initialMode?: "normal" | "insert" | "command"
+    ) {
+        this.id = id;
+        this.tokenizer = tokenizer;
+        
+        // Load from localStorage using editor-specific key
+        const savedState = localStorage.getItem(`editorState_${id}`);
         if (savedState) {
             try {
                 const parsedState = JSON.parse(savedState);
@@ -441,12 +455,31 @@ class EditorStore {
             }
         }
 
+        // Apply initial content if provided and no saved state
+        if (initialContent && !savedState) {
+            const lines = initialContent.split('\n').map(text => ({ text }));
+            this.editorState.next({
+                ...this.editorState.getValue(),
+                lines: lines.length > 0 ? lines : [{ text: "" }],
+                mode: initialMode || "insert"
+            });
+        }
+        
+        // Apply initial mode if provided
+        if (initialMode && !savedState) {
+            this.editorState.next({
+                ...this.editorState.getValue(),
+                mode: initialMode
+            });
+        }
+        
         // Set up save on state change
-        this.editorState.subscribe(state => {
-            localStorage.setItem("editorState", JSON.stringify(state));
+        const saveSubscription = this.editorState.subscribe(state => {
+            localStorage.setItem(`editorState_${this.id}`, JSON.stringify(state));
         });
+        this.subscriptions.push(saveSubscription);
 
-        keybindingsService.signal.subscribe(s => {
+        const keybindingSubscription = keybindingsService.signal.subscribe(s => {
 
             if (!this.focused.getValue()) {
                 return; // Ignore commands if editor is not focused
@@ -535,8 +568,9 @@ class EditorStore {
                 this.cursorBlinkState.next(true);
             }, 500);
         });
+        this.subscriptions.push(keybindingSubscription);
 
-        keybindingsService.keypressSignal.subscribe(event => {
+        const keypressSubscription = keybindingsService.keypressSignal.subscribe(event => {
             const currentState = this.editorState.getValue();
             const selection = currentState.selection;
 
@@ -632,6 +666,7 @@ class EditorStore {
                 console.log(`Command mode input: ${event.key}`);
             }
         });
+        this.subscriptions.push(keypressSubscription);
     }
 
     public setMode(mode: "normal" | "insert" | "command") {
@@ -1170,6 +1205,23 @@ class EditorStore {
         });
         this.undoRedo.clear();
     }
+    
+    public getTokenizer(): ITokenizer {
+        return this.tokenizer;
+    }
+    
+    public getId(): string {
+        return this.id;
+    }
+    
+    public destroy(): void {
+        // Unsubscribe from all subscriptions
+        this.subscriptions.forEach(sub => sub.unsubscribe());
+        this.subscriptions = [];
+        
+        // Complete subjects
+        this.editorState.complete();
+        this.cursorBlinkState.complete();
+        this.focused.complete();
+    }
 }
-
-export const editorStore = new EditorStore();
