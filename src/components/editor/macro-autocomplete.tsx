@@ -30,6 +30,7 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
     const [triggerPosition, setTriggerPosition] = useState<Position | null>(null);
     const [showAbove, setShowAbove] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const previousLineRef = useRef<string>("");
     const previousCursorRef = useRef<Position>({ line: 0, column: 0 });
     
@@ -85,6 +86,32 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
     const filteredMacros = macros.filter(macro => 
         macro.name.toLowerCase().startsWith(filter.toLowerCase())
     );
+    
+    // Scroll to selected item when it changes
+    useEffect(() => {
+        if (!scrollContainerRef.current || !isVisible) return;
+        
+        const container = scrollContainerRef.current;
+        const items = container.children;
+        if (items.length === 0 || selectedIndex >= items.length) return;
+        
+        const selectedItem = items[selectedIndex] as HTMLElement;
+        
+        // Calculate relative positions within the scroll container
+        const itemTop = selectedItem.offsetTop;
+        const itemBottom = itemTop + selectedItem.offsetHeight;
+        const containerScrollTop = container.scrollTop;
+        const containerHeight = container.clientHeight;
+        
+        // Check if item is out of view and adjust scroll
+        if (itemTop < containerScrollTop) {
+            // Item is above the visible area - scroll up
+            container.scrollTop = itemTop;
+        } else if (itemBottom > containerScrollTop + containerHeight) {
+            // Item is below the visible area - scroll down
+            container.scrollTop = itemBottom - containerHeight;
+        }
+    }, [selectedIndex, isVisible]);
     
     // Handle keyboard navigation with capture phase to intercept before keybindingsService
     useEffect(() => {
@@ -204,7 +231,7 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                 e.stopPropagation();
             }}
         >
-            <div className="overflow-y-auto max-h-48">
+            <div ref={scrollContainerRef} className="overflow-y-auto max-h-48">
                 {filteredMacros.map((macro, index) => (
                     <div
                         key={macro.name}
