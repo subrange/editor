@@ -71,7 +71,7 @@ function Tape() {
 
     const virtualizer = useVirtualizer({
         horizontal: true,
-        count: Math.min(tape.length, 10000), // Limit for performance
+        count: tape.length,
         getScrollElement: () => containerRef.current,
         estimateSize: () => CELL_WIDTH + GAP,
         overscan: 10,
