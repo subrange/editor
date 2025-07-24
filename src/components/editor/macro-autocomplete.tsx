@@ -28,6 +28,7 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [filter, setFilter] = useState("");
     const [triggerPosition, setTriggerPosition] = useState<Position | null>(null);
+    const [showAbove, setShowAbove] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const previousLineRef = useRef<string>("");
     const previousCursorRef = useRef<Position>({ line: 0, column: 0 });
@@ -85,7 +86,7 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
         macro.name.toLowerCase().startsWith(filter.toLowerCase())
     );
     
-    // Handle keyboard navigation
+    // Handle keyboard navigation with capture phase to intercept before keybindingsService
     useEffect(() => {
         if (!isVisible) return;
         
@@ -93,6 +94,8 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
             switch (e.key) {
                 case "ArrowDown":
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     setSelectedIndex(prev => 
                         prev < filteredMacros.length - 1 ? prev + 1 : 0
                     );
@@ -100,6 +103,8 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                     
                 case "ArrowUp":
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     setSelectedIndex(prev => 
                         prev > 0 ? prev - 1 : filteredMacros.length - 1
                     );
@@ -108,6 +113,8 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                 case "Enter":
                 case "Tab":
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     if (filteredMacros.length > 0) {
                         insertMacro(filteredMacros[selectedIndex]);
                     }
@@ -115,15 +122,42 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                     
                 case "Escape":
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                     setIsVisible(false);
                     break;
             }
         };
         
-        document.addEventListener("keydown", handleKeyDown);
-        return () => document.removeEventListener("keydown", handleKeyDown);
+        // Use capture phase to intercept events before they bubble down
+        document.addEventListener("keydown", handleKeyDown, true);
+        return () => document.removeEventListener("keydown", handleKeyDown, true);
     }, [isVisible, selectedIndex, filteredMacros]);
     
+    // Calculate popup position and height
+    const x = triggerPosition ? triggerPosition.column * charWidth + LINE_PADDING_LEFT : 0;
+    const lineY = triggerPosition ? triggerPosition.line * CHAR_HEIGHT + LINE_PADDING_TOP : 0;
+    const popupHeight = Math.min(200, filteredMacros.length * 40 + 8); // Approximate height
+    
+    // Check if we should show above or below
+    useEffect(() => {
+        if (!menuRef.current || !isVisible || !triggerPosition) return;
+        
+        const container = menuRef.current.parentElement;
+        if (!container) return;
+        
+        const containerRect = container.getBoundingClientRect();
+        const containerScrollTop = container.scrollTop || 0;
+        
+        // Calculate actual position relative to viewport
+        const actualLineY = lineY - containerScrollTop;
+        const spaceBelow = containerRect.height - actualLineY - CHAR_HEIGHT;
+        const spaceAbove = actualLineY;
+        
+        // Show above if not enough space below and more space above
+        setShowAbove(spaceBelow < popupHeight && spaceAbove > spaceBelow);
+    }, [lineY, popupHeight, isVisible, triggerPosition]);
+
     const insertMacro = (macro: MacroDefinition) => {
         if (!triggerPosition) return;
         
@@ -149,9 +183,10 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
         return null;
     }
     
-    // Calculate popup position
-    const x = triggerPosition.column * charWidth + LINE_PADDING_LEFT;
-    const y = (triggerPosition.line + 1) * CHAR_HEIGHT + LINE_PADDING_TOP;
+    // Position above or below the line
+    const y = showAbove 
+        ? lineY - popupHeight - 4  // 4px gap above
+        : lineY + CHAR_HEIGHT + 4; // 4px gap below
     
     return (
         <div
@@ -162,7 +197,11 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                 top: `${y}px`,
                 minWidth: '200px',
                 maxWidth: '400px',
-                maxHeight: '200px'
+                maxHeight: `${popupHeight}px`
+            }}
+            onMouseDown={(e) => {
+                // Prevent editor from receiving mouse events
+                e.stopPropagation();
             }}
         >
             <div className="overflow-y-auto max-h-48">
@@ -175,7 +214,15 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                             index === selectedIndex && "bg-zinc-800 text-purple-400"
                         )}
                         onMouseEnter={() => setSelectedIndex(index)}
-                        onClick={() => insertMacro(macro)}
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            insertMacro(macro);
+                        }}
                     >
                         <div className="flex items-center justify-between">
                             <span className="font-mono">
