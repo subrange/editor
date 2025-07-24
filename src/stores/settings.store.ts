@@ -5,8 +5,13 @@ export interface MacroSettings {
     collapseEmptyLines: boolean;
 }
 
+export interface DebuggerSettings {
+    compactView: boolean;
+}
+
 export interface Settings {
     macro: MacroSettings;
+    debugger: DebuggerSettings;
 }
 
 class SettingsStore {
@@ -14,6 +19,9 @@ class SettingsStore {
         macro: {
             stripComments: this.loadFromStorage('macroStripComments', true),
             collapseEmptyLines: this.loadFromStorage('macroCollapseEmptyLines', true)
+        },
+        debugger: {
+            compactView: this.loadFromStorage('debuggerCompactView', false)
         }
     });
 
@@ -39,6 +47,18 @@ class SettingsStore {
             }
         });
         this.saveToStorage('macroCollapseEmptyLines', value);
+    }
+
+    setDebuggerCompactView(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            debugger: {
+                ...current.debugger,
+                compactView: value
+            }
+        });
+        this.saveToStorage('debuggerCompactView', value);
     }
 
     private loadFromStorage(key: string, defaultValue: boolean): boolean {

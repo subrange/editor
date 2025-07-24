@@ -480,46 +480,28 @@ export class MacroExpanderImpl implements MacroExpander {
   }
 
   private stripComments(code: string): string {
-    const lines = code.split('\n');
+    // First, remove all C-style comments /* */
+    let result = code.replace(/\/\*[\s\S]*?\*\//g, '');
+    
+    // Then, remove all single-line comments //
+    const lines = result.split('\n');
     const processedLines: string[] = [];
-
+    
     for (const line of lines) {
-      let processedLine = '';
-      let inComment = false;
-
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        
-        // Check if we're entering a comment
-        if (!inComment) {
-          // Check for comment start, but make sure it's not inside a loop
-          let isComment = false;
-          
-          // Count brackets before this position
-          let bracketDepth = 0;
-          for (let j = 0; j < i; j++) {
-            if (line[j] === '[') bracketDepth++;
-            else if (line[j] === ']') bracketDepth--;
-          }
-          
-          // Only treat as comment if we're not inside brackets
-          if (bracketDepth === 0 && !['>', '<', '+', '-', '.', ',', '[', ']'].includes(char)) {
-            isComment = true;
-          }
-          
-          if (isComment) {
-            inComment = true;
-            // Don't add this character to the processed line
-          } else {
-            processedLine += char;
-          }
-        }
-        // If we're in a comment, skip all characters
+      // Find the position of // comment
+      const commentIndex = line.indexOf('//');
+      let processedLine: string;
+      
+      if (commentIndex !== -1) {
+        // Take only the part before the comment
+        processedLine = line.substring(0, commentIndex);
+      } else {
+        processedLine = line;
       }
-
+      
       processedLines.push(processedLine);
     }
-
+    
     return processedLines.join('\n');
   }
 

@@ -3,6 +3,7 @@ import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
 import {useVirtualizer} from '@tanstack/react-virtual';
 import {useRef, useEffect} from 'react';
 import clsx from "clsx";
+import {settingsStore} from "../../stores/settings.store.ts";
 
 // Lane color palette - 10 distinct colors that work with dark theme
 const LANE_COLORS = [
@@ -47,9 +48,11 @@ function formatHex(value: number, bytes: number): string {
 
 function Tape() {
     const interpreterState = useStoreSubscribe(interpreterStore.state);
+    const settings = useStoreSubscribe(settingsStore.settings);
     const tape = interpreterState.tape;
     const pointer = interpreterState.pointer;
     const laneCount = interpreterState.laneCount;
+    const compactView = settings?.debugger.compactView ?? false;
 
     // Determine cell size and display parameters
     const cellInfo = tape instanceof Uint8Array
@@ -62,9 +65,9 @@ function Tape() {
 
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const CELL_WIDTH = cellInfo.width;
-    const CELL_HEIGHT = 120;
-    const GAP = 8; // Increased gap for better spacing
+    const CELL_WIDTH = compactView ? 60 : cellInfo.width;
+    const CELL_HEIGHT = compactView ? 60 : 120;
+    const GAP = compactView ? 4 : 8; // Increased gap for better spacing
 
     const virtualizer = useVirtualizer({
         horizontal: true,
@@ -158,7 +161,7 @@ function Tape() {
                                 <div
                                     className={clsx(
                                         "relative h-full rounded border transition-all duration-200",
-                                        "flex flex-col items-center justify-between py-2 px-1",
+                                        compactView ? "flex flex-col items-center justify-center py-1 px-1" : "flex flex-col items-center justify-between py-2 px-1",
                                         {
                                             // Pointer styles take precedence
                                             'border-yellow-500 bg-yellow-950/50 shadow-lg shadow-yellow-500/20 scale-105 z-10': isPointer,
@@ -171,59 +174,83 @@ function Tape() {
                                         }
                                     )}
                                 >
-                                    {/* Cell index */}
-                                    <div className={clsx(
-                                        "text-xs font-mono",
-                                        isPointer ? 'text-yellow-400' : 'text-zinc-600'
-                                    )}>
-                                        #{index}
-                                    </div>
-
-                                    {/* Main value display */}
-                                    <div className={clsx(
-                                        "text-2xl font-bold font-mono",
-                                        {
-                                            'text-yellow-300': isPointer,
-                                            'text-blue-300': isNonZero && !isPointer,
-                                            'text-zinc-500': !isNonZero && !isPointer,
-                                        }
-                                    )}>
-                                        {value}
-                                    </div>
-
-                                    {/* Additional representations */}
-                                    <div className="space-y-1 text-center w-full">
-                                        {/* Hex representation for larger cells */}
-                                        {cellInfo.bits > 8 && (
+                                    {compactView ? (
+                                        <>
+                                            {/* Compact view: just index and value */}
+                                            <div className={clsx(
+                                                "text-[10px] font-mono leading-none",
+                                                isPointer ? 'text-yellow-400' : 'text-zinc-600'
+                                            )}>
+                                                {index}
+                                            </div>
+                                            <div className={clsx(
+                                                "text-lg font-bold font-mono mt-1",
+                                                {
+                                                    'text-yellow-300': isPointer,
+                                                    'text-blue-300': isNonZero && !isPointer,
+                                                    'text-zinc-500': !isNonZero && !isPointer,
+                                                }
+                                            )}>
+                                                {value}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* Cell index */}
                                             <div className={clsx(
                                                 "text-xs font-mono",
-                                                isPointer ? 'text-yellow-400/70' : 'text-zinc-600'
+                                                isPointer ? 'text-yellow-400' : 'text-zinc-600'
                                             )}>
-                                                {formatHex(value, cellInfo.bytes)}
+                                                #{index}
                                             </div>
-                                        )}
 
-                                        {/* Binary representation */}
-                                        <div className={clsx(
-                                            "font-mono leading-tight",
-                                            cellInfo.bits > 16 ? "text-[9px]" : "text-[10px]",
-                                            isPointer ? 'text-yellow-400/70' :
-                                                isNonZero ? 'text-blue-400/70' : 'text-zinc-600'
-                                        )}>
-                                            {formatBinary(value, cellInfo.bits)}
-                                        </div>
-
-                                        {/* ASCII for 8-bit printable values */}
-                                        {cellInfo.bits === 8 && value >= 32 && value <= 126 && (
+                                            {/* Main value display */}
                                             <div className={clsx(
-                                                "text-xs font-mono",
-                                                isPointer ? 'text-yellow-400' :
-                                                    'text-zinc-500'
+                                                "text-2xl font-bold font-mono",
+                                                {
+                                                    'text-yellow-300': isPointer,
+                                                    'text-blue-300': isNonZero && !isPointer,
+                                                    'text-zinc-500': !isNonZero && !isPointer,
+                                                }
                                             )}>
-                                                '{String.fromCharCode(value)}'
+                                                {value}
                                             </div>
-                                        )}
-                                    </div>
+
+                                            {/* Additional representations */}
+                                            <div className="space-y-1 text-center w-full">
+                                                {/* Hex representation for larger cells */}
+                                                {cellInfo.bits > 8 && (
+                                                    <div className={clsx(
+                                                        "text-xs font-mono",
+                                                        isPointer ? 'text-yellow-400/70' : 'text-zinc-600'
+                                                    )}>
+                                                        {formatHex(value, cellInfo.bytes)}
+                                                    </div>
+                                                )}
+
+                                                {/* Binary representation */}
+                                                <div className={clsx(
+                                                    "font-mono leading-tight",
+                                                    cellInfo.bits > 16 ? "text-[9px]" : "text-[10px]",
+                                                    isPointer ? 'text-yellow-400/70' :
+                                                        isNonZero ? 'text-blue-400/70' : 'text-zinc-600'
+                                                )}>
+                                                    {formatBinary(value, cellInfo.bits)}
+                                                </div>
+
+                                                {/* ASCII for 8-bit printable values */}
+                                                {cellInfo.bits === 8 && value >= 32 && value <= 126 && (
+                                                    <div className={clsx(
+                                                        "text-xs font-mono",
+                                                        isPointer ? 'text-yellow-400' :
+                                                            'text-zinc-500'
+                                                    )}>
+                                                        '{String.fromCharCode(value)}'
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
 
                                     {/* Pointer indicator */}
                                     {isPointer && (

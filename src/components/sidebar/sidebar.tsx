@@ -210,6 +210,26 @@ export function Sidebar() {
                                 </div>
                             </SettingSection>
 
+                            {/* Debugger Settings */}
+                            <SettingSection title="Debugger">
+                                <div className="space-y-4">
+                                    <label className="flex items-center justify-between cursor-pointer group">
+                                        <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                            Compact View
+                                        </span>
+                                        <input
+                                            type="checkbox"
+                                            checked={settings?.debugger.compactView ?? false}
+                                            onChange={(e) => settingsStore.setDebuggerCompactView(e.target.checked)}
+                                            className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                        />
+                                    </label>
+                                    <p className="text-xs text-zinc-500 -mt-2">
+                                        Show memory cells in a condensed format
+                                    </p>
+                                </div>
+                            </SettingSection>
+
                             {/* Macro Settings */}
                             <SettingSection title="Macro Expansion">
                                 <div className="space-y-4">
