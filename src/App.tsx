@@ -19,10 +19,14 @@ import {IconButton} from "./components/ui/icon-button.tsx";
 
 
 
+import { settingsStore } from "./stores/settings.store";
+import { useStoreSubscribe } from "./hooks/use-store-subscribe";
+
 function EditorPanel() {
     const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
     const [macroEditor, setMacroEditor] = useState<EditorStore | null>(null);
     const [showMacroEditor, setShowMacroEditor] = useLocalStorageState("showMacroEditor", false);
+    const settings = useStoreSubscribe(settingsStore.settings);
     
     useEffect(() => {
         // Create main editor on mount
@@ -77,7 +81,10 @@ function EditorPanel() {
                             onClick={() => {
                                 const expander = createMacroExpander();
                                 const macroCode = macroEditor.getText();
-                                const result = expander.expand(macroCode);
+                                const result = expander.expand(macroCode, {
+                                    stripComments: settings?.macro.stripComments ?? true,
+                                    collapseEmptyLines: settings?.macro.collapseEmptyLines ?? true
+                                });
                                 
                                 if (result.errors.length > 0) {
                                     // Show first error in console for now

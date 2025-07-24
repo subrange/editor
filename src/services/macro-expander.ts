@@ -28,6 +28,11 @@ export interface MacroToken {
   name: string;
 }
 
+export interface MacroExpanderOptions {
+  stripComments?: boolean;
+  collapseEmptyLines?: boolean;
+}
+
 export interface MacroExpanderResult {
   expanded: string;
   errors: MacroExpansionError[];
@@ -43,7 +48,7 @@ interface ParsedLine {
 }
 
 export interface MacroExpander {
-  expand(input: string): MacroExpanderResult;
+  expand(input: string, options?: MacroExpanderOptions): MacroExpanderResult;
 }
 
 export class MacroExpanderImpl implements MacroExpander {
@@ -55,7 +60,13 @@ export class MacroExpanderImpl implements MacroExpander {
   private tokens: MacroToken[] = [];
   private currentOffset = 0;
 
-  expand(input: string): MacroExpanderResult {
+  expand(input: string, options?: MacroExpanderOptions): MacroExpanderResult {
+    const opts = {
+      stripComments: true,
+      collapseEmptyLines: true,
+      ...options
+    };
+
     this.macros.clear();
     this.expansionDepth = 0;
     this.expansionChain.clear();
@@ -65,7 +76,11 @@ export class MacroExpanderImpl implements MacroExpander {
 
     const lines = this.parseLines(input);
     this.collectMacros(lines);
-    const expanded = this.expandLines(lines);
+    let expanded = this.expandLines(lines);
+
+    if (opts.stripComments || opts.collapseEmptyLines) {
+      expanded = this.postProcess(expanded, opts);
+    }
 
     return {
       expanded,
@@ -448,6 +463,78 @@ export class MacroExpanderImpl implements MacroExpander {
     }
 
     return args;
+  }
+
+  private postProcess(code: string, options: MacroExpanderOptions): string {
+    let result = code;
+
+    if (options.stripComments) {
+      result = this.stripComments(result);
+    }
+
+    if (options.collapseEmptyLines) {
+      result = this.collapseEmptyLines(result);
+    }
+
+    return result;
+  }
+
+  private stripComments(code: string): string {
+    const lines = code.split('\n');
+    const processedLines: string[] = [];
+
+    for (const line of lines) {
+      let processedLine = '';
+      let inComment = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        // Check if we're entering a comment
+        if (!inComment) {
+          // Check for comment start, but make sure it's not inside a loop
+          let isComment = false;
+          
+          // Count brackets before this position
+          let bracketDepth = 0;
+          for (let j = 0; j < i; j++) {
+            if (line[j] === '[') bracketDepth++;
+            else if (line[j] === ']') bracketDepth--;
+          }
+          
+          // Only treat as comment if we're not inside brackets
+          if (bracketDepth === 0 && !['>', '<', '+', '-', '.', ',', '[', ']'].includes(char)) {
+            isComment = true;
+          }
+          
+          if (isComment) {
+            inComment = true;
+            // Don't add this character to the processed line
+          } else {
+            processedLine += char;
+          }
+        }
+        // If we're in a comment, skip all characters
+      }
+
+      processedLines.push(processedLine);
+    }
+
+    return processedLines.join('\n');
+  }
+
+  private collapseEmptyLines(code: string): string {
+    const lines = code.split('\n');
+    const nonEmptyLines: string[] = [];
+    
+    for (const line of lines) {
+      // A line is considered non-empty if it has any BF commands
+      if (line.match(/[><+\-.,\[\]]/)) {
+        nonEmptyLines.push(line);
+      }
+    }
+
+    return nonEmptyLines.join('\n');
   }
 }
 
