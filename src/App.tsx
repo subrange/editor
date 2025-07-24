@@ -24,7 +24,10 @@ function EditorPanel() {
         // Create main editor on mount
         const editor = editorManager.createEditor({
             id: 'main',
-            mode: 'insert'
+            mode: 'insert',
+            settings: {
+                showDebug: true
+            },
         });
         setMainEditor(editor);
         
@@ -34,6 +37,9 @@ function EditorPanel() {
                 id: 'macro',
                 tokenizer: new MacroTokenizer(),
                 mode: 'insert',
+                settings: {
+                    showDebug: false
+                },
                 initialContent: '// Macro definitions\n// Example: @multiply($n) = [>+<-]$n\n\n'
             });
             setMacroEditor(macro);
@@ -52,10 +58,10 @@ function EditorPanel() {
         return <div className="v grow-1 bg-zinc-950">Loading...</div>;
     }
     
-    return <div className="h grow-1">
+    return <div className="h grow-1 relative">
         {showMacroEditor && macroEditor && (
             <>
-                <div className="v grow-1 bg-zinc-950">
+                <div className="v grow-1 min-w-1/2 bg-zinc-950">
                     <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
                         Macro Editor
                         <button 
@@ -73,7 +79,7 @@ function EditorPanel() {
                 <VSep/>
             </>
         )}
-        <div className="v grow-1 bg-zinc-950">
+        <div className="v grow-1 min-w-1/2 bg-zinc-950">
             <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
                 Main Editor
                 {!showMacroEditor && (

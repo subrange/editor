@@ -34,6 +34,10 @@ function LineNumbersPanel({ store }: LineNumbersPanelProps) {
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
 
     const handleLineClick = (lineIndex: number) => {
+        if (!store.showDebug) {
+            return;
+        }
+
         const line = editorState.lines[lineIndex];
         if (!line) return;
 
@@ -56,11 +60,11 @@ function LineNumbersPanel({ store }: LineNumbersPanelProps) {
                     <div
                         key={i}
                         className={`flex justify-between align-center px-2  hover:bg-zinc-800 ${
-                            isCurrentLine ? 'bg-zinc-800 text-zinc-300' : ''
+                            (store.showDebug && isCurrentLine) ? 'bg-zinc-800 text-zinc-300' : ''
                         }`}
                         onClick={() => handleLineClick(i)}
                     >
-                        {hasBreakpoint ? <span className="text-red-500 mr-1">●</span> : <span/>}
+                        {(store.showDebug && hasBreakpoint) ? <span className="text-red-500 mr-1">●</span> : <span/>}
                         {i + 1}
                     </div>
                 );
@@ -371,8 +375,8 @@ function LinesPanel({ store }: LinesPanelProps) {
                 key={lineIndex}
                 className={clsx(
                     "whitespace-pre pl-2 pr-4", {
-                        "bg-zinc-900": isCurrentLine && isRunning && !hasBreakpoint,
-                        "bg-red-950": hasBreakpoint
+                        "bg-zinc-900": store.showDebug && isCurrentLine && isRunning && !hasBreakpoint,
+                        "bg-red-950": store.showDebug && hasBreakpoint
                     }
                 )}
                 style={{height: `${CHAR_HEIGHT}px`, lineHeight: `${CHAR_HEIGHT}px`}}
@@ -415,7 +419,9 @@ function LinesPanel({ store }: LinesPanelProps) {
             charWidth={charWidth}
         />
         <Cursor store={store}/>
-        <DebugMarker/>
+        {
+            store.showDebug && <DebugMarker/>
+        }
     </div>;
 }
 

@@ -412,6 +412,10 @@ class UndoRedo {
     }
 }
 
+export interface IEditorSettings {
+    showDebug?: boolean;
+}
+
 export class EditorStore {
     private id: string;
     private tokenizer: ITokenizer;
@@ -435,14 +439,19 @@ export class EditorStore {
 
     public focused = new BehaviorSubject(false);
 
+    public showDebug = false;
+
     constructor(
         id: string,
         tokenizer: ITokenizer,
+        settings?: IEditorSettings,
         initialContent?: string,
-        initialMode?: "normal" | "insert" | "command"
+        initialMode?: "normal" | "insert" | "command",
     ) {
         this.id = id;
         this.tokenizer = tokenizer;
+
+        this.showDebug = settings?.showDebug || false;
         
         // Load from localStorage using editor-specific key
         const savedState = localStorage.getItem(`editorState_${id}`);

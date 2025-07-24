@@ -1,5 +1,5 @@
 import { BehaviorSubject } from "rxjs";
-import { EditorStore } from "../components/editor/editor.store";
+import {EditorStore, type IEditorSettings} from "../components/editor/editor.store";
 import { Tokenizer } from "../components/editor/tokenizer";
 
 export interface ITokenizer {
@@ -11,6 +11,7 @@ export interface ITokenizer {
 export interface EditorConfig {
     id: string;
     tokenizer?: ITokenizer;
+    settings?: IEditorSettings;
     initialContent?: string;
     mode?: "normal" | "insert" | "command";
 }
@@ -44,6 +45,7 @@ class EditorManager {
         const editor = new EditorStore(
             config.id,
             config.tokenizer || new Tokenizer(),
+            config.settings || {},
             config.initialContent,
             config.mode
         );
