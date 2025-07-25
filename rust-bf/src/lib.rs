@@ -329,6 +329,17 @@ impl BrainfuckInterpreter {
     }
 
     #[wasm_bindgen]
+    pub fn get_current_position(&self) -> Result<String, JsValue> {
+        let pos = Position {
+            line: self.current_pos.line,
+            column: self.current_pos.column,
+        };
+        
+        serde_json::to_string(&pos)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize position: {}", e)))
+    }
+
+    #[wasm_bindgen]
     pub fn set_tape_size(&mut self, size: usize) {
         self.tape_size = size;
         self.tape = vec![0u32; size];

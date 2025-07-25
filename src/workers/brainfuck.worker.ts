@@ -49,47 +49,53 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                 if (!interpreter) throw new Error('Interpreter not initialized');
                 const hasMore = interpreter.step();
                 const state = interpreter.get_state();
-                response = { type: 'stepped', data: { hasMore, state } };
+                const stateObj = JSON.parse(state);
+                
+                // Get current position
+                try {
+                    const positionJson = interpreter.get_current_position();
+                    const position = JSON.parse(positionJson);
+                    stateObj.currentPosition = position;
+                } catch (e) {
+                    console.error('Failed to get current position:', e);
+                }
+                
+                response = { type: 'stepped', data: { hasMore, state: JSON.stringify(stateObj) } };
                 break;
             }
 
             case 'runTurbo': {
                 if (!interpreter) throw new Error('Interpreter not initialized');
                 
-                // Run turbo in chunks to allow for periodic state updates
-                const runTurboChunked = async () => {
-                    let iterations = 0;
-                    const maxIterationsPerChunk = 10000000;
-                    
-                    while (true) {
-                        // Run a chunk
-                        for (let i = 0; i < maxIterationsPerChunk; i++) {
-                            if (!interpreter.step()) {
-                                // Program finished
-                                self.postMessage({ 
-                                    type: 'turboComplete', 
-                                    data: { state: interpreter.get_state() } 
-                                });
-                                return;
-                            }
-                            iterations++;
+                // Run turbo execution asynchronously
+                setTimeout(() => {
+                    try {
+                        interpreter.run_turbo();
+                        
+                        const state = interpreter.get_state();
+                        const stateObj = JSON.parse(state);
+                        
+                        // Get current position
+                        try {
+                            const positionJson = interpreter.get_current_position();
+                            const position = JSON.parse(positionJson);
+                            stateObj.currentPosition = position;
+                        } catch (e) {
+                            console.error('Failed to get current position:', e);
                         }
                         
-                        // Send progress update
                         self.postMessage({ 
-                            type: 'turboProgress', 
-                            data: { 
-                                iterations,
-                                state: interpreter.get_state()
-                            } 
+                            type: 'turboComplete', 
+                            data: { state: JSON.stringify(stateObj) } 
                         });
-                        
-                        // Yield to allow other messages to be processed
-                        await new Promise(resolve => setTimeout(resolve, 0));
+                    } catch (error) {
+                        self.postMessage({
+                            type: 'error',
+                            error: error instanceof Error ? error.message : 'Turbo execution failed'
+                        });
                     }
-                };
+                }, 0);
                 
-                runTurboChunked();
                 response = { type: 'turboStarted' };
                 break;
             }
@@ -141,7 +147,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                 if (!interpreter) throw new Error('Interpreter not initialized');
                 const { start, end } = data as { start: number; end: number };
                 const slice = interpreter.get_tape_slice(start, end);
-                response = { type: 'tapeSlice', data: slice };
+                response = { type: 'tapeSlice', data: { start, slice } };
                 break;
             }
 

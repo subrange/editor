@@ -90,13 +90,13 @@ class InterpreterFacade implements InterpreterInterface {
     private async switchToWasm() {
         try {
             if (!this.wasmInterpreter) {
-                const { wasmInterpreterStore } = await import("./interpreter-wasm.store.ts");
+                const { wasmInterpreterStore } = await import("./interpreter-wasm-worker.store.ts");
                 this.wasmInterpreter = wasmInterpreterStore;
             }
             
             this.currentInterpreter = this.wasmInterpreter;
             this.setupProxying();
-            console.log('Switched to WebAssembly interpreter');
+            console.log('Switched to WebAssembly interpreter (Worker-based)');
         } catch (error) {
             console.error('Failed to load WASM interpreter:', error);
             useWasmInterpreter.next(false);

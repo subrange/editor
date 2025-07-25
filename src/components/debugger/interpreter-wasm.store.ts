@@ -163,6 +163,11 @@ class WasmInterpreterStore {
             const stateJson = this.wasmInterpreter.get_state();
             const wasmState = JSON.parse(stateJson);
             
+            // Get current position
+            const positionJson = this.wasmInterpreter.get_current_position();
+            const currentPosition = JSON.parse(positionJson);
+            this.currentChar.next(currentPosition);
+            
             const currentState = this.state.getValue();
             
             // Get a slice of the tape around the pointer for visualization
@@ -178,13 +183,16 @@ class WasmInterpreterStore {
                 }
             }
             
+            // Don't override the running states if we're in the middle of execution
+            const isExecuting = currentState.isRunning && !currentState.isPaused;
+            
             this.state.next({
                 ...currentState,
                 tape,
                 pointer: wasmState.pointer,
-                isRunning: wasmState.is_running,
-                isPaused: wasmState.is_paused,
-                isStopped: wasmState.is_stopped,
+                isRunning: isExecuting ? currentState.isRunning : wasmState.is_running,
+                isPaused: isExecuting ? currentState.isPaused : wasmState.is_paused,
+                isStopped: isExecuting ? currentState.isStopped : wasmState.is_stopped,
                 output: wasmState.output,
                 laneCount: wasmState.lane_count
             });
@@ -222,15 +230,14 @@ class WasmInterpreterStore {
         }
 
         const hasMore = this.wasmInterpreter.step();
-        this.syncStateFromWasm();
         
-        // Update current character position (approximate)
-        // In a real implementation, we'd need to get this from WASM too
         if (!hasMore) {
             console.log("Program finished.");
             this.stop();
+            return false;
         }
         
+        this.syncStateFromWasm();
         return hasMore;
     }
 
@@ -253,6 +260,15 @@ class WasmInterpreterStore {
             clearInterval(this.runInterval);
         }
 
+        // Set running state
+        const currentState = this.state.getValue();
+        this.state.next({
+            ...currentState,
+            isRunning: true,
+            isPaused: false,
+            isStopped: false
+        });
+
         if (this.wasmInterpreter) {
             this.wasmInterpreter.resume();
         }
@@ -271,6 +287,15 @@ class WasmInterpreterStore {
     }
 
     public runSmooth = () => {
+        // Set running state
+        const currentState = this.state.getValue();
+        this.state.next({
+            ...currentState,
+            isRunning: true,
+            isPaused: false,
+            isStopped: false
+        });
+
         if (this.wasmInterpreter) {
             this.wasmInterpreter.resume();
         }
@@ -281,6 +306,7 @@ class WasmInterpreterStore {
             if (!state.isPaused) {
                 const r = this.step();
                 if (!r) {
+                    this.stop();
                     return;
                 }
             }
@@ -355,8 +381,16 @@ class WasmInterpreterStore {
 
         if (this.wasmInterpreter) {
             this.wasmInterpreter.stop();
-            this.syncStateFromWasm();
         }
+        
+        // Explicitly set the stopped state
+        const currentState = this.state.getValue();
+        this.state.next({
+            ...currentState,
+            isRunning: false,
+            isPaused: false,
+            isStopped: true
+        });
     }
 
     public toggleBreakpoint(position: Position) {
