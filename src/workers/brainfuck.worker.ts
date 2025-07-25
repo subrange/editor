@@ -67,35 +67,61 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
             case 'runTurbo': {
                 if (!interpreter) throw new Error('Interpreter not initialized');
                 
-                // Run turbo execution asynchronously
-                setTimeout(() => {
+                // Run turbo execution in batches for streaming updates
+                const BATCH_SIZE = 10_000_000; // 10 million operations per batch
+                const UPDATE_INTERVAL = 100; // Send updates every 100ms
+                
+                const runBatched = async () => {
+                    let lastUpdateTime = Date.now();
+                    let totalOps = 0;
+                    
                     try {
-                        interpreter.run_turbo();
-                        
-                        const state = interpreter.get_state();
-                        const stateObj = JSON.parse(state);
-                        
-                        // Get current position
-                        try {
-                            const positionJson = interpreter.get_current_position();
-                            const position = JSON.parse(positionJson);
-                            stateObj.currentPosition = position;
-                        } catch (e) {
-                            console.error('Failed to get current position:', e);
+                        while (true) {
+                            const hasMore = interpreter.run_turbo_batch(BATCH_SIZE);
+                            totalOps += BATCH_SIZE;
+                            
+                            const now = Date.now();
+                            if (now - lastUpdateTime >= UPDATE_INTERVAL || !hasMore) {
+                                // Send progress update
+                                const state = interpreter.get_state();
+                                const stateObj = JSON.parse(state);
+                                
+                                // Get current position
+                                try {
+                                    const positionJson = interpreter.get_current_position();
+                                    const position = JSON.parse(positionJson);
+                                    stateObj.currentPosition = position;
+                                } catch (e) {
+                                    // Ignore position errors during execution
+                                }
+                                
+                                self.postMessage({ 
+                                    type: hasMore ? 'turboProgress' : 'turboComplete',
+                                    data: { 
+                                        state: JSON.stringify(stateObj),
+                                        iterations: totalOps
+                                    } 
+                                });
+                                
+                                lastUpdateTime = now;
+                            }
+                            
+                            if (!hasMore) {
+                                break;
+                            }
+                            
+                            // Yield to allow other messages to be processed
+                            await new Promise(resolve => setTimeout(resolve, 0));
                         }
-                        
-                        self.postMessage({ 
-                            type: 'turboComplete', 
-                            data: { state: JSON.stringify(stateObj) } 
-                        });
                     } catch (error) {
                         self.postMessage({
                             type: 'error',
                             error: error instanceof Error ? error.message : 'Turbo execution failed'
                         });
                     }
-                }, 0);
+                };
                 
+                setTimeout(runBatched, 0);
                 response = { type: 'turboStarted' };
                 break;
             }

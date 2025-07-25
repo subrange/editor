@@ -67,6 +67,8 @@ pub struct BrainfuckInterpreter {
     lane_count: usize,
     compiled_ops: Vec<Operation>,
     jump_table: HashMap<usize, usize>,
+    turbo_pc: usize,
+    turbo_ops_executed: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -109,6 +111,8 @@ impl BrainfuckInterpreter {
             lane_count: 1,
             compiled_ops: Vec::new(),
             jump_table: HashMap::new(),
+            turbo_pc: 0,
+            turbo_ops_executed: 0,
         })
     }
 
@@ -258,6 +262,65 @@ impl BrainfuckInterpreter {
         console::log_1(&format!("Turbo execution completed: {} operations", ops_executed).into());
         
         Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn run_turbo_batch(&mut self, batch_size: usize) -> Result<bool, JsValue> {
+        if !self.is_running {
+            self.is_running = true;
+            self.is_paused = false;
+            self.is_stopped = false;
+            self.turbo_pc = 0;
+            self.turbo_ops_executed = 0;
+        }
+
+        let mut ops_in_batch = 0;
+        
+        while self.turbo_pc < self.compiled_ops.len() && self.is_running && !self.is_paused && ops_in_batch < batch_size {
+            match &self.compiled_ops[self.turbo_pc] {
+                Operation::MoveRight => {
+                    self.pointer = (self.pointer + 1) % self.tape_size;
+                }
+                Operation::MoveLeft => {
+                    self.pointer = (self.pointer + self.tape_size - 1) % self.tape_size;
+                }
+                Operation::Increment => {
+                    self.tape[self.pointer] = (self.tape[self.pointer] + 1) % self.cell_size.as_u32();
+                }
+                Operation::Decrement => {
+                    let cell_max = self.cell_size.as_u32();
+                    self.tape[self.pointer] = (self.tape[self.pointer] + cell_max - 1) % cell_max;
+                }
+                Operation::LoopStart(end_pc) => {
+                    if self.tape[self.pointer] == 0 {
+                        self.turbo_pc = *end_pc;
+                    }
+                }
+                Operation::LoopEnd(start_pc) => {
+                    if self.tape[self.pointer] != 0 {
+                        self.turbo_pc = *start_pc;
+                    }
+                }
+                Operation::Output => {
+                    self.output.push(char::from_u32(self.tape[self.pointer]).unwrap_or('?'));
+                }
+                Operation::Input => {
+                    console::log_1(&format!("Input requested at position {}", self.pointer).into());
+                }
+            }
+            
+            self.turbo_pc += 1;
+            self.turbo_ops_executed += 1;
+            ops_in_batch += 1;
+        }
+        
+        if self.turbo_pc >= self.compiled_ops.len() {
+            self.is_running = false;
+            console::log_1(&format!("Turbo execution completed: {} operations", self.turbo_ops_executed).into());
+            Ok(false) // No more work to do
+        } else {
+            Ok(true) // More work remains
+        }
     }
 
     #[wasm_bindgen]
