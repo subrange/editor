@@ -1,4 +1,4 @@
-import {interpreterStore} from "./interpreter.store.ts";
+import {interpreterStore} from "./interpreter-facade.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
 import {useVirtualizer} from '@tanstack/react-virtual';
 import {useRef, useEffect} from 'react';

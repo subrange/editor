@@ -1,9 +1,10 @@
 import {useLocalStorageState} from "../../hooks/use-local-storage-state.tsx";
 import clsx from "clsx";
 import {CogIcon} from "@heroicons/react/24/outline";
-import {interpreterStore} from "../debugger/interpreter.store.ts";
+import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
 import {settingsStore} from "../../stores/settings.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
+import {useWasmInterpreter} from "../debugger/use-wasm-interpreter.ts";
 
 function SidebarTabButton({
                               icon: Icon,
@@ -54,6 +55,7 @@ export function Sidebar() {
     const cellSize = useStoreSubscribe(interpreterStore.cellSize);
     const laneCount = useStoreSubscribe(interpreterStore.laneCount);
     const settings = useStoreSubscribe(settingsStore.settings);
+    const isUsingWasm = useStoreSubscribe(useWasmInterpreter);
 
     const handleTapeSizeChange = (value: string) => {
         const size = parseInt(value) || 30000;
@@ -201,6 +203,30 @@ export function Sidebar() {
                                     </div>
                                     <p className="text-xs text-zinc-500">
                                         Visualize tape as interleaved lanes ({laneCount} {laneCount === 1 ? 'lane' : 'lanes'})
+                                    </p>
+                                </div>
+
+                                {/* WebAssembly Toggle */}
+                                <div className="space-y-2 mt-6">
+                                    <label className="flex items-center justify-between cursor-pointer group">
+                                        <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                            Use WebAssembly
+                                        </span>
+                                        <input
+                                            type="checkbox"
+                                            checked={isUsingWasm}
+                                            onChange={(e) => {
+                                                useWasmInterpreter.next(e.target.checked);
+                                                // Reload the page to switch interpreters
+                                                window.location.reload();
+                                            }}
+                                            className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                        />
+                                    </label>
+                                    <p className="text-xs text-zinc-500">
+                                        {isUsingWasm 
+                                            ? "Using high-performance Rust/WebAssembly interpreter"
+                                            : "Using JavaScript interpreter"}
                                     </p>
                                 </div>
                             </SettingSection>

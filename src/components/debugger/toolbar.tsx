@@ -5,7 +5,7 @@ import {
     BoltIcon,
     ClockIcon, XMarkIcon,
 } from '@heroicons/react/24/solid';
-import { interpreterStore } from "./interpreter.store.ts";
+import { interpreterStore } from "./interpreter-facade.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
 import { useState } from 'react';
 import {

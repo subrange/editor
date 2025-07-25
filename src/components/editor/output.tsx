@@ -1,6 +1,6 @@
 import {useLocalStorageState} from "../../hooks/use-local-storage-state.tsx";
 import {useStoreSubscribeToField} from "../../hooks/use-store-subscribe.tsx";
-import {interpreterStore} from "../debugger/interpreter.store.ts";
+import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
 import {useLayoutEffect, useRef} from "react";
 import clsx from "clsx";
 import {ChevronDownIcon, ChevronUpDownIcon, ChevronUpIcon} from "@heroicons/react/16/solid";
