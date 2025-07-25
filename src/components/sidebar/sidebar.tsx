@@ -242,7 +242,7 @@ export function Sidebar() {
                                             {[
                                                 { value: 'normal' as const, label: 'Normal', desc: 'Standard horizontal tape view' },
                                                 { value: 'compact' as const, label: 'Compact', desc: 'Condensed horizontal view' },
-                                                { value: 'vertical' as const, label: 'Vertical', desc: 'Vertical columns (multi-lane only)' }
+                                                { value: 'lane' as const, label: 'Lane', desc: 'Lane-based columns (multi-lane only)' }
                                             ].map(option => (
                                                 <button
                                                     key={option.value}
@@ -253,12 +253,12 @@ export function Sidebar() {
                                                             ? "bg-blue-500/20 border-blue-500 text-blue-400"
                                                             : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:border-zinc-600"
                                                     )}
-                                                    disabled={option.value === 'vertical' && laneCount === 1}
+                                                    disabled={option.value === 'lane' && laneCount === 1}
                                                 >
                                                     <div className="font-medium text-sm">{option.label}</div>
                                                     <div className="text-[10px] text-zinc-500 mt-0.5">
                                                         {option.desc}
-                                                        {option.value === 'vertical' && laneCount === 1 && ' (requires lanes > 1)'}
+                                                        {option.value === 'lane' && laneCount === 1 && ' (requires lanes > 1)'}
                                                     </div>
                                                 </button>
                                             ))}

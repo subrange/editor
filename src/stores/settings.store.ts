@@ -5,7 +5,7 @@ export interface MacroSettings {
     collapseEmptyLines: boolean;
 }
 
-export type DebuggerViewMode = 'normal' | 'compact' | 'vertical';
+export type DebuggerViewMode = 'normal' | 'compact' | 'lane';
 
 export interface DebuggerSettings {
     compactView: boolean; // Keep for backwards compatibility

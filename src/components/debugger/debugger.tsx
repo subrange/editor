@@ -48,7 +48,7 @@ function formatHex(value: number, bytes: number): string {
     return '0x' + value.toString(16).padStart(bytes * 2, '0').toUpperCase();
 }
 
-function VerticalTapeView({ tape, pointer, laneCount, cellInfo }: { 
+function LaneTapeView({ tape, pointer, laneCount, cellInfo }: { 
     tape: Uint8Array | Uint16Array | Uint32Array, 
     pointer: number, 
     laneCount: number,
@@ -121,8 +121,8 @@ function VerticalTapeView({ tape, pointer, laneCount, cellInfo }: {
                         />
                         <IconButton
                             icon={ViewColumnsIcon}
-                            label="Vertical View"
-                            onClick={() => settingsStore.setDebuggerViewMode('vertical')}
+                            label="Lane View"
+                            onClick={() => settingsStore.setDebuggerViewMode('lane')}
                             variant={'info'}
                         />
                     </div>
@@ -305,9 +305,9 @@ function Tape() {
         }
     }, [pointer, virtualizer]);
 
-    // Use vertical view if enabled and lane count > 1
-    if (viewMode === 'vertical' && laneCount > 1) {
-        return <VerticalTapeView tape={tape} pointer={pointer} laneCount={laneCount} cellInfo={cellInfo} />;
+    // Use lane view if enabled and lane count > 1
+    if (viewMode === 'lane' && laneCount > 1) {
+        return <LaneTapeView tape={tape} pointer={pointer} laneCount={laneCount} cellInfo={cellInfo} />;
     }
 
     return (
@@ -346,9 +346,9 @@ function Tape() {
                         />
                         <IconButton
                             icon={ViewColumnsIcon}
-                            label="Vertical View"
-                            onClick={() => settingsStore.setDebuggerViewMode('vertical')}
-                            variant={viewMode === 'vertical' ? 'info' : 'default'}
+                            label="Lane View"
+                            onClick={() => settingsStore.setDebuggerViewMode('lane')}
+                            variant={viewMode === 'lane' ? 'info' : 'default'}
                             disabled={laneCount === 1}
                         />
                     </div>
