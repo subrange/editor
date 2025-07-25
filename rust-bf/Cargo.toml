@@ -23,3 +23,18 @@ features = [
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
+
+[profile.release]
+opt-level = 3          # Maximum optimization
+lto = true             # Enable Link Time Optimization
+codegen-units = 1      # Single codegen unit for better optimization
+strip = true           # Strip symbols for smaller binary
+panic = "abort"        # Smaller binary, no unwinding
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = [
+  "-O4",
+  "--enable-bulk-memory",
+  "--flexible-inline-max-function-size",
+  "4294967295",
+]

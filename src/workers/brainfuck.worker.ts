@@ -68,8 +68,8 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                 if (!interpreter) throw new Error('Interpreter not initialized');
                 
                 // Run turbo execution in batches for streaming updates
-                const BATCH_SIZE = 10_000_000; // 10 million operations per batch
-                const UPDATE_INTERVAL = 100; // Send updates every 100ms
+                const BATCH_SIZE = 100_000_000; // 100 million operations per batch
+                const UPDATE_INTERVAL = 200; // Send updates every 100ms
                 
                 const runBatched = async () => {
                     let lastUpdateTime = Date.now();
