@@ -62,7 +62,14 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                     console.error('Failed to get current position:', e);
                 }
                 
-                response = { type: 'stepped', data: { hasMore, state: JSON.stringify(stateObj) } };
+                console.log(`Step result: hasMore=${hasMore}, isPaused=${stateObj.is_paused}, isStopped=${stateObj.is_stopped}`);
+                
+                // Check if the interpreter has paused (e.g., due to a breakpoint)
+                if (stateObj.is_paused) {
+                    response = { type: 'paused', data: { state: JSON.stringify(stateObj) } };
+                } else {
+                    response = { type: 'stepped', data: { hasMore, state: JSON.stringify(stateObj) } };
+                }
                 break;
             }
 
@@ -81,18 +88,18 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                     
                     try {
                         while (true) {
-                            const hasMore = interpreter.run_turbo_batch(BATCH_SIZE);
+                            const hasMore = interpreter!.run_turbo_batch(BATCH_SIZE);
                             totalOps += BATCH_SIZE;
                             
                             const now = Date.now();
                             if (now - lastUpdateTime >= UPDATE_INTERVAL || !hasMore) {
                                 // Send progress update
-                                const state = interpreter.get_state();
+                                const state = interpreter!.get_state();
                                 const stateObj = JSON.parse(state);
                                 
                                 // Get current position
                                 try {
-                                    const positionJson = interpreter.get_current_position();
+                                    const positionJson = interpreter!.get_current_position();
                                     const position = JSON.parse(positionJson);
                                     stateObj.currentPosition = position;
                                 } catch (e) {
@@ -139,7 +146,11 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
 
             case 'resume': {
                 if (!interpreter) throw new Error('Interpreter not initialized');
+                console.log('Worker: Calling interpreter.resume()');
                 interpreter.resume();
+                const state = interpreter.get_state();
+                const stateObj = JSON.parse(state);
+                console.log(`Worker: After resume - isPaused=${stateObj.is_paused}`);
                 response = { type: 'resumed' };
                 break;
             }

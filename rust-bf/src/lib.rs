@@ -473,9 +473,11 @@ impl BrainfuckInterpreter {
 
     #[wasm_bindgen]
     pub fn resume(&mut self) {
-        if self.is_running && self.is_paused {
-            self.is_paused = false;
-        }
+        console::log_1(&format!("Resume called: is_running={}, is_paused={}", self.is_running, self.is_paused).into());
+        
+        // Always clear the pause flag when resume is called
+        self.is_paused = false;
+        console::log_1(&format!("Resumed at position {:?}", self.current_pos).into());
     }
 
     #[wasm_bindgen]

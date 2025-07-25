@@ -179,8 +179,22 @@ class WasmWorkerInterpreterStore {
                 if (data) {
                     this.updateStateFromWorker(data.state);
                     if (!data.hasMore) {
+                        console.log('No more instructions, stopping');
                         this.stop();
                     }
+                }
+                break;
+
+            case 'paused':
+                if (data) {
+                    this.updateStateFromWorker(data.state);
+                    // Update local state to reflect pause
+                    const currentState = this.state.getValue();
+                    this.state.next({
+                        ...currentState,
+                        isPaused: true
+                    });
+                    console.log('Interpreter paused at breakpoint');
                 }
                 break;
 
@@ -228,12 +242,15 @@ class WasmWorkerInterpreterStore {
             }
 
             // Update state without tape (tape will be updated separately)
+            // Check if WASM interpreter has paused (e.g., due to breakpoint)
+            const isPaused = wasmState.is_paused || currentState.isPaused;
+            
             this.state.next({
                 ...currentState,
                 pointer: wasmState.pointer,
-                isRunning: currentState.isRunning, // Maintain local running state
-                isPaused: currentState.isPaused,   // Maintain local paused state
-                isStopped: currentState.isStopped, // Maintain local stopped state
+                isRunning: currentState.isRunning && !wasmState.is_stopped,
+                isPaused: isPaused,
+                isStopped: wasmState.is_stopped || currentState.isStopped,
                 output: wasmState.output,
                 laneCount: currentState.laneCount  // Keep local lane count, don't override from WASM
             });
@@ -267,10 +284,19 @@ class WasmWorkerInterpreterStore {
             }
 
             // Force a new state update to trigger re-render
-            // Using spread to ensure React detects the change
+            // Create a new typed array instead of spreading
+            let newTape: typeof tape;
+            if (tape instanceof Uint8Array) {
+                newTape = new Uint8Array(tape);
+            } else if (tape instanceof Uint16Array) {
+                newTape = new Uint16Array(tape);
+            } else {
+                newTape = new Uint32Array(tape);
+            }
+            
             this.state.next({
                 ...currentState,
-                tape: [...tape] as typeof tape
+                tape: newTape
             });
         } catch (error) {
             console.error('Failed to update tape slice:', error);
@@ -347,11 +373,37 @@ class WasmWorkerInterpreterStore {
     public resume() {
         const currentState = this.state.getValue();
         if (currentState.isRunning && currentState.isPaused) {
+            console.log('Resuming execution...');
             this.state.next({
                 ...currentState,
                 isPaused: false
             });
             this.sendMessage('resume');
+            
+            // If we were running with smooth execution, restart the animation frame loop
+            if (this.runAnimationFrameId !== null && this.runInterval === null) {
+                console.log('Restarting smooth execution loop');
+                const step = () => {
+                    const state = this.state.getValue();
+
+                    if (!state.isPaused && state.isRunning && !state.isStopped) {
+                        this.sendMessage('step');
+                        // Continue with next frame
+                        this.runAnimationFrameId = requestAnimationFrame(step);
+                    } else if (state.isRunning && !state.isStopped) {
+                        // We're paused but still running, don't schedule next frame
+                        console.log('Execution paused again');
+                    } else {
+                        // Stopped, clear the frame ID
+                        this.runAnimationFrameId = null;
+                    }
+                };
+
+                // Start the step immediately
+                step();
+            }
+            // If we were running with interval (delayed execution), the interval is still active
+            // and will automatically continue since isPaused is now false
         }
     }
 
@@ -395,12 +447,16 @@ class WasmWorkerInterpreterStore {
         const step = () => {
             const state = this.state.getValue();
 
-            if (!state.isPaused && state.isRunning) {
+            if (!state.isPaused && state.isRunning && !state.isStopped) {
                 this.sendMessage('step');
-            }
-
-            if (state.isRunning) {
+                // Continue with next frame
                 this.runAnimationFrameId = requestAnimationFrame(step);
+            } else if (state.isRunning && !state.isStopped) {
+                // We're paused but still running, store the frame ID but don't schedule next
+                // Resume will restart the loop
+            } else {
+                // Stopped, clear the frame ID
+                this.runAnimationFrameId = null;
             }
         };
 
