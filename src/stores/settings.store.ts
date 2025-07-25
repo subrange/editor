@@ -5,8 +5,11 @@ export interface MacroSettings {
     collapseEmptyLines: boolean;
 }
 
+export type DebuggerViewMode = 'normal' | 'compact' | 'vertical';
+
 export interface DebuggerSettings {
-    compactView: boolean;
+    compactView: boolean; // Keep for backwards compatibility
+    viewMode: DebuggerViewMode;
 }
 
 export interface Settings {
@@ -21,7 +24,8 @@ class SettingsStore {
             collapseEmptyLines: this.loadFromStorage('macroCollapseEmptyLines', true)
         },
         debugger: {
-            compactView: this.loadFromStorage('debuggerCompactView', false)
+            compactView: this.loadFromStorage('debuggerCompactView', false),
+            viewMode: this.loadFromStorage('debuggerViewMode', 'normal') as DebuggerViewMode
         }
     });
 
@@ -61,12 +65,27 @@ class SettingsStore {
         this.saveToStorage('debuggerCompactView', value);
     }
 
-    private loadFromStorage(key: string, defaultValue: boolean): boolean {
+    setDebuggerViewMode(value: DebuggerViewMode) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            debugger: {
+                ...current.debugger,
+                viewMode: value,
+                // Update compactView for backwards compatibility
+                compactView: value === 'compact'
+            }
+        });
+        this.saveToStorage('debuggerViewMode', value);
+        this.saveToStorage('debuggerCompactView', value === 'compact');
+    }
+
+    private loadFromStorage<T>(key: string, defaultValue: T): T {
         const stored = localStorage.getItem(key);
         return stored !== null ? JSON.parse(stored) : defaultValue;
     }
 
-    private saveToStorage(key: string, value: boolean) {
+    private saveToStorage<T>(key: string, value: T) {
         localStorage.setItem(key, JSON.stringify(value));
     }
 }

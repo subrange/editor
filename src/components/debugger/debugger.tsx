@@ -4,6 +4,8 @@ import {useVirtualizer} from '@tanstack/react-virtual';
 import {useRef, useEffect, useState} from 'react';
 import clsx from "clsx";
 import {settingsStore} from "../../stores/settings.store.ts";
+import {IconButton} from "../ui/icon-button.tsx";
+import {Bars3Icon, Bars2Icon, ViewColumnsIcon} from '@heroicons/react/24/solid';
 
 // Lane color palette - 10 distinct colors that work with dark theme
 const LANE_COLORS = [
@@ -46,13 +48,226 @@ function formatHex(value: number, bytes: number): string {
     return '0x' + value.toString(16).padStart(bytes * 2, '0').toUpperCase();
 }
 
+function VerticalTapeView({ tape, pointer, laneCount, cellInfo }: { 
+    tape: Uint8Array | Uint16Array | Uint32Array, 
+    pointer: number, 
+    laneCount: number,
+    cellInfo: { bits: number, bytes: number, max: number }
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+    const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
+    
+    const CELL_WIDTH = 60;
+    const CELL_HEIGHT = 48;
+    const COLUMN_GAP = 12;
+    
+    // Calculate number of columns needed
+    const columnsCount = Math.ceil(tape.length / laneCount);
+    
+    // Create virtualizer for horizontal scrolling of columns
+    const virtualizer = useVirtualizer({
+        horizontal: true,
+        count: columnsCount,
+        getScrollElement: () => containerRef.current,
+        estimateSize: () => CELL_WIDTH + COLUMN_GAP,
+        overscan: 5,
+        paddingStart: 24,
+        paddingEnd: 24,
+    });
+    
+    // Auto-scroll to pointer column when it changes
+    useEffect(() => {
+        const pointerColumn = Math.floor(pointer / laneCount);
+        if (pointerColumn < 10000) {
+            virtualizer.scrollToIndex(pointerColumn, {
+                align: 'center',
+            });
+        }
+    }, [pointer, laneCount, virtualizer]);
+    
+    return (
+        <div className="flex flex-col h-full bg-zinc-950">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-2">
+                <div className="flex items-center gap-4">
+                    <h3 className="text-sm font-medium text-zinc-300">Memory Tape</h3>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <span className="px-2 py-0.5 rounded-sm bg-zinc-800">
+                            {cellInfo.bits}-bit cells
+                        </span>
+                        <span>•</span>
+                        <span>{laneCount} lanes</span>
+                        <span>•</span>
+                        <span>Pointer: {pointer}</span>
+                        <span>•</span>
+                        <span>Value: {tape[pointer]}</span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    {/* View mode toggle buttons */}
+                    <div className="flex items-center gap-1 border-r border-zinc-700 pr-2 mr-1">
+                        <IconButton
+                            icon={Bars3Icon}
+                            label="Normal View"
+                            onClick={() => settingsStore.setDebuggerViewMode('normal')}
+                            variant={'default'}
+                        />
+                        <IconButton
+                            icon={Bars2Icon}
+                            label="Compact View"
+                            onClick={() => settingsStore.setDebuggerViewMode('compact')}
+                            variant={'default'}
+                        />
+                        <IconButton
+                            icon={ViewColumnsIcon}
+                            label="Vertical View"
+                            onClick={() => settingsStore.setDebuggerViewMode('vertical')}
+                            variant={'info'}
+                        />
+                    </div>
+                    <button
+                        onClick={() => virtualizer.scrollToIndex(0)}
+                        className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                    >
+                        Go to Start
+                    </button>
+                    <button
+                        onClick={() => {
+                            const pointerColumn = Math.floor(pointer / laneCount);
+                            virtualizer.scrollToIndex(pointerColumn, {align: 'center'});
+                        }}
+                        className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                    >
+                        Go to Pointer
+                    </button>
+                </div>
+            </div>
+            
+            {/* Tape visualization */}
+            <div
+                ref={containerRef}
+                className="flex-1 overflow-auto relative"
+                style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#3f3f46 #18181b'
+                }}
+            >
+                <div
+                    style={{
+                        width: `${virtualizer.getTotalSize()}px`,
+                        minHeight: '100%',
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        paddingTop: '24px',
+                        paddingBottom: '24px',
+                    }}
+                >
+                    {virtualizer.getVirtualItems().map((virtualColumn) => {
+                        const columnIndex = virtualColumn.index;
+                        const startIndex = columnIndex * laneCount;
+                        
+                        return (
+                            <div
+                                key={virtualColumn.key}
+                                style={{
+                                    position: 'absolute',
+                                    left: `${virtualColumn.start}px`,
+                                    width: `${CELL_WIDTH}px`,
+                                }}
+                            >
+                                <div className="flex flex-col items-center gap-2">
+                                    {Array.from({ length: laneCount }, (_, laneIndex) => {
+                                        const cellIndex = startIndex + laneIndex;
+                                        if (cellIndex >= tape.length) return null;
+                                        
+                                        const value = tape[cellIndex];
+                                        const isPointer = cellIndex === pointer;
+                                        const isNonZero = value !== 0;
+                                        const lane = cellIndex % laneCount;
+                                        const laneColor = LANE_COLORS[lane];
+                                        const isHovered = hoveredRow !== null && hoveredColumn !== null;
+                                        const isDimmed = isHovered && laneIndex !== hoveredRow && columnIndex !== hoveredColumn;
+                                        
+                                        return (
+                                            <div
+                                                key={cellIndex}
+                                                className={clsx(
+                                                    "relative rounded border transition-all duration-200 p-1",
+                                                    "flex flex-col items-center justify-center",
+                                                    "w-full",
+                                                    {
+                                                        // Pointer styles
+                                                        'border-yellow-500 bg-yellow-950/50 shadow-lg shadow-yellow-500/20 z-10': isPointer && !isDimmed,
+                                                        // Lane colors (when not pointer)
+                                                        [laneColor?.border || '']: !isPointer && !isDimmed,
+                                                        [laneColor?.bg || '']: !isPointer && !isDimmed,
+                                                        // Dimmed styles
+                                                        'opacity-30': isDimmed,
+                                                        'border-zinc-800 bg-zinc-900/20': isDimmed,
+                                                    }
+                                                )}
+                                                style={{ height: `${CELL_HEIGHT}px` }}
+                                                onMouseEnter={() => {
+                                                    setHoveredRow(laneIndex);
+                                                    setHoveredColumn(columnIndex);
+                                                }}
+                                                onMouseLeave={() => {
+                                                    setHoveredRow(null);
+                                                    setHoveredColumn(null);
+                                                }}
+                                            >
+                                                {/* Cell index */}
+                                                <div className={clsx(
+                                                    "text-[9px] font-mono leading-none",
+                                                    isPointer ? 'text-yellow-400' : 'text-zinc-600'
+                                                )}>
+                                                    {cellIndex}
+                                                </div>
+                                                
+                                                {/* Main value */}
+                                                <div className={clsx(
+                                                    "text-sm font-bold font-mono",
+                                                    {
+                                                        'text-yellow-300': isPointer,
+                                                        'text-blue-300': isNonZero && !isPointer,
+                                                        'text-zinc-500': !isNonZero && !isPointer,
+                                                    }
+                                                )}>
+                                                    {value}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+            
+            {/* Status bar */}
+            <div className="flex items-center justify-between border-t border-zinc-800 bg-zinc-900 px-4 py-2 text-xs text-zinc-500">
+                <div className="flex items-center gap-3">
+                    <span>Memory: {tape.length.toLocaleString()} cells</span>
+                    <span>•</span>
+                    <span>{columnsCount} columns × {laneCount} lanes</span>
+                </div>
+                <span>Scroll horizontally or use mouse wheel</span>
+            </div>
+        </div>
+    );
+}
+
 function Tape() {
     const interpreterState = useStoreSubscribe(interpreterStore.state);
     const settings = useStoreSubscribe(settingsStore.settings);
     const tape = interpreterState.tape;
     const pointer = interpreterState.pointer;
     const laneCount = interpreterState.laneCount;
-    const compactView = settings?.debugger.compactView ?? false;
+    const viewMode = settings?.debugger.viewMode ?? 'normal';
+    const compactView = viewMode === 'compact';
     const [hoveredLane, setHoveredLane] = useState<number | null>(null);
 
     // Determine cell size and display parameters
@@ -90,6 +305,11 @@ function Tape() {
         }
     }, [pointer, virtualizer]);
 
+    // Use vertical view if enabled and lane count > 1
+    if (viewMode === 'vertical' && laneCount > 1) {
+        return <VerticalTapeView tape={tape} pointer={pointer} laneCount={laneCount} cellInfo={cellInfo} />;
+    }
+
     return (
         <div className="flex flex-col h-full bg-zinc-950">
             {/* Header */}
@@ -110,6 +330,28 @@ function Tape() {
                     </div>
                 </div>
                 <div className={clsx("flex items-center", compactView ? "gap-1" : "gap-2")}>
+                    {/* View mode toggle buttons */}
+                    <div className="flex items-center gap-1 border-r border-zinc-700 pr-2 mr-1">
+                        <IconButton
+                            icon={Bars3Icon}
+                            label="Normal View"
+                            onClick={() => settingsStore.setDebuggerViewMode('normal')}
+                            variant={viewMode === 'normal' ? 'info' : 'default'}
+                        />
+                        <IconButton
+                            icon={Bars2Icon}
+                            label="Compact View"
+                            onClick={() => settingsStore.setDebuggerViewMode('compact')}
+                            variant={viewMode === 'compact' ? 'info' : 'default'}
+                        />
+                        <IconButton
+                            icon={ViewColumnsIcon}
+                            label="Vertical View"
+                            onClick={() => settingsStore.setDebuggerViewMode('vertical')}
+                            variant={viewMode === 'vertical' ? 'info' : 'default'}
+                            disabled={laneCount === 1}
+                        />
+                    </div>
                     <button
                         onClick={() => virtualizer.scrollToIndex(0)}
                         className={clsx(
@@ -154,7 +396,6 @@ function Tape() {
                         const isNonZero = value !== 0;
                         const lane = laneCount > 1 ? index % laneCount : -1;
                         const laneColor = lane >= 0 ? LANE_COLORS[lane] : null;
-                        const isInHoveredLane = hoveredLane !== null && lane === hoveredLane;
                         const isDimmed = hoveredLane !== null && lane !== hoveredLane;
 
                         return (

@@ -234,20 +234,36 @@ export function Sidebar() {
                             {/* Debugger Settings */}
                             <SettingSection title="Debugger">
                                 <div className="space-y-4">
-                                    <label className="flex items-center justify-between cursor-pointer group">
-                                        <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
-                                            Compact View
-                                        </span>
-                                        <input
-                                            type="checkbox"
-                                            checked={settings?.debugger.compactView ?? false}
-                                            onChange={(e) => settingsStore.setDebuggerCompactView(e.target.checked)}
-                                            className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
-                                        />
-                                    </label>
-                                    <p className="text-xs text-zinc-500 -mt-2">
-                                        Show memory cells in a condensed format
-                                    </p>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-zinc-300">
+                                            View Mode
+                                        </label>
+                                        <div className="space-y-2">
+                                            {[
+                                                { value: 'normal' as const, label: 'Normal', desc: 'Standard horizontal tape view' },
+                                                { value: 'compact' as const, label: 'Compact', desc: 'Condensed horizontal view' },
+                                                { value: 'vertical' as const, label: 'Vertical', desc: 'Vertical columns (multi-lane only)' }
+                                            ].map(option => (
+                                                <button
+                                                    key={option.value}
+                                                    onClick={() => settingsStore.setDebuggerViewMode(option.value)}
+                                                    className={clsx(
+                                                        "w-full p-2 rounded border transition-all text-left",
+                                                        settings?.debugger.viewMode === option.value
+                                                            ? "bg-blue-500/20 border-blue-500 text-blue-400"
+                                                            : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:border-zinc-600"
+                                                    )}
+                                                    disabled={option.value === 'vertical' && laneCount === 1}
+                                                >
+                                                    <div className="font-medium text-sm">{option.label}</div>
+                                                    <div className="text-[10px] text-zinc-500 mt-0.5">
+                                                        {option.desc}
+                                                        {option.value === 'vertical' && laneCount === 1 && ' (requires lanes > 1)'}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </SettingSection>
 
