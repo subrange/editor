@@ -1,7 +1,6 @@
 import {useLocalStorageState} from "../../hooks/use-local-storage-state.tsx";
 import clsx from "clsx";
 import {CogIcon} from "@heroicons/react/24/outline";
-import {useState} from "react";
 import {interpreterStore} from "../debugger/interpreter.store.ts";
 import {settingsStore} from "../../stores/settings.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
@@ -51,19 +50,17 @@ function formatBytes(bytes: number): string {
 
 export function Sidebar() {
     const [activeTab, setActiveTab] = useLocalStorageState<'settings' | null>("sidebarTab", null);
-    const [tapeSize, setTapeSize] = useState(30000);
-    const [cellSize, setCellSize] = useState(256);
-    const [laneCount, setLaneCount] = useLocalStorageState<number>("brainfuck-ide-lane-count", 1);
+    const tapeSize = useStoreSubscribe(interpreterStore.tapeSize);
+    const cellSize = useStoreSubscribe(interpreterStore.cellSize);
+    const laneCount = useStoreSubscribe(interpreterStore.laneCount);
     const settings = useStoreSubscribe(settingsStore.settings);
 
     const handleTapeSizeChange = (value: string) => {
         const size = parseInt(value) || 30000;
-        setTapeSize(Math.max(100, Math.min(150000, size)));
         interpreterStore.setTapeSize(Math.max(100, Math.min(150000, size)));
     };
 
     const changeCellSize = (size: number) => {
-        setCellSize(size);
         interpreterStore.setCellSize(size);
     };
 
@@ -175,7 +172,6 @@ export function Sidebar() {
                                             value={laneCount}
                                             onChange={e => {
                                                 const value = Number(e.target.value);
-                                                setLaneCount(value);
                                                 interpreterStore.setLaneCount(value);
                                             }}
                                             className="flex-1 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer
@@ -196,7 +192,6 @@ export function Sidebar() {
                                             onChange={e => {
                                                 const value = Number(e.target.value);
                                                 if (value >= 1 && value <= 10) {
-                                                    setLaneCount(value);
                                                     interpreterStore.setLaneCount(value);
                                                 }
                                             }}

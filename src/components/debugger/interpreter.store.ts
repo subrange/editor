@@ -60,9 +60,9 @@ class InterpreterStore {
 
     private lastPausedBreakpoint: Position | null = null;
 
-    private tapeSize: number = DEFAULT_TAPE_SIZE;
-    private cellSize = DEFAULT_CELL_SIZE;
-    private laneCount: number = DEFAULT_LANE_COUNT;
+    public tapeSize = new BehaviorSubject<number>(DEFAULT_TAPE_SIZE);
+    public cellSize = new BehaviorSubject<number>(DEFAULT_CELL_SIZE);
+    public laneCount = new BehaviorSubject<number>(DEFAULT_LANE_COUNT);
 
     private editorSubscription: Subscription | null = null;
     
@@ -98,7 +98,7 @@ class InterpreterStore {
         if (storedTapeSize) {
             const size = parseInt(storedTapeSize, 10);
             if (!isNaN(size) && size > 0) {
-                this.tapeSize = size;
+                this.tapeSize.next(size);
             }
         }
 
@@ -108,7 +108,7 @@ class InterpreterStore {
         if (storedCellSize) {
             const size = parseInt(storedCellSize, 10);
             if (!isNaN(size) && [256, 65536, 4294967296].includes(size)) {
-                this.cellSize = size;
+                this.cellSize.next(size);
             }
         }
 
@@ -117,33 +117,33 @@ class InterpreterStore {
         if (storedLaneCount) {
             const count = parseInt(storedLaneCount, 10);
             if (!isNaN(count) && count >= 1 && count <= 10) {
-                this.laneCount = count;
+                this.laneCount.next(count);
             }
         }
 
         // Initialize tape with the correct size
         this.state.next({
-            tape: sizeToTape(this.cellSize, this.tapeSize),
+            tape: sizeToTape(this.cellSize.getValue(), this.tapeSize.getValue()),
             pointer: 0,
             isRunning: false,
             isPaused: false,
             isStopped: false,
             breakpoints: [],
             output: '',
-            laneCount: this.laneCount
+            laneCount: this.laneCount.getValue()
         });
     }
 
     public reset() {
         this.state.next({
-            tape: sizeToTape(this.cellSize, this.tapeSize),
+            tape: sizeToTape(this.cellSize.getValue(), this.tapeSize.getValue()),
             pointer: 0,
             isRunning: false,
             isPaused: false,
             isStopped: false,
             breakpoints: this.state.getValue().breakpoints, // Keep existing breakpoints
             output: '',
-            laneCount: this.laneCount
+            laneCount: this.laneCount.getValue()
         });
         this.currentChar.next({
             line: 0,
@@ -345,10 +345,10 @@ class InterpreterStore {
                 currentState.pointer = (currentState.pointer - 1 + currentState.tape.length) % currentState.tape.length;
                 break;
             case '+':
-                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] + 1) % this.cellSize;
+                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] + 1) % this.cellSize.getValue();
                 break;
             case '-':
-                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] - 1 + this.cellSize) % this.cellSize;
+                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] - 1 + this.cellSize.getValue()) % this.cellSize.getValue();
                 break;
             case '[':
                 if (currentState.tape[currentState.pointer] === 0) {
@@ -567,10 +567,10 @@ class InterpreterStore {
                     pointer = (pointer - 1 + tape.length) % tape.length;
                     break;
                 case '+':
-                    tape[pointer] = (tape[pointer] + 1) % 256;
+                    tape[pointer] = (tape[pointer] + 1) % this.cellSize.getValue();
                     break;
                 case '-':
-                    tape[pointer] = (tape[pointer] - 1 + 256) % 256;
+                    tape[pointer] = (tape[pointer] - 1 + this.cellSize.getValue()) % this.cellSize.getValue();
                     break;
                 case '[':
                     if (tape[pointer] === 0) {
@@ -697,7 +697,7 @@ class InterpreterStore {
             isStopped: false
         });
 
-        const tape = sizeToTape(this.cellSize, this.tapeSize);
+        const tape = sizeToTape(this.cellSize.getValue(), this.tapeSize.getValue());
         let pointer = 0;
         let output = '';
         let pc = 0; // Program counter
@@ -709,10 +709,10 @@ class InterpreterStore {
             const op = ops[pc];
 
             switch (op.type) {
-                case '>': pointer = (pointer + 1) % this.tapeSize; break;
-                case '<': pointer = (pointer - 1 + this.tapeSize) % this.tapeSize; break;
-                case '+': tape[pointer] = (tape[pointer] + 1) & 255; break;
-                case '-': tape[pointer] = (tape[pointer] - 1 + 256) & 255; break;
+                case '>': pointer = (pointer + 1) % this.tapeSize.getValue(); break;
+                case '<': pointer = (pointer - 1 + this.tapeSize.getValue()) % this.tapeSize.getValue(); break;
+                case '+': tape[pointer] = (tape[pointer] + 1) % this.cellSize.getValue(); break;
+                case '-': tape[pointer] = (tape[pointer] - 1 + this.cellSize.getValue()) % this.cellSize.getValue(); break;
                 case '[':
                     if (tape[pointer] === 0) {
                         pc = jumpTable.get(pc) || pc;
@@ -799,7 +799,7 @@ class InterpreterStore {
         if (size <= 0) {
             throw new Error("Tape size must be a positive integer");
         }
-        this.tapeSize = size;
+        this.tapeSize.next(size);
         localStorage.setItem('tapeSize', size.toString());
         this.reset();
         console.log(`Tape size set to ${size} bytes`);
@@ -809,7 +809,7 @@ class InterpreterStore {
         if (![256, 65536, 4294967296].includes(size)) {
             throw new Error("Unsupported cell size. Use 256, 65536, or 4294967296.");
         }
-        this.cellSize = size;
+        this.cellSize.next(size);
         localStorage.setItem('cellSize', size.toString());
         this.reset();
     }
@@ -818,7 +818,7 @@ class InterpreterStore {
         if (count < 1 || count > 10) {
             throw new Error("Lane count must be between 1 and 10");
         }
-        this.laneCount = count;
+        this.laneCount.next(count);
         localStorage.setItem('brainfuck-ide-lane-count', count.toString());
         this.state.next({
             ...this.state.getValue(),

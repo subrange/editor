@@ -24,7 +24,6 @@ function measureCharacterWidth() {
     }
     context.font = "14px monospace"; // Match your font-mono text-sm
     const width = context.measureText("M").width;
-    console.log(`Character width: ${width}px`);
     return width;
 }
 
