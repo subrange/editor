@@ -34,6 +34,8 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                 await initializeWasm();
                 const { tapeSize, cellSize } = data as { tapeSize: number; cellSize: number };
                 interpreter = new BrainfuckInterpreter(tapeSize, cellSize);
+                // Enable unsafe mode for maximum performance (like El Brainfuck's "undefined" mode)
+                interpreter.set_unsafe_mode(true);
                 response = { type: 'initialized' };
                 break;
             }
@@ -66,10 +68,12 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
 
             case 'runTurbo': {
                 if (!interpreter) throw new Error('Interpreter not initialized');
-                
+
+                interpreter.set_unsafe_mode(true);
+
                 // Run turbo execution in batches for streaming updates
-                const BATCH_SIZE = 100_000_000; // 100 million operations per batch
-                const UPDATE_INTERVAL = 200; // Send updates every 100ms
+                const BATCH_SIZE = 200_000_000; // 100 million operations per batch
+                const UPDATE_INTERVAL = 300; // Send updates every 100ms
                 
                 const runBatched = async () => {
                     let lastUpdateTime = Date.now();

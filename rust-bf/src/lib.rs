@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use web_sys::console;
+use web_sys::js_sys::Date;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Position {
@@ -69,6 +70,10 @@ pub struct BrainfuckInterpreter {
     jump_table: HashMap<usize, usize>,
     turbo_pc: usize,
     turbo_ops_executed: u64,
+    turbo_start_time: Option<f64>,
+    is_8bit: bool,
+    unsafe_mode: bool,  // Skip overflow checks for maximum performance
+    source_ops_count: u64,  // Count of original brainfuck operations (not optimized)
 }
 
 #[derive(Debug, Clone)]
@@ -85,6 +90,10 @@ enum Operation {
     SetZero,              // [-] pattern
     MoveValue(isize),     // [->+<] pattern
     MultiplyMove(Vec<(isize, i32)>), // Complex move patterns
+    AddOffset(isize, i32), // Add value to cell at offset
+    SetValue(u32),        // Set cell to specific value
+    ScanRight,            // [>] pattern - scan for zero cell to the right
+    ScanLeft,             // [<] pattern - scan for zero cell to the left
 }
 
 #[wasm_bindgen]
@@ -97,6 +106,7 @@ impl BrainfuckInterpreter {
             .ok_or_else(|| JsValue::from_str("Invalid cell size"))?;
         
         let tape = vec![0u32; tape_size];
+        let is_8bit = cell_size.as_u32() == 256;
         
         Ok(BrainfuckInterpreter {
             tape,
@@ -117,6 +127,10 @@ impl BrainfuckInterpreter {
             jump_table: HashMap::new(),
             turbo_pc: 0,
             turbo_ops_executed: 0,
+            turbo_start_time: None,
+            is_8bit,
+            unsafe_mode: false,
+            source_ops_count: 0,
         })
     }
 
@@ -143,6 +157,9 @@ impl BrainfuckInterpreter {
         self.is_paused = false;
         self.is_stopped = false;
         self.last_paused_breakpoint = None;
+        self.turbo_pc = 0;
+        self.turbo_ops_executed = 0;
+        self.turbo_start_time = None;
     }
 
     #[wasm_bindgen]
@@ -213,7 +230,8 @@ impl BrainfuckInterpreter {
 
     #[wasm_bindgen]
     pub fn run_turbo(&mut self) -> Result<(), JsValue> {
-        console::log_1(&"Starting turbo execution...".into());
+        let start_time = Date::now();
+        self.turbo_start_time = Some(start_time);
         self.is_running = true;
         self.is_paused = false;
         self.is_stopped = false;
@@ -221,71 +239,83 @@ impl BrainfuckInterpreter {
         let mut pc = 0;
         let mut ops_executed = 0u64;
         
-        while pc < self.compiled_ops.len() && self.is_running && !self.is_paused {
-            pc = self.execute_optimized_op(pc);
-            ops_executed += 1;
-            
-            if ops_executed % 10_000_000 == 0 {
-                console::log_1(&format!("Executed {} operations", ops_executed).into());
+        // For maximum performance in unsafe mode, inline the hot operations
+        if self.unsafe_mode && self.is_8bit {
+            self.run_turbo_unsafe_8bit(pc, &mut ops_executed);
+        } else {
+            while pc < self.compiled_ops.len() && self.is_running && !self.is_paused {
+                pc = self.execute_optimized_op(pc);
+                ops_executed += 1;
             }
         }
         
+        let end_time = Date::now();
+        let total_time = (end_time - start_time) / 1000.0; // Convert to seconds
+        let ops_per_sec = ops_executed as f64 / total_time;
+        
         self.is_running = false;
-        console::log_1(&format!("Turbo execution completed: {} operations", ops_executed).into());
+        console::log_1(&format!("Turbo execution completed!").into());
+        console::log_1(&format!("  Total operations: {}", ops_executed).into());
+        console::log_1(&format!("  Total time: {:.3} seconds", total_time).into());
+        console::log_1(&format!("  Performance: {:.2} million operations/second", ops_per_sec / 1_000_000.0).into());
         
         Ok(())
     }
     
     fn execute_optimized_op(&mut self, pc: usize) -> usize {
-        match &self.compiled_ops[pc] {
-            Operation::MoveRight(n) => {
-                self.pointer = (self.pointer + n) % self.tape_size;
-                pc + 1
-            }
-            Operation::MoveLeft(n) => {
-                self.pointer = (self.pointer + self.tape_size - (n % self.tape_size)) % self.tape_size;
-                pc + 1
-            }
+        unsafe {
+            match self.compiled_ops.get_unchecked(pc) {
+                Operation::MoveRight(n) => {
+                    self.pointer = (self.pointer + n) % self.tape_size;
+                    pc + 1
+                }
+                Operation::MoveLeft(n) => {
+                    self.pointer = (self.pointer + self.tape_size - (n % self.tape_size)) % self.tape_size;
+                    pc + 1
+                }
             Operation::Increment(n) => {
-                let cell_max = self.cell_size.as_u32();
-                // Use unsafe for better performance when we know pointer is valid
-                unsafe {
-                    let cell = self.tape.get_unchecked_mut(self.pointer);
+                let cell = self.tape.get_unchecked_mut(self.pointer);
+                if self.unsafe_mode {
+                    // In unsafe mode, just add without any overflow checking
+                    *cell = cell.wrapping_add(*n as u32);
+                } else if self.is_8bit {
+                    *cell = (*cell as u8).wrapping_add(*n as u8) as u32;
+                } else {
+                    let cell_max = self.cell_size.as_u32();
                     *cell = (*cell + *n as u32) % cell_max;
                 }
                 pc + 1
             }
             Operation::Decrement(n) => {
-                let cell_max = self.cell_size.as_u32();
-                let n_mod = (*n % cell_max as usize) as u32;
-                unsafe {
-                    let cell = self.tape.get_unchecked_mut(self.pointer);
+                let cell = self.tape.get_unchecked_mut(self.pointer);
+                if self.unsafe_mode {
+                    // In unsafe mode, just subtract without any overflow checking
+                    *cell = cell.wrapping_sub(*n as u32);
+                } else if self.is_8bit {
+                    *cell = (*cell as u8).wrapping_sub(*n as u8) as u32;
+                } else {
+                    let cell_max = self.cell_size.as_u32();
+                    let n_mod = (*n % cell_max as usize) as u32;
                     *cell = (*cell + cell_max - n_mod) % cell_max;
                 }
                 pc + 1
             }
             Operation::LoopStart(end_pc) => {
-                unsafe {
-                    if *self.tape.get_unchecked(self.pointer) == 0 {
-                        *end_pc  // Jump to the closing bracket
-                    } else {
-                        pc + 1
-                    }
+                if *self.tape.get_unchecked(self.pointer) == 0 {
+                    *end_pc  // Jump to the closing bracket
+                } else {
+                    pc + 1
                 }
             }
             Operation::LoopEnd(start_pc) => {
-                unsafe {
-                    if *self.tape.get_unchecked(self.pointer) != 0 {
-                        *start_pc  // Jump TO the opening bracket
-                    } else {
-                        pc + 1
-                    }
+                if *self.tape.get_unchecked(self.pointer) != 0 {
+                    *start_pc  // Jump TO the opening bracket
+                } else {
+                    pc + 1
                 }
             }
             Operation::Output => {
-                unsafe {
-                    self.output.push(char::from_u32(*self.tape.get_unchecked(self.pointer)).unwrap_or('?'));
-                }
+                self.output.push(char::from_u32(*self.tape.get_unchecked(self.pointer)).unwrap_or('?'));
                 pc + 1
             }
             Operation::Input => {
@@ -293,9 +323,7 @@ impl BrainfuckInterpreter {
                 pc + 1
             }
             Operation::SetZero => {
-                unsafe {
-                    *self.tape.get_unchecked_mut(self.pointer) = 0;
-                }
+                *self.tape.get_unchecked_mut(self.pointer) = 0;
                 pc + 1
             }
             Operation::MoveValue(offset) => {
@@ -332,6 +360,54 @@ impl BrainfuckInterpreter {
                 }
                 pc + 1
             }
+            Operation::AddOffset(offset, value) => {
+                let target = if *offset >= 0 {
+                    (self.pointer + *offset as usize) % self.tape_size
+                } else {
+                    (self.pointer + self.tape_size - ((-*offset) as usize % self.tape_size)) % self.tape_size
+                };
+                
+                if self.unsafe_mode {
+                    let cell = self.tape.get_unchecked_mut(target);
+                    if *value >= 0 {
+                        *cell = cell.wrapping_add(*value as u32);
+                    } else {
+                        *cell = cell.wrapping_sub((-*value) as u32);
+                    }
+                } else {
+                    let cell_max = self.cell_size.as_u32();
+                    if *value >= 0 {
+                        self.tape[target] = (self.tape[target] + *value as u32) % cell_max;
+                    } else {
+                        self.tape[target] = (self.tape[target] + cell_max - (-*value) as u32) % cell_max;
+                    }
+                }
+                pc + 1
+            }
+            Operation::SetValue(value) => {
+                if self.unsafe_mode {
+                    *self.tape.get_unchecked_mut(self.pointer) = *value;
+                } else {
+                    self.tape[self.pointer] = *value % self.cell_size.as_u32();
+                }
+                pc + 1
+            }
+            Operation::ScanRight => {
+                while self.pointer < self.tape_size && *self.tape.get_unchecked(self.pointer) != 0 {
+                    self.pointer += 1;
+                }
+                if self.pointer >= self.tape_size {
+                    self.pointer = self.tape_size - 1;
+                }
+                pc + 1
+            }
+            Operation::ScanLeft => {
+                while self.pointer > 0 && *self.tape.get_unchecked(self.pointer) != 0 {
+                    self.pointer -= 1;
+                }
+                pc + 1
+            }
+            }
         }
     }
 
@@ -343,6 +419,7 @@ impl BrainfuckInterpreter {
             self.is_stopped = false;
             self.turbo_pc = 0;
             self.turbo_ops_executed = 0;
+            self.turbo_start_time = Some(Date::now());
         }
 
         let mut ops_in_batch = 0;
@@ -355,10 +432,37 @@ impl BrainfuckInterpreter {
         
         if self.turbo_pc >= self.compiled_ops.len() {
             self.is_running = false;
-            console::log_1(&format!("Turbo execution completed: {} operations", self.turbo_ops_executed).into());
+            
+            // Log final performance stats
+            if let Some(start_time) = self.turbo_start_time {
+                let total_time = (Date::now() - start_time) / 1000.0;
+                let ops_per_sec = self.turbo_ops_executed as f64 / total_time;
+                console::log_1(&format!("=== Turbo Execution Complete ===").into());
+                console::log_1(&format!("Total time: {:.3} seconds", total_time).into());
+                console::log_1(&format!("Source BF operations: {}", self.source_ops_count).into());
+                console::log_1(&format!("Optimized operations executed: {}", self.turbo_ops_executed).into());
+                console::log_1(&format!("Optimization ratio: {:.2}x", self.source_ops_count as f64 / self.turbo_ops_executed as f64).into());
+                console::log_1(&format!("Performance: {:.2} million ops/sec", ops_per_sec / 1_000_000.0).into());
+                console::log_1(&format!("==============================").into());
+            }
+            
             Ok(false) // No more work to do
         } else {
             Ok(true) // More work remains
+        }
+    }
+    
+    #[wasm_bindgen]
+    pub fn get_performance_stats(&self) -> String {
+        if let Some(start_time) = self.turbo_start_time {
+            let elapsed = (Date::now() - start_time) / 1000.0; // seconds
+            let ops_per_sec = self.turbo_ops_executed as f64 / elapsed;
+            format!("Operations: {} | Time: {:.3}s | Speed: {:.2}M ops/sec", 
+                self.turbo_ops_executed, 
+                elapsed,
+                ops_per_sec / 1_000_000.0)
+        } else {
+            format!("Operations executed: {}", self.turbo_ops_executed)
         }
     }
 
@@ -454,6 +558,7 @@ impl BrainfuckInterpreter {
             .ok_or_else(|| JsValue::from_str("Invalid cell size"))?;
         
         self.cell_size = cell_size;
+        self.is_8bit = cell_size.as_u32() == 256;
         self.reset();
         Ok(())
     }
@@ -466,9 +571,125 @@ impl BrainfuckInterpreter {
         self.lane_count = count;
         Ok(())
     }
+    
+    #[wasm_bindgen]
+    pub fn set_unsafe_mode(&mut self, enabled: bool) {
+        self.unsafe_mode = enabled;
+        if enabled {
+            console::log_1(&"Unsafe mode enabled: No overflow checking for maximum performance".into());
+        }
+    }
 }
 
 impl BrainfuckInterpreter {
+    // Ultra-fast execution path for 8-bit unsafe mode
+    fn run_turbo_unsafe_8bit(&mut self, mut pc: usize, ops_executed: &mut u64) {
+        unsafe {
+            let ops = &self.compiled_ops;
+            let tape = &mut self.tape;
+            let tape_size = self.tape_size;
+            
+            while pc < ops.len() && self.is_running && !self.is_paused {
+                match ops.get_unchecked(pc) {
+                    Operation::MoveRight(n) => {
+                        self.pointer = (self.pointer + n) % tape_size;
+                    }
+                    Operation::MoveLeft(n) => {
+                        self.pointer = (self.pointer + tape_size - (n % tape_size)) % tape_size;
+                    }
+                    Operation::Increment(n) => {
+                        let cell = tape.get_unchecked_mut(self.pointer);
+                        *cell = (*cell).wrapping_add(*n as u32);
+                    }
+                    Operation::Decrement(n) => {
+                        let cell = tape.get_unchecked_mut(self.pointer);
+                        *cell = (*cell).wrapping_sub(*n as u32);
+                    }
+                    Operation::LoopStart(end_pc) => {
+                        if *tape.get_unchecked(self.pointer) == 0 {
+                            pc = *end_pc;
+                        }
+                    }
+                    Operation::LoopEnd(start_pc) => {
+                        if *tape.get_unchecked(self.pointer) != 0 {
+                            pc = *start_pc - 1; // -1 because we'll increment at the end
+                        }
+                    }
+                    Operation::SetZero => {
+                        *tape.get_unchecked_mut(self.pointer) = 0;
+                    }
+                    Operation::MoveValue(offset) => {
+                        let value = *tape.get_unchecked(self.pointer);
+                        *tape.get_unchecked_mut(self.pointer) = 0;
+                        let target = if *offset >= 0 {
+                            (self.pointer + *offset as usize) % tape_size
+                        } else {
+                            (self.pointer + tape_size - ((-*offset) as usize % tape_size)) % tape_size
+                        };
+                        let target_cell = tape.get_unchecked_mut(target);
+                        *target_cell = (*target_cell).wrapping_add(value);
+                    }
+                    Operation::MultiplyMove(moves) => {
+                        let value = *tape.get_unchecked(self.pointer);
+                        *tape.get_unchecked_mut(self.pointer) = 0;
+                        
+                        for (offset, multiplier) in moves {
+                            let target = if *offset >= 0 {
+                                (self.pointer + *offset as usize) % tape_size
+                            } else {
+                                (self.pointer + tape_size - ((-*offset) as usize % tape_size)) % tape_size
+                            };
+                            let target_cell = tape.get_unchecked_mut(target);
+                            if *multiplier >= 0 {
+                                *target_cell = (*target_cell).wrapping_add((value as i64 * *multiplier as i64) as u32);
+                            } else {
+                                *target_cell = (*target_cell).wrapping_sub((value as i64 * (-*multiplier) as i64) as u32);
+                            }
+                        }
+                    }
+                    Operation::AddOffset(offset, value) => {
+                        let target = if *offset >= 0 {
+                            (self.pointer + *offset as usize) % tape_size
+                        } else {
+                            (self.pointer + tape_size - ((-*offset) as usize % tape_size)) % tape_size
+                        };
+                        let cell = tape.get_unchecked_mut(target);
+                        if *value >= 0 {
+                            *cell = (*cell).wrapping_add(*value as u32);
+                        } else {
+                            *cell = (*cell).wrapping_sub((-*value) as u32);
+                        }
+                    }
+                    Operation::SetValue(value) => {
+                        *tape.get_unchecked_mut(self.pointer) = *value;
+                    }
+                    Operation::ScanRight => {
+                        while self.pointer < tape_size && *tape.get_unchecked(self.pointer) != 0 {
+                            self.pointer += 1;
+                        }
+                        if self.pointer >= tape_size {
+                            self.pointer = tape_size - 1;
+                        }
+                    }
+                    Operation::ScanLeft => {
+                        while self.pointer > 0 && *tape.get_unchecked(self.pointer) != 0 {
+                            self.pointer -= 1;
+                        }
+                    }
+                    Operation::Output => {
+                        self.output.push(char::from_u32(*tape.get_unchecked(self.pointer)).unwrap_or('?'));
+                    }
+                    Operation::Input => {
+                        // Input not supported in turbo mode
+                    }
+                }
+                
+                pc += 1;
+                *ops_executed += 1;
+            }
+        }
+    }
+    
     fn build_loop_map(&mut self) {
         self.loop_map.clear();
         let mut stack = Vec::new();
@@ -500,6 +721,7 @@ impl BrainfuckInterpreter {
     fn compile_program(&mut self) {
         self.compiled_ops.clear();
         self.jump_table.clear();
+        self.source_ops_count = 0;
         
         // First pass: convert to basic operations
         let mut basic_ops = Vec::new();
@@ -510,22 +732,42 @@ impl BrainfuckInterpreter {
                 let op_index = basic_ops.len();
                 
                 match ch {
-                    '>' => basic_ops.push(Operation::MoveRight(1)),
-                    '<' => basic_ops.push(Operation::MoveLeft(1)),
-                    '+' => basic_ops.push(Operation::Increment(1)),
-                    '-' => basic_ops.push(Operation::Decrement(1)),
+                    '>' => {
+                        basic_ops.push(Operation::MoveRight(1));
+                        self.source_ops_count += 1;
+                    },
+                    '<' => {
+                        basic_ops.push(Operation::MoveLeft(1));
+                        self.source_ops_count += 1;
+                    },
+                    '+' => {
+                        basic_ops.push(Operation::Increment(1));
+                        self.source_ops_count += 1;
+                    },
+                    '-' => {
+                        basic_ops.push(Operation::Decrement(1));
+                        self.source_ops_count += 1;
+                    },
                     '[' => {
                         jump_stack.push(op_index);
                         basic_ops.push(Operation::LoopStart(0));
+                        self.source_ops_count += 1;
                     }
                     ']' => {
                         if let Some(start_index) = jump_stack.pop() {
                             basic_ops[start_index] = Operation::LoopStart(op_index);
                             basic_ops.push(Operation::LoopEnd(start_index));
                         }
+                        self.source_ops_count += 1;
                     }
-                    '.' => basic_ops.push(Operation::Output),
-                    ',' => basic_ops.push(Operation::Input),
+                    '.' => {
+                        basic_ops.push(Operation::Output);
+                        self.source_ops_count += 1;
+                    },
+                    ',' => {
+                        basic_ops.push(Operation::Input);
+                        self.source_ops_count += 1;
+                    },
                     _ => {}
                 }
             }
@@ -536,37 +778,45 @@ impl BrainfuckInterpreter {
         
         // Third pass: fix jump addresses after optimization
         self.fix_jump_addresses();
-        
-        console::log_1(&format!("Compiled {} operations", self.compiled_ops.len()).into());
     }
     
     fn optimize_operations(&self, ops: Vec<Operation>) -> Vec<Operation> {
         let mut optimized = Vec::new();
         let mut i = 0;
         
+        // First pass: basic optimizations
         while i < ops.len() {
             match &ops[i] {
                 Operation::LoopStart(end) => {
                     // Check for [-] pattern (clear loop)
                     if i + 2 < ops.len() && *end == i + 2 {
                         if matches!(ops[i + 1], Operation::Decrement(1)) {
-                            console::log_1(&format!("Optimizing [-] at position {}", i).into());
                             optimized.push(Operation::SetZero);
                             i += 3; // Skip the entire loop
                             continue;
                         }
                     }
                     
-                    // For now, disable complex pattern detection until we fix it
-                    // It's causing issues with complex programs like mandelbrot
-                    /*
+                    // Check for scan patterns [>] or [<]
+                    if i + 2 < ops.len() && *end == i + 2 {
+                        if matches!(ops[i + 1], Operation::MoveRight(1)) {
+                            optimized.push(Operation::ScanRight);
+                            i += 3;
+                            continue;
+                        }
+                        if matches!(ops[i + 1], Operation::MoveLeft(1)) {
+                            optimized.push(Operation::ScanLeft);
+                            i += 3;
+                            continue;
+                        }
+                    }
+                    
                     // Check for simple move patterns [->+<]
                     if let Some(pattern) = self.detect_move_pattern(&ops, i, *end) {
                         optimized.push(pattern);
                         i = *end + 1;
                         continue;
                     }
-                    */
                     
                     optimized.push(ops[i].clone());
                     i += 1;
@@ -636,6 +886,79 @@ impl BrainfuckInterpreter {
             }
         }
         
+        // Second pass: peephole optimizations
+        self.peephole_optimize(optimized)
+    }
+    
+    fn peephole_optimize(&self, ops: Vec<Operation>) -> Vec<Operation> {
+        let mut i = 0;
+        let mut optimized = Vec::new();
+        
+        while i < ops.len() {
+            match &ops[i] {
+                // Combine SetZero followed by Increment/Decrement into SetValue
+                Operation::SetZero => {
+                    if i + 1 < ops.len() {
+                        match &ops[i + 1] {
+                            Operation::Increment(n) => {
+                                optimized.push(Operation::SetValue(*n as u32));
+                                i += 2;
+                                continue;
+                            }
+                            _ => {}
+                        }
+                    }
+                    optimized.push(ops[i].clone());
+                    i += 1;
+                }
+                // Optimize pointer movements followed by operations
+                Operation::MoveRight(n) => {
+                    let mut combined_offset = *n as isize;
+                    let mut j = i + 1;
+                    let mut add_ops = Vec::new();
+                    
+                    // Look ahead for operations that can be combined
+                    while j < ops.len() {
+                        match &ops[j] {
+                            Operation::Increment(inc) => {
+                                add_ops.push((combined_offset, *inc as i32));
+                                j += 1;
+                            }
+                            Operation::Decrement(dec) => {
+                                add_ops.push((combined_offset, -(*dec as i32)));
+                                j += 1;
+                            }
+                            Operation::MoveRight(n2) => {
+                                combined_offset += *n2 as isize;
+                                j += 1;
+                            }
+                            Operation::MoveLeft(n2) => {
+                                combined_offset -= *n2 as isize;
+                                j += 1;
+                            }
+                            _ => break,
+                        }
+                    }
+                    
+                    // Emit optimized operations
+                    if !add_ops.is_empty() && combined_offset == 0 {
+                        // All operations at offsets, pointer returns to original position
+                        for (offset, value) in add_ops {
+                            optimized.push(Operation::AddOffset(offset, value));
+                        }
+                        i = j;
+                    } else {
+                        optimized.push(ops[i].clone());
+                        i += 1;
+                    }
+                }
+                _ => {
+                    optimized.push(ops[i].clone());
+                    i += 1;
+                }
+            }
+        }
+        
         optimized
     }
     
@@ -689,17 +1012,21 @@ impl BrainfuckInterpreter {
             return None;
         }
         
-        // Must decrement current cell by 1
-        if movements.get(&0) != Some(&-1) {
+        // Check if it's a valid pattern - current cell must change by exactly -1 per iteration
+        let current_cell_delta = movements.get(&0).copied().unwrap_or(0);
+        if current_cell_delta != -1 && current_cell_delta != 1 {
             return None;
         }
+        
+        // If current cell increments, we need to negate all the movements
+        let multiplier = if current_cell_delta == 1 { -1 } else { 1 };
         
         movements.remove(&0);
         
         // If only one other cell is modified by +1, it's a simple move
         if movements.len() == 1 {
             if let Some((&offset, &delta)) = movements.iter().next() {
-                if delta == 1 {
+                if delta == 1 * multiplier {
                     return Some(Operation::MoveValue(offset));
                 }
             }
@@ -707,7 +1034,9 @@ impl BrainfuckInterpreter {
         
         // Otherwise, it's a multiply-move pattern
         if !movements.is_empty() {
-            let mut moves: Vec<(isize, i32)> = movements.into_iter().collect();
+            let mut moves: Vec<(isize, i32)> = movements.into_iter()
+                .map(|(offset, delta)| (offset, delta * multiplier))
+                .collect();
             moves.sort_by_key(|&(offset, _)| offset);
             return Some(Operation::MultiplyMove(moves));
         }
