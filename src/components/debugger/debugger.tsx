@@ -1,7 +1,7 @@
 import {interpreterStore} from "./interpreter-facade.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
 import {useVirtualizer} from '@tanstack/react-virtual';
-import {useRef, useEffect} from 'react';
+import {useRef, useEffect, useState} from 'react';
 import clsx from "clsx";
 import {settingsStore} from "../../stores/settings.store.ts";
 
@@ -53,6 +53,7 @@ function Tape() {
     const pointer = interpreterState.pointer;
     const laneCount = interpreterState.laneCount;
     const compactView = settings?.debugger.compactView ?? false;
+    const [hoveredLane, setHoveredLane] = useState<number | null>(null);
 
     // Determine cell size and display parameters
     const cellInfo = tape instanceof Uint8Array
@@ -153,6 +154,8 @@ function Tape() {
                         const isNonZero = value !== 0;
                         const lane = laneCount > 1 ? index % laneCount : -1;
                         const laneColor = lane >= 0 ? LANE_COLORS[lane] : null;
+                        const isInHoveredLane = hoveredLane !== null && lane === hoveredLane;
+                        const isDimmed = hoveredLane !== null && lane !== hoveredLane;
 
                         return (
                             <div
@@ -166,6 +169,8 @@ function Tape() {
                                     transform: `translateY(-50%)`,
                                 }}
                                 className={compactView ? "p-0.5" : "p-1"}
+                                onMouseEnter={() => laneCount > 1 && setHoveredLane(lane)}
+                                onMouseLeave={() => setHoveredLane(null)}
                             >
                                 <div
                                     className={clsx(
@@ -173,14 +178,17 @@ function Tape() {
                                         compactView ? "flex flex-col items-center justify-center py-1 px-1" : "flex flex-col items-center justify-between py-2 px-1",
                                         {
                                             // Pointer styles take precedence
-                                            'border-yellow-500 bg-yellow-950/50 shadow-lg shadow-yellow-500/20 z-10': isPointer,
-                                            'scale-105': isPointer && !compactView,
+                                            'border-yellow-500 bg-yellow-950/50 shadow-lg shadow-yellow-500/20 z-10': isPointer && !isDimmed,
+                                            'scale-105': isPointer && !compactView && !isDimmed,
                                             // Lane colors for multi-lane mode (when not pointer)
-                                            [laneColor?.border || '']: laneColor && !isPointer,
-                                            [laneColor?.bg || '']: laneColor && !isPointer,
+                                            [laneColor?.border || '']: laneColor && !isPointer && !isDimmed,
+                                            [laneColor?.bg || '']: laneColor && !isPointer && !isDimmed,
                                             // Default styles for single-lane mode (when not pointer)
-                                            'border-blue-500/50 bg-blue-950/30': !laneColor && isNonZero && !isPointer,
-                                            'border-zinc-700 bg-zinc-900/50': !laneColor && !isNonZero && !isPointer,
+                                            'border-blue-500/50 bg-blue-950/30': !laneColor && isNonZero && !isPointer && !isDimmed,
+                                            'border-zinc-700 bg-zinc-900/50': !laneColor && !isNonZero && !isPointer && !isDimmed,
+                                            // Dimmed styles when hovering other lanes
+                                            'opacity-30': isDimmed,
+                                            'border-zinc-800 bg-zinc-900/20': isDimmed,
                                         }
                                     )}
                                 >
