@@ -10,10 +10,10 @@ import {ChevronDownIcon, ChevronUpIcon} from "@heroicons/react/16/solid";
 import {Sidebar} from "./components/sidebar/sidebar.tsx";
 import {editorManager} from "./services/editor-manager.service.ts";
 import {EditorStore} from "./components/editor/editor.store.ts";
-import {useEffect, useState} from "react";
+import {useEffect, useState, useCallback} from "react";
 import {EnhancedMacroTokenizer} from "./components/editor/macro-tokenizer-enhanced.ts";
 import {createMacroExpander} from "./services/macro-expander.ts";
-import {CpuChipIcon} from "@heroicons/react/24/solid";
+import {CpuChipIcon, ArrowPathIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 
 import { settingsStore } from "./stores/settings.store";
@@ -24,6 +24,7 @@ function EditorPanel() {
     const [macroEditor, setMacroEditor] = useState<EditorStore | null>(null);
     const [showMacroEditor, setShowMacroEditor] = useLocalStorageState("showMacroEditor", false);
     const settings = useStoreSubscribe(settingsStore.settings);
+    const autoExpand = settings?.macro.autoExpand ?? false;
     
     useEffect(() => {
         // Create main editor on mount
@@ -59,6 +60,58 @@ function EditorPanel() {
         };
     }, [showMacroEditor]);
     
+    // Function to expand macros
+    const expandMacros = useCallback(() => {
+        if (!macroEditor || !mainEditor) return;
+        
+        const expander = createMacroExpander();
+        const macroCode = macroEditor.getText();
+        const result = expander.expand(macroCode, {
+            stripComments: settings?.macro.stripComments ?? true,
+            collapseEmptyLines: settings?.macro.collapseEmptyLines ?? true
+        });
+        
+        if (result.errors.length > 0) {
+            // In auto mode, don't show alerts, just log
+            if (!autoExpand) {
+                console.error('Macro expansion errors:', result.errors);
+                alert(`Macro expansion failed: ${result.errors[0].message}`);
+            }
+        } else {
+            // Set expanded code to main editor
+            mainEditor.setContent(result.expanded);
+            if (!autoExpand) {
+                console.log('Macros expanded successfully');
+            }
+        }
+    }, [macroEditor, mainEditor, settings, autoExpand]);
+    
+    // Auto-expand effect
+    useEffect(() => {
+        if (!autoExpand || !macroEditor || !mainEditor) return;
+        
+        let timeoutId: number;
+        
+        // Subscribe to macro editor changes
+        const subscription = macroEditor.editorState.subscribe(() => {
+            // Clear previous timeout
+            clearTimeout(timeoutId);
+            
+            // Debounce the expansion to avoid too frequent updates
+            timeoutId = setTimeout(() => {
+                expandMacros();
+            }, 500); // 500ms delay
+        });
+        
+        // Initial expansion
+        expandMacros();
+        
+        return () => {
+            clearTimeout(timeoutId);
+            subscription.unsubscribe();
+        };
+    }, [autoExpand, macroEditor, mainEditor, settings, expandMacros]);
+    
     if (!mainEditor) {
         return <div className="v grow-1 bg-zinc-950">Loading...</div>;
     }
@@ -75,24 +128,16 @@ function EditorPanel() {
                         <IconButton
                             icon={CpuChipIcon}
                             label="Expand Macros"
-                            onClick={() => {
-                                const expander = createMacroExpander();
-                                const macroCode = macroEditor.getText();
-                                const result = expander.expand(macroCode, {
-                                    stripComments: settings?.macro.stripComments ?? true,
-                                    collapseEmptyLines: settings?.macro.collapseEmptyLines ?? true
-                                });
-                                
-                                if (result.errors.length > 0) {
-                                    // Show first error in console for now
-                                    console.error('Macro expansion errors:', result.errors);
-                                    alert(`Macro expansion failed: ${result.errors[0].message}`);
-                                } else {
-                                    // Set expanded code to main editor
-                                    mainEditor.setContent(result.expanded);
-                                    console.log('Macros expanded successfully');
-                                }
-                            }}
+                            onClick={expandMacros}
+                        />
+                        
+                        <div className="w-px h-6 bg-zinc-700 mx-1" />
+                        
+                        <IconButton
+                            icon={ArrowPathIcon}
+                            label={autoExpand ? "Auto-expand On" : "Auto-expand Off"}
+                            onClick={() => settingsStore.setMacroAutoExpand(!autoExpand)}
+                            variant={autoExpand ? "info" : "default"}
                         />
                         <button
                             className="ml-auto text-zinc-600 hover:text-zinc-400"

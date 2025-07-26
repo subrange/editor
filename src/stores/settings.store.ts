@@ -3,6 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 export interface MacroSettings {
     stripComments: boolean;
     collapseEmptyLines: boolean;
+    autoExpand: boolean;
 }
 
 export type DebuggerViewMode = 'normal' | 'compact' | 'lane';
@@ -21,7 +22,8 @@ class SettingsStore {
     public settings = new BehaviorSubject<Settings>({
         macro: {
             stripComments: this.loadFromStorage('macroStripComments', true),
-            collapseEmptyLines: this.loadFromStorage('macroCollapseEmptyLines', true)
+            collapseEmptyLines: this.loadFromStorage('macroCollapseEmptyLines', true),
+            autoExpand: this.loadFromStorage('autoExpandMacros', false)
         },
         debugger: {
             compactView: this.loadFromStorage('debuggerCompactView', false),
@@ -51,6 +53,18 @@ class SettingsStore {
             }
         });
         this.saveToStorage('macroCollapseEmptyLines', value);
+    }
+
+    setMacroAutoExpand(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            macro: {
+                ...current.macro,
+                autoExpand: value
+            }
+        });
+        this.saveToStorage('autoExpandMacros', value);
     }
 
     setDebuggerCompactView(value: boolean) {
