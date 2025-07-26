@@ -395,10 +395,10 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 // Token styles for macro syntax
 export const enhancedMacroTokenStyles: Record<MacroToken['type'], string> = {
     macro: 'text-red-400',                        // Generic macro syntax
-    macro_definition: 'text-purple-600 font-bold',   // Verified macro definitions
-    macro_name: 'text-purple-500',         // Macro name in definition
+    macro_definition: 'text-green-600',   // Verified macro definitions
+    macro_name: 'text-pink-600',         // Macro name in definition
     macro_invocation: 'text-purple-400 italic',      // Verified macro invocations
-    builtin_function: 'text-cyan-400 font-bold',     // Built-in functions like repeat
+    builtin_function: 'text-cyan-400',     // Built-in functions like repeat
     parameter: 'text-pink-400 italic',               // Parameter references
     comment: 'text-gray-500 italic',
     todo_comment: 'text-green-400/70 italic',        // Beautiful dim green for TODO comments
