@@ -10,7 +10,7 @@ import {
 export interface MacroToken {
     type: 'macro' | 'macro_definition' | 'macro_invocation' | 'builtin_function' | 
           'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 
-          'whitespace' | 'comment' | 'todo_comment' | 'unknown' | 'error' | 'parentheses' | 'braces';
+          'whitespace' | 'comment' | 'todo_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name';
     value: string;
     start: number;
     end: number;
@@ -22,6 +22,7 @@ interface MacroTokenizerState {
     expanderTokens: ExpanderToken[];
     expanderErrors: MacroExpansionError[];
     macroDefinitions: MacroDefinition[];
+    expectMacroName?: boolean;  // Track if we just saw #define
 }
 
 export class EnhancedMacroTokenizer implements ITokenizer {
@@ -59,15 +60,6 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         return { line: lastLine, column: position - this.lineOffsets[lastLine] };
     }
 
-    // Check if a position on a line overlaps with an expander token
-    private findExpanderToken(lineIndex: number, start: number, end: number): ExpanderToken | undefined {
-        const globalStart = this.lineOffsets[lineIndex] + start;
-        const globalEnd = this.lineOffsets[lineIndex] + end;
-        
-        return this.state.expanderTokens.find(token => 
-            token.range.start < globalEnd && token.range.end > globalStart
-        );
-    }
 
     // Check if a position on a line has an error
     private findError(lineIndex: number, start: number, end: number): MacroExpansionError | undefined {
@@ -82,6 +74,9 @@ export class EnhancedMacroTokenizer implements ITokenizer {
     tokenizeLine(text: string, lineIndex: number, isLastLine: boolean = false): MacroToken[] {
         const tokens: MacroToken[] = [];
         let position = 0;
+        
+        // Reset expectMacroName at the start of each line (in case previous line ended incomplete)
+        this.state.expectMacroName = false;
 
         while (position < text.length) {
             // Check for errors at this position
@@ -117,18 +112,52 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 
             // Check for macro definition (#define)
             if (!matched) {
-                const defineMatch = text.slice(position).match(/^#define\s+\w+(?:\([^)]*\))?\s*.*/);
+                const defineMatch = text.slice(position).match(/^#define\b/);
                 if (defineMatch) {
-                    const expanderToken = this.findExpanderToken(lineIndex, position, position + defineMatch[0].length);
                     tokens.push({
-                        type: expanderToken ? 'macro_definition' : 'macro',
+                        type: 'macro_definition',  // Always treat #define as a definition
                         value: defineMatch[0],
                         start: position,
                         end: position + defineMatch[0].length,
                         error: error
                     });
                     position += defineMatch[0].length;
+                    this.state.expectMacroName = true;
                     matched = true;
+                }
+            }
+
+            // Check if we're expecting a macro name after #define
+            if (!matched && this.state.expectMacroName && text.slice(position).match(/^\s+/)) {
+                // Skip whitespace but keep expectMacroName flag
+                const wsMatch = text.slice(position).match(/^\s+/)!;
+                tokens.push({
+                    type: 'whitespace',
+                    value: wsMatch[0],
+                    start: position,
+                    end: position + wsMatch[0].length
+                });
+                position += wsMatch[0].length;
+                matched = true;
+            }
+
+            // Check for macro name after #define
+            if (!matched && this.state.expectMacroName) {
+                const nameMatch = text.slice(position).match(/^[a-zA-Z_]\w*/);
+                if (nameMatch) {
+                    tokens.push({
+                        type: 'macro_name',
+                        value: nameMatch[0],
+                        start: position,
+                        end: position + nameMatch[0].length,
+                        error: error
+                    });
+                    position += nameMatch[0].length;
+                    this.state.expectMacroName = false;
+                    matched = true;
+                } else {
+                    // If we don't find a valid macro name, stop expecting one
+                    this.state.expectMacroName = false;
                 }
             }
 
@@ -136,9 +165,8 @@ export class EnhancedMacroTokenizer implements ITokenizer {
             if (!matched) {
                 const macroMatch = text.slice(position).match(/^@[a-zA-Z_]\w*/);
                 if (macroMatch) {
-                    const expanderToken = this.findExpanderToken(lineIndex, position, position + macroMatch[0].length);
                     tokens.push({
-                        type: expanderToken ? 'macro_invocation' : (error ? 'error' : 'macro'),
+                        type: 'macro_invocation',  // Always treat @name as invocation
                         value: macroMatch[0],
                         start: position,
                         end: position + macroMatch[0].length,
@@ -153,9 +181,8 @@ export class EnhancedMacroTokenizer implements ITokenizer {
             if (!matched) {
                 const builtinMatch = text.slice(position).match(/^\{repeat\b/);
                 if (builtinMatch) {
-                    const expanderToken = this.findExpanderToken(lineIndex, position, position + builtinMatch[0].length);
                     tokens.push({
-                        type: expanderToken ? 'builtin_function' : 'macro',
+                        type: 'builtin_function',  // Always treat {repeat as builtin
                         value: builtinMatch[0],
                         start: position,
                         end: position + builtinMatch[0].length,
@@ -343,11 +370,13 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         
         // Build full text and line offsets for macro expander
         this.fullText = lines.join('\n');
-        this.lineOffsets = [0];
+        this.lineOffsets = [];
         let offset = 0;
-        for (const line of lines) {
-            offset += line.length + 1; // +1 for newline
+        
+        // Calculate offset for each line start
+        for (let i = 0; i < lines.length; i++) {
             this.lineOffsets.push(offset);
+            offset += lines[i].length + (i < lines.length - 1 ? 1 : 0); // +1 for newline except last line
         }
         
         // Run macro expander to get tokens, errors, and macro definitions
@@ -365,8 +394,9 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 
 // Token styles for macro syntax
 export const enhancedMacroTokenStyles: Record<MacroToken['type'], string> = {
-    macro: 'text-purple-400',                        // Generic macro syntax
-    macro_definition: 'text-purple-500 font-bold',   // Verified macro definitions
+    macro: 'text-red-400',                        // Generic macro syntax
+    macro_definition: 'text-purple-600 font-bold',   // Verified macro definitions
+    macro_name: 'text-purple-500',         // Macro name in definition
     macro_invocation: 'text-purple-400 italic',      // Verified macro invocations
     builtin_function: 'text-cyan-400 font-bold',     // Built-in functions like repeat
     parameter: 'text-pink-400 italic',               // Parameter references
@@ -375,7 +405,7 @@ export const enhancedMacroTokenStyles: Record<MacroToken['type'], string> = {
     incdec: 'text-blue-400',
     brackets: 'text-orange-400',
     dot: 'text-teal-400 bg-zinc-700',
-    comma: 'text-teal-500 bg-zinc-700',
+    comma: 'text-teal-500',
     move: 'text-yellow-400',
     parentheses: 'text-purple-300',                  // Parentheses for macro calls
     braces: 'text-cyan-300',                         // Braces for builtin functions

@@ -266,14 +266,14 @@ function LinesPanel({ store }: LinesPanelProps) {
             return (tokenizer as EnhancedMacroTokenizer).state.expanderErrors || [];
         }
         return [];
-    }, [isEnhancedMacro, tokenizer]);
+    }, [isEnhancedMacro, tokenizer, tokenizedLines]);
     
     const availableMacros: MacroDefinition[] = useMemo(() => {
         if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
             return (tokenizer as EnhancedMacroTokenizer).state.macroDefinitions || [];
         }
         return [];
-    }, [isEnhancedMacro, tokenizer]);
+    }, [isEnhancedMacro, tokenizer, tokenizedLines]);
 
     // Track cmd/ctrl key state
     useEffect(() => {
@@ -413,16 +413,25 @@ function LinesPanel({ store }: LinesPanelProps) {
             
             // Extract macro name from the token value (remove @ and parameters)
             const macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
-            if (!macroName) return;
+            if (!macroName) {
+                console.log('Could not extract macro name from:', token.value);
+                return;
+            }
+            
+            console.log('Looking for macro:', macroName);
+            console.log('Available macros:', availableMacros.map(m => m.name));
             
             // Find the macro definition
             const macroDef = availableMacros.find(m => m.name === macroName);
             if (macroDef && macroDef.sourceLocation) {
+                console.log('Jumping to:', macroDef.sourceLocation);
                 // Jump to the macro definition
                 store.setCursorPosition({
                     line: macroDef.sourceLocation.line,
                     column: macroDef.sourceLocation.column
                 });
+            } else {
+                console.log('Macro definition not found or has no source location');
             }
         }
     };
