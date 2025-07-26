@@ -97,40 +97,40 @@ Hell yeah! Let me build you the complete reference table with all the juicy deta
 
 ### Detailed Instruction Table
 
-| Opcode | Mnemonic | Format | Operation | Description | Example | Cycles |
-|--------|----------|--------|-----------|-------------|---------|--------|
-| **0x00** | NOP | R | - | No operation, advance PC | `NOP` | 1 |
-| **0x01** | ADD | R | rd = rs + rt | Add two registers | `ADD R3,R1,R2` | 1 |
-| **0x02** | SUB | R | rd = rs - rt | Subtract rt from rs | `SUB R3,R1,R2` | 1 |
-| **0x03** | AND | R | rd = rs & rt | Bitwise AND | `AND R3,R1,R2` | 1 |
-| **0x04** | OR | R | rd = rs \| rt | Bitwise OR | `OR R3,R1,R2` | 1 |
-| **0x05** | XOR | R | rd = rs ^ rt | Bitwise XOR | `XOR R3,R1,R2` | 1 |
-| **0x06** | SLL | R | rd = rs << (rt & 15) | Shift left logical | `SLL R3,R1,R2` | 1 |
-| **0x07** | SRL | R | rd = rs >> (rt & 15) | Shift right logical (no sign extend) | `SRL R3,R1,R2` | 1 |
-| **0x08** | SLT | R | rd = (rs < rt) ? 1 : 0 | Set if less than (signed) | `SLT R3,R1,R2` | 1 |
-| **0x09** | SLTU | R | rd = (rs < rt) ? 1 : 0 | Set if less than (unsigned) | `SLTU R3,R1,R2` | 1 |
-| | | | | | | |
-| **0x10** | ADDI | I | rd = rs + sign_ext(imm) | Add immediate (-32 to +31) | `ADDI R2,R1,10` | 1 |
-| **0x11** | ANDI | I | rd = rs & zero_ext(imm) | AND with immediate (0-63) | `ANDI R2,R1,0x3F` | 1 |
-| **0x12** | ORI | I | rd = rs \| zero_ext(imm) | OR with immediate (0-63) | `ORI R2,R1,0x0F` | 1 |
-| **0x13** | LUI | I | rd = imm << 10 | Load upper immediate | `LUI R1,0x3F` | 1 |
-| **0x14** | SLLI | I | rd = rs << (imm & 15) | Shift left by immediate | `SLLI R2,R1,4` | 1 |
-| **0x15** | SRLI | I | rd = rs >> (imm & 15) | Shift right by immediate | `SRLI R2,R1,4` | 1 |
-| | | | | | | |
-| **0x20** | LW | I | rd = mem[rs + sign_ext(imm)] | Load word (16-bit) | `LW R2,R1,8` | 2 |
-| **0x21** | SW | I | mem[rs + sign_ext(imm)] = rd | Store word (16-bit) | `SW R2,R1,8` | 2 |
-| **0x22** | LB | I | rd = byte mem[rs + sign_ext(imm)] | Load byte (sign extend) | `LB R2,R1,0` | 2 |
-| **0x23** | SB | I | byte mem[rs + sign_ext(imm)] = rd | Store byte (low 8 bits) | `SB R2,R1,0` | 2 |
-| | | | | | | |
-| **0x30** | BEQ | I | if(rs==rt) PC += sign_ext(imm)*2 | Branch if equal | `BEQ R1,R2,loop` | 1-2 |
-| **0x31** | BNE | I | if(rs!=rt) PC += sign_ext(imm)*2 | Branch if not equal | `BNE R1,R2,skip` | 1-2 |
-| **0x32** | BLT | I | if(rs<rt) PC += sign_ext(imm)*2 | Branch if less than | `BLT R1,R2,less` | 1-2 |
-| **0x33** | BGE | I | if(rs>=rt) PC += sign_ext(imm)*2 | Branch if greater/equal | `BGE R1,R2,more` | 1-2 |
-| | | | | | | |
-| **0x38** | J | J | PC = addr * 2 | Jump to address | `J start` | 2 |
-| **0x39** | JAL | J | R7 = PC+2; PC = addr*2 | Jump and link (call) | `JAL printf` | 2 |
-| **0x3A** | JR | R | PC = rs | Jump to register | `JR R1` | 2 |
-| **0x3B** | JALR | R | rd = PC+2; PC = rs | Jump and link register | `JALR R7,R1` | 2 |
-| | | | | | | |
-| **0x3E** | TRAP | J | System call | Trap to OS/BIOS | `TRAP 0x10` | 3+ |
-| **0x3F** | HALT | J | Stop execution | Halt processor | `HALT` | 1 |
+| Opcode   | Mnemonic | Format | Operation                         | Description                          | Example           | Cycles |
+|----------|----------|--------|-----------------------------------|--------------------------------------|-------------------|--------|
+| **0x00** | NOP      | R      | -                                 | No operation, advance PC             | `NOP`             | 1      |
+| **0x01** | ADD      | R      | rd = rs + rt                      | Add two registers                    | `ADD R3,R1,R2`    | 1      |
+| **0x02** | SUB      | R      | rd = rs - rt                      | Subtract rt from rs                  | `SUB R3,R1,R2`    | 1      |
+| **0x03** | AND      | R      | rd = rs & rt                      | Bitwise AND                          | `AND R3,R1,R2`    | 1      |
+| **0x04** | OR       | R      | rd = rs \| rt                     | Bitwise OR                           | `OR R3,R1,R2`     | 1      |
+| **0x05** | XOR      | R      | rd = rs ^ rt                      | Bitwise XOR                          | `XOR R3,R1,R2`    | 1      |
+| **0x06** | SLL      | R      | rd = rs << (rt & 15)              | Shift left logical                   | `SLL R3,R1,R2`    | 1      |
+| **0x07** | SRL      | R      | rd = rs >> (rt & 15)              | Shift right logical (no sign extend) | `SRL R3,R1,R2`    | 1      |
+| **0x08** | SLT      | R      | rd = (rs < rt) ? 1 : 0            | Set if less than (signed)            | `SLT R3,R1,R2`    | 1      |
+| **0x09** | SLTU     | R      | rd = (rs < rt) ? 1 : 0            | Set if less than (unsigned)          | `SLTU R3,R1,R2`   | 1      |
+|          |          |        |                                   |                                      |                   |        |
+| **0x10** | ADDI     | I      | rd = rs + sign_ext(imm)           | Add immediate (-32 to +31)           | `ADDI R2,R1,10`   | 1      |
+| **0x11** | ANDI     | I      | rd = rs & zero_ext(imm)           | AND with immediate (0-63)            | `ANDI R2,R1,0x3F` | 1      |
+| **0x12** | ORI      | I      | rd = rs \| zero_ext(imm)          | OR with immediate (0-63)             | `ORI R2,R1,0x0F`  | 1      |
+| **0x13** | LUI      | I      | rd = imm << 10                    | Load upper immediate                 | `LUI R1,0x3F`     | 1      |
+| **0x14** | SLLI     | I      | rd = rs << (imm & 15)             | Shift left by immediate              | `SLLI R2,R1,4`    | 1      |
+| **0x15** | SRLI     | I      | rd = rs >> (imm & 15)             | Shift right by immediate             | `SRLI R2,R1,4`    | 1      |
+|          |          |        |                                   |                                      |                   |        |
+| **0x20** | LW       | I      | rd = mem[rs + sign_ext(imm)]      | Load word (16-bit)                   | `LW R2,R1,8`      | 2      |
+| **0x21** | SW       | I      | mem[rs + sign_ext(imm)] = rd      | Store word (16-bit)                  | `SW R2,R1,8`      | 2      |
+| **0x22** | LB       | I      | rd = byte mem[rs + sign_ext(imm)] | Load byte (sign extend)              | `LB R2,R1,0`      | 2      |
+| **0x23** | SB       | I      | byte mem[rs + sign_ext(imm)] = rd | Store byte (low 8 bits)              | `SB R2,R1,0`      | 2      |
+|          |          |        |                                   |                                      |                   |        |
+| **0x30** | BEQ      | I      | if(rs==rt) PC += sign_ext(imm)*2  | Branch if equal                      | `BEQ R1,R2,loop`  | 1-2    |
+| **0x31** | BNE      | I      | if(rs!=rt) PC += sign_ext(imm)*2  | Branch if not equal                  | `BNE R1,R2,skip`  | 1-2    |
+| **0x32** | BLT      | I      | if(rs<rt) PC += sign_ext(imm)*2   | Branch if less than                  | `BLT R1,R2,less`  | 1-2    |
+| **0x33** | BGE      | I      | if(rs>=rt) PC += sign_ext(imm)*2  | Branch if greater/equal              | `BGE R1,R2,more`  | 1-2    |
+|          |          |        |                                   |                                      |                   |        |
+| **0x38** | J        | J      | PC = addr * 2                     | Jump to address                      | `J start`         | 2      |
+| **0x39** | JAL      | J      | R7 = PC+2; PC = addr*2            | Jump and link (call)                 | `JAL printf`      | 2      |
+| **0x3A** | JR       | R      | PC = rs                           | Jump to register                     | `JR R1`           | 2      |
+| **0x3B** | JALR     | R      | rd = PC+2; PC = rs                | Jump and link register               | `JALR R7,R1`      | 2      |
+|          |          |        |                                   |                                      |                   |        |
+| **0x3E** | TRAP     | J      | System call                       | Trap to OS/BIOS                      | `TRAP 0x10`       | 3+     |
+| **0x3F** | HALT     | J      | Stop execution                    | Halt processor                       | `HALT`            | 1      |

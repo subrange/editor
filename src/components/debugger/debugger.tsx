@@ -57,6 +57,7 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
     const containerRef = useRef<HTMLDivElement>(null);
     const [hoveredRow, setHoveredRow] = useState<number | null>(null);
     const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
+    const [scrollPos, setScrollPos] = useState({ x: 0, y: 0 });
     
     const CELL_WIDTH = 60;
     const CELL_HEIGHT = 48;
@@ -145,25 +146,92 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
             </div>
             
             {/* Tape visualization */}
-            <div
-                ref={containerRef}
-                className="flex-1 overflow-auto relative"
-                style={{
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: '#3f3f46 #18181b'
-                }}
-            >
-                <div
+            <div className="flex-1 flex flex-col relative">
+                {/* Column headers */}
+                <div 
+                    className="h-6 bg-zinc-900 border-b border-zinc-800 overflow-hidden sticky top-0 z-20"
                     style={{
-                        width: `${virtualizer.getTotalSize()}px`,
-                        minHeight: '100%',
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        paddingTop: '24px',
-                        paddingBottom: '24px',
+                        paddingLeft: '48px', // Space for lane numbers
                     }}
                 >
+                    <div
+                        style={{
+                            width: `${virtualizer.getTotalSize()}px`,
+                            position: 'relative',
+                            height: '100%',
+                            transform: `translateX(-${scrollPos.x}px)`,
+                        }}
+                    >
+                        {virtualizer.getVirtualItems().map((virtualColumn) => (
+                            <div
+                                key={virtualColumn.key}
+                                style={{
+                                    position: 'absolute',
+                                    left: `${virtualColumn.start}px`,
+                                    width: `${CELL_WIDTH}px`,
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                                className="text-[10px] font-mono text-zinc-400 border-r border-zinc-800"
+                            >
+                                {virtualColumn.index}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                
+                {/* Main content area with lane numbers and cells */}
+                <div className="flex-1 flex relative">
+                    {/* Lane numbers */}
+                    <div className="w-12 bg-zinc-900 border-r border-zinc-800 absolute left-0 z-10 overflow-hidden" style={{ height: '100%' }}>
+                        <div 
+                            style={{
+                                transform: `translateY(-${scrollPos.y}px)`,
+                                paddingTop: '24px',
+                                paddingBottom: '24px',
+                            }}
+                        >
+                            {Array.from({ length: laneCount }, (_, laneIndex) => (
+                                <div
+                                    key={laneIndex}
+                                    className="flex items-center justify-center text-xs font-mono text-zinc-400"
+                                    style={{ 
+                                        height: `${CELL_HEIGHT + 8}px`, // 8px for gap
+                                    }}
+                                >
+                                    {laneIndex}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    {/* Scrollable tape content */}
+                    <div
+                        ref={containerRef}
+                        className="flex-1 overflow-auto relative"
+                        style={{
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: '#3f3f46 #18181b',
+                            paddingLeft: '48px', // Space for lane numbers
+                        }}
+                        onScroll={(e) => {
+                            const target = e.target as HTMLDivElement;
+                            setScrollPos({ x: target.scrollLeft, y: target.scrollTop });
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: `${virtualizer.getTotalSize()}px`,
+                                minHeight: '100%',
+                                position: 'relative',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                paddingTop: '24px',
+                                paddingBottom: '24px',
+                            }}
+                        >
                     {virtualizer.getVirtualItems().map((virtualColumn) => {
                         const columnIndex = virtualColumn.index;
                         const startIndex = columnIndex * laneCount;
@@ -244,6 +312,13 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
                             </div>
                         );
                     })}
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Corner cell */}
+                <div className="absolute top-0 left-0 w-12 h-6 bg-zinc-950 border-r border-b border-zinc-700 z-30 flex items-center justify-center">
+                    <span className="text-[9px] font-mono text-zinc-500">W/C</span>
                 </div>
             </div>
             
@@ -252,7 +327,7 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
                 <div className="flex items-center gap-3">
                     <span>Memory: {tape.length.toLocaleString()} cells</span>
                     <span>•</span>
-                    <span>{columnsCount} columns × {laneCount} lanes</span>
+                    <span>{columnsCount} words × {laneCount} lanes</span>
                 </div>
                 <span>Scroll horizontally or use mouse wheel</span>
             </div>
