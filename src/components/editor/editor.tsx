@@ -3,9 +3,9 @@ import {useStoreSubscribe, useStoreSubscribeToField} from "../../hooks/use-store
 import {EditorStore, type Line} from "./editor.store.ts";
 import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
-import {useMemo, useRef, useLayoutEffect} from "react";
+import {useMemo, useRef, useLayoutEffect, useState, useEffect} from "react";
 import {tokenStyles} from "./tokenizer.ts";
-import {enhancedMacroTokenStyles, EnhancedMacroTokenizer} from "./macro-tokenizer-enhanced.ts";
+import {enhancedMacroTokenStyles, EnhancedMacroTokenizer, type MacroToken} from "./macro-tokenizer-enhanced.ts";
 import {ErrorDecorations} from "./error-decorations.tsx";
 import {type MacroExpansionError, type MacroDefinition} from "../../services/macro-expander.ts";
 import {MacroAutocomplete} from "./macro-autocomplete.tsx";
@@ -241,6 +241,7 @@ function LinesPanel({ store }: LinesPanelProps) {
     const charWidth = useMemo(() => measureCharacterWidth(), []);
     const isDraggingRef = useRef(false);
     const dragStartedRef = useRef(false);
+    const [isMetaKeyHeld, setIsMetaKeyHeld] = useState(false);
 
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
     const currentDebuggingLine = useStoreSubscribeToField(interpreterStore.currentChar, "line");
@@ -256,7 +257,6 @@ function LinesPanel({ store }: LinesPanelProps) {
     }, [lines, tokenizer]);
     
     // Determine which token styles to use based on tokenizer type
-    const isMacroEditor = store.getId() === 'macro';
     const isEnhancedMacro = tokenizer instanceof EnhancedMacroTokenizer;
     const styles = isEnhancedMacro ? enhancedMacroTokenStyles : tokenStyles;
     
@@ -266,14 +266,37 @@ function LinesPanel({ store }: LinesPanelProps) {
             return (tokenizer as EnhancedMacroTokenizer).state.expanderErrors || [];
         }
         return [];
-    }, [tokenizedLines, isEnhancedMacro, tokenizer]);
+    }, [isEnhancedMacro, tokenizer]);
     
     const availableMacros: MacroDefinition[] = useMemo(() => {
         if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
             return (tokenizer as EnhancedMacroTokenizer).state.macroDefinitions || [];
         }
         return [];
-    }, [tokenizedLines, isEnhancedMacro, tokenizer]);
+    }, [isEnhancedMacro, tokenizer]);
+
+    // Track cmd/ctrl key state
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey) {
+                setIsMetaKeyHeld(true);
+            }
+        };
+
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (!e.metaKey && !e.ctrlKey) {
+                setIsMetaKeyHeld(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []);
 
     // Helper to convert mouse position to text position
     const getPositionFromMouse = (e: React.MouseEvent) => {
@@ -382,7 +405,29 @@ function LinesPanel({ store }: LinesPanelProps) {
         document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const renderLine = (line: Line, lineIndex: number) => {
+    const handleTokenClick = (e: React.MouseEvent, token: MacroToken) => {
+        // Check if cmd/ctrl is held and we're clicking on a macro invocation
+        if ((e.metaKey || e.ctrlKey) && token.type === 'macro_invocation' && isEnhancedMacro) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Extract macro name from the token value (remove @ and parameters)
+            const macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+            if (!macroName) return;
+            
+            // Find the macro definition
+            const macroDef = availableMacros.find(m => m.name === macroName);
+            if (macroDef && macroDef.sourceLocation) {
+                // Jump to the macro definition
+                store.setCursorPosition({
+                    line: macroDef.sourceLocation.line,
+                    column: macroDef.sourceLocation.column
+                });
+            }
+        }
+    };
+
+    const renderLine = (_line: Line, lineIndex: number) => {
         const tokens = tokenizedLines[lineIndex] || [];
 
         const hasBreakpoint = breakpoints.some(bp => bp.line === lineIndex);
@@ -405,7 +450,10 @@ function LinesPanel({ store }: LinesPanelProps) {
                     tokens.map((token, tokenIndex) => (
                         <span
                             key={tokenIndex}
-                            className={styles[token.type as keyof typeof styles] || ''}
+                            className={clsx(styles[token.type as keyof typeof styles] || '', {
+                                'cursor-pointer hover:underline': isMetaKeyHeld && token.type === 'macro_invocation' && isEnhancedMacro
+                            })}
+                            onClick={(e) => handleTokenClick(e, token)}
                         >
                             {token.value}
                         </span>

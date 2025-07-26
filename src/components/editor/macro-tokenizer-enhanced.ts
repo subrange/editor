@@ -7,10 +7,10 @@ import {
 } from "../../services/macro-expander";
 
 // Token types for macro syntax
-interface MacroToken {
+export interface MacroToken {
     type: 'macro' | 'macro_definition' | 'macro_invocation' | 'builtin_function' | 
           'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 
-          'whitespace' | 'comment' | 'todo_comment' | 'unknown' | 'error';
+          'whitespace' | 'comment' | 'todo_comment' | 'unknown' | 'error' | 'parentheses' | 'braces';
     value: string;
     start: number;
     end: number;
@@ -134,7 +134,7 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 
             // Check for macro invocation (@macroName)
             if (!matched) {
-                const macroMatch = text.slice(position).match(/^@[a-zA-Z_]\w*(?:\([^)]*\))?/);
+                const macroMatch = text.slice(position).match(/^@[a-zA-Z_]\w*/);
                 if (macroMatch) {
                     const expanderToken = this.findExpanderToken(lineIndex, position, position + macroMatch[0].length);
                     tokens.push({
@@ -149,9 +149,9 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 }
             }
 
-            // Check for built-in function ({repeat(...)})
+            // Check for built-in function ({repeat)
             if (!matched) {
-                const builtinMatch = text.slice(position).match(/^\{repeat\s*\([^)]+\)\}/);
+                const builtinMatch = text.slice(position).match(/^\{repeat\b/);
                 if (builtinMatch) {
                     const expanderToken = this.findExpanderToken(lineIndex, position, position + builtinMatch[0].length);
                     tokens.push({
@@ -280,6 +280,32 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 }
             }
 
+            // Parentheses
+            if (!matched && (text[position] === '(' || text[position] === ')')) {
+                tokens.push({
+                    type: 'parentheses',
+                    value: text[position],
+                    start: position,
+                    end: position + 1,
+                    error: error
+                });
+                position++;
+                matched = true;
+            }
+
+            // Braces
+            if (!matched && (text[position] === '{' || text[position] === '}')) {
+                tokens.push({
+                    type: 'braces',
+                    value: text[position],
+                    start: position,
+                    end: position + 1,
+                    error: error
+                });
+                position++;
+                matched = true;
+            }
+
             // Whitespace
             if (!matched) {
                 const wsMatch = text.slice(position).match(/^\s+/);
@@ -351,6 +377,8 @@ export const enhancedMacroTokenStyles: Record<MacroToken['type'], string> = {
     dot: 'text-teal-400 bg-zinc-700',
     comma: 'text-teal-500 bg-zinc-700',
     move: 'text-yellow-400',
+    parentheses: 'text-purple-300',                  // Parentheses for macro calls
+    braces: 'text-cyan-300',                         // Braces for builtin functions
     unknown: 'text-gray-500 italic',
     error: 'text-red-500 underline decoration-wavy', // Error styling
     whitespace: ''
