@@ -1,19 +1,5 @@
 ## Practical RISC Instruction Set (32 instructions)
 
-### Core Principles
-- **ALL instructions are 16-bit** (no variable length bullshit)
-- **8 general purpose 16-bit registers** (R0-R7)
-- **Load/Store architecture** (only LW/SW touch memory)
-- **Fixed 2-cycle memory access**, 1-cycle everything else
-
-### Instruction Formats (just 3, nice and clean)
-
-```
-Type R: [OOOOOO RD RS RT]     - Register ops
-Type I: [OOOOOO RD RS IIIIII] - Immediate (6-bit)
-Type J: [OOOOOO AAAAAAAAAA]   - Jump (10-bit address)
-```
-
 ### The Instructions
 
 | Opcode | Mnemonic | Format | Description |

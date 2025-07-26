@@ -16,8 +16,6 @@ import {createMacroExpander} from "./services/macro-expander.ts";
 import {CpuChipIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 
-
-
 import { settingsStore } from "./stores/settings.store";
 import { useStoreSubscribe } from "./hooks/use-store-subscribe";
 
@@ -138,7 +136,7 @@ function DebugPanel() {
     const viewMode = settings?.debugger.viewMode ?? 'normal';
 
     return <div className={clsx("v bg-zinc-900 transition-all", {
-        "h-80 min-h-80": !collapsed && viewMode === 'lane',
+        "h-96 min-h-96": !collapsed && viewMode === 'lane',
         "h-64 min-h-64": !collapsed && viewMode === 'normal',
         "h-36 min-h-36": !collapsed && viewMode === 'compact',
         "h-8 min-h-8": collapsed,

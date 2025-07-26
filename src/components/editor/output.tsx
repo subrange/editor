@@ -23,7 +23,7 @@ export function Output() {
 
     return <div className={clsx(
         "v  bg-zinc-900 transition-all", {
-            "h-32 min-h-32": !collapsed,
+            "h-96 min-h-96": !collapsed,
             "h-8 min-h-8": collapsed,
         }
     )}>

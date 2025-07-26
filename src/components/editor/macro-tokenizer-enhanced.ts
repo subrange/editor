@@ -10,7 +10,7 @@ import {
 export interface MacroToken {
     type: 'macro' | 'macro_definition' | 'macro_invocation' | 'builtin_function' | 
           'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 
-          'whitespace' | 'comment' | 'todo_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name';
+          'whitespace' | 'comment' | 'todo_comment' | 'mark_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name' | 'number';
     value: string;
     start: number;
     end: number;
@@ -23,6 +23,8 @@ interface MacroTokenizerState {
     expanderErrors: MacroExpansionError[];
     macroDefinitions: MacroDefinition[];
     expectMacroName?: boolean;  // Track if we just saw #define
+    inMacroDefinition?: boolean; // Track if we're in a macro definition line
+    currentLineParams?: Set<string>;  // Parameters for current macro definition line
 }
 
 export class EnhancedMacroTokenizer implements ITokenizer {
@@ -75,8 +77,26 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         const tokens: MacroToken[] = [];
         let position = 0;
         
-        // Reset expectMacroName at the start of each line (in case previous line ended incomplete)
+        // Reset state at the start of each line
         this.state.expectMacroName = false;
+        
+        // Check if this line contains a macro definition and extract parameters
+        if (text.includes('#define')) {
+            this.state.inMacroDefinition = true;
+            this.state.currentLineParams = new Set<string>();
+            
+            // Extract parameters from the definition
+            const defineMatch = text.match(/#define\s+\w+\s*\(([^)]*)\)/);
+            if (defineMatch && defineMatch[1]) {
+                const params = defineMatch[1].split(',').map(p => p.trim());
+                params.forEach(p => {
+                    if (p) this.state.currentLineParams!.add(p);
+                });
+            }
+        } else {
+            this.state.inMacroDefinition = false;
+            this.state.currentLineParams = undefined;
+        }
 
         while (position < text.length) {
             // Check for errors at this position
@@ -154,6 +174,7 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                     });
                     position += nameMatch[0].length;
                     this.state.expectMacroName = false;
+                    
                     matched = true;
                 } else {
                     // If we don't find a valid macro name, stop expecting one
@@ -223,8 +244,9 @@ export class EnhancedMacroTokenizer implements ITokenizer {
             if (!matched && text.slice(position, position + 2) === '//') {
                 const commentText = text.slice(position);
                 const isTodoComment = /^\/\/\s*TODO:/i.test(commentText);
+                const isMarkComment = /^\/\/\s*MARK:/i.test(commentText);
                 tokens.push({
-                    type: isTodoComment ? 'todo_comment' : 'comment',
+                    type: isMarkComment ? 'mark_comment' : (isTodoComment ? 'todo_comment' : 'comment'),
                     value: commentText,
                     start: position,
                     end: text.length
@@ -309,6 +331,7 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 
             // Parentheses
             if (!matched && (text[position] === '(' || text[position] === ')')) {
+                
                 tokens.push({
                     type: 'parentheses',
                     value: text[position],
@@ -333,6 +356,7 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 matched = true;
             }
 
+
             // Whitespace
             if (!matched) {
                 const wsMatch = text.slice(position).match(/^\s+/);
@@ -344,6 +368,38 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                         end: position + wsMatch[0].length
                     });
                     position += wsMatch[0].length;
+                    matched = true;
+                }
+            }
+
+            // Check for numbers
+            if (!matched) {
+                const numberMatch = text.slice(position).match(/^\d+/);
+                if (numberMatch) {
+                    tokens.push({
+                        type: 'number',
+                        value: numberMatch[0],
+                        start: position,
+                        end: position + numberMatch[0].length,
+                        error: error
+                    });
+                    position += numberMatch[0].length;
+                    matched = true;
+                }
+            }
+
+            // Check for parameter names in macro definition
+            if (!matched && this.state.currentLineParams && this.state.currentLineParams.size > 0) {
+                const identMatch = text.slice(position).match(/^[a-zA-Z_]\w*/);
+                if (identMatch && this.state.currentLineParams.has(identMatch[0])) {
+                    tokens.push({
+                        type: 'parameter',
+                        value: identMatch[0],
+                        start: position,
+                        end: position + identMatch[0].length,
+                        error: error
+                    });
+                    position += identMatch[0].length;
                     matched = true;
                 }
             }
@@ -394,23 +450,25 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 
 // Token styles for macro syntax
 export const enhancedMacroTokenStyles: Record<MacroToken['type'], string> = {
-    macro: 'text-red-400',                        // Generic macro syntax
-    macro_definition: 'text-green-600',   // Verified macro definitions
-    macro_name: 'text-pink-600',         // Macro name in definition
-    macro_invocation: 'text-purple-400 italic',      // Verified macro invocations
-    builtin_function: 'text-cyan-400',     // Built-in functions like repeat
-    parameter: 'text-pink-400 italic',               // Parameter references
-    comment: 'text-gray-500 italic',
-    todo_comment: 'text-green-400/70 italic',        // Beautiful dim green for TODO comments
-    incdec: 'text-blue-400',
-    brackets: 'text-orange-400',
-    dot: 'text-teal-400 bg-zinc-700',
-    comma: 'text-teal-500',
-    move: 'text-yellow-400',
-    parentheses: 'text-purple-300',                  // Parentheses for macro calls
-    braces: 'text-cyan-300',                         // Braces for builtin functions
-    unknown: 'text-gray-500 italic',
-    error: 'text-red-500 underline decoration-wavy', // Error styling
+    macro: 'text-red-300/85',                        // Generic macro syntax
+    macro_definition: 'text-emerald-500/90',         // Verified macro definitions
+    macro_name: 'text-rose-400/85',                  // Macro name in definition
+    macro_invocation: 'text-violet-300/85 italic',   // Verified macro invocations
+    builtin_function: 'text-sky-400/85',             // Built-in functions like repeat
+    parameter: 'text-pink-300/80 italic',            // Parameter references
+    number: 'text-amber-400/80',                     // Numeric literals
+    comment: 'text-gray-400/85 italic',
+    todo_comment: 'text-emerald-300/75 italic',      // Beautiful dim green for TODO comments
+    mark_comment: 'text-yellow-300 bg-yellow-900/30', // MARK comments with yellow background
+    incdec: 'text-blue-300/85',
+    brackets: 'text-orange-300/85',
+    dot: 'text-teal-300/90 bg-zinc-800/40',
+    comma: 'text-teal-300/80',
+    move: 'text-yellow-400/80',
+    parentheses: 'text-violet-200/70',               // Parentheses for macro calls
+    braces: 'text-sky-200/70',                       // Braces for builtin functions
+    unknown: 'text-gray-500/75 italic',
+    error: 'text-red-300/90 underline decoration-wavy', // Error styling
     whitespace: ''
 };
 

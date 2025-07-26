@@ -39,6 +39,13 @@ class KeybindingsService {
             return;
         }
 
+        // Also let's allow default behavior for some keys like F1-F12, Escape, cmd+R, cmd+opt+I
+        if (["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "Escape"].includes(event.key) ||
+            (event.metaKey && event.key === 'r') ||
+            (event.metaKey && event.altKey && event.key === 'i')) {
+            return;
+        }
+
         event.preventDefault();
 
         const key = event.key.toLowerCase();

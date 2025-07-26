@@ -213,11 +213,11 @@ export class Tokenizer {
 // Token styles
 export const tokenStyles: Record<Token['type'], string> = {
     comment: 'text-gray-500 italic',
-    incdec: 'text-blue-400',
-    brackets: 'text-orange-400',
+    incdec: 'text-blue-400/80',
+    brackets: 'text-orange-400/80',
     dot: 'text-teal-400 bg-zinc-700',
     comma: 'text-teal-500 bg-zinc-700',
-    move: 'text-yellow-400',
+    move: 'text-yellow-400/80',
 
     unknown: 'text-gray-500 italic',
 
