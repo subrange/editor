@@ -10,7 +10,7 @@ import {
 interface MacroToken {
     type: 'macro' | 'macro_definition' | 'macro_invocation' | 'builtin_function' | 
           'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 
-          'whitespace' | 'comment' | 'unknown' | 'error';
+          'whitespace' | 'comment' | 'todo_comment' | 'unknown' | 'error';
     value: string;
     start: number;
     end: number;
@@ -194,9 +194,11 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 
             // Single-line comment
             if (!matched && text.slice(position, position + 2) === '//') {
+                const commentText = text.slice(position);
+                const isTodoComment = /^\/\/\s*TODO:/i.test(commentText);
                 tokens.push({
-                    type: 'comment',
-                    value: text.slice(position),
+                    type: isTodoComment ? 'todo_comment' : 'comment',
+                    value: commentText,
                     start: position,
                     end: text.length
                 });
@@ -343,6 +345,7 @@ export const enhancedMacroTokenStyles: Record<MacroToken['type'], string> = {
     builtin_function: 'text-cyan-400 font-bold',     // Built-in functions like repeat
     parameter: 'text-pink-400 italic',               // Parameter references
     comment: 'text-gray-500 italic',
+    todo_comment: 'text-green-400/70 italic',        // Beautiful dim green for TODO comments
     incdec: 'text-blue-400',
     brackets: 'text-orange-400',
     dot: 'text-teal-400 bg-zinc-700',
