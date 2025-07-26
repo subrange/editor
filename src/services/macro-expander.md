@@ -53,6 +53,19 @@ interface MacroToken {
 #define macroName(param1, param2, ...) body
 ```
 
+**Multiline Macros**: Use backslash (`\`) for line continuation:
+```brainfuck
+#define longMacro first_part \
+  second_part \
+  third_part
+
+#define complex(x, y) {repeat(x, +)} \
+  > \
+  {repeat(y, -)} \
+  < \
+  [-]
+```
+
 ### Macro Invocation
 
 ```brainfuck
@@ -115,6 +128,29 @@ interface MacroToken {
 // Using nested macros
 @clear_two
 @clear_next
+```
+
+### Multiline Macros
+
+```brainfuck
+// Define a complex Hello World macro using line continuation
+#define hello_world ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++. \
+>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>
+
+// Use the multiline macro
+@hello_world
+
+// Parameterized multiline macro for copying values
+#define copy(n) [-@next(n)+>+ \
+  @prev(n)<]@next(n)[- \
+  @prev(n)+@next(n)]@prev(n)
+
+// Define next and prev macros
+#define next(n) {repeat(n, >)}
+#define prev(n) {repeat(n, <)}
+
+// Use the copy macro
+@copy(1)  // Copy value from current cell to next cell
 ```
 
 ### Real-World Example: Hello World

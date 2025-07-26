@@ -8,7 +8,7 @@ describe('MacroExpander', () => {
     it('should expand a simple macro', () => {
       const input = `#define clear [-]
 @clear`;
-      const result = expander.expand(input);
+      const result = expander.expand(input, { collapseEmptyLines: false });
       expect(result.expanded).toBe('\n[-]');
       expect(result.errors).toHaveLength(0);
     });
@@ -238,6 +238,82 @@ describe('MacroExpander', () => {
       const builtinTokens = result.tokens.filter(t => t.type === 'builtin_function');
       expect(builtinTokens).toHaveLength(2);
       expect(builtinTokens.every(t => t.name === 'repeat')).toBe(true);
+    });
+  });
+
+  describe('Multiline macro definitions', () => {
+    it('should expand a simple multiline macro', () => {
+      const input = `#define hello_world ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++. \\
+>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>
+@hello_world`;
+      const result = expander.expand(input, { collapseEmptyLines: false });
+      expect(result.expanded).toBe('\n\n++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++. >+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should expand a multiline parameterized macro', () => {
+      const input = `#define copy(n) [-@next(n)+>+ \\
+@prev(n)<]@next(n)[- \\
+@prev(n)+@next(n)]@prev(n)
+@copy(1)`;
+      const result = expander.expand(input, { collapseEmptyLines: false });
+      expect(result.expanded).toBe('\n\n\n[-@next(1)+>+ @prev(1)<]@next(1)[- @prev(1)+@next(1)]@prev(1)');
+      expect(result.errors.length).toBeGreaterThan(0); // Will have errors for undefined @next and @prev
+    });
+
+    it('should handle multiple backslashes in a row', () => {
+      const input = `#define multi_line \\
++ \\
++ \\
++
+@multi_line`;
+      const result = expander.expand(input, { collapseEmptyLines: false });
+      expect(result.expanded).toBe('\n\n\n\n+ + +');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should preserve spaces when joining continued lines', () => {
+      const input = `#define spaced_macro >>  \\
+  ++  \\
+  <<
+@spaced_macro`;
+      const result = expander.expand(input, { collapseEmptyLines: false });
+      expect(result.expanded).toBe('\n\n\n>> ++ <<');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should handle backslash at end with continuation', () => {
+      const input = `#define ends_with_backslash +++\\
+@ends_with_backslash`;
+      const result = expander.expand(input, { collapseEmptyLines: false });
+      // The second line is treated as part of the macro body due to the backslash
+      expect(result.expanded).toBe('\n');
+      expect(result.errors).toHaveLength(0);
+      // The macro body contains the invocation, creating a recursive definition
+      expect(result.macros[0].body).toBe('+++ @ends_with_backslash');
+    });
+
+    it('should handle complex multiline macro with nested functions', () => {
+      const input = `#define complex_macro(x, y) {repeat(x, +)} \\
+> \\
+{repeat(y, -)} \\
+< \\
+[-]
+@complex_macro(3, 2)`;
+      const result = expander.expand(input, { collapseEmptyLines: false });
+      expect(result.expanded).toBe('\n\n\n\n\n+++ > -- < [-]');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should handle multiline macro with comments', () => {
+      const input = `#define with_comments // This is a comment \\
++ \\
+// Another comment \\
++
+@with_comments`;
+      const result = expander.expand(input, { stripComments: false, collapseEmptyLines: false });
+      expect(result.expanded).toBe('\n\n\n\n// This is a comment + // Another comment +');
+      expect(result.errors).toHaveLength(0);
     });
   });
 

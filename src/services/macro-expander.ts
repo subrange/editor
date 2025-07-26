@@ -45,6 +45,7 @@ interface ParsedLine {
   content: string;
   indentation: string;
   lineNumber: number;
+  sourceLineCount?: number; // Number of source lines this parsed line represents
 }
 
 export interface MacroExpander {
@@ -94,27 +95,51 @@ export class MacroExpanderImpl implements MacroExpander {
     const lines = input.split('\n');
     const parsed: ParsedLine[] = [];
 
-    for (let i = 0; i < lines.length; i++) {
+    let i = 0;
+    while (i < lines.length) {
       const line = lines[i];
       const indentMatch = line.match(/^(\s*)/);
       const indentation = indentMatch ? indentMatch[1] : '';
-      const trimmedLine = line.trim();
+      let trimmedLine = line.trim();
+      const startLineNumber = i + 1;
+      const startIndex = i;
 
+      // Check for line continuation
       if (trimmedLine.startsWith('#define')) {
+        // Collect all continued lines for macro definitions
+        const continuedLines: string[] = [trimmedLine];
+        
+        while (i < lines.length - 1 && trimmedLine.endsWith('\\')) {
+          // Remove the trailing backslash and any trailing spaces before it
+          const lineWithoutBackslash = trimmedLine.slice(0, -1).trimEnd();
+          continuedLines[continuedLines.length - 1] = lineWithoutBackslash;
+          i++;
+          const nextLine = lines[i];
+          trimmedLine = nextLine.trim();
+          continuedLines.push(trimmedLine);
+        }
+
+        // Join all continued lines with a space
+        const fullContent = continuedLines.join(' ');
+        
         parsed.push({
           type: 'definition',
-          content: trimmedLine,
+          content: fullContent,
           indentation,
-          lineNumber: i + 1
+          lineNumber: startLineNumber,
+          sourceLineCount: i - startIndex + 1
         });
       } else {
         parsed.push({
           type: 'code',
           content: line,
           indentation: '',
-          lineNumber: i + 1
+          lineNumber: startLineNumber,
+          sourceLineCount: 1
         });
       }
+      
+      i++;
     }
 
     return parsed;
@@ -211,9 +236,16 @@ export class MacroExpanderImpl implements MacroExpander {
       if (line.type === 'code') {
         result.push(this.expandLine(line.content, line.lineNumber));
       } else {
-        // For definition lines, just track the offset
+        // For definition lines, add empty lines for each source line consumed
+        const sourceLineCount = line.sourceLineCount || 1;
+        
+        // Track the offset
         this.currentOffset += line.content.length + line.indentation.length + 1;
-        result.push(''); // Empty line for definitions
+        
+        // Add empty lines for each source line that was consumed by this definition
+        for (let i = 0; i < sourceLineCount; i++) {
+          result.push('');
+        }
       }
     }
 

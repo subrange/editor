@@ -10,7 +10,7 @@ import {
 export interface MacroToken {
     type: 'macro' | 'macro_definition' | 'macro_invocation' | 'builtin_function' | 
           'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 
-          'whitespace' | 'comment' | 'todo_comment' | 'mark_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name' | 'number';
+          'whitespace' | 'comment' | 'todo_comment' | 'mark_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name' | 'number' | 'continuation';
     value: string;
     start: number;
     end: number;
@@ -25,6 +25,7 @@ interface MacroTokenizerState {
     expectMacroName?: boolean;  // Track if we just saw #define
     inMacroDefinition?: boolean; // Track if we're in a macro definition line
     currentLineParams?: Set<string>;  // Parameters for current macro definition line
+    continuedMacroDefinition?: boolean; // Track if previous line ended with backslash
 }
 
 export class EnhancedMacroTokenizer implements ITokenizer {
@@ -44,7 +45,8 @@ export class EnhancedMacroTokenizer implements ITokenizer {
             inMultiLineComment: false,
             expanderTokens: [],
             expanderErrors: [],
-            macroDefinitions: []
+            macroDefinitions: [],
+            continuedMacroDefinition: false
         };
         this.fullText = '';
         this.lineOffsets = [];
@@ -77,26 +79,35 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         const tokens: MacroToken[] = [];
         let position = 0;
         
-        // Reset state at the start of each line
-        this.state.expectMacroName = false;
-        
-        // Check if this line contains a macro definition and extract parameters
-        if (text.includes('#define')) {
+        // Check if we're continuing a macro definition from previous line
+        if (this.state.continuedMacroDefinition) {
             this.state.inMacroDefinition = true;
-            this.state.currentLineParams = new Set<string>();
-            
-            // Extract parameters from the definition
-            const defineMatch = text.match(/#define\s+\w+\s*\(([^)]*)\)/);
-            if (defineMatch && defineMatch[1]) {
-                const params = defineMatch[1].split(',').map(p => p.trim());
-                params.forEach(p => {
-                    if (p) this.state.currentLineParams!.add(p);
-                });
-            }
+            // Don't reset currentLineParams - keep them from the original definition
         } else {
-            this.state.inMacroDefinition = false;
-            this.state.currentLineParams = undefined;
+            // Reset state at the start of each line
+            this.state.expectMacroName = false;
+            
+            // Check if this line contains a macro definition and extract parameters
+            if (text.includes('#define')) {
+                this.state.inMacroDefinition = true;
+                this.state.currentLineParams = new Set<string>();
+                
+                // Extract parameters from the definition
+                const defineMatch = text.match(/#define\s+\w+\s*\(([^)]*)\)/);
+                if (defineMatch && defineMatch[1]) {
+                    const params = defineMatch[1].split(',').map(p => p.trim());
+                    params.forEach(p => {
+                        if (p) this.state.currentLineParams!.add(p);
+                    });
+                }
+            } else {
+                this.state.inMacroDefinition = false;
+                this.state.currentLineParams = undefined;
+            }
         }
+        
+        // Reset continuation flag for this line
+        this.state.continuedMacroDefinition = false;
 
         while (position < text.length) {
             // Check for errors at this position
@@ -404,6 +415,25 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 }
             }
 
+            // Check for line continuation backslash at end of line
+            if (!matched && text[position] === '\\') {
+                // Check if this is at the end of the line (possibly followed by whitespace)
+                const restOfLine = text.slice(position + 1).trim();
+                if (restOfLine === '' && this.state.inMacroDefinition) {
+                    tokens.push({
+                        type: 'continuation',
+                        value: '\\',
+                        start: position,
+                        end: position + 1,
+                        error: error
+                    });
+                    position++;
+                    matched = true;
+                    // Set flag to indicate next line continues the macro definition
+                    this.state.continuedMacroDefinition = true;
+                }
+            }
+
             // Fallback - single character
             if (!matched) {
                 tokens.push({
@@ -457,6 +487,7 @@ export const enhancedMacroTokenStyles: Record<MacroToken['type'], string> = {
     builtin_function: 'text-sky-400/85',             // Built-in functions like repeat
     parameter: 'text-pink-300/80 italic',            // Parameter references
     number: 'text-amber-400/80',                     // Numeric literals
+    continuation: 'text-yellow-400',                 // Line continuation backslash
     comment: 'text-gray-400/85 italic',
     todo_comment: 'text-emerald-300/75 italic',      // Beautiful dim green for TODO comments
     mark_comment: 'text-yellow-300 bg-yellow-900/30', // MARK comments with yellow background

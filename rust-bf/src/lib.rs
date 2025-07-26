@@ -30,7 +30,7 @@ impl CellSize {
             _ => None,  // 32-bit cells not supported in wasm32
         }
     }
-    
+
     fn as_u32(&self) -> u32 {
         match self {
             CellSize::Bit8 => 256,
@@ -108,13 +108,13 @@ impl BrainfuckInterpreter {
     #[wasm_bindgen(constructor)]
     pub fn new(tape_size: usize, cell_size: u32) -> Result<BrainfuckInterpreter, JsValue> {
         console::log_1(&"Creating new Brainfuck interpreter in Rust".into());
-        
+
         let cell_size = CellSize::from_u32(cell_size)
             .ok_or_else(|| JsValue::from_str("Invalid cell size"))?;
-        
+
         let tape = vec![0u32; tape_size];
         let is_8bit = cell_size.as_u32() == 256;
-        
+
         Ok(BrainfuckInterpreter {
             tape,
             tape_size,
@@ -145,12 +145,12 @@ impl BrainfuckInterpreter {
     pub fn set_code(&mut self, code_json: &str) -> Result<(), JsValue> {
         let code: Vec<Line> = serde_json::from_str(code_json)
             .map_err(|e| JsValue::from_str(&format!("Failed to parse code: {}", e)))?;
-        
+
         self.code = code;
         self.build_loop_map();
         self.compile_program();
         self.reset();
-        
+
         Ok(())
     }
 
@@ -176,15 +176,15 @@ impl BrainfuckInterpreter {
         }
 
         let char_opt = self.get_current_char();
-        
+
         if let Some(char) = char_opt {
             if "+-<>[].,".contains(char) && self.should_pause_at_breakpoint(&self.current_pos) {
                 let is_same_breakpoint = self.last_paused_breakpoint
                     .map(|bp| bp.line == self.current_pos.line && bp.column == self.current_pos.column)
                     .unwrap_or(false);
-                
+
                 if !is_same_breakpoint {
-                    console::log_1(&format!("Hit breakpoint at line {}, column {}", 
+                    console::log_1(&format!("Hit breakpoint at line {}, column {}",
                         self.current_pos.line, self.current_pos.column).into());
                     self.last_paused_breakpoint = Some(self.current_pos);
                     self.pause();
@@ -224,12 +224,12 @@ impl BrainfuckInterpreter {
             }
             Some(char) => {
                 self.execute_instruction(char);
-                
+
                 if !self.move_to_next_char() {
                     self.stop();
                     return false;
                 }
-                
+
                 true
             }
         }
@@ -245,7 +245,7 @@ impl BrainfuckInterpreter {
 
         let mut pc = 0;
         let mut ops_executed = 0u64;
-        
+
         // For maximum performance in unsafe mode, inline the hot operations
         if self.unsafe_mode && self.is_8bit {
             self.run_turbo_unsafe_8bit(pc, &mut ops_executed);
@@ -255,20 +255,20 @@ impl BrainfuckInterpreter {
                 ops_executed += 1;
             }
         }
-        
+
         let end_time = Date::now();
         let total_time = (end_time - start_time) / 1000.0; // Convert to seconds
         let ops_per_sec = ops_executed as f64 / total_time;
-        
+
         self.is_running = false;
         console::log_1(&format!("Turbo execution completed!").into());
         console::log_1(&format!("  Total operations: {}", ops_executed).into());
         console::log_1(&format!("  Total time: {:.3} seconds", total_time).into());
         console::log_1(&format!("  Performance: {:.2} million operations/second", ops_per_sec / 1_000_000.0).into());
-        
+
         Ok(())
     }
-    
+
     fn execute_optimized_op(&mut self, pc: usize) -> usize {
         unsafe {
             match self.compiled_ops.get_unchecked(pc) {
@@ -349,14 +349,14 @@ impl BrainfuckInterpreter {
                 let value = self.tape[self.pointer];
                 self.tape[self.pointer] = 0;
                 let cell_max = self.cell_size.as_u32();
-                
+
                 for (offset, multiplier) in moves {
                     let target = if *offset >= 0 {
                         (self.pointer + *offset as usize) % self.tape_size
                     } else {
                         (self.pointer + self.tape_size - ((-*offset) as usize % self.tape_size)) % self.tape_size
                     };
-                    
+
                     if *multiplier >= 0 {
                         let add_value = (value as u64 * *multiplier as u64) % cell_max as u64;
                         self.tape[target] = ((self.tape[target] as u64 + add_value) % cell_max as u64) as u32;
@@ -373,7 +373,7 @@ impl BrainfuckInterpreter {
                 } else {
                     (self.pointer + self.tape_size - ((-*offset) as usize % self.tape_size)) % self.tape_size
                 };
-                
+
                 if self.unsafe_mode {
                     let cell = self.tape.get_unchecked_mut(target);
                     if *value >= 0 {
@@ -563,16 +563,16 @@ impl BrainfuckInterpreter {
         }
 
         let mut ops_in_batch = 0;
-        
+
         while self.turbo_pc < self.compiled_ops.len() && self.is_running && !self.is_paused && ops_in_batch < batch_size {
             self.turbo_pc = self.execute_optimized_op(self.turbo_pc);
             self.turbo_ops_executed += 1;
             ops_in_batch += 1;
         }
-        
+
         if self.turbo_pc >= self.compiled_ops.len() {
             self.is_running = false;
-            
+
             // Log final performance stats
             if let Some(start_time) = self.turbo_start_time {
                 let total_time = (Date::now() - start_time) / 1000.0;
@@ -584,20 +584,20 @@ impl BrainfuckInterpreter {
                 console::log_1(&format!("Performance: {:.2} million ops/sec", ops_per_sec / 1_000_000.0).into());
                 console::log_1(&format!("==============================").into());
             }
-            
+
             Ok(false) // No more work to do
         } else {
             Ok(true) // More work remains
         }
     }
-    
+
     #[wasm_bindgen]
     pub fn get_performance_stats(&self) -> String {
         if let Some(start_time) = self.turbo_start_time {
             let elapsed = (Date::now() - start_time) / 1000.0; // seconds
             let ops_per_sec = self.turbo_ops_executed as f64 / elapsed;
-            format!("Operations: {} | Time: {:.3}s | Speed: {:.2}M ops/sec", 
-                self.turbo_ops_executed, 
+            format!("Operations: {} | Time: {:.3}s | Speed: {:.2}M ops/sec",
+                self.turbo_ops_executed,
                 elapsed,
                 ops_per_sec / 1_000_000.0)
         } else {
@@ -613,7 +613,7 @@ impl BrainfuckInterpreter {
     #[wasm_bindgen]
     pub fn resume(&mut self) {
         console::log_1(&format!("Resume called: is_running={}, is_paused={}", self.is_running, self.is_paused).into());
-        
+
         // Always clear the pause flag when resume is called
         self.is_paused = false;
         console::log_1(&format!("Resumed at position {:?}", self.current_pos).into());
@@ -630,7 +630,7 @@ impl BrainfuckInterpreter {
     #[wasm_bindgen]
     pub fn toggle_breakpoint(&mut self, line: usize, column: usize) {
         let pos = Position { line, column };
-        
+
         if let Some(index) = self.breakpoints.iter().position(|bp| bp.line == line && bp.column == column) {
             self.breakpoints.remove(index);
         } else {
@@ -654,7 +654,7 @@ impl BrainfuckInterpreter {
             output: self.output.clone(),
             lane_count: self.lane_count,
         };
-        
+
         serde_json::to_string(&state)
             .map_err(|e| JsValue::from_str(&format!("Failed to serialize state: {}", e)))
     }
@@ -681,7 +681,7 @@ impl BrainfuckInterpreter {
             line: self.current_pos.line,
             column: self.current_pos.column,
         };
-        
+
         serde_json::to_string(&pos)
             .map_err(|e| JsValue::from_str(&format!("Failed to serialize position: {}", e)))
     }
@@ -697,7 +697,7 @@ impl BrainfuckInterpreter {
     pub fn set_cell_size(&mut self, size: u32) -> Result<(), JsValue> {
         let cell_size = CellSize::from_u32(size)
             .ok_or_else(|| JsValue::from_str("Invalid cell size"))?;
-        
+
         self.cell_size = cell_size;
         self.is_8bit = cell_size.as_u32() == 256;
         self.reset();
@@ -712,7 +712,7 @@ impl BrainfuckInterpreter {
         self.lane_count = count;
         Ok(())
     }
-    
+
     #[wasm_bindgen]
     pub fn set_unsafe_mode(&mut self, enabled: bool) {
         self.unsafe_mode = enabled;
@@ -729,7 +729,7 @@ impl BrainfuckInterpreter {
             let ops = &self.compiled_ops;
             let tape = &mut self.tape;
             let tape_size = self.tape_size;
-            
+
             while pc < ops.len() && self.is_running && !self.is_paused {
                 match ops.get_unchecked(pc) {
                     Operation::MoveRight(n) => {
@@ -773,7 +773,7 @@ impl BrainfuckInterpreter {
                     Operation::MultiplyMove(moves) => {
                         let value = *tape.get_unchecked(self.pointer);
                         *tape.get_unchecked_mut(self.pointer) = 0;
-                        
+
                         for (offset, multiplier) in moves {
                             let target = if *offset >= 0 {
                                 (self.pointer + *offset as usize) % tape_size
@@ -922,13 +922,13 @@ impl BrainfuckInterpreter {
                         }
                     }
                 }
-                
+
                 pc += 1;
                 *ops_executed += 1;
             }
         }
     }
-    
+
     fn build_loop_map(&mut self) {
         self.loop_map.clear();
         let mut stack = Vec::new();
@@ -936,7 +936,7 @@ impl BrainfuckInterpreter {
         for (line_idx, line) in self.code.iter().enumerate() {
             for (col_idx, ch) in line.text.chars().enumerate() {
                 let pos = Position { line: line_idx, column: col_idx };
-                
+
                 match ch {
                     '[' => stack.push(pos),
                     ']' => {
@@ -961,15 +961,15 @@ impl BrainfuckInterpreter {
         self.compiled_ops.clear();
         self.jump_table.clear();
         self.source_ops_count = 0;
-        
+
         // First pass: convert to basic operations
         let mut basic_ops = Vec::new();
         let mut jump_stack = Vec::new();
-        
+
         for line in &self.code {
             for ch in line.text.chars() {
                 let op_index = basic_ops.len();
-                
+
                 match ch {
                     '>' => {
                         basic_ops.push(Operation::MoveRight(1));
@@ -1011,21 +1011,21 @@ impl BrainfuckInterpreter {
                 }
             }
         }
-        
+
         // Second pass: optimize
         let optimized = self.optimize_operations(basic_ops);
-        
+
         // Third pass: unroll small loops
         self.compiled_ops = self.unroll_small_loops(optimized);
-        
+
         // Fourth pass: fix jump addresses after optimization
         self.fix_jump_addresses();
     }
-    
+
     fn optimize_operations(&self, ops: Vec<Operation>) -> Vec<Operation> {
         let mut optimized = Vec::new();
         let mut i = 0;
-        
+
         // First pass: basic optimizations
         while i < ops.len() {
             match &ops[i] {
@@ -1038,7 +1038,7 @@ impl BrainfuckInterpreter {
                             continue;
                         }
                     }
-                    
+
                     // Check for scan patterns [>] or [<]
                     if i + 2 < ops.len() && *end == i + 2 {
                         if matches!(ops[i + 1], Operation::MoveRight(1)) {
@@ -1052,32 +1052,32 @@ impl BrainfuckInterpreter {
                             continue;
                         }
                     }
-                    
+
                     // Check for simple move patterns [->+<]
                     if let Some(pattern) = self.detect_move_pattern(&ops, i, *end) {
                         optimized.push(pattern);
                         i = *end + 1;
                         continue;
                     }
-                    
+
                     // Check for complex scan patterns like [>+<-]
                     if let Some(pattern) = self.detect_scan_move_pattern(&ops, i, *end) {
                         optimized.push(pattern);
                         i = *end + 1;
                         continue;
                     }
-                    
+
                     // Check for conditional patterns [code[-]]
                     if let Some(pattern) = self.detect_conditional_pattern(&ops, i, *end) {
                         optimized.push(pattern);
                         i = *end + 1;
                         continue;
                     }
-                    
+
                     optimized.push(ops[i].clone());
                     i += 1;
                 }
-                
+
                 // Batch consecutive operations
                 Operation::MoveRight(_) => {
                     let mut count = 0;
@@ -1092,7 +1092,7 @@ impl BrainfuckInterpreter {
                         optimized.push(Operation::MoveRight(count));
                     }
                 }
-                
+
                 Operation::MoveLeft(_) => {
                     let mut count = 0;
                     while i < ops.len() {
@@ -1106,7 +1106,7 @@ impl BrainfuckInterpreter {
                         optimized.push(Operation::MoveLeft(count));
                     }
                 }
-                
+
                 Operation::Increment(_) => {
                     let mut count = 0;
                     while i < ops.len() {
@@ -1120,7 +1120,7 @@ impl BrainfuckInterpreter {
                         optimized.push(Operation::Increment(count));
                     }
                 }
-                
+
                 Operation::Decrement(_) => {
                     let mut count = 0;
                     while i < ops.len() {
@@ -1134,22 +1134,22 @@ impl BrainfuckInterpreter {
                         optimized.push(Operation::Decrement(count));
                     }
                 }
-                
+
                 _ => {
                     optimized.push(ops[i].clone());
                     i += 1;
                 }
             }
         }
-        
+
         // Second pass: peephole optimizations
         self.peephole_optimize(optimized)
     }
-    
+
     fn peephole_optimize(&self, ops: Vec<Operation>) -> Vec<Operation> {
         let mut i = 0;
         let mut optimized = Vec::new();
-        
+
         while i < ops.len() {
             match &ops[i] {
                 // Combine SetZero followed by Increment/Decrement into SetValue
@@ -1164,12 +1164,12 @@ impl BrainfuckInterpreter {
                             _ => {}
                         }
                     }
-                    
+
                     // Check for batch clear pattern: [-]>[-]>[-]
                     let mut clear_offsets = vec![0];
                     let mut j = i + 1;
                     let mut current_offset = 0isize;
-                    
+
                     while j < ops.len() {
                         match &ops[j] {
                             Operation::MoveRight(n) => {
@@ -1187,13 +1187,13 @@ impl BrainfuckInterpreter {
                             _ => break,
                         }
                     }
-                    
+
                     if clear_offsets.len() > 1 && current_offset == 0 {
                         optimized.push(Operation::BatchClear(clear_offsets));
                         i = j;
                         continue;
                     }
-                    
+
                     optimized.push(ops[i].clone());
                     i += 1;
                 }
@@ -1202,7 +1202,7 @@ impl BrainfuckInterpreter {
                     let mut combined_offset = *n as isize;
                     let mut j = i + 1;
                     let mut add_ops = Vec::new();
-                    
+
                     // Look ahead for operations that can be combined
                     while j < ops.len() {
                         match &ops[j] {
@@ -1225,7 +1225,7 @@ impl BrainfuckInterpreter {
                             _ => break,
                         }
                     }
-                    
+
                     // Emit optimized operations
                     if !add_ops.is_empty() && combined_offset == 0 {
                         // All operations at offsets, pointer returns to original position
@@ -1262,7 +1262,7 @@ impl BrainfuckInterpreter {
                     let mut batch_sets = vec![(0, *n as u32)];
                     let mut j = i + 1;
                     let mut current_offset = 0isize;
-                    
+
                     while j < ops.len() {
                         match &ops[j] {
                             Operation::MoveRight(m) => {
@@ -1284,7 +1284,7 @@ impl BrainfuckInterpreter {
                             _ => break,
                         }
                     }
-                    
+
                     if batch_sets.len() > 2 && current_offset == 0 {
                         optimized.push(Operation::BatchSet(batch_sets));
                         i = j;
@@ -1299,18 +1299,18 @@ impl BrainfuckInterpreter {
                 }
             }
         }
-        
+
         // Third pass: algebraic simplifications
         self.algebraic_simplify(optimized)
     }
-    
+
     fn algebraic_simplify(&self, ops: Vec<Operation>) -> Vec<Operation> {
         let mut optimized = Vec::new();
         let mut i = 0;
-        
+
         while i < ops.len() {
             match &ops[i] {
-                // Cancel out opposite movements: >< or <> 
+                // Cancel out opposite movements: >< or <>
                 Operation::MoveRight(n) => {
                     if i + 1 < ops.len() {
                         if let Operation::MoveLeft(m) = &ops[i + 1] {
@@ -1348,7 +1348,7 @@ impl BrainfuckInterpreter {
                 Operation::AddOffset(offset1, value1) => {
                     let mut merged = vec![(*offset1, *value1)];
                     let mut j = i + 1;
-                    
+
                     while j < ops.len() {
                         if let Operation::AddOffset(offset2, value2) = &ops[j] {
                             // Check if we already have this offset
@@ -1362,7 +1362,7 @@ impl BrainfuckInterpreter {
                             break;
                         }
                     }
-                    
+
                     // Emit merged operations
                     for (offset, value) in merged {
                         if value != 0 {
@@ -1377,13 +1377,13 @@ impl BrainfuckInterpreter {
                 }
             }
         }
-        
+
         optimized
     }
-    
+
     fn fix_jump_addresses(&mut self) {
         let mut jump_stack = Vec::new();
-        
+
         for i in 0..self.compiled_ops.len() {
             match &mut self.compiled_ops[i] {
                 Operation::LoopStart(_) => {
@@ -1400,18 +1400,18 @@ impl BrainfuckInterpreter {
             }
         }
     }
-    
+
     fn detect_move_pattern(&self, ops: &[Operation], start: usize, end: usize) -> Option<Operation> {
         if end <= start + 2 {
             return None;
         }
-        
+
         let loop_ops = &ops[start + 1..end];
-        
+
         // Check if it's a simple move pattern
         let mut movements = std::collections::HashMap::new();
         let mut current_offset = 0isize;
-        
+
         for op in loop_ops {
             match op {
                 Operation::MoveRight(n) => current_offset += *n as isize,
@@ -1425,23 +1425,23 @@ impl BrainfuckInterpreter {
                 _ => return None, // Complex operation, bail out
             }
         }
-        
+
         // Must end at starting position
         if current_offset != 0 {
             return None;
         }
-        
+
         // Check if it's a valid pattern - current cell must change by exactly -1 per iteration
         let current_cell_delta = movements.get(&0).copied().unwrap_or(0);
         if current_cell_delta != -1 && current_cell_delta != 1 {
             return None;
         }
-        
+
         // If current cell increments, we need to negate all the movements
         let multiplier = if current_cell_delta == 1 { -1 } else { 1 };
-        
+
         movements.remove(&0);
-        
+
         // If only one other cell is modified by +1, it's a simple move
         if movements.len() == 1 {
             if let Some((&offset, &delta)) = movements.iter().next() {
@@ -1450,7 +1450,7 @@ impl BrainfuckInterpreter {
                 }
             }
         }
-        
+
         // Otherwise, it's a multiply-move pattern
         if !movements.is_empty() {
             let mut moves: Vec<(isize, i32)> = movements.into_iter()
@@ -1459,23 +1459,23 @@ impl BrainfuckInterpreter {
             moves.sort_by_key(|&(offset, _)| offset);
             return Some(Operation::MultiplyMove(moves));
         }
-        
+
         None
     }
-    
+
     fn detect_scan_move_pattern(&self, ops: &[Operation], start: usize, end: usize) -> Option<Operation> {
         if end <= start + 2 {
             return None;
         }
-        
+
         let loop_ops = &ops[start + 1..end];
-        
+
         // Look for patterns like [>+<-] or [<->+]
         let mut current_pos = 0isize;
         let mut direction = 0isize;
         let mut modify_value = 0i32;
         let mut seen_modify = false;
-        
+
         for op in loop_ops {
             match op {
                 Operation::MoveRight(n) => {
@@ -1512,19 +1512,19 @@ impl BrainfuckInterpreter {
                 _ => return None,
             }
         }
-        
+
         // Must return to starting position and have a clear direction
         if current_pos == 0 && direction != 0 && modify_value != 0 {
             return Some(Operation::ScanAndMove(direction, modify_value));
         }
-        
+
         None
     }
-    
+
     fn unroll_small_loops(&self, ops: Vec<Operation>) -> Vec<Operation> {
         let mut result = Vec::new();
         let mut i = 0;
-        
+
         while i < ops.len() {
             match &ops[i] {
                 // Look for patterns like +++[->+<] where we know the loop count
@@ -1598,14 +1598,14 @@ impl BrainfuckInterpreter {
                 }
             }
         }
-        
+
         result
     }
-    
+
     fn is_simple_copy_loop(&self, ops: &[Operation]) -> bool {
         let mut current_offset = 0isize;
         let mut found_decrement = false;
-        
+
         for op in ops {
             match op {
                 Operation::MoveRight(n) => current_offset += *n as isize,
@@ -1625,14 +1625,14 @@ impl BrainfuckInterpreter {
                 _ => return false,
             }
         }
-        
+
         current_offset == 0 && found_decrement
     }
-    
+
     fn extract_copy_offsets(&self, ops: &[Operation]) -> Vec<isize> {
         let mut offsets = Vec::new();
         let mut current_offset = 0isize;
-        
+
         for op in ops {
             match op {
                 Operation::MoveRight(n) => current_offset += *n as isize,
@@ -1645,30 +1645,30 @@ impl BrainfuckInterpreter {
                 _ => {}
             }
         }
-        
+
         offsets
     }
-    
+
     fn detect_conditional_pattern(&self, ops: &[Operation], start: usize, end: usize) -> Option<Operation> {
         if end <= start + 2 {
             return None;
         }
-        
+
         // Check if the loop ends with [-] pattern
         if end >= 2 && matches!(ops[end - 2], Operation::LoopStart(_)) && matches!(ops[end - 1], Operation::Decrement(1)) {
             // This is a [code[-]] pattern
             let inner_ops = ops[start + 1..end - 2].to_vec();
-            
+
             // Make sure inner ops don't contain complex loops
             for op in &inner_ops {
                 if matches!(op, Operation::LoopStart(_) | Operation::LoopEnd(_)) {
                     return None;
                 }
             }
-            
+
             return Some(Operation::ConditionalLoop(inner_ops, true));
         }
-        
+
         None
     }
 
@@ -1758,10 +1758,10 @@ mod tests {
         let code = vec![
             Line { text: "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.".to_string() }
         ];
-        
+
         interpreter.set_code(&serde_json::to_string(&code).unwrap()).unwrap();
         interpreter.run_turbo().unwrap();
-        
+
         assert_eq!(interpreter.get_output(), "Hello World!\n");
     }
 }
