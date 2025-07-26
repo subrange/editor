@@ -5,7 +5,6 @@ import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
 import {useMemo, useRef, useLayoutEffect} from "react";
 import {tokenStyles} from "./tokenizer.ts";
-import {macroTokenStyles} from "./macro-tokenizer.ts";
 import {enhancedMacroTokenStyles, EnhancedMacroTokenizer} from "./macro-tokenizer-enhanced.ts";
 import {ErrorDecorations} from "./error-decorations.tsx";
 import {type MacroExpansionError, type MacroDefinition} from "../../services/macro-expander.ts";
@@ -259,7 +258,7 @@ function LinesPanel({ store }: LinesPanelProps) {
     // Determine which token styles to use based on tokenizer type
     const isMacroEditor = store.getId() === 'macro';
     const isEnhancedMacro = tokenizer instanceof EnhancedMacroTokenizer;
-    const styles = isEnhancedMacro ? enhancedMacroTokenStyles : (isMacroEditor ? macroTokenStyles : tokenStyles);
+    const styles = isEnhancedMacro ? enhancedMacroTokenStyles : tokenStyles;
     
     // Extract errors and macros if using enhanced tokenizer
     const errors: MacroExpansionError[] = useMemo(() => {

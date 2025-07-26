@@ -242,15 +242,3 @@ export class MacroTokenizer implements ITokenizer {
 }
 
 // Token styles for macro syntax
-export const macroTokenStyles: Record<MacroToken['type'], string> = {
-    macro: 'text-purple-400 font-bold',      // Macro definitions/calls
-    parameter: 'text-pink-400 italic',       // Parameter references
-    comment: 'text-gray-500 italic',
-    incdec: 'text-blue-400',
-    brackets: 'text-orange-400',
-    dot: 'text-teal-400 bg-zinc-700',
-    comma: 'text-teal-500 bg-zinc-700',
-    move: 'text-yellow-400',
-    unknown: 'text-gray-500 italic',
-    whitespace: ''
-};

@@ -11,7 +11,6 @@ import {Sidebar} from "./components/sidebar/sidebar.tsx";
 import {editorManager} from "./services/editor-manager.service.ts";
 import {EditorStore} from "./components/editor/editor.store.ts";
 import {useEffect, useState} from "react";
-import {MacroTokenizer} from "./components/editor/macro-tokenizer.ts";
 import {EnhancedMacroTokenizer} from "./components/editor/macro-tokenizer-enhanced.ts";
 import {createMacroExpander} from "./services/macro-expander.ts";
 import {CpuChipIcon} from "@heroicons/react/24/solid";

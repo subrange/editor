@@ -1,5 +1,10 @@
 import { type ITokenizer } from "../../services/editor-manager.service";
-import { createMacroExpander, type MacroToken as ExpanderToken, type MacroExpansionError } from "../../services/macro-expander";
+import {
+    createMacroExpander,
+    type MacroToken as ExpanderToken,
+    type MacroExpansionError,
+    type MacroDefinition
+} from "../../services/macro-expander";
 
 // Token types for macro syntax
 interface MacroToken {

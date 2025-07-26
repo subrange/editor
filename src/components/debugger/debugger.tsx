@@ -59,9 +59,9 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
     const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
     const [scrollPos, setScrollPos] = useState({ x: 0, y: 0 });
     
-    const CELL_WIDTH = 60;
-    const CELL_HEIGHT = 48;
-    const COLUMN_GAP = 12;
+    const CELL_WIDTH = 80;
+    const CELL_HEIGHT = 24;
+    const COLUMN_GAP = 8;
     
     // Calculate number of columns needed
     const columnsCount = Math.ceil(tape.length / laneCount);
@@ -198,7 +198,7 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
                                     key={laneIndex}
                                     className="flex items-center justify-center text-xs font-mono text-zinc-400"
                                     style={{ 
-                                        height: `${CELL_HEIGHT + 8}px`, // 8px for gap
+                                        height: `${CELL_HEIGHT + 4}px`, // 4px for gap
                                     }}
                                 >
                                     {laneIndex}
@@ -245,7 +245,7 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
                                     width: `${CELL_WIDTH}px`,
                                 }}
                             >
-                                <div className="flex flex-col items-center gap-2">
+                                <div className="flex flex-col items-center gap-1">
                                     {Array.from({ length: laneCount }, (_, laneIndex) => {
                                         const cellIndex = startIndex + laneIndex;
                                         if (cellIndex >= tape.length) return null;
@@ -262,8 +262,8 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
                                             <div
                                                 key={cellIndex}
                                                 className={clsx(
-                                                    "relative rounded border transition-all duration-200 p-1",
-                                                    "flex flex-col items-center justify-center",
+                                                    "relative rounded border transition-all duration-200 px-2",
+                                                    "flex items-center justify-between",
                                                     "w-full",
                                                     {
                                                         // Pointer styles
@@ -286,17 +286,17 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
                                                     setHoveredColumn(null);
                                                 }}
                                             >
-                                                {/* Cell index */}
+                                                {/* Cell index on the left */}
                                                 <div className={clsx(
-                                                    "text-[9px] font-mono leading-none",
-                                                    isPointer ? 'text-yellow-400' : 'text-zinc-600'
+                                                    "text-[9px] font-mono",
+                                                    isPointer ? 'text-yellow-400/70' : 'text-zinc-500'
                                                 )}>
                                                     {cellIndex}
                                                 </div>
                                                 
-                                                {/* Main value */}
+                                                {/* Main value on the right */}
                                                 <div className={clsx(
-                                                    "text-sm font-bold font-mono",
+                                                    "text-xs font-bold font-mono",
                                                     {
                                                         'text-yellow-300': isPointer,
                                                         'text-blue-300': isNonZero && !isPointer,
