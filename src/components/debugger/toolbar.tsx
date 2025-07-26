@@ -4,6 +4,7 @@ import {
     ArrowPathIcon,
     BoltIcon,
     ClockIcon, XMarkIcon,
+    CursorArrowRaysIcon,
 } from '@heroicons/react/24/solid';
 import { interpreterStore } from "./interpreter-facade.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
@@ -13,6 +14,7 @@ import {
     PauseIcon
 } from '@heroicons/react/24/solid';
 import {IconButton} from "../ui/icon-button.tsx";
+import { editorManager } from "../../services/editor-manager.service.ts";
 
 export function Toolbar() {
     const interpreterState = useStoreSubscribe(interpreterStore.state);
@@ -23,6 +25,15 @@ export function Toolbar() {
     const handleDelayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value) || 0;
         setDelay(Math.max(0, Math.min(1000, value)));
+    };
+
+    const handleRunFromCursor = () => {
+        const mainEditor = editorManager.getEditor('main');
+        if (mainEditor) {
+            const state = mainEditor.getState();
+            const cursorPosition = state.selection.focus;
+            interpreterStore.runFromPosition(cursorPosition);
+        }
     };
 
     return (
@@ -126,6 +137,14 @@ export function Toolbar() {
                     onClick={() => interpreterStore.step()}
                     disabled={isRunning && !isPaused}
                     variant="info"
+                />
+
+                <IconButton
+                    icon={CursorArrowRaysIcon}
+                    label="Run from cursor"
+                    onClick={handleRunFromCursor}
+                    disabled={isRunning}
+                    variant="success"
                 />
 
                 <div className="w-px h-6 bg-zinc-700 mx-1" />

@@ -162,6 +162,17 @@ class InterpreterStore {
         this.lastPausedBreakpoint = null;
     }
 
+    public runFromPosition(position: Position) {
+        // Reset the interpreter but keep breakpoints
+        this.reset();
+        
+        // Set the current character position to start from
+        this.currentChar.next(position);
+        
+        // Start running smoothly from this position
+        this.runSmooth();
+    }
+
     // Build a map of matching brackets for efficient jumping
     private buildLoopMap() {
         this.loopMap.clear();

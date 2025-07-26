@@ -1,8 +1,7 @@
 // Facade that provides a unified interface to either JS or WASM interpreter
 import { BehaviorSubject, Subscription } from "rxjs";
-import { type Line, type Position } from "../editor/editor.store.ts";
+import { type Position } from "../editor/editor.store.ts";
 import { interpreterStore as jsInterpreter } from "./interpreter.store.ts";
-import { useWasmInterpreter } from "./use-wasm-interpreter.ts";
 
 type InterpreterState = {
     tape: Uint8Array | Uint16Array | Uint32Array;
@@ -26,6 +25,7 @@ type InterpreterInterface = {
     step(): boolean;
     run(delay?: number): void;
     runSmooth(): void;
+    runFromPosition(position: Position): void;
     runImmediately(): Promise<void>;
     runTurbo(): Promise<void>;
     runUltraFast?(): Promise<void>;
@@ -44,7 +44,6 @@ type InterpreterInterface = {
 
 class InterpreterFacade implements InterpreterInterface {
     private currentInterpreter: InterpreterInterface = jsInterpreter;
-    private wasmInterpreter: InterpreterInterface | null = null;
     private subscriptions: Subscription[] = [];
     
     // Proxy all the observables
@@ -56,20 +55,6 @@ class InterpreterFacade implements InterpreterInterface {
     
     constructor() {
         this.setupProxying();
-        
-        // Listen for WASM toggle changes
-        useWasmInterpreter.subscribe(async (useWasm) => {
-            if (useWasm) {
-                await this.switchToWasm();
-            } else {
-                this.switchToJs();
-            }
-        });
-        
-        // Try to load WASM if it's enabled
-        if (useWasmInterpreter.getValue()) {
-            this.switchToWasm();
-        }
     }
     
     private setupProxying() {
@@ -87,33 +72,13 @@ class InterpreterFacade implements InterpreterInterface {
         );
     }
     
-    private async switchToWasm() {
-        try {
-            if (!this.wasmInterpreter) {
-                const { wasmInterpreterStore } = await import("./interpreter-wasm-worker.store.ts");
-                this.wasmInterpreter = wasmInterpreterStore;
-            }
-            
-            this.currentInterpreter = this.wasmInterpreter;
-            this.setupProxying();
-            console.log('Switched to WebAssembly interpreter (Worker-based)');
-        } catch (error) {
-            console.error('Failed to load WASM interpreter:', error);
-            useWasmInterpreter.next(false);
-        }
-    }
-    
-    private switchToJs() {
-        this.currentInterpreter = jsInterpreter;
-        this.setupProxying();
-        console.log('Switched to JavaScript interpreter');
-    }
     
     // Delegate all methods to current interpreter
     reset() { this.currentInterpreter.reset(); }
     step() { return this.currentInterpreter.step(); }
     run(delay?: number) { this.currentInterpreter.run(delay); }
     runSmooth() { this.currentInterpreter.runSmooth(); }
+    runFromPosition(position: Position) { this.currentInterpreter.runFromPosition(position); }
     async runImmediately() { await this.currentInterpreter.runImmediately(); }
     async runTurbo() { await this.currentInterpreter.runTurbo(); }
     async runUltraFast() { 
