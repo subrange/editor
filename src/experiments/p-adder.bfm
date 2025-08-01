@@ -26,6 +26,10 @@
 #define loop(n) @clear @inc(n)[@dec(1)
 #define endloop ]
 
+#define default [@clear]
+#define switch(n_branches, default, flag, x) flag [-]+ x {repeat(n_branches, [-)} default
+#define case(n, code, flag, x) flag [@clear code] x ]
+
 // ===== ADVANCED PATTERNS =====
 
 // Find next zero cell to the right
@@ -213,6 +217,13 @@
     ] \
     @lane_sA_end
 
+#define fetch_from_register(offs_from_ip) offs_from_ip \
+    @copy_value_to_A \
+    @mark_register(offs_from_ip) \
+    @goto_marked_register(@clear) \
+    @move_register_to_ip_sA(offs_from_ip) \
+    @fetch_register_cleanup
+
 #define fetch_register_cleanup @lane_sB \
     @clear \
     @lane_sB_end \
@@ -222,7 +233,87 @@
     @set(1) \
     @lane_sA_end \
     @goto_ip \
-    @lane_ip_end \
+    @lane_ip_end
+
+#define clear_and_mark_destination_register @prevword \
+    @copy_value_to_A \
+    @mark_register(@prevword) \
+    @goto_marked_register(@nop) \
+    @lane_reg \
+    @clear \
+    @lane_reg_end \
+    @goto_ip \
+    @lane_ip_end
+
+#define move_result_to_destination_register @lane_sB \
+    @while \
+      - \
+      @lane_sB_end \
+      @prevword \
+      @goto_marked_register(@nop) \
+      @lane_reg \
+      + \
+      @lane_reg_end \
+      @goto_ip \
+      @lane_ip_end \
+      @lane_sB \
+    @endwhile \
+    @lane_sB_end
+
+#define reset_register_mark @move_result_to_destination_register \
+    @prevword \
+    @goto_marked_register(@clear) \
+    @goto_start \
+    @nextword \
+    @lane_sA \
+    @set(1) \
+    @lane_sA_end \
+    @goto_ip \
+    @lane_ip_end
+
+// MARK: ops
+
+#define simple_register_op(op) @fetch_from_register(@prevword @prevword) \
+    @fetch_from_register(@prevword @prevword @prevword) \
+    op \
+    @clear_and_mark_destination_register \
+    @move_result_to_destination_register \
+    @reset_register_mark
+
+// MARK: ops end
+
+// MARK: ALU ops
+// MARK: Result is stored in sB of the IP word
+
+#define alu_add @prevword @prevword @prevword \
+    @lane_sA \
+    @move_r \
+    @move_r \
+    [->+<] \
+    > \
+    @move_r \
+    < \
+    @lane_sA_end
+
+//temp0[-]
+//y[x-temp0+y-]
+//temp0[y+temp0-]
+
+#define alu_sub @prevword @prevword @prevword \
+    @lane_sA \
+    [@nextword-@prevword>+<-] \
+    >[<+>-]< \
+    @clear \
+    @nextword \
+    @move_r \
+    @nextword \
+    @clear \
+    @prevword \
+    @move_r \
+    [->+<] \
+    @lane_sA_end
+
+// MARK: ALU ops end
 
 // commands
 #define cmd_halt @halt
@@ -231,8 +322,10 @@
 #define T_VAL 1
 
 #define OP_HALT 0
+#define OP_NOP 0
 
 #define OP_ADD 2
+#define OP_SUB 3
 
 // PROGRAM BEGIN
 
@@ -256,16 +349,16 @@
 
 // ===== CMD =======
 @fillword(@T_OP, @OP_HALT, 0) // First op should always be halt
-@fillword(@T_OP, @OP_HALT, 1)
-@fillword(@T_OP, @OP_HALT, 1)
-@fillword(@T_OP, @OP_HALT, 1)
-@fillword(@T_OP, @OP_HALT, 1)
+@fillword(@T_OP, @OP_NOP, 1)
+@fillword(@T_OP, @OP_NOP, 1)
+@fillword(@T_OP, @OP_NOP, 1)
+@fillword(@T_OP, @OP_NOP, 1)
 
-// ADD R2, R3, R2
-@fillword(@T_VAL, @R2, 1) // rt
-@fillword(@T_VAL, @R3, 1) // rs
-@fillword(@T_VAL, @R2, 1) // rd
-@fillword(@T_OP, @OP_ADD, 0)
+// SUB R1, R2, R3 -- (4 - 2)
+@fillword(@T_VAL, @R3, 1) // rt
+@fillword(@T_VAL, @R2, 1) // rs
+@fillword(@T_VAL, @R1, 1) // rd
+@fillword(@T_OP, @OP_SUB, 0)
 // ===== CMD END ===
 
 // Set IP
@@ -291,96 +384,23 @@
     @copy_to_A
   @lane_value_end
 
+
+
+#define add @lane_sB_end @simple_register_op(@alu_add) >
+#define sub @lane_sB_end @simple_register_op(@alu_sub) >
+
   @lane_sA
-  -[
-   -[
-     // if 3
-     @clear
-   ]
-   // if opcode ADD, we want to fetch values from rs and rd, add them,
-   // and put to rt.
-    @lane_sA_end
 
-    // Fetch from rs
-    @prevword @prevword
-    @copy_value_to_A
-
-    @mark_register(@prevword @prevword)
-    @goto_marked_register(@clear)
-    @move_register_to_ip_sA(@prevword @prevword)
-    @fetch_register_cleanup
-
-    // Fetch from rd
-    @prevword @prevword @prevword
-    @copy_value_to_A
-
-    @mark_register(@prevword @prevword @prevword)
-    @goto_marked_register(@clear)
-    @move_register_to_ip_sA(@prevword @prevword @prevword)
-    @fetch_register_cleanup
-
-    // Addition
-    @prevword @prevword @prevword
-    @lane_sA
-    @move_r
-    @move_r
-    [->+<] // Move to sB
-    >
-    // MARK: Result is stored in sB of the IP word
-    @move_r
-    <
-
-    @lane_sA_end
-
-    // And now we want to move the value to the correct register.
-    // Same shit but another direction
-// MARK: Move from the result cell to dest register
-    @prevword
-    @copy_value_to_A
-
-    @mark_register(@prevword)
-    @goto_marked_register(@nop)
-    @lane_reg
-    @clear // Do not forget to clean destination register
-    @lane_reg_end
-    @goto_ip
-    @lane_ip_end
-
-    // Just the long regular copy
-    @lane_sB
-    @while
-      -
-      @lane_sB_end
-      @prevword
-      @goto_marked_register(@nop)
-      @lane_reg
-      +
-      @lane_reg_end
-      @goto_ip
-      @lane_ip_end
-      @lane_sB
-    @endwhile
-    @lane_sB_end // AND WE MOVED VALUE IN THE REGISTER!!!!
-
-    @prevword
-    @goto_marked_register(@clear)
-
-    // Restore the register start pointer
-    @goto_start
-    @nextword
-    @lane_sA
-    @set(1)
-    @lane_sA_end
-    @goto_ip
-
-    @lane_ip_end
-  ]
+  @switch(3, @default, >, <)
+  @case(3, @sub, >, <)
+  @case(2, @add, >, <)
+  @case(1, @nop, >, <)
 
   @lane_ip
   @move_ip_next_command
 
   @lane_ip_end
   @goto_start
-
+$
   @halt // MARK: One operation finished. Let's chill forever
 @endwhile

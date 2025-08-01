@@ -347,6 +347,19 @@ class InterpreterStore {
         const char = this.getCurrentChar();
         const currentPos = this.currentChar.getValue();
 
+        // Check for $ in-code breakpoint
+        if (char === '$') {
+            console.log(`Hit in-code breakpoint $ at line ${currentPos.line}, column ${currentPos.column}`);
+            this.pause();
+            // Move past the $ character before pausing
+            const hasMore = this.moveToNextChar();
+            if (!hasMore) {
+                this.stop();
+                return false;
+            }
+            return true;
+        }
+
         // Check for breakpoint BEFORE executing the instruction
         // But skip if this is the same breakpoint we just paused at
         if (char && '><+-[].,'.includes(char) && this.shouldPauseAtBreakpoint(currentPos)) {
@@ -470,6 +483,12 @@ class InterpreterStore {
             ...currentState,
             isPaused: false
         });
+
+        // If there's no active execution loop (e.g., after turbo mode breakpoint), start one
+        if (!this.runInterval && !this.runAnimationFrameId) {
+            // Start smooth execution by default
+            this.runSmooth();
+        }
     }
 
     public run(delay: number = 100) {
@@ -573,6 +592,19 @@ class InterpreterStore {
         while (true) {
             const char = this.getCurrentChar();
             const currentPos = this.currentChar.getValue();
+
+            // Check for $ in-code breakpoint
+            if (char === '$') {
+                console.log(`Hit in-code breakpoint $ at line ${currentPos.line}, column ${currentPos.column}`);
+                this.pause();
+                // Move past the $ character before pausing
+                const hasMore = this.moveToNextChar();
+                if (!hasMore) {
+                    this.stop();
+                    return false;
+                }
+                return true;
+            }
 
             // Check breakpoints (same as before)
             if (char && '><+-[].,'.includes(char) && this.shouldPauseAtBreakpoint(currentPos)) {
@@ -720,7 +752,7 @@ class InterpreterStore {
         console.log('Compiling program for turbo execution...');
 
         // Pre-compile the program into a flat array of operations
-        const ops: Array<{type: string, value?: number}> = [];
+        const ops: Array<{type: string, value?: number, position: Position}> = [];
         const jumpTable: Map<number, number> = new Map();
         const jumpStack: number[] = [];
 
@@ -730,7 +762,7 @@ class InterpreterStore {
             const text = this.code[line].text;
             for (let col = 0; col < text.length; col++) {
                 const char = text[col];
-                if ('><+-[].,'.includes(char)) {
+                if ('><+-[].,$'.includes(char)) {
                     if (char === '[') {
                         jumpStack.push(opIndex);
                     } else if (char === ']') {
@@ -740,7 +772,7 @@ class InterpreterStore {
                             jumpTable.set(opIndex, startIndex);
                         }
                     }
-                    ops.push({ type: char });
+                    ops.push({ type: char, position: { line, column: col } });
                     opIndex++;
                 }
             }
@@ -783,6 +815,36 @@ class InterpreterStore {
                     break;
                 case '.': output += String.fromCharCode(tape[pointer]); break;
                 case ',': tape[pointer] = 0; break;
+                case '$':
+                    // Hit in-code breakpoint - update state and pause
+                    console.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
+                    
+                    // Update currentChar to the position after the $ so step works correctly
+                    const nextPc = pc + 1;
+                    if (nextPc < ops.length) {
+                        this.currentChar.next(ops[nextPc].position);
+                    } else {
+                        // We're at the end of the program
+                        const lastOp = ops[pc];
+                        this.currentChar.next({
+                            line: lastOp.position.line,
+                            column: lastOp.position.column + 1
+                        });
+                    }
+                    
+                    this.state.next({
+                        ...this.state.getValue(),
+                        tape: tape,
+                        pointer: pointer,
+                        output: this.state.getValue().output + output,
+                        isPaused: true,
+                        isRunning: true  // Keep running state true so resume works
+                    });
+                    output = '';
+                    
+                    // Exit turbo mode and return to normal execution
+                    console.log('Exiting turbo mode due to breakpoint. Use step or resume to continue.');
+                    return;
             }
 
             pc++;

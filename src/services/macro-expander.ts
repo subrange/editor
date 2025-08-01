@@ -542,8 +542,8 @@ export class MacroExpanderImpl implements MacroExpander {
     const nonEmptyLines: string[] = [];
     
     for (const line of lines) {
-      // A line is considered non-empty if it has any BF commands
-      if (line.match(/[><+\-.,\[\]]/)) {
+      // A line is considered non-empty if it has any BF commands (including $ for breakpoints)
+      if (line.match(/[><+\-.,\[\]$]/)) {
         nonEmptyLines.push(line);
       }
     }

@@ -44,7 +44,7 @@ function LineNumbersPanel({ store }: LineNumbersPanelProps) {
         if (!line) return;
 
         for (let i = 0; i < line.text.length; i++) {
-            if ('><+-[].,'.includes(line.text[i])) {
+            if ('><+-[].,$'.includes(line.text[i])) {
                 interpreterStore.toggleBreakpoint({line: lineIndex, column: i});
                 break;
             }

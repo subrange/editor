@@ -979,7 +979,7 @@ export class EditorStore {
             // Comments/other: expand backwards to next brainfuck token or whitespace
             newStart--;
             while (newStart > 0 &&
-            !'+-><[].,'.includes(lineText[newStart - 1]) &&
+            !'+-><[].,$'.includes(lineText[newStart - 1]) &&
             !/\s/.test(lineText[newStart - 1])) {
                 newStart--;
             }
@@ -1062,7 +1062,7 @@ export class EditorStore {
         } else {
             // Comments/other: expand to next brainfuck token or whitespace
             while (newEnd < lineText.length &&
-            !'+-><[].,'.includes(lineText[newEnd]) &&
+            !'+-><[].,$'.includes(lineText[newEnd]) &&
             !/\s/.test(lineText[newEnd])) {
                 newEnd++;
             }
