@@ -18,6 +18,16 @@ type InterpreterState = {
     laneCount: number;
 }
 
+export type TapeSnapshot = {
+    id: string;
+    name: string;
+    timestamp: number;
+    tape: number[];
+    pointer: number;
+    cellSize: number;
+    tapeSize: number;
+}
+
 const DEFAULT_TAPE_SIZE = 1024 * 1024; // 1 megabyte tape
 const DEFAULT_CELL_SIZE = 256; // 8-bit cells
 const DEFAULT_LANE_COUNT = 1; // Single lane by default
@@ -163,14 +173,51 @@ class InterpreterStore {
     }
 
     public runFromPosition(position: Position) {
-        // Reset the interpreter but keep breakpoints
-        this.reset();
+        // Stop any running execution
+        if (this.runInterval) {
+            clearInterval(this.runInterval);
+            this.runInterval = null;
+        }
+        if (this.runAnimationFrameId) {
+            cancelAnimationFrame(this.runAnimationFrameId);
+            this.runAnimationFrameId = null;
+        }
+        
+        // Update state to prepare for run, but keep tape and pointer
+        const currentState = this.state.getValue();
+        this.state.next({
+            ...currentState,
+            isRunning: false,
+            isPaused: false,
+            isStopped: false,
+            output: ''  // Clear output for fresh run
+        });
         
         // Set the current character position to start from
         this.currentChar.next(position);
         
         // Start running smoothly from this position
         this.runSmooth();
+    }
+
+    public stepToPosition(targetPosition: Position) {
+        const currentState = this.state.getValue();
+        this.state.next({
+            ...currentState,
+            isRunning: false,
+            isPaused: false,
+            isStopped: false
+        });
+
+        const currentChar = this.currentChar.getValue();
+
+        if (targetPosition.line === currentChar.line && targetPosition.column === currentChar.column) {
+            return;
+        }
+
+        this.currentChar.next(targetPosition);
+
+        this.step();
     }
 
     // Build a map of matching brackets for efficient jumping
@@ -834,6 +881,43 @@ class InterpreterStore {
         this.state.next({
             ...this.state.getValue(),
             laneCount: count
+        });
+    }
+
+    public loadSnapshot(snapshot: TapeSnapshot) {
+
+        const currentState = this.state.getValue();
+        const cellSize = this.cellSize.getValue();
+        const tapeSize = this.tapeSize.getValue();
+
+        // First set the tape and cell sizes
+        if (snapshot.tapeSize !== tapeSize) {
+            this.setTapeSize(snapshot.tapeSize);
+        }
+        if (snapshot.cellSize !== cellSize) {
+            this.setCellSize(snapshot.cellSize);
+        }
+
+        // Create new tape array of correct type
+        let newTape: Uint8Array | Uint16Array | Uint32Array;
+        if (snapshot.cellSize === 256) {
+            newTape = new Uint8Array(snapshot.tapeSize);
+        } else if (snapshot.cellSize === 65536) {
+            newTape = new Uint16Array(snapshot.tapeSize);
+        } else {
+            newTape = new Uint32Array(snapshot.tapeSize);
+        }
+
+        // Copy snapshot data
+        for (let i = 0; i < Math.min(snapshot.tape.length, newTape.length); i++) {
+            newTape[i] = snapshot.tape[i];
+        }
+
+        // Update interpreter state
+        this.state.next({
+            ...currentState,
+            tape: newTape,
+            pointer: snapshot.pointer
         });
     }
 }

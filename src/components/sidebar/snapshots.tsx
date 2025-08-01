@@ -3,16 +3,7 @@ import clsx from "clsx";
 import { interpreterStore } from "../debugger/interpreter-facade.store.ts";
 import { useStoreSubscribe } from "../../hooks/use-store-subscribe.tsx";
 import { CameraIcon, TrashIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
-
-interface TapeSnapshot {
-    id: string;
-    name: string;
-    timestamp: number;
-    tape: number[];
-    pointer: number;
-    cellSize: number;
-    tapeSize: number;
-}
+import type {TapeSnapshot} from "../debugger/interpreter.store.ts";
 
 const STORAGE_KEY = "brainfuck-tape-snapshots";
 
@@ -70,38 +61,7 @@ export function Snapshots() {
     };
 
     const loadSnapshot = (snapshot: TapeSnapshot) => {
-        // First set the tape and cell sizes
-        if (snapshot.tapeSize !== tapeSize) {
-            interpreterStore.setTapeSize(snapshot.tapeSize);
-        }
-        if (snapshot.cellSize !== cellSize) {
-            interpreterStore.setCellSize(snapshot.cellSize);
-        }
-        
-        // Get current state to modify
-        const currentState = interpreterStore.state.getValue();
-        
-        // Create new tape array of correct type
-        let newTape: Uint8Array | Uint16Array | Uint32Array;
-        if (snapshot.cellSize === 256) {
-            newTape = new Uint8Array(snapshot.tapeSize);
-        } else if (snapshot.cellSize === 65536) {
-            newTape = new Uint16Array(snapshot.tapeSize);
-        } else {
-            newTape = new Uint32Array(snapshot.tapeSize);
-        }
-        
-        // Copy snapshot data
-        for (let i = 0; i < Math.min(snapshot.tape.length, newTape.length); i++) {
-            newTape[i] = snapshot.tape[i];
-        }
-        
-        // Update interpreter state
-        interpreterStore.state.next({
-            ...currentState,
-            tape: newTape,
-            pointer: snapshot.pointer
-        });
+        interpreterStore.loadSnapshot(snapshot);
     };
 
     const deleteSnapshot = (id: string) => {

@@ -1,7 +1,7 @@
 // Facade that provides a unified interface to either JS or WASM interpreter
-import { BehaviorSubject, Subscription } from "rxjs";
-import { type Position } from "../editor/editor.store.ts";
-import { interpreterStore as jsInterpreter } from "./interpreter.store.ts";
+import {BehaviorSubject, Subscription} from "rxjs";
+import {type Position} from "../editor/editor.store.ts";
+import {interpreterStore as jsInterpreter, type TapeSnapshot} from "./interpreter.store.ts";
 
 type InterpreterState = {
     tape: Uint8Array | Uint16Array | Uint32Array;
@@ -20,48 +20,51 @@ type InterpreterInterface = {
     tapeSize: BehaviorSubject<number>;
     cellSize: BehaviorSubject<number>;
     laneCount: BehaviorSubject<number>;
-    
+
     reset(): void;
     step(): boolean;
     run(delay?: number): void;
     runSmooth(): void;
     runFromPosition(position: Position): void;
+    stepToPosition(position: Position): void;
     runImmediately(): Promise<void>;
     runTurbo(): Promise<void>;
     runUltraFast?(): Promise<void>;
     pause(): void;
     resume(): void;
     stop(): void;
-    
+
     toggleBreakpoint(position: Position): void;
     clearBreakpoints(): void;
     hasBreakpointAt(position: Position): boolean;
-    
+
     setTapeSize(size: number): void;
     setCellSize(size: number): void;
     setLaneCount(count: number): void;
+
+    loadSnapshot(snapshot: TapeSnapshot): void;
 }
 
 class InterpreterFacade implements InterpreterInterface {
     private currentInterpreter: InterpreterInterface = jsInterpreter;
     private subscriptions: Subscription[] = [];
-    
+
     // Proxy all the observables
     public state = new BehaviorSubject<InterpreterState>(jsInterpreter.state.getValue());
     public currentChar = new BehaviorSubject<Position>(jsInterpreter.currentChar.getValue());
     public tapeSize = new BehaviorSubject<number>(jsInterpreter.tapeSize.getValue());
     public cellSize = new BehaviorSubject<number>(jsInterpreter.cellSize.getValue());
     public laneCount = new BehaviorSubject<number>(jsInterpreter.laneCount.getValue());
-    
+
     constructor() {
         this.setupProxying();
     }
-    
+
     private setupProxying() {
         // Clear existing subscriptions
         this.subscriptions.forEach(sub => sub.unsubscribe());
         this.subscriptions = [];
-        
+
         // Proxy observables from current interpreter
         this.subscriptions.push(
             this.currentInterpreter.state.subscribe(value => this.state.next(value)),
@@ -71,32 +74,86 @@ class InterpreterFacade implements InterpreterInterface {
             this.currentInterpreter.laneCount.subscribe(value => this.laneCount.next(value))
         );
     }
-    
-    
+
+
     // Delegate all methods to current interpreter
-    reset() { this.currentInterpreter.reset(); }
-    step() { return this.currentInterpreter.step(); }
-    run(delay?: number) { this.currentInterpreter.run(delay); }
-    runSmooth() { this.currentInterpreter.runSmooth(); }
-    runFromPosition(position: Position) { this.currentInterpreter.runFromPosition(position); }
-    async runImmediately() { await this.currentInterpreter.runImmediately(); }
-    async runTurbo() { await this.currentInterpreter.runTurbo(); }
-    async runUltraFast() { 
+    reset() {
+        this.currentInterpreter.reset();
+    }
+
+    step() {
+        return this.currentInterpreter.step();
+    }
+
+    run(delay?: number) {
+        this.currentInterpreter.run(delay);
+    }
+
+    runSmooth() {
+        this.currentInterpreter.runSmooth();
+    }
+
+    runFromPosition(position: Position) {
+        this.currentInterpreter.runFromPosition(position);
+    }
+
+    stepToPosition(position: Position) {
+        this.currentInterpreter.stepToPosition(position);
+    }
+
+    async runImmediately() {
+        await this.currentInterpreter.runImmediately();
+    }
+
+    async runTurbo() {
+        await this.currentInterpreter.runTurbo();
+    }
+
+    async runUltraFast() {
         if ('runUltraFast' in this.currentInterpreter) {
             await (this.currentInterpreter as any).runUltraFast();
         }
     }
-    pause() { this.currentInterpreter.pause(); }
-    resume() { this.currentInterpreter.resume(); }
-    stop() { this.currentInterpreter.stop(); }
-    
-    toggleBreakpoint(position: Position) { this.currentInterpreter.toggleBreakpoint(position); }
-    clearBreakpoints() { this.currentInterpreter.clearBreakpoints(); }
-    hasBreakpointAt(position: Position) { return this.currentInterpreter.hasBreakpointAt(position); }
-    
-    setTapeSize(size: number) { this.currentInterpreter.setTapeSize(size); }
-    setCellSize(size: number) { this.currentInterpreter.setCellSize(size); }
-    setLaneCount(count: number) { this.currentInterpreter.setLaneCount(count); }
+
+    pause() {
+        this.currentInterpreter.pause();
+    }
+
+    resume() {
+        this.currentInterpreter.resume();
+    }
+
+    stop() {
+        this.currentInterpreter.stop();
+    }
+
+    toggleBreakpoint(position: Position) {
+        this.currentInterpreter.toggleBreakpoint(position);
+    }
+
+    clearBreakpoints() {
+        this.currentInterpreter.clearBreakpoints();
+    }
+
+    hasBreakpointAt(position: Position) {
+        return this.currentInterpreter.hasBreakpointAt(position);
+    }
+
+    setTapeSize(size: number) {
+        this.currentInterpreter.setTapeSize(size);
+    }
+
+    setCellSize(size: number) {
+        this.currentInterpreter.setCellSize(size);
+    }
+
+    setLaneCount(count: number) {
+        this.currentInterpreter.setLaneCount(count);
+    }
+
+    loadSnapshot(snapshot: TapeSnapshot) {
+        this.currentInterpreter.loadSnapshot(snapshot);
+    }
 }
 
 // Export a single instance that all components can use

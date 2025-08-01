@@ -36,6 +36,15 @@ export function Toolbar() {
         }
     };
 
+    const handleStepToCursor = () => {
+        const mainEditor = editorManager.getEditor('main');
+        if (mainEditor) {
+            const state = mainEditor.getState();
+            const cursorPosition = state.selection.focus;
+            interpreterStore.stepToPosition(cursorPosition);
+        }
+    };
+
     return (
         <div className="h-10 min-h-10 border-t border-zinc-800 bg-zinc-900 text-zinc-400">
             <div className="flex items-center px-2 h-full gap-1">
@@ -145,6 +154,14 @@ export function Toolbar() {
                     onClick={handleRunFromCursor}
                     disabled={isRunning}
                     variant="success"
+                />
+
+                <IconButton
+                    icon={CursorArrowRaysIcon}
+                    label="Step to cursor"
+                    onClick={handleStepToCursor}
+                    disabled={isRunning}
+                    variant="info"
                 />
 
                 <div className="w-px h-6 bg-zinc-700 mx-1" />
