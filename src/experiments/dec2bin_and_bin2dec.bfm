@@ -321,7 +321,7 @@
 
 // MARK: ALU ops end
 
-// commands
+// MARK: commands
 #define cmd_halt @halt
 
 #define T_OP 0
@@ -332,11 +332,14 @@
 
 #define OP_ADD 2
 #define OP_SUB 3
+// MARK: commands end
+
+#define POWERS_OF_2 {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768}
 
 #define prefill_fastlane(n) @clear {repeat(n, @nextword +)} @prevwords(n)
 #define clear_fastlane(n) @clear {repeat(n, @nextword @clear)} @prevwords(n)
 
-  #define set_bit_1(lane_start, lane_end) lane_end \
+#define set_bit_1(lane_start, lane_end) lane_end \
     @goto_zero_right_lane \
     lane_start \
     + \
@@ -348,13 +351,13 @@
     lane_start \
     @nextwords(2)
 
-#define set_bit_0(lane_start, lane_end) @lane_end \
+#define set_bit_0(lane_start, lane_end) lane_end \
     @goto_zero_right_lane \
     @prevword \
     @clear \
     @prevword \
     @goto_zero_left_lane \
-    @lane_start \
+    lane_start \
     @nextwords(2)
 
 #define sb0a @set_bit_0(@lane_sA, @lane_sA_end)
@@ -369,7 +372,23 @@
 #define sA 1
 #define sB 0
 
-#define set_next_bit(lane, bit) {if(lane, {if (bit, @sb1a, @sb0a)}, {if (bit, @sb1b, @sb0b)})}
+#define set_next_bit(lane, bit) {if(lane, {if(bit, @sb1a, @sb0a)}, {if(bit, @sb1b, @sb0b)})}
+
+#define set_and_nextword(v) @set(v) @nextword
+
+#define b2d_add_dec @lane_sB [- @lane_sB_end \
+  @set(1) \
+  @goto_zero_left_lane \
+  @lane_sA \
+  @inc(1) \
+  @lane_sA_end \
+  @nextword \
+  @goto_zero_right_lane \
+  @prevword  \
+  @lane_sB \
+] @lane_sB_end
+
+#define b2d_skip_bit @lane_sB @clear @lane_sB_end
 
 // Division layout is n, 0, d, 0, 0, 0, 0
 // Result layout is >0, n, d-n%d, n%d, n/d
@@ -396,6 +415,29 @@
 @scratch_lane_end(sl) \
 @clear_fastlane(24)
 
+#define b2d_setup @prefill_fastlane(24) \
+  @nextwords(10) \
+  @scratch_lane(@sB) \
+  {for(v in {reverse(@POWERS_OF_2)}, @set_and_nextword(v))} \
+  @prevword \
+  @scratch_lane_end(@sB)
+
+#define b2d_cleanup @goto_zero_left_lane @clear_fastlane(24)
+
+// bin2dec requires binary value to be in sA, and uses sB and lane 0 as helper lanes
+#define bin2dec @b2d_setup \
+@scratch_lane(@sB) \
+@while \
+  @prev(1) \
+  @inc(1) \
+  @switch(2, @default, @scratch_lane_end(@sA), @scratch_lane(@sA)) \
+  @case(2, @b2d_add_dec, @scratch_lane_end(@sA), @scratch_lane(@sA)) \
+  @case(1, @b2d_skip_bit, @scratch_lane_end(@sA), @scratch_lane(@sA)) \
+  @prevword \
+  @next(1) \
+@endwhile \
+@scratch_lane_end(@sB) \
+@b2d_cleanup
 
 // PROGRAM BEGIN
 // PREFILL LANE 0
@@ -408,5 +450,7 @@
 @set(37)
 @lane_sB_end
 
+// MARK: Operation "nothing changed":
 @dec2bin(@sA)
-@dec2bin(@sB)
+@bin2dec
+

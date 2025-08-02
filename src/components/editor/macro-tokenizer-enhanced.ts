@@ -26,6 +26,9 @@ interface MacroTokenizerState {
     inMacroDefinition?: boolean; // Track if we're in a macro definition line
     currentLineParams?: Set<string>;  // Parameters for current macro definition line
     continuedMacroDefinition?: boolean; // Track if previous line ended with backslash
+    forLoopVariables: Set<string>; // Track loop variables from {for} constructs
+    braceDepth: number; // Track nesting depth to manage scope
+    forLoopScopes: Array<{ variable: string; depth: number }>; // Stack of for loop scopes
 }
 
 export class EnhancedMacroTokenizer implements ITokenizer {
@@ -33,7 +36,10 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         inMultiLineComment: false,
         expanderTokens: [],
         expanderErrors: [],
-        macroDefinitions: []
+        macroDefinitions: [],
+        forLoopVariables: new Set(),
+        braceDepth: 0,
+        forLoopScopes: []
     };
     
     private expander = createMacroExpander();
@@ -46,7 +52,10 @@ export class EnhancedMacroTokenizer implements ITokenizer {
             expanderTokens: [],
             expanderErrors: [],
             macroDefinitions: [],
-            continuedMacroDefinition: false
+            continuedMacroDefinition: false,
+            forLoopVariables: new Set(),
+            braceDepth: 0,
+            forLoopScopes: []
         };
         this.fullText = '';
         this.lineOffsets = [];
@@ -213,6 +222,9 @@ export class EnhancedMacroTokenizer implements ITokenizer {
             if (!matched) {
                 const builtinMatch = text.slice(position).match(/^\{(repeat|if|for|reverse)\b/);
                 if (builtinMatch) {
+                    // Increment brace depth for the opening brace
+                    this.state.braceDepth++;
+                    
                     tokens.push({
                         type: 'builtin_function',  // Always treat these as builtin functions
                         value: builtinMatch[0],
@@ -221,6 +233,18 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                         error: error
                     });
                     position += builtinMatch[0].length;
+                    
+                    // Special handling for {for to extract loop variable
+                    if (builtinMatch[1] === 'for') {
+                        // Look ahead for the pattern: (variable in
+                        const forPattern = text.slice(position).match(/^\s*\(\s*([a-zA-Z_]\w*)\s+in\b/);
+                        if (forPattern) {
+                            const loopVar = forPattern[1];
+                            this.state.forLoopScopes.push({ variable: loopVar, depth: this.state.braceDepth });
+                            this.state.forLoopVariables.add(loopVar);
+                        }
+                    }
+                    
                     matched = true;
                 }
             }
@@ -356,6 +380,27 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 
             // Braces
             if (!matched && (text[position] === '{' || text[position] === '}')) {
+                // Track brace depth for scope management
+                // Only increment if this isn't part of a builtin function (which we already handled)
+                const isBuiltinFunction = text[position] === '{' && text.slice(position).match(/^\{(repeat|if|for|reverse)\b/);
+                
+                if (text[position] === '{' && !isBuiltinFunction) {
+                    this.state.braceDepth++;
+                } else if (text[position] === '}') {
+                    this.state.braceDepth--;
+                    
+                    // Clean up for loop variables that are out of scope
+                    const scopesToRemove = [];
+                    for (let i = this.state.forLoopScopes.length - 1; i >= 0; i--) {
+                        if (this.state.forLoopScopes[i].depth > this.state.braceDepth) {
+                            scopesToRemove.push(i);
+                            this.state.forLoopVariables.delete(this.state.forLoopScopes[i].variable);
+                        }
+                    }
+                    // Remove scopes that are no longer active
+                    scopesToRemove.forEach(index => this.state.forLoopScopes.splice(index, 1));
+                }
+                
                 tokens.push({
                     type: 'braces',
                     value: text[position],
@@ -415,19 +460,27 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 }
             }
 
-            // Check for parameter names in macro definition
-            if (!matched && this.state.currentLineParams && this.state.currentLineParams.size > 0) {
+            // Check for parameter names in macro definition or for loop variables
+            if (!matched) {
                 const identMatch = text.slice(position).match(/^[a-zA-Z_]\w*/);
-                if (identMatch && this.state.currentLineParams.has(identMatch[0])) {
-                    tokens.push({
-                        type: 'parameter',
-                        value: identMatch[0],
-                        start: position,
-                        end: position + identMatch[0].length,
-                        error: error
-                    });
-                    position += identMatch[0].length;
-                    matched = true;
+                if (identMatch) {
+                    const identifier = identMatch[0];
+                    
+                    // Check if it's a macro parameter or a for loop variable
+                    const isMacroParam = this.state.currentLineParams && this.state.currentLineParams.has(identifier);
+                    const isForLoopVar = this.state.forLoopVariables.has(identifier);
+                    
+                    if (isMacroParam || isForLoopVar) {
+                        tokens.push({
+                            type: 'parameter',
+                            value: identifier,
+                            start: position,
+                            end: position + identifier.length,
+                            error: error
+                        });
+                        position += identifier.length;
+                        matched = true;
+                    }
                 }
             }
 
@@ -468,6 +521,7 @@ export class EnhancedMacroTokenizer implements ITokenizer {
 
     // Tokenize all lines at once to maintain state
     tokenizeAllLines(lines: string[]): MacroToken[][] {
+        // Reset all state including for loop tracking
         this.reset();
         
         // Build full text and line offsets for macro expander
