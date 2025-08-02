@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { editorManager } from "../../services/editor-manager.service.ts";
-import { DocumentIcon, TrashIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { DocumentIcon, TrashIcon, ArrowDownTrayIcon, ArrowDownIcon } from "@heroicons/react/24/outline";
+import JSZip from "jszip";
+import { Tooltip } from "../ui/tooltip";
 
 const STORAGE_KEY = "brainfuck-saved-files";
 
@@ -79,6 +81,42 @@ export function Files() {
     const formatDate = (timestamp: number) => {
         const date = new Date(timestamp);
         return date.toLocaleString();
+    };
+
+    const downloadFile = async (file: SavedFile) => {
+        const hasMacroContent = file.macroContent.trim().length > 0;
+        
+        if (!hasMacroContent) {
+            // Download single .bf file
+            const blob = new Blob([file.mainContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${file.name}.bf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            // Create a zip archive with both files
+            const zip = new JSZip();
+            zip.file(`${file.name}.bf`, file.mainContent);
+            zip.file(`${file.name}.bfm`, file.macroContent);
+            
+            try {
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${file.name}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Failed to create zip archive:', error);
+            }
+        }
     };
 
     return (
@@ -162,6 +200,19 @@ export function Files() {
                                             <ArrowDownTrayIcon className="h-3 w-3" />
                                             Load
                                         </button>
+                                        <Tooltip 
+                                            content={file.macroContent.trim() ? "Download as .zip archive" : "Download .bf file"}
+                                            side="bottom"
+                                        >
+                                            <button
+                                                onClick={() => downloadFile(file)}
+                                                className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs 
+                                                         bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded transition-colors"
+                                            >
+                                                <ArrowDownIcon className="h-3 w-3" />
+                                                Download
+                                            </button>
+                                        </Tooltip>
                                         <button
                                             onClick={() => deleteFile(file.id)}
                                             className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
