@@ -209,12 +209,12 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 }
             }
 
-            // Check for built-in function ({repeat)
+            // Check for built-in function ({repeat or {if)
             if (!matched) {
-                const builtinMatch = text.slice(position).match(/^\{repeat\b/);
+                const builtinMatch = text.slice(position).match(/^\{(repeat|if)\b/);
                 if (builtinMatch) {
                     tokens.push({
-                        type: 'builtin_function',  // Always treat {repeat as builtin
+                        type: 'builtin_function',  // Always treat {repeat and {if as builtin
                         value: builtinMatch[0],
                         start: position,
                         end: position + builtinMatch[0].length,

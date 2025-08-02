@@ -288,49 +288,102 @@ export class MacroExpanderImpl implements MacroExpander {
     result = this.expandBuiltins(result, lineNumber);
 
     // Then expand @-style macro invocations
-    // Only match @ at word boundaries to avoid matching email-like patterns
-    result = result.replace(/(?<!\w)@(\w+)(?:\((.*?)\))?/g, (match, macroName, args, offset) => {
-      const invocationStart = this.currentOffset + offset;
-      
-      if (!this.macros.has(macroName)) {
-        this.errors.push({
-          type: 'undefined',
-          message: `Macro '${macroName}' is not defined`,
-          location: lineNumber !== undefined ? {
-            line: lineNumber - 1,
-            column: offset,
-            length: match.length
-          } : undefined
+    // We need to manually parse to handle nested parentheses correctly
+    let expandedText = '';
+    let i = 0;
+    
+    while (i < result.length) {
+      // Check for macro invocation
+      if (result[i] === '@' && i + 1 < result.length && /\w/.test(result[i + 1])) {
+        const startOffset = i;
+        i++; // Skip @
+        
+        // Extract macro name
+        let macroName = '';
+        while (i < result.length && /\w/.test(result[i])) {
+          macroName += result[i];
+          i++;
+        }
+        
+        // Check if it has parameters
+        let args: string | undefined;
+        let matchLength = 1 + macroName.length; // @ + name
+        
+        if (i < result.length && result[i] === '(') {
+          // Extract parameters with proper parentheses matching
+          let depth = 1;
+          let argsStart = i + 1;
+          i++; // Skip opening (
+          
+          while (i < result.length && depth > 0) {
+            if (result[i] === '(') {
+              depth++;
+            } else if (result[i] === ')') {
+              depth--;
+            }
+            i++;
+          }
+          
+          if (depth === 0) {
+            args = result.substring(argsStart, i - 1);
+            matchLength = i - startOffset;
+          } else {
+            // Unclosed parentheses - treat as literal text
+            expandedText += result.substring(startOffset, i);
+            continue;
+          }
+        }
+        
+        // Process the macro
+        const invocationStart = this.currentOffset + startOffset;
+        
+        if (!this.macros.has(macroName)) {
+          this.errors.push({
+            type: 'undefined',
+            message: `Macro '${macroName}' is not defined`,
+            location: lineNumber !== undefined ? {
+              line: lineNumber - 1,
+              column: startOffset,
+              length: matchLength
+            } : undefined
+          });
+          expandedText += result.substring(startOffset, startOffset + matchLength);
+          continue;
+        }
+
+        this.tokens.push({
+          type: 'macro_invocation',
+          range: {
+            start: invocationStart,
+            end: invocationStart + matchLength
+          },
+          name: macroName
         });
-        return match;
-      }
 
-      this.tokens.push({
-        type: 'macro_invocation',
-        range: {
-          start: invocationStart,
-          end: invocationStart + match.length
-        },
-        name: macroName
-      });
-
-      const macro = this.macros.get(macroName)!;
-      
-      if (args !== undefined) {
-        // Parameterized macro invocation
-        return this.expandParameterizedMacro(macro, args, lineNumber, offset, match.length);
+        const macro = this.macros.get(macroName)!;
+        
+        if (args !== undefined) {
+          // Parameterized macro invocation
+          expandedText += this.expandParameterizedMacro(macro, args, lineNumber, startOffset, matchLength);
+        } else {
+          // Simple macro invocation
+          expandedText += this.expandSimpleMacro(macro, lineNumber, startOffset, matchLength);
+        }
       } else {
-        // Simple macro invocation
-        return this.expandSimpleMacro(macro, lineNumber, offset, match.length);
+        expandedText += result[i];
+        i++;
       }
-    });
+    }
 
-    return result;
+    return expandedText;
   }
 
   private expandBuiltins(text: string, lineNumber?: number): string {
+    let result = text;
+    
+    // Expand repeat builtin
     const repeatRegex = /\{repeat\s*\(\s*(-?\d+)\s*,\s*([^)]+)\)}/g;
-    return text.replace(repeatRegex, (match, count, content, offset) => {
+    result = result.replace(repeatRegex, (match, count, content, offset) => {
       const n = parseInt(count, 10);
       
       this.tokens.push({
@@ -356,6 +409,86 @@ export class MacroExpanderImpl implements MacroExpander {
       }
       return content.repeat(n);
     });
+    
+    // Expand if builtin
+    // Syntax: {if(condition, true_branch, false_branch)}
+    // condition: non-zero = true, zero = false
+    // We need to manually parse to handle nested parentheses and commas properly
+    let index = 0;
+    while (true) {
+      const ifMatch = result.substring(index).match(/\{if\s*\(/);
+      if (!ifMatch) break;
+      
+      const offset = index + ifMatch.index!;
+      const matchLength = ifMatch[0].length;
+      const fullMatch = this.extractIfExpression(result, offset + matchLength);
+      
+      if (!fullMatch) {
+        this.errors.push({
+          type: 'syntax_error',
+          message: `Invalid if expression`,
+          location: lineNumber !== undefined ? {
+            line: lineNumber - 1,
+            column: offset,
+            length: matchLength
+          } : undefined
+        });
+        index = offset + matchLength;
+        continue;
+      }
+      
+      const args = this.parseArguments(fullMatch.content);
+      
+      if (args.length !== 3) {
+        this.errors.push({
+          type: 'syntax_error',
+          message: `if() expects exactly 3 arguments, got ${args.length}`,
+          location: lineNumber !== undefined ? {
+            line: lineNumber - 1,
+            column: offset,
+            length: fullMatch.length
+          } : undefined
+        });
+        index = offset + fullMatch.length;
+        continue;
+      }
+      
+      // Expand macros in the condition argument first
+      const expandedCondition = this.expandMacrosInText(args[0], lineNumber);
+      const condValue = parseInt(expandedCondition.trim(), 10);
+      
+      this.tokens.push({
+        type: 'builtin_function',
+        range: {
+          start: this.currentOffset + offset,
+          end: this.currentOffset + offset + fullMatch.length
+        },
+        name: 'if'
+      });
+      
+      if (isNaN(condValue)) {
+        this.errors.push({
+          type: 'syntax_error',
+          message: `Invalid if condition: ${args[0]} (expanded to: ${expandedCondition})`,
+          location: lineNumber !== undefined ? {
+            line: lineNumber - 1,
+            column: offset,
+            length: fullMatch.length
+          } : undefined
+        });
+        index = offset + fullMatch.length;
+        continue;
+      }
+      
+      // Non-zero is true, zero is false
+      // Also expand macros in the selected branch
+      const selectedBranch = condValue !== 0 ? args[1] : args[2];
+      const replacement = this.expandMacrosInText(selectedBranch, lineNumber);
+      result = result.substring(0, offset) + replacement + result.substring(offset + fullMatch.length);
+      index = offset + replacement.length;
+    }
+    
+    return result;
   }
 
   private expandSimpleMacro(macro: MacroDefinition, lineNumber?: number, column?: number, length?: number): string {
@@ -457,7 +590,11 @@ export class MacroExpanderImpl implements MacroExpander {
     for (let i = 0; i < macro.parameters.length; i++) {
       const param = macro.parameters[i];
       const arg = args[i];
-      const regex = new RegExp(`\\b${param}\\b`, 'g');
+      // Use a more flexible regex that matches the parameter name when it's:
+      // - At a word boundary (for most cases)
+      // - After @ (for macro invocations like @scratch_lane)
+      // - After other non-word characters
+      const regex = new RegExp(`(?<=^|[^\\w]|@)${param}(?=$|[^\\w])`, 'g');
       expandedBody = expandedBody.replace(regex, arg);
     }
 
@@ -472,21 +609,60 @@ export class MacroExpanderImpl implements MacroExpander {
     const args: string[] = [];
     let current = '';
     let depth = 0;
+    let i = 0;
 
-    for (let i = 0; i < argsString.length; i++) {
+    while (i < argsString.length) {
       const char = argsString[i];
       
+      // Check for macro invocation
+      if (char === '@' && i + 1 < argsString.length && /\w/.test(argsString[i + 1])) {
+        // Found a macro invocation, consume the entire thing
+        current += char;
+        i++;
+        
+        // Consume the macro name
+        while (i < argsString.length && /\w/.test(argsString[i])) {
+          current += argsString[i];
+          i++;
+        }
+        
+        // Check if it has parameters
+        if (i < argsString.length && argsString[i] === '(') {
+          current += argsString[i];
+          i++;
+          let macroDepth = 1;
+          
+          // Consume everything until the matching closing parenthesis
+          while (i < argsString.length && macroDepth > 0) {
+            if (argsString[i] === '(') {
+              macroDepth++;
+            } else if (argsString[i] === ')') {
+              macroDepth--;
+            }
+            current += argsString[i];
+            i++;
+          }
+        }
+        continue;
+      }
+      
+      // Regular parentheses handling
       if (char === '(') {
         depth++;
         current += char;
+        i++;
       } else if (char === ')') {
         depth--;
         current += char;
+        i++;
       } else if (char === ',' && depth === 0) {
+        // Only split on commas at depth 0
         args.push(current.trim());
         current = '';
+        i++;
       } else {
         current += char;
+        i++;
       }
     }
 
@@ -495,6 +671,46 @@ export class MacroExpanderImpl implements MacroExpander {
     }
 
     return args;
+  }
+  
+  private extractIfExpression(text: string, startPos: number): { content: string; length: number } | null {
+    // Start position is right after "{if("
+    let depth = 1; // We're already inside one parenthesis
+    let i = startPos;
+    let content = '';
+    const actualStart = text.lastIndexOf('{', startPos - 1); // Find the { before if(
+    
+    while (i < text.length && depth > 0) {
+      const char = text[i];
+      
+      if (char === '(') {
+        depth++;
+      } else if (char === ')') {
+        depth--;
+        if (depth === 0) {
+          // Found the closing parenthesis
+          const closing = text[i + 1];
+          if (closing === '}') {
+            // Complete if expression found
+            return {
+              content,
+              length: i + 2 - actualStart // From { to } inclusive
+            };
+          } else {
+            // Missing closing brace
+            return null;
+          }
+        }
+      }
+      
+      if (depth > 0) {
+        content += char;
+      }
+      i++;
+    }
+    
+    // Unclosed parenthesis
+    return null;
   }
 
   private postProcess(code: string, options: MacroExpanderOptions): string {

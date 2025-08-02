@@ -77,6 +77,7 @@ interface MacroToken {
 
 ```brainfuck
 {repeat(n, content)}  // Repeats content n times
+{if(condition, true_branch, false_branch)}  // Conditional expansion (non-zero = true, zero = false)
 ```
 
 ## Usage Examples
@@ -115,6 +116,31 @@ interface MacroToken {
 
 // Complex movement pattern
 @move(3) @inc(5) @back(3)
+```
+
+### Conditional Macros with if
+
+```brainfuck
+// Define scratch lanes
+#define sA 1
+#define sB 0
+
+// Select lane based on parameter
+#define scratch_lane(n) {if(n, @lane_sA, @lane_sB)}
+
+// Use different operations based on condition
+#define safe_dec(n) {if(n, {repeat(n, -)}, )}
+
+// Complex conditional macro
+#define move_or_stay(dir, dist) {if(dir, {repeat(dist, >)}, {repeat(dist, <)})}
+
+// Usage examples
+@scratch_lane(@sA)  // Expands to @lane_sA
+@scratch_lane(@sB)  // Expands to @lane_sB
+@safe_dec(5)        // Expands to -----
+@safe_dec(0)        // Expands to nothing
+@move_or_stay(1, 3) // Expands to >>>
+@move_or_stay(0, 3) // Expands to <<<
 ```
 
 ### Nested Macros
@@ -325,7 +351,7 @@ result.errors.forEach(error => {
 
 ## Limitations
 
-1. **No Conditional Macros**: The system doesn't support conditional compilation
+1. **Limited Conditional Logic**: Only numeric conditions supported via {if()} builtin
 2. **No Variadic Macros**: Fixed number of parameters only
 3. **No String Manipulation**: Parameters are treated as literal text
 4. **No Macro Concatenation**: Cannot build macro names dynamically
