@@ -1158,6 +1158,8 @@ export class EditorStore {
                 return; // Nothing to paste
             }
 
+            let stateForInsert = currentState;
+            
             // If there's a selection, delete it first
             if (!isSelectionCollapsed(selection)) {
                 const range = selectionToRange(selection);
@@ -1166,17 +1168,17 @@ export class EditorStore {
                     range,
                     deletedText: CommandExecutor.extractText(range, currentState)
                 };
-                this.editorState.next(this.undoRedo.execute(deleteCommand, currentState));
+                stateForInsert = this.undoRedo.execute(deleteCommand, currentState);
+                this.editorState.next(stateForInsert);
             }
 
-            // Now insert the text at the cursor position
+            // Now insert the text at the cursor position from the updated state
             const insertCommand: CommandData = {
                 type: "insert",
-                position: selection.focus,
+                position: stateForInsert.selection.focus,
                 text
             };
-            // Todo: here is the bug, it does not delete the text, and just overwrites the previous command
-            this.editorState.next(this.undoRedo.execute(insertCommand, currentState));
+            this.editorState.next(this.undoRedo.execute(insertCommand, stateForInsert));
         }).catch(err => {
             console.error("Failed to read clipboard:", err);
         });
