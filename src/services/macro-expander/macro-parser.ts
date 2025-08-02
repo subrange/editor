@@ -50,8 +50,13 @@ export interface MacroInvocationNode extends ASTNode {
 
 export interface BuiltinFunctionNode extends ASTNode {
   type: 'BuiltinFunction';
-  name: 'repeat' | 'if';
+  name: 'repeat' | 'if' | 'for' | 'reverse';
   arguments: ExpressionNode[];
+}
+
+export interface ArrayLiteralNode extends ASTNode {
+  type: 'ArrayLiteral';
+  elements: ExpressionNode[];
 }
 
 export type ExpressionNode = 
@@ -61,7 +66,8 @@ export type ExpressionNode =
   | BuiltinFunctionNode
   | ExpressionListNode
   | TextNode
-  | BrainfuckCommandNode;
+  | BrainfuckCommandNode
+  | ArrayLiteralNode;
 
 export interface NumberNode extends ASTNode {
   type: 'Number';
@@ -323,7 +329,7 @@ export class MacroParser {
     }
     
     // Check for builtin functions
-    if (this.check(TokenType.BUILTIN_REPEAT) || this.check(TokenType.BUILTIN_IF)) {
+    if (this.check(TokenType.BUILTIN_REPEAT) || this.check(TokenType.BUILTIN_IF) || this.check(TokenType.BUILTIN_FOR) || this.check(TokenType.BUILTIN_REVERSE)) {
       return this.parseBuiltinFunction();
     }
     
@@ -410,14 +416,39 @@ export class MacroParser {
     const start = this.peek().position.start;
     const startPos = this.peek().position;
     const functionToken = this.advance();
-    const name = functionToken.type === TokenType.BUILTIN_REPEAT ? 'repeat' : 'if';
+    let name: string;
+    
+    switch (functionToken.type) {
+      case TokenType.BUILTIN_REPEAT:
+        name = 'repeat';
+        break;
+      case TokenType.BUILTIN_IF:
+        name = 'if';
+        break;
+      case TokenType.BUILTIN_FOR:
+        name = 'for';
+        break;
+      case TokenType.BUILTIN_REVERSE:
+        name = 'reverse';
+        break;
+      default:
+        this.addError('Unknown builtin function', functionToken.position);
+        return null;
+    }
     
     if (!this.consume(TokenType.LPAREN)) {
       this.addError(`Expected ( after {${name}`, this.peek().position);
       return null;
     }
     
-    const args = this.parseArgumentList();
+    let args: ExpressionNode[];
+    
+    if (name === 'for') {
+      // Special parsing for for loop: {for(var in {values}, body)}
+      args = this.parseForArguments();
+    } else {
+      args = this.parseArgumentList();
+    }
     
     if (!this.consume(TokenType.RPAREN)) {
       this.addError('Expected ) after arguments', this.peek().position);
@@ -473,7 +504,116 @@ export class MacroParser {
     return args;
   }
 
+  private parseForArguments(): ExpressionNode[] {
+    const args: ExpressionNode[] = [];
+    
+    this.skipWhitespace();
+    
+    // Parse variable name
+    if (!this.check(TokenType.IDENTIFIER)) {
+      this.addError('Expected variable name in for loop', this.peek().position);
+      return args;
+    }
+    
+    const varName = this.advance();
+    args.push({
+      type: 'Identifier',
+      name: varName.value,
+      position: varName.position
+    });
+    
+    this.skipWhitespace();
+    
+    // Expect 'in' keyword
+    if (!this.consume(TokenType.IN)) {
+      this.addError('Expected "in" keyword in for loop', this.peek().position);
+      return args;
+    }
+    
+    this.skipWhitespace();
+    
+    // Parse array literal or expression
+    const arrayExpr = this.parseArrayLiteral() || this.parseExpression();
+    if (arrayExpr) {
+      args.push(arrayExpr);
+    }
+    
+    this.skipWhitespace();
+    
+    // Expect comma
+    if (!this.consume(TokenType.COMMA)) {
+      this.addError('Expected comma after array in for loop', this.peek().position);
+      return args;
+    }
+    
+    this.skipWhitespace();
+    
+    // Parse body expression
+    const body = this.parseExpression();
+    if (body) {
+      args.push(body);
+    }
+    
+    return args;
+  }
+
+  private parseArrayLiteral(): ExpressionNode | null {
+    if (!this.check(TokenType.LBRACE)) {
+      return null;
+    }
+    
+    const start = this.peek().position.start;
+    const startPos = this.peek().position;
+    this.advance(); // consume {
+    
+    const elements: ExpressionNode[] = [];
+    
+    this.skipWhitespace();
+    
+    while (!this.isAtEnd() && !this.check(TokenType.RBRACE)) {
+      const element = this.parseExpression();
+      if (element) {
+        elements.push(element);
+      }
+      
+      this.skipWhitespace();
+      
+      if (!this.check(TokenType.RBRACE)) {
+        if (!this.consume(TokenType.COMMA)) {
+          this.addError('Expected comma or } in array literal', this.peek().position);
+          break;
+        }
+        this.skipWhitespace();
+      }
+    }
+    
+    if (!this.consume(TokenType.RBRACE)) {
+      this.addError('Expected } to close array literal', this.peek().position);
+      return null;
+    }
+    
+    const end = this.previous().position.end;
+    
+    // Return array as a special expression node
+    return {
+      type: 'ArrayLiteral',
+      elements,
+      position: {
+        start,
+        end,
+        line: startPos.line,
+        column: startPos.column
+      }
+    } as ArrayLiteralNode;
+  }
+
   private parseExpression(): ExpressionNode | null {
+    // Check for array literal first
+    const arrayLiteral = this.parseArrayLiteral();
+    if (arrayLiteral) {
+      return arrayLiteral;
+    }
+    
     // This collects everything until a comma or closing paren
     const expressions: ContentNode[] = [];
     const start = this.peek().position.start;
@@ -506,6 +646,9 @@ export class MacroParser {
         rawText += token.value;
         this.advance();
       } else if (token.type === TokenType.COMMA && parenDepth === 0) {
+        break;
+      } else if (token.type === TokenType.RBRACE && parenDepth === 0) {
+        // Also break on closing brace for array literals
         break;
       } else if (token.type === TokenType.WHITESPACE || token.type === TokenType.NEWLINE) {
         // Skip whitespace in expressions

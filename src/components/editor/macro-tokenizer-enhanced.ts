@@ -10,7 +10,7 @@ import {
 export interface MacroToken {
     type: 'macro' | 'macro_definition' | 'macro_invocation' | 'builtin_function' | 
           'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 
-          'whitespace' | 'comment' | 'todo_comment' | 'mark_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name' | 'number' | 'continuation';
+          'whitespace' | 'comment' | 'todo_comment' | 'mark_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name' | 'number' | 'continuation' | 'keyword';
     value: string;
     start: number;
     end: number;
@@ -209,12 +209,12 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 }
             }
 
-            // Check for built-in function ({repeat or {if)
+            // Check for built-in function ({repeat, {if, {for, {reverse)
             if (!matched) {
-                const builtinMatch = text.slice(position).match(/^\{(repeat|if)\b/);
+                const builtinMatch = text.slice(position).match(/^\{(repeat|if|for|reverse)\b/);
                 if (builtinMatch) {
                     tokens.push({
-                        type: 'builtin_function',  // Always treat {repeat and {if as builtin
+                        type: 'builtin_function',  // Always treat these as builtin functions
                         value: builtinMatch[0],
                         start: position,
                         end: position + builtinMatch[0].length,
@@ -399,6 +399,22 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 }
             }
 
+            // Check for 'in' keyword (for {for} loops)
+            if (!matched) {
+                const inMatch = text.slice(position).match(/^\bin\b/);
+                if (inMatch) {
+                    tokens.push({
+                        type: 'keyword',
+                        value: inMatch[0],
+                        start: position,
+                        end: position + inMatch[0].length,
+                        error: error
+                    });
+                    position += inMatch[0].length;
+                    matched = true;
+                }
+            }
+
             // Check for parameter names in macro definition
             if (!matched && this.state.currentLineParams && this.state.currentLineParams.size > 0) {
                 const identMatch = text.slice(position).match(/^[a-zA-Z_]\w*/);
@@ -484,10 +500,11 @@ export const enhancedMacroTokenStyles: Record<MacroToken['type'], string> = {
     macro_definition: 'text-emerald-500/90',         // Verified macro definitions
     macro_name: 'text-rose-400/85',                  // Macro name in definition
     macro_invocation: 'text-violet-300/85 italic',   // Verified macro invocations
-    builtin_function: 'text-sky-400/85',             // Built-in functions like repeat
+    builtin_function: 'text-sky-400/85',             // Built-in functions like repeat, if, for, reverse
     parameter: 'text-pink-300/80 italic',            // Parameter references
     number: 'text-amber-400/80',                     // Numeric literals
     continuation: 'text-yellow-400',                 // Line continuation backslash
+    keyword: 'text-cyan-400/85',                     // Keywords like 'in'
     comment: 'text-gray-400/85 italic',
     todo_comment: 'text-emerald-300/75 italic',      // Beautiful dim green for TODO comments
     mark_comment: 'text-yellow-300 bg-yellow-900/30', // MARK comments with yellow background

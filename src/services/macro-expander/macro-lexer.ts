@@ -13,6 +13,8 @@ export const TokenType = {
   // Builtin functions
   BUILTIN_REPEAT: 'BUILTIN_REPEAT',  // {repeat
   BUILTIN_IF: 'BUILTIN_IF',          // {if
+  BUILTIN_FOR: 'BUILTIN_FOR',        // {for
+  BUILTIN_REVERSE: 'BUILTIN_REVERSE',  // {reverse
   
   // Delimiters
   LPAREN: 'LPAREN',           // (
@@ -20,6 +22,7 @@ export const TokenType = {
   LBRACE: 'LBRACE',           // {
   RBRACE: 'RBRACE',           // }
   COMMA: 'COMMA',             // ,
+  IN: 'IN',                   // in keyword for for loops
   
   // Line continuation
   BACKSLASH: 'BACKSLASH',     // \ at end of line
@@ -151,6 +154,14 @@ export class MacroLexer {
       return this.createToken(TokenType.BUILTIN_IF, '{if', start, this.position);
     }
 
+    if (this.match('{for')) {
+      return this.createToken(TokenType.BUILTIN_FOR, '{for', start, this.position);
+    }
+
+    if (this.match('{reverse')) {
+      return this.createToken(TokenType.BUILTIN_REVERSE, '{reverse', start, this.position);
+    }
+
     // Check for @ symbol
     if (this.peek() === '@') {
       this.advance();
@@ -160,6 +171,10 @@ export class MacroLexer {
     // Check for identifiers (must come after @ check)
     if (this.isAlpha(this.peek())) {
       const value = this.consumeWhile(ch => this.isAlphaNumeric(ch));
+      // Check for 'in' keyword
+      if (value === 'in') {
+        return this.createToken(TokenType.IN, value, start, this.position);
+      }
       return this.createToken(TokenType.IDENTIFIER, value, start, this.position);
     }
 

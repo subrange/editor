@@ -7,7 +7,7 @@ import type {
   MacroExpander
 } from './macro-expander.ts';
 import { parseMacro } from './macro-parser.ts';
-import type { ASTNode, ContentNode, MacroInvocationNode, BuiltinFunctionNode, ExpressionNode, BodyNode, ProgramNode, MacroDefinitionNode, CodeLineNode, BrainfuckCommandNode, TextNode, NumberNode, IdentifierNode, ExpressionListNode } from './macro-parser.ts';
+import type { ASTNode, ContentNode, MacroInvocationNode, BuiltinFunctionNode, ExpressionNode, BodyNode, ProgramNode, MacroDefinitionNode, CodeLineNode, BrainfuckCommandNode, TextNode, NumberNode, IdentifierNode, ExpressionListNode, ArrayLiteralNode } from './macro-parser.ts';
 
 export class MacroExpanderV2 implements MacroExpander {
   private macros: Map<string, MacroDefinitionNode> = new Map();
@@ -380,10 +380,13 @@ export class MacroExpanderV2 implements MacroExpander {
       if (node.type === 'Text') {
         // Check if this text contains any parameter references
         let text = node.value;
-        for (const [param, value] of substitutions) {
-          // Use regex to replace whole-word occurrences
-          const regex = new RegExp(`(?<=^|[^\\w]|@)${param}(?=$|[^\\w])`, 'g');
-          text = text.replace(regex, value);
+        // Sort by length descending to handle longer names first
+        const sortedSubstitutions = Array.from(substitutions.entries())
+          .sort((a, b) => b[0].length - a[0].length);
+        
+        for (const [param, value] of sortedSubstitutions) {
+          // Simple replacement - replace all occurrences of the parameter
+          text = text.split(param).join(value);
         }
         result += text;
       } else if (node.type === 'BuiltinFunction') {
@@ -472,9 +475,13 @@ export class MacroExpanderV2 implements MacroExpander {
         }
         
         // Otherwise check for parameter references within the text
-        for (const [param, value] of substitutions) {
-          const regex = new RegExp(`(?<=^|[^\\w]|@)${param}(?=$|[^\\w])`, 'g');
-          text = text.replace(regex, value);
+        // Sort by length descending to handle longer names first
+        const sortedSubstitutions = Array.from(substitutions.entries())
+          .sort((a, b) => b[0].length - a[0].length);
+        
+        for (const [param, value] of sortedSubstitutions) {
+          // Simple replacement - replace all occurrences of the parameter
+          text = text.split(param).join(value);
         }
         if (text !== textNode.value) {
           return {
@@ -514,6 +521,15 @@ export class MacroExpanderV2 implements MacroExpander {
           };
         }
         return expr;
+      
+      case 'ArrayLiteral':
+        const array = expr as ArrayLiteralNode;
+        return {
+          ...array,
+          elements: array.elements.map(el => 
+            this.substituteInExpression(el, substitutions)
+          )
+        };
       
       default:
         return expr;
@@ -604,6 +620,137 @@ export class MacroExpanderV2 implements MacroExpander {
       // Select branch
       const selectedBranch = condition !== 0 ? node.arguments[1] : node.arguments[2];
       return this.expandExpression(selectedBranch);
+      
+    } else if (node.name === 'for') {
+      if (node.arguments.length !== 3) {
+        this.errors.push({
+          type: 'syntax_error',
+          message: `for() expects exactly 3 arguments, got ${node.arguments.length}`,
+          location: {
+            line: node.position.line - 1,
+            column: node.position.column - 1,
+            length: node.position.end - node.position.start
+          }
+        });
+        return this.nodeToString([node]);
+      }
+      
+      // Extract variable name, array, and body
+      const varNode = node.arguments[0];
+      const arrayNode = node.arguments[1];
+      const bodyNode = node.arguments[2];
+      
+      if (varNode.type !== 'Identifier') {
+        this.errors.push({
+          type: 'syntax_error',
+          message: `Expected variable name in for loop, got ${varNode.type}`,
+          location: {
+            line: node.position.line - 1,
+            column: node.position.column - 1,
+            length: node.position.end - node.position.start
+          }
+        });
+        return this.nodeToString([node]);
+      }
+      
+      const varName = (varNode as any).name;
+      
+      // Evaluate array expression
+      let values: string[] = [];
+      
+      if (arrayNode.type === 'ArrayLiteral') {
+        // Handle array literal {1, 2, 3}
+        const arrayLiteral = arrayNode as any;
+        values = arrayLiteral.elements.map((el: any) => this.expandExpression(el).trim());
+      } else {
+        // Handle macro invocations that might return arrays
+        const expanded = this.expandExpression(arrayNode).trim();
+        // Try to parse as comma-separated values
+        if (expanded.startsWith('{') && expanded.endsWith('}')) {
+          const inner = expanded.slice(1, -1);
+          values = inner.split(',').map(v => v.trim());
+        } else {
+          this.errors.push({
+            type: 'syntax_error',
+            message: `Invalid array expression in for loop`,
+            location: {
+              line: node.position.line - 1,
+              column: node.position.column - 1,
+              length: node.position.end - node.position.start
+            }
+          });
+          return this.nodeToString([node]);
+        }
+      }
+      
+      // Expand body for each value
+      let result = '';
+      for (const value of values) {
+        // Create a temporary substitution for the loop variable
+        const tempSubstitutions = new Map<string, string>();
+        tempSubstitutions.set(varName, value);
+        
+        // Expand the body with substitution
+        if (bodyNode.type === 'ExpressionList') {
+          const list = bodyNode as ExpressionListNode;
+          const substitutedNodes = list.expressions.map(expr => 
+            this.substituteInExpression(expr as any, tempSubstitutions) as any
+          );
+          result += this.expandContentList(substitutedNodes);
+        } else {
+          const substituted = this.substituteInExpression(bodyNode, tempSubstitutions);
+          result += this.expandExpression(substituted);
+        }
+      }
+      
+      return result;
+      
+    } else if (node.name === 'reverse') {
+      if (node.arguments.length !== 1) {
+        this.errors.push({
+          type: 'syntax_error',
+          message: `reverse() expects exactly 1 argument, got ${node.arguments.length}`,
+          location: {
+            line: node.position.line - 1,
+            column: node.position.column - 1,
+            length: node.position.end - node.position.start
+          }
+        });
+        return this.nodeToString([node]);
+      }
+      
+      const arrayArg = node.arguments[0];
+      
+      // Check if it's an array literal
+      if (arrayArg.type !== 'ArrayLiteral') {
+        // Try to expand it first in case it's a macro that returns an array
+        const expanded = this.expandExpression(arrayArg).trim();
+        if (expanded.startsWith('{') && expanded.endsWith('}')) {
+          // Parse as array and reverse
+          const inner = expanded.slice(1, -1);
+          const values = inner.split(',').map(v => v.trim());
+          return '{' + values.reverse().join(', ') + '}';
+        } else {
+          this.errors.push({
+            type: 'syntax_error',
+            message: `reverse() expects an array literal, got ${arrayArg.type}`,
+            location: {
+              line: node.position.line - 1,
+              column: node.position.column - 1,
+              length: node.position.end - node.position.start
+            }
+          });
+          return this.nodeToString([node]);
+        }
+      }
+      
+      // Handle array literal directly
+      const arrayLiteral = arrayArg as ArrayLiteralNode;
+      const reversedElements = [...arrayLiteral.elements].reverse();
+      
+      // Return reversed array as array literal string
+      const expandedElements = reversedElements.map(el => this.expandExpression(el));
+      return '{' + expandedElements.join(', ') + '}';
     }
     
     return '';
@@ -633,6 +780,12 @@ export class MacroExpanderV2 implements MacroExpander {
       case 'BrainfuckCommand':
         // Handle BF commands that appear as expressions
         return (expr as any).commands;
+      
+      case 'ArrayLiteral':
+        // Return array literal as comma-separated values wrapped in braces
+        const array = expr as ArrayLiteralNode;
+        const elements = array.elements.map(el => this.expandExpression(el));
+        return '{' + elements.join(', ') + '}';
       
       default:
         return '';

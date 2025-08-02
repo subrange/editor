@@ -22,6 +22,7 @@ interface MacroExpanderResult {
   expanded: string;        // The expanded Brainfuck code
   errors: MacroExpansionError[];  // Array of errors encountered
   tokens: MacroToken[];    // Tokens for syntax highlighting
+  macros: MacroDefinition[];  // Array of defined macros
 }
 
 interface MacroExpansionError {
@@ -75,9 +76,23 @@ interface MacroToken {
 
 ### Built-in Functions
 
+#### repeat(n, content)
+Repeats the content n times.
+
+#### if(condition, true_branch, false_branch)
+Conditional expansion where non-zero values are considered true.
+
+#### for(var in array, body)
+Iterates over array values, substituting the variable in the body for each value.
+
+#### reverse(array)
+Reverses an array literal. The input must be an array literal or a macro that expands to one.
+
 ```brainfuck
 {repeat(n, content)}  // Repeats content n times
 {if(condition, true_branch, false_branch)}  // Conditional expansion (non-zero = true, zero = false)
+{for(var in {values}, body)}  // Iterates over values, substituting var in body
+{reverse({array})}  // Reverses an array literal
 ```
 
 ## Usage Examples
@@ -141,6 +156,43 @@ interface MacroToken {
 @safe_dec(0)        // Expands to nothing
 @move_or_stay(1, 3) // Expands to >>>
 @move_or_stay(0, 3) // Expands to <<<
+```
+
+### For Loops
+
+```brainfuck
+// Basic for loop with array literal
+{for(i in {1, 2, 3}, +)}  // Expands to +++
+
+// For loop with macro in body
+#define inc(n) {repeat(n, +)}
+{for(v in {1, 2, 3}, @inc(v))}  // Expands to ++++++ (1+2+3 pluses)
+
+// For loop with complex body
+#define set(n) [-]{repeat(n, +)}
+{for(v in {3, 5}, @set(v) >)}  // Expands to [-]+++>[-]+++++>
+
+// For loop with macro that returns array
+#define nums {1, 2, 3, 4, 5}
+{for(x in @nums, <)}  // Expands to <<<<<
+
+// Nested for loops
+{for(i in {1, 2}, {for(j in {a, b}, ij)})}  // Expands to 1a1b2a2b
+
+// Using for loops in macros
+#define print_values(values) {for(v in values, @print_char(v))}
+#define print_char(n) [-]{repeat(n, +)}.[-]
+
+@print_values({65, 66, 67})  // Prints ABC
+
+// Using reverse with for loops
+{for(i in {reverse({1, 2, 3})}, i)}  // Expands to 321
+
+// Countdown macro
+#define countdown(n) {for(i in {reverse({1, 2, 3, 4, 5})}, @print_digit(i))}
+#define print_digit(n) [-]{repeat(n, +)}{repeat(48, +)}.[-]
+
+@countdown(5)  // Prints 54321
 ```
 
 ### Nested Macros
@@ -286,6 +338,60 @@ user@domain.com  // Remains unchanged
 +++@inc(5)---[>@inc(10)<-]
 ```
 
+## Advanced Features
+
+### Reverse Function
+
+The `reverse` builtin reverses array literals:
+```brainfuck
+// Basic reverse
+{reverse({1, 2, 3})}  // Returns {3, 2, 1}
+
+// Reverse with text values
+{reverse({a, b, c, d})}  // Returns {d, c, b, a}
+
+// Reverse empty array
+{reverse({})}  // Returns {}
+
+// Using reverse with macros
+#define nums {5, 4, 3, 2, 1}
+{reverse(@nums)}  // Returns {1, 2, 3, 4, 5}
+
+// Complex example: reverse iteration
+#define reverse_each(arr, op) {for(x in {reverse(arr)}, op)}
+@reverse_each({1, 2, 3}, @inc(x))  // Expands to +++++ (3+2+1)
+```
+
+### Array Literals
+
+Array literals can be used with the {for} builtin:
+```brainfuck
+// Array literal syntax: {value1, value2, ...}
+{for(i in {1, 2, 3}, content)}  // Direct array literal
+
+// Arrays can contain any text values
+{for(cmd in {>, <, +, -}, cmd cmd)}  // Expands to >><<++--
+
+// Arrays from macros
+#define directions {north, south, east, west}
+{for(dir in @directions, @move_to(dir))}
+```
+
+### Variable Substitution in For Loops
+
+The loop variable is substituted throughout the body:
+```brainfuck
+// Simple substitution
+{for(n in {1, 2, 3}, n)}  // Expands to 123
+
+// Multiple occurrences
+{for(x in {a, b}, xxx)}  // Expands to aaabbb
+
+// In macro arguments
+#define double(n) n n
+{for(i in {1, 2}, @double(i))}  // Expands to 1122
+```
+
 ## Integration with IDE
 
 The macro expander provides token information that can be used for syntax highlighting:
@@ -355,3 +461,4 @@ result.errors.forEach(error => {
 2. **No Variadic Macros**: Fixed number of parameters only
 3. **No String Manipulation**: Parameters are treated as literal text
 4. **No Macro Concatenation**: Cannot build macro names dynamically
+5. **For Loop Values**: Array values in {for} loops are simple text/numbers, not evaluated expressions

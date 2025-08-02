@@ -1,6 +1,173 @@
 import { describe, it, expect } from 'vitest';
 import { createMacroExpander } from './macro-expander.ts';
 
+describe('MacroExpander V2 - Reverse Builtin Support', () => {
+  describe('Basic reverse functionality', () => {
+    it('should reverse an array literal', () => {
+      const input = `{reverse({1, 2, 3})}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded).toBe('{3, 2, 1}');
+    });
+
+    it('should reverse array with text values', () => {
+      const input = `{reverse({a, b, c, d})}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded).toBe('{d, c, b, a}');
+    });
+
+    it('should work with for loops', () => {
+      const input = `{for(i in {reverse({1, 2, 3})}, i)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded).toBe('321');
+    });
+
+    it('should reverse array from macro', () => {
+      const input = `#define nums {1, 2, 3, 4, 5}
+{reverse(@nums)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded.trim()).toBe('{5, 4, 3, 2, 1}');
+    });
+
+    it('should handle empty array', () => {
+      const input = `{reverse({})}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded).toBe('{}');
+    });
+
+    it('should handle single element array', () => {
+      const input = `{reverse({42})}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded).toBe('{42}');
+    });
+
+    it('should report error for non-array argument', () => {
+      const input = `{reverse(123)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toContain('array literal');
+    });
+
+    it('should report error for wrong number of arguments', () => {
+      const input = `{reverse({1, 2}, {3, 4})}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toContain('expects exactly 1 argument');
+    });
+
+    it('should work in complex expressions', () => {
+      const input = `#define process(arr) {for(x in {reverse(arr)}, @inc(x))}
+#define inc(n) {repeat(n, +)}
+@process({1, 2, 3})`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded.trim()).toBe('++++++'); // 3+2+1 = 6 pluses
+    });
+  });
+});
+
+describe('MacroExpander V2 - For Loop Support', () => {
+  describe('Basic for loop functionality', () => {
+    it('should expand for loop with array literal', () => {
+      const input = `{for(i in {1, 2, 3}, +)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded).toBe('+++');
+    });
+
+    it('should expand for loop with macro in body', () => {
+      const input = `#define inc(n) {repeat(n, +)}
+{for(v in {1, 2, 3}, @inc(v))}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded.trim()).toBe('++++++'); // 1 + 2 + 3 = 6 pluses
+    });
+
+    it('should expand for loop with complex body', () => {
+      const input = `#define set(n) [-]{repeat(n, +)}
+{for(v in {3, 5}, @set(v) >)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded.trim()).toBe('[-]+++>[-]+++++>');
+    });
+
+    it('should handle for loop with macro that returns array', () => {
+      const input = `#define nums {1, 2, 3, 4, 5}
+{for(x in @nums, <)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded.trim()).toBe('<<<<<');
+    });
+
+    it('should handle nested for loops', () => {
+      const input = `{for(i in {1, 2}, {for(j in {a, b}, ij)})}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded).toBe('1a1b2a2b');
+    });
+
+    it('should report error for invalid for syntax', () => {
+      const input = `{for(123 in {1, 2, 3}, +)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toContain('Expected variable name');
+    });
+
+    it('should report error for missing in keyword', () => {
+      const input = `{for(i {1, 2, 3}, +)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toContain('in');
+    });
+
+    it('should handle empty array in for loop', () => {
+      const input = `{for(i in {}, +)}`;
+      const expander = createMacroExpander();
+      const result = expander.expand(input);
+      
+      expect(result.errors).toHaveLength(0);
+      expect(result.expanded).toBe('');
+    });
+  });
+});
+
 describe('MacroExpander V2 - Validation Features', () => {
   describe('Macro definitions with leading whitespace', () => {
     it('should recognize macros with spaces before #define', () => {
