@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useStoreSubscribeToField } from "../../hooks/use-store-subscribe.tsx";
 import { EditorStore, type Position } from "./editor.store.ts";
-import { type MacroDefinition } from "../../services/macro-expander.ts";
+import { type MacroDefinition } from "../../services/macro-expander/macro-expander.ts";
 import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "./constants.ts";
 import clsx from "clsx";
 

@@ -1,6 +1,6 @@
-import { tokenize, TokenType } from './macro-lexer';
-import type { Token, LexerOptions } from './macro-lexer';
-import type { MacroExpansionError, MacroToken } from './macro-expander';
+import { tokenize, TokenType } from './macro-lexer.ts';
+import type { Token, LexerOptions } from './macro-lexer.ts';
+import type { MacroExpansionError, MacroToken } from './macro-expander.ts';
 
 export interface ASTNode {
   type: string;

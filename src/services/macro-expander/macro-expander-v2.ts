@@ -5,9 +5,9 @@ import type {
   MacroExpanderOptions, 
   MacroExpanderResult,
   MacroExpander
-} from './macro-expander';
-import { parseMacro } from './macro-parser';
-import type { ASTNode, ContentNode, MacroInvocationNode, BuiltinFunctionNode, ExpressionNode, BodyNode, ProgramNode, MacroDefinitionNode, CodeLineNode, BrainfuckCommandNode, TextNode, NumberNode, IdentifierNode, ExpressionListNode } from './macro-parser';
+} from './macro-expander.ts';
+import { parseMacro } from './macro-parser.ts';
+import type { ASTNode, ContentNode, MacroInvocationNode, BuiltinFunctionNode, ExpressionNode, BodyNode, ProgramNode, MacroDefinitionNode, CodeLineNode, BrainfuckCommandNode, TextNode, NumberNode, IdentifierNode, ExpressionListNode } from './macro-parser.ts';
 
 export class MacroExpanderV2 implements MacroExpander {
   private macros: Map<string, MacroDefinitionNode> = new Map();

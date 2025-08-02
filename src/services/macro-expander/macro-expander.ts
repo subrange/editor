@@ -769,7 +769,7 @@ export class MacroExpanderImpl implements MacroExpander {
 }
 
 // Import the new implementation
-import { MacroExpanderV2 } from './macro-expander-v2';
+import { MacroExpanderV2 } from './macro-expander-v2.ts';
 
 export function createMacroExpander(): MacroExpander {
   // Use the new lexer/parser-based implementation

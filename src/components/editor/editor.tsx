@@ -7,7 +7,7 @@ import {useMemo, useRef, useLayoutEffect, useState, useEffect} from "react";
 import {tokenStyles} from "./tokenizer.ts";
 import {enhancedMacroTokenStyles, EnhancedMacroTokenizer, type MacroToken} from "./macro-tokenizer-enhanced.ts";
 import {ErrorDecorations} from "./error-decorations.tsx";
-import {type MacroExpansionError, type MacroDefinition} from "../../services/macro-expander.ts";
+import {type MacroExpansionError, type MacroDefinition} from "../../services/macro-expander/macro-expander.ts";
 import {MacroAutocomplete} from "./macro-autocomplete.tsx";
 import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";

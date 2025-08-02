@@ -4,7 +4,7 @@ import {
     type MacroToken as ExpanderToken,
     type MacroExpansionError,
     type MacroDefinition
-} from "../../services/macro-expander";
+} from "../../services/macro-expander/macro-expander.ts";
 
 // Token types for macro syntax
 export interface MacroToken {

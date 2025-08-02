@@ -12,7 +12,7 @@ import {editorManager} from "./services/editor-manager.service.ts";
 import {EditorStore} from "./components/editor/editor.store.ts";
 import {useEffect, useState, useCallback} from "react";
 import {EnhancedMacroTokenizer} from "./components/editor/macro-tokenizer-enhanced.ts";
-import {createMacroExpander} from "./services/macro-expander.ts";
+import {createMacroExpander} from "./services/macro-expander/macro-expander.ts";
 import {CpuChipIcon, ArrowPathIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMacroExpander } from './macro-expander';
+import { createMacroExpander } from './macro-expander.ts';
 
 describe('MacroExpander', () => {
   const expander = createMacroExpander();
