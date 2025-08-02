@@ -759,7 +759,7 @@ export class MacroExpanderImpl implements MacroExpander {
     
     for (const line of lines) {
       // A line is considered non-empty if it has any BF commands (including $ for breakpoints)
-      if (line.match(/[><+\-.,\[\]$]/)) {
+      if (line.match(/[><+\-.\[\]$]/)) {
         nonEmptyLines.push(line);
       }
     }
@@ -768,6 +768,10 @@ export class MacroExpanderImpl implements MacroExpander {
   }
 }
 
+// Import the new implementation
+import { MacroExpanderV2 } from './macro-expander-v2';
+
 export function createMacroExpander(): MacroExpander {
-  return new MacroExpanderImpl();
+  // Use the new lexer/parser-based implementation
+  return new MacroExpanderV2();
 }

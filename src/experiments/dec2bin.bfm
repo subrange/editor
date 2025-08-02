@@ -113,6 +113,9 @@
 #define move_l [-@prevword+@nextword]@prevword
 #define move_r [-@nextword+@prevword]@nextword
 
+#define move_l_n(n) [-@prevwords(n)+@nextwords(n)] @prevwords(n)
+#define move_r_n(n) [-@nextwords(n)+@prevwords(n)] @nextwords(n)
+
 #define goto_start_slow @goto_nonzero_left_lane
 #define goto_start @fastlane \
   @goto_zero_left_lane \
@@ -330,90 +333,80 @@
 #define OP_ADD 2
 #define OP_SUB 3
 
-// PROGRAM BEGIN
+#define prefill_fastlane(n) @clear {repeat(n, @nextword +)} @prevwords(n)
+#define clear_fastlane(n) @clear {repeat(n, @nextword @clear)} @prevwords(n)
 
-// PREFILL LANE 0
+  #define set_bit_1(lane_start, lane_end) lane_end \
+    @goto_zero_right_lane \
+    lane_start \
+    + \
+    lane_end \
+    @prevword \
+    @clear \
+    @prevword \
+    @goto_zero_left_lane \
+    lane_start \
+    @nextwords(2)
 
-#define prefill_fastlane(n) @nextword @clear {repeat(n, + @nextword)} @prevwords(n)
+#define set_bit_0(lane_start, lane_end) @lane_end \
+    @goto_zero_right_lane \
+    @prevword \
+    @clear \
+    @prevword \
+    @goto_zero_left_lane \
+    @lane_start \
+    @nextwords(2)
 
-@prefill_fastlane(24)
+#define sb0a @set_bit_0(@lane_sA, @lane_sA_end)
+#define sb1a @set_bit_1(@lane_sA, @lane_sA_end)
 
-@lane_sA
+#define sb0b @set_bit_0(@lane_sB, @lane_sB_end)
+#define sb1b @set_bit_1(@lane_sB, @lane_sB_end)
 
-// Compute 5&2, binary AND
-@set(37)
-@nextword
-@set(2)
+#define scratch_lane(n) {if(n, @lane_sA, @lane_sB)}
+#define scratch_lane_end(n) {if(n, @lane_sA_end, @lane_sB_end)}
 
-[-@prevword>+<@nextword]
+#define sA 1
+#define sB 0
 
-@prevword
-
-// Now 37 is in scratch A, 2 is in scratch B
+#define set_next_bit(lane, bit) {if(lane, {if (bit, @sb1a, @sb0a)}, {if (bit, @sb1b, @sb0b)})}
 
 // Division layout is n, 0, d, 0, 0, 0, 0
 // Result layout is >0, n, d-n%d, n%d, n/d
-@nextwords(2)
-@set(2)
->
-@set(2)
-@prevwords(2)
-<
+#define divmod [-@nextword+@nextword-[@nextword+@nextwords(2)]@nextword[+[-@prevword+@nextword]@nextword+@nextwords(2)]@prevwords(6)]
 
-[
-  [-@nextword+@nextword-[@nextword+@nextwords(2)]@nextword[+[-@prevword+@nextword]@nextword+@nextwords(2)]@prevwords(6)] // This monstrosity is divmod algo. 
+// Result will be stored in scratch lane 16 cells starting from current_word + 9
+#define dec2bin(sl) @prefill_fastlane(24) \
+@scratch_lane(sl) \
+[ \
+  @nextwords(2) \
+  @set(2) \
+  @prevwords(2) \
+  @divmod \
+  @nextword @clear \
+  @nextword @clear \
+  @nextword \
+  + \
+  @switch(2, @default, @prevword, @nextword) \
+  @case(2, @set_next_bit(sl, 1), @prevword, @nextword) \
+  @case(1, @set_next_bit(sl, 0), @prevword, @nextword) \
+  @nextword \
+  @move_l_n(4) \
+] \
+@scratch_lane_end(sl) \
+@clear_fastlane(24)
 
-  @nextword @clear
-  @nextword @clear
 
-  @nextword // modulo is here, n%d
+// PROGRAM BEGIN
+// PREFILL LANE 0
 
-  +
+@lane_sA
+@set(163)
+@lane_sA_end
 
-  // Now it is 1 or 2, so we can use switch
+@lane_sB
+@set(37)
+@lane_sB_end
 
-  #define set_bit_1 @lane_sA_end \
-    @goto_zero_right_lane \
-    @lane_sA \
-    + \
-    @lane_sA_end \
-    @prevword \
-    @clear \
-    @prevword \
-    @goto_zero_left_lane \
-    @lane_sA \
-    @nextwords(2) 
-
-#define set_bit_0 @lane_sA_end \
-    @goto_zero_right_lane \
-    @prevword \
-    @clear \
-    @prevword \
-    @goto_zero_left_lane \
-    @lane_sA \
-    @nextwords(2) 
-    
-
-  @switch(2, @default, @prevword, @nextword)
-  @case(2, @set_bit_1, @prevword, @nextword)
-  @case(1, @set_bit_0, @prevword, @nextword)
-  
-   // div is here, n/d
-
-  // Move n/d back as new n
-  @nextword
-
-  [-@prevwords(4)+@nextwords(4)] @prevwords(4)
-
-  // TODO: HERE figure out how the fuck to move modulo to the correct binary place.
-  
-  // Restore d = 2
-  @nextwords(2)
-  @set(2)
-  @prevwords(2)
-
-] // Repeat division
-
-// And now, in sA, from word 9:
-// 0000 0000 0010 0101
-// Which is damn binary 37.
+@dec2bin(@sA)
+@dec2bin(@sB)
