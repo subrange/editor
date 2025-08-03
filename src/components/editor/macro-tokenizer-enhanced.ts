@@ -27,6 +27,9 @@ interface MacroTokenizerState {
     inMacroDefinition?: boolean; // Track if we're in a macro definition line
     currentLineParams?: Set<string>;  // Parameters for current macro definition line
     continuedMacroDefinition?: boolean; // Track if previous line ended with backslash
+    inBraceMacroDefinition?: boolean; // Track if we're inside a brace-based macro definition
+    macroDefinitionBraceDepth?: number; // Track brace depth for macro definition
+    braceMacroParams?: Set<string>; // Parameters for brace-based macro definition
     forLoopVariables: Set<string>; // Track loop variables from {for} constructs
     braceDepth: number; // Track nesting depth to manage scope
     forLoopScopes: Array<{ variable: string; depth: number }>; // Stack of for loop scopes
@@ -40,7 +43,9 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         macroDefinitions: [],
         forLoopVariables: new Set(),
         braceDepth: 0,
-        forLoopScopes: []
+        forLoopScopes: [],
+        inBraceMacroDefinition: false,
+        macroDefinitionBraceDepth: 0
     };
     
     private asyncExpander: MacroExpanderWorkerClient | null = null;
@@ -59,7 +64,9 @@ export class EnhancedMacroTokenizer implements ITokenizer {
             continuedMacroDefinition: false,
             forLoopVariables: new Set(),
             braceDepth: 0,
-            forLoopScopes: []
+            forLoopScopes: [],
+            inBraceMacroDefinition: false,
+            macroDefinitionBraceDepth: 0
         };
         this.fullText = '';
         this.lineOffsets = [];
@@ -93,8 +100,12 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         const tokens: MacroToken[] = [];
         let position = 0;
         
-        // Check if we're continuing a macro definition from previous line
-        if (this.state.continuedMacroDefinition) {
+        // Check if we're inside a brace-based macro definition
+        if (this.state.inBraceMacroDefinition) {
+            // Use the stored parameters from the brace macro
+            this.state.currentLineParams = this.state.braceMacroParams;
+        } else if (this.state.continuedMacroDefinition) {
+            // Old backslash-based continuation
             this.state.inMacroDefinition = true;
             // Don't reset currentLineParams - keep them from the original definition
         } else {
@@ -114,6 +125,7 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                         if (p) this.state.currentLineParams!.add(p);
                     });
                 }
+                
             } else {
                 this.state.inMacroDefinition = false;
                 this.state.currentLineParams = undefined;
@@ -391,8 +403,30 @@ export class EnhancedMacroTokenizer implements ITokenizer {
                 
                 if (text[position] === '{' && !isBuiltinFunction) {
                     this.state.braceDepth++;
+                    
+                    // Check if this is the opening brace of a macro definition
+                    if (this.state.inMacroDefinition && !this.state.inBraceMacroDefinition) {
+                        // This is the start of a brace-based macro definition
+                        this.state.inBraceMacroDefinition = true;
+                        this.state.macroDefinitionBraceDepth = 1;
+                        this.state.braceMacroParams = new Set(this.state.currentLineParams);
+                    } else if (this.state.inBraceMacroDefinition) {
+                        // Track nested braces within macro definition
+                        this.state.macroDefinitionBraceDepth!++;
+                    }
                 } else if (text[position] === '}') {
                     this.state.braceDepth--;
+                    
+                    // Check if we're closing a macro definition
+                    if (this.state.inBraceMacroDefinition && this.state.macroDefinitionBraceDepth) {
+                        this.state.macroDefinitionBraceDepth--;
+                        if (this.state.macroDefinitionBraceDepth === 0) {
+                            // End of macro definition
+                            this.state.inBraceMacroDefinition = false;
+                            this.state.braceMacroParams = undefined;
+                            this.state.currentLineParams = undefined;
+                        }
+                    }
                     
                     // Clean up for loop variables that are out of scope
                     const scopesToRemove = [];
