@@ -255,6 +255,58 @@ export class MacroExpanderV2 implements MacroExpander {
     }
   }
 
+  private createInvocationSignature(node: MacroInvocationNode): string {
+    // Create a unique signature for this macro invocation
+    // Include multiple arguments to better differentiate invocations
+    let signature = node.name;
+    
+    if (node.arguments && node.arguments.length > 0) {
+      const argSignatures: string[] = [];
+      
+      // Include up to 3 arguments in the signature for better differentiation
+      const argsToInclude = Math.min(3, node.arguments.length);
+      
+      for (let i = 0; i < argsToInclude; i++) {
+        const arg = node.arguments[i];
+        
+        if (arg.type === 'Number') {
+          argSignatures.push(arg.value.toString());
+        } else if (arg.type === 'Identifier') {
+          argSignatures.push(arg.name);
+        } else if (arg.type === 'Text') {
+          const textValue = (arg as any).value;
+          if (textValue && textValue.length < 10) {
+            argSignatures.push(textValue);
+          } else if (textValue) {
+            // For longer text, use a hash or first few chars
+            argSignatures.push(textValue.substring(0, 8) + '…');
+          }
+        } else if (arg.type === 'BrainfuckCommand') {
+          const commands = (arg as any).commands;
+          if (commands && commands.length < 10) {
+            argSignatures.push(commands);
+          } else if (commands) {
+            argSignatures.push(commands.substring(0, 8) + '…');
+          }
+        } else if (arg.type === 'MacroInvocation') {
+          // For macro invocations as arguments, include the macro name
+          argSignatures.push(`@${(arg as any).name}`);
+        } else {
+          // For complex expressions, use a type indicator
+          argSignatures.push(`<${arg.type}>`);
+        }
+      }
+      
+      if (node.arguments.length > argsToInclude) {
+        argSignatures.push('...');
+      }
+      
+      signature += `(${argSignatures.join(', ')})`;
+    }
+    
+    return signature;
+  }
+
   private expandMacroInvocation(node: MacroInvocationNode): string {
     const macro = this.macros.get(node.name);
     
@@ -271,12 +323,15 @@ export class MacroExpanderV2 implements MacroExpander {
       return this.nodeToString([node]);
     }
 
-    // Check for circular dependencies
-    if (this.expansionChain.has(node.name)) {
+    // Create a signature for this specific invocation
+    const invocationSignature = this.createInvocationSignature(node);
+
+    // Check for circular dependencies using the full signature
+    if (this.expansionChain.has(invocationSignature)) {
       const chain = Array.from(this.expansionChain).join(' → ');
       this.errors.push({
         type: 'circular_dependency',
-        message: `Circular macro dependency detected: ${chain} → ${node.name}`,
+        message: `Circular macro dependency detected: ${chain} → ${invocationSignature}`,
         location: {
           line: node.position.line - 1,
           column: node.position.column - 1,
@@ -301,7 +356,7 @@ export class MacroExpanderV2 implements MacroExpander {
       return `@${node.name}`;
     }
 
-    this.expansionChain.add(node.name);
+    this.expansionChain.add(invocationSignature);
 
     let expandedBody: string;
     
@@ -351,7 +406,7 @@ export class MacroExpanderV2 implements MacroExpander {
       }
     }
 
-    this.expansionChain.delete(node.name);
+    this.expansionChain.delete(invocationSignature);
     this.expansionDepth--;
 
     return expandedBody;
