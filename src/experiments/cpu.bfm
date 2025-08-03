@@ -1,4 +1,4 @@
-// ===== BASIC OPERATIONS =====
+// MARK: ------------- START -------------
 
 #define clear [-]
 #define inc(n) {repeat(n, +)}
@@ -40,7 +40,7 @@
 #define break @clear @inc(1) []
 #define halt @break
 
-// MARK: ====== Program defines ======
+// MARK: ----- Lane Constants
 
 #define STATE_RUNNING 2
 #define STATE_HALT 1
@@ -59,8 +59,36 @@
 
 #define L_SCRATCH_A 5
 #define L_SCRATCH_B 6
-
 // FASTLANE is always the last lane
+
+// MARK: ----- Opcode Constants
+#define cmd_halt @halt
+
+#define T_OP 0
+#define T_VAL 1
+
+#define OP_HALT 0
+#define OP_NOP 0
+
+#define OP_ADD 1
+#define OP_SUB 2
+#define OP_AND 3
+#define OP_OR  4
+#define OP_XOR 5
+#define OP_SL  6 // Bit Shift Left
+#define OP_SR  7 // Bit Shift Right
+
+// MARK: ----- Register Constants
+#define R0 0
+#define R1 1
+#define R2 2
+#define R3 3
+#define R4 4
+#define R5 5
+#define R6 6
+#define R7 7
+
+// MARK: -- Lane Operations
 
 #define nextword @next(@LANES_COUNT)
 #define prevword @prev(@LANES_COUNT)
@@ -69,7 +97,6 @@
 #define nextwords(n) {repeat(n, @nextword)}
 #define prevwords(n) {repeat(n, @prevword)}
 
-// TODO: Would be cool to have macro generation
 #define lane_value @lane(@L_VALUE)
 #define lane_value_end {repeat(@L_VALUE, <)}
 
@@ -105,6 +132,8 @@
 #define goto_zero_left_lane @gtzll(@LANES_COUNT)
 #define goto_zero_right_lane @gtzrl(@LANES_COUNT)
 
+// MARK: -- Movement Helpers
+
 #define fillword(type, value, ftl) @lane_value @set(value) >@set(type)< @lane_value_end @fastlane @set(ftl) @fastlane_end @nextword
 
 #define move_to(dest, source) [-dest+source]dest
@@ -123,7 +152,7 @@
 #define goto_ip_slow @goto_start @lane_ip @goto_nonzero_right_lane
 #define goto_ip @goto_start @nextword @fastlane @goto_zero_right_lane @fastlane_end @lane_ip
 
-// ======= IP movement
+// MARK: -- IP movement
 #define move_ip_left @goto_ip @move_l @lane_ip_end
 // Perhaps bound checking via start marker? Think about this
 #define move_ip_left_n(n) @goto_ip {repeat(n, @move_l)} @lane_ip_end
@@ -144,17 +173,7 @@
 // so now the only thing we need to do to achieve relative IP jumps is to
 // create a macro jp
 
-// registers
-#define R0 0
-#define R1 1
-#define R2 2
-#define R3 3
-#define R4 4
-#define R5 5
-#define R6 6
-#define R7 7
-
-// registers movement
+// MARK: -- Registers Movement
 #define goto_R0 @goto_start @lane_reg
 #define goto_R1 @goto_start @lane_reg {repeat(1, @nextword)}
 #define goto_R2 @goto_start @lane_reg {repeat(2, @nextword)}
@@ -164,7 +183,7 @@
 #define goto_R6 @goto_start @lane_reg {repeat(6, @nextword)}
 #define goto_R7 @goto_start @lane_reg {repeat(7, @nextword)}
 
-// Scratch ops
+// MARK: -- Scratch ops
 #define copy_to_A [->>+>+<<<] >>> [-<<<+>>>] <<<
 #define copy_to_B [->>+>+<<<] >> [-<<+>>] <<
 #define copy_to_A_via_next_B [->>+>@nextword+<<<@prevword] >>>@nextword [-<<<@prevword+>>>@nextword] <<<@prevword
@@ -172,8 +191,7 @@
 #define copy_value_to_A @lane_value @copy_to_A @lane_value_end
 #define copy_value_to_A_via_next_B @lane_value @copy_to_A_via_next_B @lane_value_end
 
-// Registers fetch
-
+// MARK: -- Registers fetch
 #define mark_register(offs) {
   @lane_sA
     [-
@@ -289,9 +307,9 @@
     @lane_ip_end
 }
 
-// MARK: ops
+// MARK: -- simple_register_op
 
-#define simple_register_op(op) {
+#define two_registers_op(op) {
     @fetch_from_register(@prevword @prevword)
     @fetch_from_register(@prevword @prevword @prevword)
     op
@@ -300,10 +318,17 @@
     @reset_register_mark
 }
 
-// MARK: ops end
+#define one_register_op(op) {
+    @fetch_from_register(@prevword @prevword)
+    op
+    @clear_and_mark_destination_register
+    @move_result_to_destination_register
+    @reset_register_mark
+}
 
-// MARK: ALU ops
-// MARK: Result is stored in sB of the IP word
+
+// MARK: ------------ ALU ops ------------
+// Result is stored in sB of the IP word
 
 #define alu_add {
     @prevword @prevword @prevword
@@ -362,11 +387,58 @@
 #define alu_or @_alu_bin(@bit_or)
 #define alu_xor @_alu_bin(@bit_xor)
 
-#define alu_sl @nop
-#define alu_sr @nop
+#define alu_sl {
+  @lane_sA
+  @prevwords(2)
+  @move_to(@nextwords(2),  @prevwords(2))
+  @lane_sA_end
+  @dec2bin(@sA)
+  @prevwords(3)
+  @lane_sA
+  @move_to(@nextwords(3), @prevwords(3))
+  @lane_sA_end
 
-// MARK: ALU ops end
+  @lane_sA
+  [-
+    @lane_sA_end
+    @nextwords(9)
+    @prefill_fastlane(16) // Yes, 16 to capture the LSB
 
+    @nextword
+    [
+      -
+
+      @lane_sA
+      @move_l
+      @nextword
+      @lane_sA_end
+
+      @nextword
+    ]
+
+    @lane_ip
+    @goto_nonzero_left_lane
+    @lane_ip_end
+    @lane_sA
+  ]
+  @lane_sA_end
+
+  @lane_sA
+  @nextwords(9)
+  @clear
+  @prevwords(9)
+  @lane_sA_end
+
+  @bin2dec
+
+  @lane_sA
+  [->+<]
+  @lane_sA_end
+}
+#define alu_sr @nop // TODO: Implement
+// MARK: ---------- ALU ops end ----------
+
+// MARK: -- Bin ops
 #define bit_and {
   @lane_sA
   [->+<]>+[-<+>]<
@@ -406,27 +478,9 @@
   @lane_sA_end
 }
 
-// MARK: commands
-#define cmd_halt @halt
-
-#define T_OP 0
-#define T_VAL 1
-
-#define OP_HALT 0
-#define OP_NOP 0
-
-#define OP_ADD 1
-#define OP_SUB 2
-#define OP_AND 3
-#define OP_OR  4
-#define OP_XOR 5
-#define OP_SL  6 // Bit Shift Left
-#define OP_SR  7 // Bit Shift Right
-
-// MARK: commands end
-
 #define POWERS_OF_2 {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768}
 
+// MARK: -- Helpers
 #define prefill_fastlane(n) @clear {repeat(n, @nextword +)} @prevwords(n)
 #define clear_fastlane(n) @clear {repeat(n, @nextword @clear)} @prevwords(n)
 
@@ -545,14 +599,17 @@
   @b2d_cleanup
 }
 
-#define add @lane_sB_end @simple_register_op(@alu_add) @lane_sB
-#define sub @lane_sB_end @simple_register_op(@alu_sub) @lane_sB
-#define and @lane_sB_end @simple_register_op(@alu_and) @lane_sB
-#define or  @lane_sB_end @simple_register_op(@alu_or ) @lane_sB
-#define xor @lane_sB_end @simple_register_op(@alu_xor) @lane_sB
-#define sl  @lane_sB_end @simple_register_op(@alu_sl ) @lane_sB
-#define sr  @lane_sB_end @simple_register_op(@alu_sr ) @lane_sB
+// MARK: ------ Opcode Handlers ---------
 
+#define add @lane_sB_end @two_registers_op(@alu_add) @lane_sB
+#define sub @lane_sB_end @two_registers_op(@alu_sub) @lane_sB
+#define and @lane_sB_end @two_registers_op(@alu_and) @lane_sB
+#define or  @lane_sB_end @two_registers_op(@alu_or ) @lane_sB
+#define xor @lane_sB_end @two_registers_op(@alu_xor) @lane_sB
+#define sl  @lane_sB_end @two_registers_op(@alu_sl ) @lane_sB
+#define sr  @lane_sB_end @two_registers_op(@alu_sr ) @lane_sB
+
+// MARK: ------------ MAIN ---------------
 // Set START marker
 @set(@STATE_RUNNING)
 @lane_sA
@@ -561,17 +618,17 @@
 @lane_sA_end
 @prevword
 
-// Set registers
+// MARK: -- Set registers
 @nextword
 @goto_R2
-@set(37)  // binary 0000 0000 0010 0101
+@set(1)  // binary 0000 0000 0010 0101
 @nextword
-@set(172) // binary 0000 0000 1010 1100
+@set(65535) // binary 0000 0000 1010 1100
 @lane_reg_end
 
 @goto_start_slow
 
-// ===== CMD =======
+// MARK: -- Program code
 @fillword(@T_OP, @OP_HALT, 0) // First op should always be halt
 @fillword(@T_OP, @OP_NOP, 1)
 @fillword(@T_OP, @OP_NOP, 1)
@@ -584,15 +641,20 @@
 @fillword(@T_OP, @OP_NOP, 1)
 
 @fillword(@T_VAL, @R2, 1) // rt
-@fillword(@T_VAL, @R1, 1) // rs
+@fillword(@T_VAL, @R3, 1) // rs
 @fillword(@T_VAL, @R1, 1) // rd
-@fillword(@T_OP, @OP_SUB, 1)
+@fillword(@T_OP, @OP_SL, 0)
 
-@fillword(@T_VAL, @R3, 1) // rt
-@fillword(@T_VAL, @R2, 1) // rs
-@fillword(@T_VAL, @R1, 1) // rd
-@fillword(@T_OP, @OP_XOR, 0)
-// ===== CMD END ===
+//@fillword(@T_VAL, @R2, 1) // rt
+//@fillword(@T_VAL, @R1, 1) // rs
+//@fillword(@T_VAL, @R1, 1) // rd
+//@fillword(@T_OP, @OP_SUB, 1)
+
+//@fillword(@T_VAL, @R3, 1) // rt
+//@fillword(@T_VAL, @R2, 1) // rs
+//@fillword(@T_VAL, @R1, 1) // rd
+//@fillword(@T_OP,  @OP_XOR, 0)
+// MARK: -- Program code end
 
 // XOR R1, R2, R3
 // SUB R1, R1, R2
@@ -607,7 +669,7 @@
 @prevword
 @goto_start
 
-// Main loop
+// MARK: -- Main loop
 @while
 [->+>+<<]>>[-<<+>>]<< // Copy start flag to >, so switch does not fuck up our start marker
   >
@@ -617,6 +679,7 @@
   <
 @endwhile
 
+// MARK: ---- Executor
 #define execute {
   @nextword
 
@@ -629,7 +692,10 @@
   @lane_sA
   @inc(1) // To properly work with switch statement
 
-  @switch(6, @default, >, <)
+  // MARK: ------- Opcode Switch
+  @switch(8, @default, >, <)
+  @case(8, @sr, >, <)
+  @case(7, @sl, >, <)
   @case(6, @xor, >, <)
   @case(5, @or, >, <)
   @case(4, @and, >, <)
