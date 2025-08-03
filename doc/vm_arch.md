@@ -18,7 +18,7 @@
 | **0x10** | ADDI rd,rs,imm | I | rd = rs + sign_ext(imm) |
 | **0x11** | ANDI rd,rs,imm | I | rd = rs & zero_ext(imm) |
 | **0x12** | ORI rd,rs,imm | I | rd = rs \| zero_ext(imm) |
-| **0x13** | LUI rd,imm | I | rd = imm << 10 |
+| **0x13** | LI rd,imm | I | rd = imm << 10 |
 | **0x14** | SLLI rd,rs,imm | I | rd = rs << imm |
 | **0x15** | SRLI rd,rs,imm | I | rd = rs >> imm |
 | | | | |
