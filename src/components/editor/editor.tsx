@@ -242,6 +242,7 @@ function LinesPanel({ store }: LinesPanelProps) {
     const isDraggingRef = useRef(false);
     const dragStartedRef = useRef(false);
     const [isMetaKeyHeld, setIsMetaKeyHeld] = useState(false);
+    const [macroExpansionVersion, setMacroExpansionVersion] = useState(0);
 
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
     const currentDebuggingLine = useStoreSubscribeToField(interpreterStore.currentChar, "line");
@@ -250,11 +251,24 @@ function LinesPanel({ store }: LinesPanelProps) {
     // Get tokenizer from store
     const tokenizer = store.getTokenizer();
 
+    // Subscribe to tokenizer state changes if it's an enhanced macro tokenizer
+    useEffect(() => {
+        if (tokenizer instanceof EnhancedMacroTokenizer) {
+            console.log('Subscribing to tokenizer state changes');
+            const unsubscribe = tokenizer.onStateChange(() => {
+                console.log('Tokenizer state changed, forcing re-render');
+                // Force re-render by updating version
+                setMacroExpansionVersion(v => v + 1);
+            });
+            return unsubscribe;
+        }
+    }, [tokenizer]);
+
     // Tokenize all lines whenever content changes
     const tokenizedLines = useMemo(() => {
         const lineTexts = lines.map(l => l.text);
         return tokenizer.tokenizeAllLines(lineTexts);
-    }, [lines, tokenizer]);
+    }, [lines, tokenizer]); // Remove macroExpansionVersion - we don't need to re-tokenize
     
     // Determine which token styles to use based on tokenizer type
     const isEnhancedMacro = tokenizer instanceof EnhancedMacroTokenizer;
@@ -263,17 +277,19 @@ function LinesPanel({ store }: LinesPanelProps) {
     // Extract errors and macros if using enhanced tokenizer
     const errors: MacroExpansionError[] = useMemo(() => {
         if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
-            return (tokenizer as EnhancedMacroTokenizer).state.expanderErrors || [];
+            const errs = (tokenizer as EnhancedMacroTokenizer).state.expanderErrors || [];
+            console.log('Errors in editor:', errs, 'version:', macroExpansionVersion);
+            return errs;
         }
         return [];
-    }, [isEnhancedMacro, tokenizer, tokenizedLines]);
+    }, [isEnhancedMacro, tokenizer, tokenizedLines, macroExpansionVersion]);
     
     const availableMacros: MacroDefinition[] = useMemo(() => {
         if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
             return (tokenizer as EnhancedMacroTokenizer).state.macroDefinitions || [];
         }
         return [];
-    }, [isEnhancedMacro, tokenizer, tokenizedLines]);
+    }, [isEnhancedMacro, tokenizer, tokenizedLines, macroExpansionVersion]);
 
     // Track cmd/ctrl key state
     useEffect(() => {

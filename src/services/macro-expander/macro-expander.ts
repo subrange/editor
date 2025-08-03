@@ -772,8 +772,7 @@ export class MacroExpanderImpl implements MacroExpander {
 import { MacroExpanderV2 } from './macro-expander-v2.ts';
 
 export function createMacroExpander(): MacroExpander {
-  // Use the optimized V3 implementation for better performance
-  return new MacroExpanderV2();
+  return createMacroExpanderV2();
 }
 
 // Export specific versions for testing

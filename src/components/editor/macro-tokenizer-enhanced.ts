@@ -1,10 +1,11 @@
 import { type ITokenizer } from "../../services/editor-manager.service";
 import {
-    createMacroExpander,
     type MacroToken as ExpanderToken,
     type MacroExpansionError,
     type MacroDefinition
 } from "../../services/macro-expander/macro-expander.ts";
+import { createAsyncMacroExpander } from "../../services/macro-expander/create-macro-expander.ts";
+import { type MacroExpanderWorkerClient } from "../../services/macro-expander/macro-expander-worker-client.ts";
 
 // Token types for macro syntax
 export interface MacroToken {
@@ -42,9 +43,12 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         forLoopScopes: []
     };
     
-    private expander = createMacroExpander();
+    private asyncExpander: MacroExpanderWorkerClient | null = null;
     private fullText = '';
     private lineOffsets: number[] = [];
+    private lastExpandPromise: Promise<void> | null = null;
+    private stateChangeCallbacks: Set<() => void> = new Set();
+    private lastProcessedText = '';
 
     reset() {
         this.state = {
@@ -59,19 +63,20 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         };
         this.fullText = '';
         this.lineOffsets = [];
+        this.lastProcessedText = '';
     }
 
     // Convert global position to line/column
-    private positionToLineColumn(position: number): { line: number, column: number } {
-        for (let i = 0; i < this.lineOffsets.length - 1; i++) {
-            if (position >= this.lineOffsets[i] && position < this.lineOffsets[i + 1]) {
-                return { line: i, column: position - this.lineOffsets[i] };
-            }
-        }
-        // Last line
-        const lastLine = this.lineOffsets.length - 1;
-        return { line: lastLine, column: position - this.lineOffsets[lastLine] };
-    }
+    // private positionToLineColumn(position: number): { line: number, column: number } {
+    //     for (let i = 0; i < this.lineOffsets.length - 1; i++) {
+    //         if (position >= this.lineOffsets[i] && position < this.lineOffsets[i + 1]) {
+    //             return { line: i, column: position - this.lineOffsets[i] };
+    //         }
+    //     }
+    //     // Last line
+    //     const lastLine = this.lineOffsets.length - 1;
+    //     return { line: lastLine, column: position - this.lineOffsets[lastLine] };
+    // }
 
 
     // Check if a position on a line has an error
@@ -84,7 +89,7 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         });
     }
 
-    tokenizeLine(text: string, lineIndex: number, isLastLine: boolean = false): MacroToken[] {
+    tokenizeLine(text: string, lineIndex: number, _isLastLine: boolean = false): MacroToken[] {
         const tokens: MacroToken[] = [];
         let position = 0;
         
@@ -519,32 +524,108 @@ export class EnhancedMacroTokenizer implements ITokenizer {
         return tokens;
     }
 
+    // Initialize the async expander if not already done
+    private ensureAsyncExpander() {
+        if (!this.asyncExpander) {
+            this.asyncExpander = createAsyncMacroExpander();
+        }
+    }
+
     // Tokenize all lines at once to maintain state
     tokenizeAllLines(lines: string[]): MacroToken[][] {
-        // Reset all state including for loop tracking
-        this.reset();
+        const newText = lines.join('\n');
         
-        // Build full text and line offsets for macro expander
-        this.fullText = lines.join('\n');
-        this.lineOffsets = [];
-        let offset = 0;
-        
-        // Calculate offset for each line start
-        for (let i = 0; i < lines.length; i++) {
-            this.lineOffsets.push(offset);
-            offset += lines[i].length + (i < lines.length - 1 ? 1 : 0); // +1 for newline except last line
+        // Only reset if the text has actually changed
+        if (this.fullText !== newText) {
+            console.log('Text changed, resetting tokenizer');
+            // Reset all state including for loop tracking
+            this.reset();
+            
+            // Build full text and line offsets for macro expander
+            this.fullText = newText;
+            this.lineOffsets = [];
+            let offset = 0;
+            
+            // Calculate offset for each line start
+            for (let i = 0; i < lines.length; i++) {
+                this.lineOffsets.push(offset);
+                offset += lines[i].length + (i < lines.length - 1 ? 1 : 0); // +1 for newline except last line
+            }
+            
+            // Schedule async macro expansion
+            this.scheduleAsyncExpansion();
+        } else {
+            console.log('Text unchanged, skipping reset');
         }
-        
-        // Run macro expander to get tokens, errors, and macro definitions
-        const result = this.expander.expand(this.fullText);
-        this.state.expanderTokens = result.tokens;
-        this.state.expanderErrors = result.errors;
-        this.state.macroDefinitions = result.macros;
         
         // Tokenize each line
         return lines.map((line, index) =>
             this.tokenizeLine(line, index, index === lines.length - 1)
         );
+    }
+
+    // Schedule async macro expansion
+    private scheduleAsyncExpansion() {
+        this.ensureAsyncExpander();
+        
+        const fullText = this.fullText;
+        
+        // Check if we're already processing this exact text
+        if (this.lastProcessedText === fullText) {
+            return; // Skip redundant processing
+        }
+        
+        // Cancel any pending expansion
+        if (this.lastExpandPromise) {
+            // Note: We can't really cancel the promise, but we can ignore its result
+        }
+        
+        this.lastProcessedText = fullText;
+        
+        // Start async expansion
+        this.lastExpandPromise = this.asyncExpander!.expand(fullText).then(result => {
+            // Only update if this is still the latest request
+            if (this.fullText === fullText) {
+                console.log('Macro expansion completed:', {
+                    errors: result.errors,
+                    tokens: result.tokens,
+                    macros: result.macros
+                });
+                this.state.expanderTokens = result.tokens;
+                this.state.expanderErrors = result.errors;
+                this.state.macroDefinitions = result.macros;
+                
+                // Trigger re-render by notifying listeners
+                this.notifyStateChange();
+            }
+        }).catch(error => {
+            console.error('Macro expansion error:', error);
+        });
+    }
+    
+    // Notify listeners that state has changed
+    private notifyStateChange() {
+        console.log('Notifying state change, callbacks:', this.stateChangeCallbacks.size);
+        // Notify all registered callbacks
+        this.stateChangeCallbacks.forEach(callback => callback());
+    }
+    
+    // Register a callback for state changes
+    public onStateChange(callback: () => void): () => void {
+        this.stateChangeCallbacks.add(callback);
+        // Return unsubscribe function
+        return () => {
+            this.stateChangeCallbacks.delete(callback);
+        };
+    }
+
+    // Cleanup method
+    destroy() {
+        if (this.asyncExpander) {
+            this.asyncExpander.destroy();
+            this.asyncExpander = null;
+        }
+        this.stateChangeCallbacks.clear();
     }
 }
 
