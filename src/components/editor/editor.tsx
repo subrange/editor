@@ -559,6 +559,12 @@ export function Editor({ store, onFocus, onBlur }: EditorProps) {
             keybindingsService.createKeybinding("shift+alt+arrowup", "editor.selectlineup" as AppCommand),
             keybindingsService.createKeybinding("shift+arrowdown", "editor.selectdown" as AppCommand),
             keybindingsService.createKeybinding("shift+alt+arrowdown", "editor.selectlinedown" as AppCommand),
+            
+            // Line start/end movement
+            keybindingsService.createKeybinding("meta+arrowleft", "editor.movelinestart" as AppCommand),
+            keybindingsService.createKeybinding("meta+arrowright", "editor.movelineend" as AppCommand),
+            keybindingsService.createKeybinding("meta+shift+arrowleft", "editor.selectlinestart" as AppCommand),
+            keybindingsService.createKeybinding("meta+shift+arrowright", "editor.selectlineend" as AppCommand),
 
             // Copy/Cut/Paste
             keybindingsService.createKeybinding("meta+c", "editor.copy" as AppCommand),

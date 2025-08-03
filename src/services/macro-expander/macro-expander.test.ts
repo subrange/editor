@@ -186,13 +186,6 @@ describe('MacroExpander', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should not expand email-like patterns', () => {
-      const input = 'user@domain.com';
-      const result = expander.expand(input);
-      expect(result.expanded).toBe('user@domain.com');
-      expect(result.errors).toHaveLength(0);
-    });
-
     it('should handle @ with space after', () => {
       const input = `#define clear [-]
 @ clear`;

@@ -143,13 +143,18 @@ export class MacroParser {
   }
 
   private parseStatement(): StatementNode | null {
-    // Skip whitespace before checking for #define
+    // Save current position to potentially backtrack
+    const savedPosition = this.current;
+    
+    // Skip whitespace to check for #define
     this.skipWhitespace();
     
     if (this.check(TokenType.DEFINE)) {
       return this.parseMacroDefinition();
     }
     
+    // Backtrack to preserve leading whitespace for parseCodeLine
+    this.current = savedPosition;
     return this.parseCodeLine();
   }
 
@@ -194,8 +199,14 @@ export class MacroParser {
     
     this.skipWhitespace();
     
-    // Parse body (everything until newline, handling line continuations)
-    const body = this.parseMacroBody();
+    // Check if this is a brace-style multiline macro
+    let body: BodyNode[];
+    if (this.check(TokenType.LBRACE)) {
+      body = this.parseBraceMacroBody();
+    } else {
+      // Parse body (everything until newline, handling line continuations)
+      body = this.parseMacroBody();
+    }
     
     const end = this.previous().position.end;
     
@@ -258,21 +269,8 @@ export class MacroParser {
         // The lexer already handles \n after backslash, so we just continue
         hasLineContinuation = true;
         
-        // Add whitespace node to preserve formatting
-        const wsStart = this.peek().position.start;
+        // Skip any whitespace after the line continuation
         this.skipWhitespace();
-        if (this.current > wsStart) {
-          body.push({
-            type: 'Text',
-            value: '  ', // Preserve some spacing
-            position: {
-              start: wsStart,
-              end: this.peek().position.start,
-              line: this.peek().position.line,
-              column: this.peek().position.column
-            }
-          });
-        }
       }
     }
     
@@ -280,6 +278,87 @@ export class MacroParser {
     this.match(TokenType.NEWLINE);
     
     return body;
+  }
+
+  private parseBraceMacroBody(): BodyNode[] {
+    const body: BodyNode[] = [];
+    
+    // Consume the opening brace
+    this.consume(TokenType.LBRACE);
+    
+    // Skip any whitespace or comments after the opening brace
+    this.skipWhitespaceAndNewlines();
+    
+    // Track brace depth for nested structures
+    let braceDepth = 1;
+    
+    while (!this.isAtEnd() && braceDepth > 0) {
+      // Skip whitespace and newlines at the beginning of each iteration
+      while (this.match(TokenType.WHITESPACE) || this.match(TokenType.NEWLINE)) {
+        // Continue
+      }
+      
+      // Skip comments
+      if (this.match(TokenType.COMMENT_SINGLE) || this.match(TokenType.COMMENT_MULTI)) {
+        continue;
+      }
+      
+      // Check for closing brace
+      if (this.check(TokenType.RBRACE)) {
+        braceDepth--;
+        if (braceDepth === 0) {
+          // Consume the final closing brace
+          this.advance();
+          break;
+        }
+        // It's a nested closing brace, include it as text
+        const token = this.advance();
+        body.push({
+          type: 'Text',
+          value: token.value,
+          position: token.position
+        });
+      } else if (this.check(TokenType.LBRACE)) {
+        // Check if it's a builtin function
+        const savedPosition = this.current;
+        const content = this.parseContent();
+        
+        if (content && content.type === 'BuiltinFunction') {
+          // It was parsed as a builtin function, add it
+          body.push(content);
+        } else {
+          // It's a standalone opening brace
+          // Reset position and consume as text
+          this.current = savedPosition;
+          const token = this.advance();
+          body.push({
+            type: 'Text',
+            value: token.value,
+            position: token.position
+          });
+          braceDepth++;
+        }
+      } else {
+        // Parse regular content
+        const content = this.parseContent();
+        if (content) {
+          body.push(content);
+        }
+      }
+    }
+    
+    if (braceDepth > 0) {
+      this.addError('Unclosed macro body - missing closing brace }', this.peek().position);
+    }
+    
+    return body;
+  }
+
+  private skipWhitespaceAndNewlines(): void {
+    while (this.match(TokenType.WHITESPACE) || this.match(TokenType.NEWLINE) || 
+           this.match(TokenType.COMMENT_SINGLE) || this.match(TokenType.COMMENT_MULTI)) {
+      // Continue
+    }
   }
 
   private parseCodeLine(): CodeLineNode {
@@ -533,9 +612,19 @@ export class MacroParser {
     this.skipWhitespace();
     
     // Parse array literal or expression
-    const arrayExpr = this.parseArrayLiteral() || this.parseExpression();
-    if (arrayExpr) {
-      args.push(arrayExpr);
+    // Special case: if it's a single identifier, parse it as an Identifier node
+    if (this.check(TokenType.IDENTIFIER)) {
+      const ident = this.advance();
+      args.push({
+        type: 'Identifier',
+        name: ident.value,
+        position: ident.position
+      });
+    } else {
+      const arrayExpr = this.parseArrayLiteral() || this.parseExpression();
+      if (arrayExpr) {
+        args.push(arrayExpr);
+      }
     }
     
     this.skipWhitespace();

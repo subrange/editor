@@ -566,6 +566,22 @@ export class EditorStore {
                 case "editor.selectwordright":
                     this.selectToTheEndOfWord();
                     break;
+                    
+                case "editor.movelinestart":
+                    this.moveToLineStart();
+                    break;
+                    
+                case "editor.movelineend":
+                    this.moveToLineEnd();
+                    break;
+                    
+                case "editor.selectlinestart":
+                    this.selectToLineStart();
+                    break;
+                    
+                case "editor.selectlineend":
+                    this.selectToLineEnd();
+                    break;
 
                 default:
                     console.warn(`Unknown command: ${s}`);
@@ -908,6 +924,80 @@ export class EditorStore {
             selection: {
                 anchor: { line: position.line, column: wordStart },
                 focus: { line: position.line, column: wordEnd }
+            }
+        });
+    }
+
+    public moveToLineStart() {
+        const currentState = this.editorState.getValue();
+        const selection = currentState.selection;
+        
+        const newPosition = {
+            line: selection.focus.line,
+            column: 0
+        };
+        
+        const command: CommandData = {
+            type: "move",
+            from: selection.focus,
+            to: newPosition
+        };
+        
+        this.editorState.next(this.undoRedo.execute(command, currentState));
+    }
+    
+    public moveToLineEnd() {
+        const currentState = this.editorState.getValue();
+        const selection = currentState.selection;
+        const lineLength = currentState.lines[selection.focus.line].text.length;
+        
+        const newPosition = {
+            line: selection.focus.line,
+            column: lineLength
+        };
+        
+        const command: CommandData = {
+            type: "move",
+            from: selection.focus,
+            to: newPosition
+        };
+        
+        this.editorState.next(this.undoRedo.execute(command, currentState));
+    }
+    
+    public selectToLineStart() {
+        const currentState = this.editorState.getValue();
+        const selection = currentState.selection;
+        
+        const newFocus = {
+            line: selection.focus.line,
+            column: 0
+        };
+        
+        this.editorState.next({
+            ...currentState,
+            selection: {
+                anchor: selection.anchor,
+                focus: newFocus
+            }
+        });
+    }
+    
+    public selectToLineEnd() {
+        const currentState = this.editorState.getValue();
+        const selection = currentState.selection;
+        const lineLength = currentState.lines[selection.focus.line].text.length;
+        
+        const newFocus = {
+            line: selection.focus.line,
+            column: lineLength
+        };
+        
+        this.editorState.next({
+            ...currentState,
+            selection: {
+                anchor: selection.anchor,
+                focus: newFocus
             }
         });
     }

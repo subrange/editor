@@ -177,7 +177,9 @@ export class MacroExpanderV2 implements MacroExpander {
             // If it's a text node that's not a parameter, check if it's a valid number
             if (countArg.type === 'Text') {
               const text = (countArg as TextNode).value;
-              if (!validParams.has(text) && isNaN(parseInt(text, 10))) {
+              // Skip validation for single-letter identifiers that might be loop variables
+              const mightBeLoopVar = text.length === 1 && /^[a-zA-Z]$/.test(text);
+              if (!validParams.has(text) && !mightBeLoopVar && isNaN(parseInt(text, 10))) {
                 this.errors.push({
                   type: 'syntax_error',
                   message: `Invalid repeat count: ${text}`,
@@ -720,11 +722,17 @@ export class MacroExpanderV2 implements MacroExpander {
       } else {
         // Handle macro invocations that might return arrays
         const expanded = this.expandExpression(arrayNode).trim();
-        // Try to parse as comma-separated values
+        
+        // Check if it's wrapped in braces
         if (expanded.startsWith('{') && expanded.endsWith('}')) {
           const inner = expanded.slice(1, -1);
           values = inner.split(',').map(v => v.trim());
-        } else {
+        } 
+        // Check if it looks like comma-separated values (from a macro expansion)
+        else if (expanded.includes(',')) {
+          values = expanded.split(',').map(v => v.trim());
+        } 
+        else {
           this.errors.push({
             type: 'syntax_error',
             message: `Invalid array expression in for loop`,
@@ -749,9 +757,12 @@ export class MacroExpanderV2 implements MacroExpander {
         if (bodyNode.type === 'ExpressionList') {
           const list = bodyNode as ExpressionListNode;
           const substitutedNodes = list.expressions.map(expr => 
-            this.substituteInExpression(expr as any, tempSubstitutions) as any
+            this.substituteInExpression(expr as any, tempSubstitutions)
           );
-          result += this.expandContentList(substitutedNodes);
+          // Convert each expression to string
+          for (const node of substitutedNodes) {
+            result += this.expandExpression(node);
+          }
         } else {
           const substituted = this.substituteInExpression(bodyNode, tempSubstitutions);
           result += this.expandExpression(substituted);
@@ -777,15 +788,32 @@ export class MacroExpanderV2 implements MacroExpander {
       const arrayArg = node.arguments[0];
       
       // Check if it's an array literal
-      if (arrayArg.type !== 'ArrayLiteral') {
+      if (arrayArg.type === 'ArrayLiteral') {
+        // Handle array literal directly
+        const arrayLiteral = arrayArg as ArrayLiteralNode;
+        const reversedElements = [...arrayLiteral.elements].reverse();
+        
+        // Return reversed array as array literal string
+        const expandedElements = reversedElements.map(el => this.expandExpression(el));
+        return '{' + expandedElements.join(', ') + '}';
+      } else {
         // Try to expand it first in case it's a macro that returns an array
         const expanded = this.expandExpression(arrayArg).trim();
+        
+        // Check if it's already wrapped in braces
         if (expanded.startsWith('{') && expanded.endsWith('}')) {
           // Parse as array and reverse
           const inner = expanded.slice(1, -1);
           const values = inner.split(',').map(v => v.trim());
           return '{' + values.reverse().join(', ') + '}';
-        } else {
+        } 
+        // Check if it looks like comma-separated values (from a macro expansion)
+        else if (expanded.includes(',')) {
+          // Try to parse as comma-separated values
+          const values = expanded.split(',').map(v => v.trim());
+          return '{' + values.reverse().join(', ') + '}';
+        } 
+        else {
           this.errors.push({
             type: 'syntax_error',
             message: `reverse() expects an array literal, got ${arrayArg.type}`,
@@ -798,14 +826,6 @@ export class MacroExpanderV2 implements MacroExpander {
           return this.nodeToString([node]);
         }
       }
-      
-      // Handle array literal directly
-      const arrayLiteral = arrayArg as ArrayLiteralNode;
-      const reversedElements = [...arrayLiteral.elements].reverse();
-      
-      // Return reversed array as array literal string
-      const expandedElements = reversedElements.map(el => this.expandExpression(el));
-      return '{' + expandedElements.join(', ') + '}';
     }
     
     return '';

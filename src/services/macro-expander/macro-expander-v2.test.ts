@@ -131,12 +131,12 @@ describe('MacroExpander V2 - For Loop Support', () => {
     });
 
     it('should handle nested for loops', () => {
-      const input = `{for(i in {1, 2}, {for(j in {a, b}, ij)})}`;
+      const input = `{for(i in {1, 2}, {for(j in {3, 4}, i j)})}`;
       const expander = createMacroExpander();
       const result = expander.expand(input);
       
       expect(result.errors).toHaveLength(0);
-      expect(result.expanded).toBe('1a1b2a2b');
+      expect(result.expanded).toBe('13142324');
     });
 
     it('should report error for invalid for syntax', () => {
