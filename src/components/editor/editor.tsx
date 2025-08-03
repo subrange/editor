@@ -5,7 +5,7 @@ import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
 import {useMemo, useRef, useLayoutEffect, useState, useEffect} from "react";
 import {tokenStyles} from "./tokenizer.ts";
-import {enhancedMacroTokenStyles, EnhancedMacroTokenizer, type MacroToken} from "./macro-tokenizer-enhanced.ts";
+import {progressiveMacroTokenStyles, ProgressiveMacroTokenizer, type MacroToken} from "./macro-tokenizer-progressive.ts";
 import {ErrorDecorations} from "./error-decorations.tsx";
 import {type MacroExpansionError, type MacroDefinition} from "../../services/macro-expander/macro-expander.ts";
 import {MacroAutocomplete} from "./macro-autocomplete.tsx";
@@ -253,7 +253,7 @@ function LinesPanel({ store }: LinesPanelProps) {
 
     // Subscribe to tokenizer state changes if it's an enhanced macro tokenizer
     useEffect(() => {
-        if (tokenizer instanceof EnhancedMacroTokenizer) {
+        if (tokenizer instanceof ProgressiveMacroTokenizer) {
             console.log('Subscribing to tokenizer state changes');
             const unsubscribe = tokenizer.onStateChange(() => {
                 console.log('Tokenizer state changed, forcing re-render');
@@ -271,25 +271,25 @@ function LinesPanel({ store }: LinesPanelProps) {
     }, [lines, tokenizer]); // Remove macroExpansionVersion - we don't need to re-tokenize
     
     // Determine which token styles to use based on tokenizer type
-    const isEnhancedMacro = tokenizer instanceof EnhancedMacroTokenizer;
-    const styles = isEnhancedMacro ? enhancedMacroTokenStyles : tokenStyles;
+    const isProgressiveMacro = tokenizer instanceof ProgressiveMacroTokenizer;
+    const styles = isProgressiveMacro ? progressiveMacroTokenStyles : tokenStyles;
     
     // Extract errors and macros if using enhanced tokenizer
     const errors: MacroExpansionError[] = useMemo(() => {
-        if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
-            const errs = (tokenizer as EnhancedMacroTokenizer).state.expanderErrors || [];
+        if (isProgressiveMacro && (tokenizer as ProgressiveMacroTokenizer).state) {
+            const errs = (tokenizer as ProgressiveMacroTokenizer).state.expanderErrors || [];
             console.log('Errors in editor:', errs, 'version:', macroExpansionVersion);
             return errs;
         }
         return [];
-    }, [isEnhancedMacro, tokenizer, tokenizedLines, macroExpansionVersion]);
+    }, [isProgressiveMacro, tokenizer, tokenizedLines, macroExpansionVersion]);
     
     const availableMacros: MacroDefinition[] = useMemo(() => {
-        if (isEnhancedMacro && (tokenizer as EnhancedMacroTokenizer).state) {
-            return (tokenizer as EnhancedMacroTokenizer).state.macroDefinitions || [];
+        if (isProgressiveMacro && (tokenizer as ProgressiveMacroTokenizer).state) {
+            return (tokenizer as ProgressiveMacroTokenizer).state.macroDefinitions || [];
         }
         return [];
-    }, [isEnhancedMacro, tokenizer, tokenizedLines, macroExpansionVersion]);
+    }, [isProgressiveMacro, tokenizer, tokenizedLines, macroExpansionVersion]);
 
     // Track cmd/ctrl key state
     useEffect(() => {
@@ -423,7 +423,7 @@ function LinesPanel({ store }: LinesPanelProps) {
 
     const handleTokenClick = (e: React.MouseEvent, token: MacroToken) => {
         // Check if cmd/ctrl is held and we're clicking on a macro invocation
-        if ((e.metaKey || e.ctrlKey) && token.type === 'macro_invocation' && isEnhancedMacro) {
+        if ((e.metaKey || e.ctrlKey) && token.type === 'macro_invocation' && isProgressiveMacro) {
             e.preventDefault();
             e.stopPropagation();
             
@@ -476,7 +476,7 @@ function LinesPanel({ store }: LinesPanelProps) {
                         <span
                             key={tokenIndex}
                             className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                'cursor-pointer hover:underline': isMetaKeyHeld && token.type === 'macro_invocation' && isEnhancedMacro
+                                'cursor-pointer hover:underline': isMetaKeyHeld && token.type === 'macro_invocation' && isProgressiveMacro
                             })}
                             onClick={(e) => handleTokenClick(e, token)}
                         >
@@ -509,10 +509,10 @@ function LinesPanel({ store }: LinesPanelProps) {
             lines={lines}
             charWidth={charWidth}
         />
-        {isEnhancedMacro && errors.length > 0 && (
+        {isProgressiveMacro && errors.length > 0 && (
             <ErrorDecorations store={store} errors={errors} />
         )}
-        {isEnhancedMacro && (
+        {isProgressiveMacro && (
             <MacroAutocomplete 
                 store={store} 
                 macros={availableMacros}
