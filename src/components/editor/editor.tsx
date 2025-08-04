@@ -541,6 +541,34 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
     const focused = useStoreSubscribe(store.focused);
     const [editorContainerWidth, setEditorContainerWidth] = useState(0);
     const [editorScrollLeft, setEditorScrollLeft] = useState(0);
+    
+    // Re-run search when editor content changes
+    useEffect(() => {
+        let debounceTimer: number;
+        let lastContent = "";
+        
+        const subscription = store.editorState.subscribe((state) => {
+            const searchState = store.searchStore.state.value;
+            if (searchState.query && searchState.isVisible) {
+                // Only re-search if content actually changed (not just cursor position)
+                const currentContent = state.lines.map(l => l.text).join('\n');
+                if (currentContent !== lastContent) {
+                    lastContent = currentContent;
+                    // Debounce the search to avoid running it on every keystroke
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        store.performSearch(searchState.query);
+                        // Don't jump to matches when content changes during editing
+                    }, 100);
+                }
+            }
+        });
+        
+        return () => {
+            clearTimeout(debounceTimer);
+            subscription.unsubscribe();
+        };
+    }, [store]);
 
     // Track editor container width
     useEffect(() => {
@@ -620,7 +648,21 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
             <SearchBar
                 searchStore={store.searchStore}
                 editorStore={store}
-                onSearch={(query) => store.performSearch(query)}
+                onSearch={(query: string, jumpToFirst?: boolean) => {
+                    store.performSearch(query);
+                    if (jumpToFirst) {
+                        // Only jump to first match when explicitly typing in search box
+                        setTimeout(() => {
+                            const match = store.searchStore.getCurrentMatch();
+                            if (match) {
+                                store.setCursorPosition({ 
+                                    line: match.line, 
+                                    column: match.startColumn 
+                                });
+                            }
+                        }, 0);
+                    }
+                }}
             />
             <div
                 ref={editorRef}

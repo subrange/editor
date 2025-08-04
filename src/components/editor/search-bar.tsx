@@ -7,12 +7,13 @@ import clsx from "clsx";
 interface SearchBarProps {
     searchStore: SearchStore;
     editorStore: EditorStore;
-    onSearch: (query: string) => void;
+    onSearch: (query: string, jumpToFirst?: boolean) => void;
 }
 
 export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps) {
     const searchState = useStoreSubscribe(searchStore.state);
     const inputRef = useRef<HTMLInputElement>(null);
+    const isNavigatingRef = useRef<boolean>(false);
 
     // Focus input when search becomes visible
     useEffect(() => {
@@ -35,11 +36,16 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
                     break;
                 case "Enter":
                     e.preventDefault();
+                    isNavigatingRef.current = true;
                     if (e.shiftKey) {
                         handlePrevious();
                     } else {
                         handleNext();
                     }
+                    // Reset navigation flag after a short delay
+                    setTimeout(() => {
+                        isNavigatingRef.current = false;
+                    }, 100);
                     break;
             }
         };
@@ -55,22 +61,18 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
-        searchStore.setQuery(query);
-        onSearch(query);
         
-        // After search, if we have matches, jump to the first one
-        setTimeout(() => {
-            const match = searchStore.getCurrentMatch();
-            if (match) {
-                editorStore.setCursorPosition({ 
-                    line: match.line, 
-                    column: match.startColumn 
-                });
-            }
-        }, 0);
+        // Don't jump to first match if we're just navigating
+        if (isNavigatingRef.current) {
+            return;
+        }
+        
+        searchStore.setQuery(query);
+        onSearch(query, true); // Jump to first match when typing
     };
 
     const handleNext = () => {
+        isNavigatingRef.current = true;
         searchStore.nextMatch();
         const match = searchStore.getCurrentMatch();
         if (match) {
@@ -79,9 +81,13 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
                 column: match.startColumn 
             });
         }
+        setTimeout(() => {
+            isNavigatingRef.current = false;
+        }, 100);
     };
 
     const handlePrevious = () => {
+        isNavigatingRef.current = true;
         searchStore.previousMatch();
         const match = searchStore.getCurrentMatch();
         if (match) {
@@ -90,6 +96,9 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
                 column: match.startColumn 
             });
         }
+        setTimeout(() => {
+            isNavigatingRef.current = false;
+        }, 100);
     };
 
     const matchInfo = searchState.matches.length > 0
@@ -106,6 +115,12 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
                 placeholder="Search..."
                 className="bg-zinc-800 text-zinc-100 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 w-48"
                 onMouseDown={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                    // Prevent default Enter behavior to avoid form submission or other side effects
+                    if (e.key === "Enter" || e.key === "Escape") {
+                        e.preventDefault();
+                    }
+                }}
             />
             
             <span className="text-xs text-zinc-500 min-w-[80px] text-center">
