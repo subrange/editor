@@ -46,11 +46,12 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate }: QuickNavPro
           break;
         case "Enter":
           e.preventDefault();
+          console.log('Enter pressed in QuickNav');
           const selectedItem = quickNavStore.getSelectedItem();
+          console.log('Selected item:', selectedItem);
           if (selectedItem) {
             onNavigate(selectedItem);
             quickNavStore.hide();
-            editorStore.focus();
           }
           break;
         case "ArrowDown":
@@ -87,7 +88,6 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate }: QuickNavPro
   const handleItemClick = (item: NavigationItem) => {
     onNavigate(item);
     quickNavStore.hide();
-    editorStore.focus();
   };
 
   const renderIcon = (type: 'macro' | 'mark') => {
@@ -99,13 +99,23 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate }: QuickNavPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24">
+    <div 
+      className="fixed inset-0 z-50 flex items-start justify-center pt-24"
+      onKeyDown={(e) => {
+        // Prevent browser shortcuts while QuickNav is open
+        if (e.metaKey || e.ctrlKey) {
+          e.preventDefault();
+        }
+      }}
+    >
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/30"
-        onClick={() => {
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
           quickNavStore.hide();
-          editorStore.focus();
+          // Let the editor handle focusing itself
         }}
       />
       

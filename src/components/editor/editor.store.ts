@@ -836,10 +836,12 @@ export class EditorStore {
     // Add these methods to your EditorStore class:
 
     public setCursorPosition(position: Position) {
+        console.log('setCursorPosition called with:', position);
         const currentState = this.editorState.getValue();
 
         // Validate position
         if (position.line < 0 || position.line >= currentState.lines.length) {
+            console.log('Invalid line position:', position.line, 'total lines:', currentState.lines.length);
             return;
         }
 
@@ -856,7 +858,9 @@ export class EditorStore {
         };
 
         // Execute the command (this updates selection to have anchor = focus = position)
-        this.editorState.next(this.undoRedo.execute(command, currentState));
+        const newState = this.undoRedo.execute(command, currentState);
+        console.log('Setting new cursor position from:', currentState.selection.focus, 'to:', position);
+        this.editorState.next(newState);
     }
 
     public startSelection(position: Position) {

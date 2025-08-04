@@ -177,6 +177,7 @@ function Cursor({store}: CursorProps) {
     const mode = useStoreSubscribeToField(store.editorState, "mode");
     const focused = useStoreSubscribe(store.focused);
     const isBlinking = useStoreSubscribe(store.cursorBlinkState);
+    const isNavigating = useStoreSubscribe(store.isNavigating);
 
     const cursorRef = useRef<HTMLDivElement>(null);
 
@@ -184,10 +185,19 @@ function Cursor({store}: CursorProps) {
     const cw = useMemo(() => measureCharacterWidth(), []);
 
     useLayoutEffect(() => {
+        console.log('Cursor useLayoutEffect - selection:', selection, 'isNavigating:', isNavigating);
         if (cursorRef.current) {
-            cursorRef.current.scrollIntoView({block: "nearest", inline: "nearest"});
+            // Use center scrolling when navigating, nearest otherwise
+            const scrollBehavior = isNavigating ? "center" : "nearest";
+            console.log('Scrolling cursor into view with behavior:', scrollBehavior);
+            cursorRef.current.scrollIntoView({block: scrollBehavior, inline: "nearest"});
+            
+            // Reset navigation flag after scrolling
+            if (isNavigating) {
+                setTimeout(() => store.isNavigating.next(false), 100);
+            }
         }
-    }, [selection]);
+    }, [selection, isNavigating, store]);
 
     const stl = {
         left: `${LINE_PADDING_LEFT + selection.focus.column * cw}px`,
@@ -450,6 +460,8 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
             const macroDef = availableMacros.find(m => m.name === macroName);
             if (macroDef && macroDef.sourceLocation) {
                 console.log('Jumping to:', macroDef.sourceLocation);
+                // Set navigation flag for center scrolling
+                store.isNavigating.next(true);
                 // Jump to the macro definition
                 store.setCursorPosition({
                     line: macroDef.sourceLocation.line,
@@ -727,10 +739,18 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 quickNavStore={store.quickNavStore}
                 editorStore={store}
                 onNavigate={(item: NavigationItem) => {
-                    store.setCursorPosition({
-                        line: item.line,
-                        column: item.column
-                    });
+                    console.log('QuickNav onNavigate called with:', item);
+                    // Focus the editor first
+                    editorRef.current?.focus();
+                    // Then navigate after a small delay to ensure focus is established
+                    setTimeout(() => {
+                        // Set navigation flag before moving cursor
+                        store.isNavigating.next(true);
+                        store.setCursorPosition({
+                            line: item.line,
+                            column: item.column
+                        });
+                    }, 0);
                 }}
             />
             <div
