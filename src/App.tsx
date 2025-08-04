@@ -24,6 +24,7 @@ function EditorPanel() {
     const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
     const [macroEditor, setMacroEditor] = useState<EditorStore | null>(null);
     const [showMacroEditor, setShowMacroEditor] = useLocalStorageState("showMacroEditor", false);
+    const [showMainEditor, setShowMainEditor] = useLocalStorageState("showMainEditor", true);
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoExpand = settings?.macro.autoExpand ?? false;
     
@@ -175,9 +176,27 @@ function EditorPanel() {
                             onClick={() => settingsStore.setMacroAutoExpand(!autoExpand)}
                             variant={autoExpand ? "info" : "default"}
                         />
+                        
+                        {!showMainEditor && (
+                            <>
+                                <div className="w-px h-6 bg-zinc-700 mx-1" />
+                                <button 
+                                    className="text-zinc-600 hover:text-zinc-400"
+                                    onClick={() => setShowMainEditor(true)}
+                                >
+                                    Show Main Editor
+                                </button>
+                            </>
+                        )}
+                        
                         <button
                             className="ml-auto text-zinc-600 hover:text-zinc-400"
-                            onClick={() => setShowMacroEditor(false)}
+                            onClick={() => {
+                                if (showMainEditor) {
+                                    setShowMacroEditor(false);
+                                }
+                            }}
+                            disabled={!showMainEditor}
                         >
                             ✕
                         </button>
@@ -187,27 +206,61 @@ function EditorPanel() {
                         onFocus={() => editorManager.setActiveEditor('macro')}
                     />
                 </div>
-                <VSep/>
+                {showMainEditor && <VSep/>}
             </>
         )}
-        <div className="v grow-1 min-w-1/2 bg-zinc-950">
-            <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
-                Main Editor
-                {!showMacroEditor && (
+        {showMainEditor && (
+            <div className="v grow-1 min-w-1/2 bg-zinc-950">
+                <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
+                    Main Editor
+                    <div className="ml-auto h gap-2">
+                        {!showMacroEditor && (
+                            <button 
+                                className="text-zinc-600 hover:text-zinc-400"
+                                onClick={() => setShowMacroEditor(true)}
+                            >
+                                Show Macro Editor
+                            </button>
+                        )}
+                        <button
+                            className="text-zinc-600 hover:text-zinc-400 disabled:text-zinc-800"
+                            onClick={() => {
+                                if (showMacroEditor) {
+                                    setShowMainEditor(false);
+                                }
+                            }}
+                            disabled={!showMacroEditor}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+                <Editor 
+                    store={mainEditor}
+                    onFocus={() => editorManager.setActiveEditor('main')}
+                />
+                <Output/>
+            </div>
+        )}
+        {!showMainEditor && !showMacroEditor && (
+            <div className="v grow-1 items-center justify-center bg-zinc-950 text-zinc-600">
+                <p className="mb-4">No editors visible</p>
+                <div className="h gap-4">
                     <button 
-                        className="ml-auto text-zinc-600 hover:text-zinc-400"
+                        className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded"
+                        onClick={() => setShowMainEditor(true)}
+                    >
+                        Show Main Editor
+                    </button>
+                    <button 
+                        className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded"
                         onClick={() => setShowMacroEditor(true)}
                     >
                         Show Macro Editor
                     </button>
-                )}
+                </div>
             </div>
-            <Editor 
-                store={mainEditor}
-                onFocus={() => editorManager.setActiveEditor('main')}
-            />
-            <Output/>
-        </div>
+        )}
     </div>;
 }
 
