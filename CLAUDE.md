@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Brainfuck IDE - a web-based integrated development environment for the Brainfuck programming language. It features a code editor with vim-like keybindings, a visual debugger showing tape state, and an interpreter with step-by-step execution capabilities.
+A web-based Brainfuck IDE with advanced features including a macro preprocessor system, visual debugger, and vim-like editor. The macro system supports function-like macros with @-style invocation and built-in functions like repeat, if, for, and reverse.
 
 ## Development Commands
 
@@ -12,42 +12,95 @@ This is a Brainfuck IDE - a web-based integrated development environment for the
 # Start development server
 npm run dev
 
-# Build for production (includes TypeScript type checking)
+# Build for production
 npm run build
 
-# Run linting
+# Lint code
 npm run lint
 
-# Preview production build
-npm run preview
+# Run tests
+npm run test
+
+# Run tests once
+npm run test:run
 ```
 
 ## Architecture
 
-### State Management
-The project uses RxJS BehaviorSubjects for reactive state management instead of traditional React state. Key stores:
-- `src/components/editor/editor.store.ts` - Editor state, vim modes, command history
-- `src/components/debugger/interpreter.store.ts` - Brainfuck interpreter state and execution
-
-### Key Components
-- **Editor**: Implements vim-like modes (normal/insert/command), bracket matching, and syntax tokenization
-- **Debugger**: Visual tape display with breakpoint support and step-by-step execution
-- **Interpreter**: Configurable tape size and cell size (8/16/32-bit), handles Brainfuck execution
-
-### Patterns
-- Command pattern for undo/redo operations
-- Observable-based reactive state updates
-- Feature-based folder structure under `src/components/`
-- Keyboard shortcuts handled via `keybindings.service.ts`
-
-## Tech Stack
+### Core Technologies
 - React 19.1.0 with TypeScript
-- Vite 7.0.4 for build tooling
-- TailwindCSS v4 (using new Vite plugin)
-- RxJS 7.8.2 for state management
-- @tanstack/react-virtual for virtualized rendering (planned for replacement)
+- Vite 7.0.4 build system
+- TailwindCSS v4 with custom utilities (.h for horizontal flex, .v for vertical flex)
+- RxJS for reactive state management (BehaviorSubjects instead of React state)
+- Web Workers for macro expansion and tokenization
 
-## Notes
-- No testing infrastructure currently exists
-- The project has custom TailwindCSS utilities (`.h`, `.v` for flex containers)
-- Tape viewer uses virtualization for performance with large tapes
+### Key Stores (RxJS BehaviorSubjects)
+- `editor.store.ts` - Editor state, vim modes, cursor position, command history
+- `interpreter.store.ts` - Brainfuck execution state, tape, breakpoints
+- `search.store.ts` - Search state and results
+- `quick-nav.store.ts` - Quick navigation state
+- `settings.store.ts` - User preferences
+
+### Major Components
+
+**Editor System**
+- Vim-like modal editing (normal/insert/visual/command modes)
+- Virtual line rendering for performance
+- Real-time bracket matching
+- Macro-aware syntax highlighting via viewport tokenizer
+- Search with regex support and scroll-to-match
+
+**Macro System** 
+- Preprocessor with @-style macro invocation: `@macroName(args)`
+- Built-in functions: `{repeat(n, content)}`, `{if(cond, true, false)}`, `{for(var in array, body)}`, `{reverse(array)}`
+- Multiline macros with backslash continuation
+- Web Worker-based expansion for non-blocking UI
+- See `src/services/macro-expander/macro-expander.md` for full documentation
+
+**Debugger**
+- Visual tape display with cell highlighting
+- Step/run/pause controls with configurable speed
+- Breakpoint support
+- Configurable tape size and cell bit width (8/16/32)
+
+**File Management**
+- Local storage persistence
+- File tree sidebar
+- Snapshot system for saving states
+
+### Service Layer
+- `editor-manager.service.ts` - Centralized editor state coordination
+- `keybindings.service.ts` - Global keyboard shortcut handling
+- `wasm-interpreter.service.ts` - WASM-based interpreter (if available)
+
+### Testing
+Tests use Vitest and are located alongside source files as `*.test.ts`
+
+## Key Patterns
+
+1. **Store Pattern**: All state uses RxJS BehaviorSubjects with a consistent interface:
+   ```typescript
+   const store$ = new BehaviorSubject(initialState);
+   const updateStore = (updates: Partial<State>) => store$.next({...store$.value, ...updates});
+   ```
+
+2. **Web Workers**: CPU-intensive operations (macro expansion, tokenization) run in workers to keep UI responsive
+
+3. **Command Pattern**: Editor operations use commands for undo/redo support
+
+4. **Virtual Rendering**: Editor uses virtualization for handling large files efficiently
+
+## Brainfuck Extensions
+
+The IDE supports standard Brainfuck plus:
+- `.bfm` files for macro-enabled Brainfuck
+- Macro preprocessing before execution
+- Visual debugging not available in standard interpreters
+
+## Working with the Codebase
+
+When modifying the editor, be aware that it uses a custom vim implementation - check `editor.store.ts` for mode handling and command processing.
+
+For macro system changes, the expansion logic is in `macro-expander-v2.ts` with comprehensive tests in the same directory.
+
+The interpreter can run in both JavaScript and WASM modes - ensure changes work with both implementations.

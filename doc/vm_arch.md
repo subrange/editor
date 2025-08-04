@@ -18,9 +18,10 @@
 | **0x10** | ADDI rd,rs,imm | I | rd = rs + sign_ext(imm) |
 | **0x11** | ANDI rd,rs,imm | I | rd = rs & zero_ext(imm) |
 | **0x12** | ORI rd,rs,imm | I | rd = rs \| zero_ext(imm) |
-| **0x13** | LI rd,imm | I | rd = imm << 10 |
-| **0x14** | SLLI rd,rs,imm | I | rd = rs << imm |
-| **0x15** | SRLI rd,rs,imm | I | rd = rs >> imm |
+| **0x13** | ORI rd,rs,imm | I | rd = rs \| zero_ext(imm) |
+| **0x14** | LI rd,imm | I | rd = imm << 10 |
+| **0x15** | SLLI rd,rs,imm | I | rd = rs << imm |
+| **0x16** | SRLI rd,rs,imm | I | rd = rs >> imm |
 | | | | |
 | **0x20** | LW rd,rs,imm | I | rd = mem[rs + imm] |
 | **0x21** | SW rd,rs,imm | I | mem[rs + imm] = rd |
