@@ -4,13 +4,13 @@ import {EditorStore, type Line} from "./editor.store.ts";
 import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
 import {useMemo, useRef, useLayoutEffect, useState, useEffect} from "react";
-import {tokenStyles} from "./tokenizer.ts";
-import {progressiveMacroTokenStyles, ProgressiveMacroTokenizer, type MacroToken} from "./macro-tokenizer-progressive.ts";
+import {ProgressiveMacroTokenizer, type MacroToken} from "./macro-tokenizer-progressive.ts";
 import {ErrorDecorations} from "./error-decorations.tsx";
 import {type MacroExpansionError, type MacroDefinition} from "../../services/macro-expander/macro-expander.ts";
 import {MacroAutocomplete} from "./macro-autocomplete.tsx";
 import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";
+import {VirtualizedLine} from "./virtualized-line.tsx";
 import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
 
 // Constants for layout measurements
@@ -230,9 +230,11 @@ function DebugMarker() {
 
 interface LinesPanelProps {
     store: EditorStore;
+    editorWidth: number;
+    scrollLeft: number;
 }
 
-function LinesPanel({ store }: LinesPanelProps) {
+function LinesPanel({ store, editorWidth, scrollLeft }: LinesPanelProps) {
     const editorState = useStoreSubscribe(store.editorState);
     const lines = editorState.lines;
     const selection = editorState.selection;
@@ -274,7 +276,6 @@ function LinesPanel({ store }: LinesPanelProps) {
     
     // Determine which token styles to use based on tokenizer type
     const isProgressiveMacro = tokenizer instanceof ProgressiveMacroTokenizer;
-    const styles = isProgressiveMacro ? progressiveMacroTokenStyles : tokenStyles;
     
     // Extract errors and macros if using enhanced tokenizer
     const errors: MacroExpansionError[] = useMemo(() => {
@@ -292,6 +293,7 @@ function LinesPanel({ store }: LinesPanelProps) {
         }
         return [];
     }, [isProgressiveMacro, tokenizer]);
+
 
     // Track cmd/ctrl key state
     useEffect(() => {
@@ -454,43 +456,28 @@ function LinesPanel({ store }: LinesPanelProps) {
         }
     };
 
-    const renderLine = (_line: Line, lineIndex: number) => {
-        const tokens = tokenizedLines[lineIndex] || []
-
-        const strippedTokens = tokens.length > 500
-            ? tokens.slice(0, 500).concat({type: 'comment', value: '... (truncated)', start: 0, end: 0})
-            : tokens;
-
+    const renderLine = (line: Line, lineIndex: number) => {
+        const tokens = tokenizedLines[lineIndex] || [];
         const hasBreakpoint = breakpoints.some(bp => bp.line === lineIndex);
         const isCurrentLine = currentDebuggingLine === lineIndex;
 
         return (
-            <div
+            <VirtualizedLine
                 key={lineIndex}
-                className={clsx(
-                    "whitespace-pre pl-2 pr-4", {
-                        "bg-zinc-900": store.showDebug && isCurrentLine && isRunning && !hasBreakpoint,
-                        "bg-red-950": store.showDebug && hasBreakpoint
-                    }
-                )}
-                style={{height: `${CHAR_HEIGHT}px`, lineHeight: `${CHAR_HEIGHT}px`}}
-            >
-                {strippedTokens.length === 0 ? (
-                    <span>&nbsp;</span>
-                ) : (
-                    strippedTokens.map((token, tokenIndex) => (
-                        <span
-                            key={tokenIndex}
-                            className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                'cursor-pointer hover:underline': isMetaKeyHeld && token.type === 'macro_invocation' && isProgressiveMacro
-                            })}
-                            onClick={(e) => handleTokenClick(e, token)}
-                        >
-                            {token.value}
-                        </span>
-                    ))
-                )}
-            </div>
+                tokens={tokens}
+                lineText={line.text}
+                lineIndex={lineIndex}
+                charWidth={charWidth}
+                isProgressiveMacro={isProgressiveMacro}
+                hasBreakpoint={hasBreakpoint}
+                isCurrentLine={isCurrentLine}
+                isRunning={isRunning}
+                showDebug={store.showDebug}
+                onTokenClick={handleTokenClick}
+                isMetaKeyHeld={isMetaKeyHeld}
+                editorWidth={editorWidth || 1000}
+                editorScrollLeft={scrollLeft}
+            />
         );
     };
 
@@ -541,7 +528,31 @@ export interface EditorProps {
 export function Editor({ store, onFocus, onBlur }: EditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
     const focused = useStoreSubscribe(store.focused);
+    const [editorContainerWidth, setEditorContainerWidth] = useState(0);
+    const [editorScrollLeft, setEditorScrollLeft] = useState(0);
 
+    // Track editor container width
+    useEffect(() => {
+        if (!editorRef.current) return;
+        
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                // Get the width of the editor minus the line numbers panel (64px) and separator (1px)
+                const width = entry.contentRect.width - 65;
+                setEditorContainerWidth(width);
+            }
+        });
+        
+        resizeObserver.observe(editorRef.current);
+        // Initial width calculation
+        setEditorContainerWidth(editorRef.current.offsetWidth - 65);
+        
+        return () => resizeObserver.disconnect();
+    }, []);
+
+    const handleEditorScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        setEditorScrollLeft((e.target as HTMLDivElement).scrollLeft);
+    };
 
     function addEditorKeybindings() {
         // Use editor-specific keybinding state to avoid conflicts
@@ -603,11 +614,12 @@ export function Editor({ store, onFocus, onBlur }: EditorProps) {
             onFocus={addEditorKeybindings}
             tabIndex={0}
             onBlur={removeEditorKeybindings}
+            onScroll={handleEditorScroll}
         >
-            <div className="flex relative grow-1 overflow-visible min-h-0 h-fit relative">
+            <div className="flex relative grow-1 overflow-visible min-h-0 h-fit ">
                 <LineNumbersPanel store={store}/>
                 <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
-                <LinesPanel store={store}/>
+                <LinesPanel store={store} editorWidth={editorContainerWidth} scrollLeft={editorScrollLeft}/>
             </div>
         </div>
     )

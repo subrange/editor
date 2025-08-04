@@ -684,7 +684,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
 }
 
 // Token styles for macro syntax
-export const progressiveMacroTokenStyles: Record<MacroToken['type'], string> = {
+export const progressiveMacroTokenStyles: Record<MacroToken['type'] | 'truncation-indicator', string> = {
     macro: 'text-red-300/85',                        // Generic macro syntax
     macro_definition: 'text-emerald-500/90',         // Verified macro definitions
     macro_name: 'text-rose-400/85',                  // Macro name in definition
@@ -706,7 +706,8 @@ export const progressiveMacroTokenStyles: Record<MacroToken['type'], string> = {
     braces: 'text-sky-200/70',                       // Braces for builtin functions
     unknown: 'text-gray-500/75 italic',
     error: 'text-red-300/90 underline decoration-wavy', // Error styling
-    whitespace: ''
+    whitespace: '',
+    'truncation-indicator': 'text-zinc-500 opacity-50'
 };
 
 // Export function to get errors for a specific line

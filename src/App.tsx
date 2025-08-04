@@ -18,7 +18,6 @@ import {IconButton} from "./components/ui/icon-button.tsx";
 
 import { settingsStore } from "./stores/settings.store";
 import { useStoreSubscribe } from "./hooks/use-store-subscribe";
-import {DummyTokenizer} from "./components/editor/tokenizer.dummy.ts";
 import {WorkerTokenizer} from "./services/tokenizer/worker-tokenizer-adapter.ts";
 
 function EditorPanel() {
@@ -33,6 +32,7 @@ function EditorPanel() {
         const editor = editorManager.createEditor({
             id: 'main',
             tokenizer: new WorkerTokenizer(() => {
+                console.log("retokenized")
                 editor.editorState.next({ ...editor.editorState.value });
             }),
             // tokenizer: new DummyTokenizer(),

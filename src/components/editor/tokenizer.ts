@@ -211,7 +211,7 @@ export class Tokenizer {
 }
 
 // Token styles
-export const tokenStyles: Record<Token['type'], string> = {
+export const tokenStyles: Record<Token['type'] | 'truncation-indicator', string> = {
     comment: 'text-gray-500 italic',
     incdec: 'text-blue-400/80',
     brackets: 'text-orange-400/80',
@@ -221,5 +221,6 @@ export const tokenStyles: Record<Token['type'], string> = {
 
     unknown: 'text-gray-500 italic',
 
-    whitespace: ''
+    whitespace: '',
+    'truncation-indicator': 'text-zinc-500 opacity-50'
 };
