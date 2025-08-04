@@ -3,7 +3,7 @@ import {useStoreSubscribe, useStoreSubscribeToField} from "../../hooks/use-store
 import {EditorStore, type Line} from "./editor.store.ts";
 import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
-import {useMemo, useRef, useLayoutEffect, useState, useEffect} from "react";
+import {useMemo, useRef, useLayoutEffect, useState, useEffect, useCallback} from "react";
 import {ProgressiveMacroTokenizer, type MacroToken} from "./macro-tokenizer-progressive.ts";
 import {ErrorDecorations} from "./error-decorations.tsx";
 import {type MacroExpansionError, type MacroDefinition} from "../../services/macro-expander/macro-expander.ts";
@@ -15,6 +15,8 @@ import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
 import {SearchBar} from "./search-bar.tsx";
 import {SearchHighlights} from "./search-highlights.tsx";
 import {SearchScroll} from "./search-scroll.tsx";
+import {QuickNav} from "./quick-nav.tsx";
+import {type NavigationItem} from "./quick-nav.store.ts";
 
 // Constants for layout measurements
 
@@ -542,6 +544,43 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
     const [editorContainerWidth, setEditorContainerWidth] = useState(0);
     const [editorScrollLeft, setEditorScrollLeft] = useState(0);
     
+    // Extract navigation items from content
+    const extractNavigationItems = useCallback((lines: Line[]): NavigationItem[] => {
+        const items: NavigationItem[] = [];
+        const tokenizer = store.getTokenizer();
+        
+        // Get macro definitions if using ProgressiveMacroTokenizer
+        if (tokenizer instanceof ProgressiveMacroTokenizer) {
+            const macros = tokenizer.state?.macroDefinitions || [];
+            macros.forEach(macro => {
+                if (macro.sourceLocation) {
+                    items.push({
+                        type: 'macro',
+                        name: macro.name,
+                        line: macro.sourceLocation.line,
+                        column: macro.sourceLocation.column,
+                    });
+                }
+            });
+        }
+        
+        // Extract MARK comments
+        lines.forEach((line, index) => {
+            const markMatch = line.text.match(/\/\/\s*MARK:\s*(.+)/);
+            if (markMatch) {
+                items.push({
+                    type: 'mark',
+                    name: markMatch[1].trim(),
+                    line: index,
+                    column: 0,
+                });
+            }
+        });
+        
+        // Sort by line number
+        return items.sort((a, b) => a.line - b.line);
+    }, [store]);
+
     // Re-run search when editor content changes
     useEffect(() => {
         let debounceTimer: number;
@@ -562,13 +601,30 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                     }, 100);
                 }
             }
+            
+            // Update navigation items
+            const navItems = extractNavigationItems(state.lines);
+            store.quickNavStore.setItems(navItems);
         });
         
         return () => {
             clearTimeout(debounceTimer);
             subscription.unsubscribe();
         };
-    }, [store]);
+    }, [store, extractNavigationItems]);
+
+    // Update navigation items when tokenizer state changes
+    useEffect(() => {
+        const tokenizer = store.getTokenizer();
+        if (tokenizer instanceof ProgressiveMacroTokenizer) {
+            const unsubscribe = tokenizer.onStateChange(() => {
+                // Update navigation items when macros change
+                const navItems = extractNavigationItems(store.editorState.value.lines);
+                store.quickNavStore.setItems(navItems);
+            });
+            return unsubscribe;
+        }
+    }, [store, extractNavigationItems]);
 
     // Track editor container width
     useEffect(() => {
@@ -630,6 +686,9 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
 
             // Search
             keybindingsService.createKeybinding("meta+f", "editor.search" as AppCommand),
+            
+            // Quick Navigation
+            keybindingsService.createKeybinding("meta+p", "editor.quicknav" as AppCommand),
         ])
 
         store.focus();
@@ -662,6 +721,16 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                             }
                         }, 0);
                     }
+                }}
+            />
+            <QuickNav
+                quickNavStore={store.quickNavStore}
+                editorStore={store}
+                onNavigate={(item: NavigationItem) => {
+                    store.setCursorPosition({
+                        line: item.line,
+                        column: item.column
+                    });
                 }}
             />
             <div

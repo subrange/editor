@@ -2,6 +2,7 @@ import {BehaviorSubject, Subscription} from "rxjs";
 import {keybindingsService} from "../../services/keybindings.service.ts";
 import { type ITokenizer } from "../../services/editor-manager.service.ts";
 import { SearchStore, type SearchMatch } from "./search.store.ts";
+import { QuickNavStore } from "./quick-nav.store.ts";
 
 export type Position = {
     line: number;
@@ -422,6 +423,7 @@ export class EditorStore {
     private tokenizer: ITokenizer;
     private subscriptions: Subscription[] = [];
     public searchStore: SearchStore;
+    public quickNavStore: QuickNavStore;
     
     public editorState = new BehaviorSubject<EditorState>({
         selection: {
@@ -436,6 +438,7 @@ export class EditorStore {
 
     public cursorBlinkState = new BehaviorSubject<boolean>(true);
     private cursorBlinkRestoreTimeout: number = 0;
+    public isNavigating = new BehaviorSubject<boolean>(false);
 
     private undoRedo = new UndoRedo();
 
@@ -453,6 +456,7 @@ export class EditorStore {
         this.id = id;
         this.tokenizer = tokenizer;
         this.searchStore = new SearchStore();
+        this.quickNavStore = new QuickNavStore();
 
         this.showDebug = settings?.showDebug || false;
         
@@ -540,6 +544,10 @@ export class EditorStore {
 
                 case "editor.search":
                     this.searchStore.show();
+                    break;
+
+                case "editor.quicknav":
+                    this.quickNavStore.show();
                     break;
 
                 case "editor.selectright":
