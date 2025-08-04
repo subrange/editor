@@ -1426,6 +1426,20 @@ export class EditorStore {
         this.searchStore.setMatches(matches);
     }
 
+    public scrollToCursor() {
+        // Force a re-render of the cursor to trigger scrollIntoView
+        const currentState = this.editorState.getValue();
+        this.editorState.next({
+            ...currentState,
+            selection: {
+                ...currentState.selection,
+                // Trigger a change by creating new object references
+                focus: { ...currentState.selection.focus },
+                anchor: { ...currentState.selection.anchor }
+            }
+        });
+    }
+
     public destroy(): void {
         // Unsubscribe from all subscriptions
         this.subscriptions.forEach(sub => sub.unsubscribe());

@@ -36,17 +36,9 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
                 case "Enter":
                     e.preventDefault();
                     if (e.shiftKey) {
-                        searchStore.previousMatch();
+                        handlePrevious();
                     } else {
-                        searchStore.nextMatch();
-                    }
-                    // Jump to match
-                    const match = searchStore.getCurrentMatch();
-                    if (match) {
-                        editorStore.setCursorPosition({ 
-                            line: match.line, 
-                            column: match.startColumn 
-                        });
+                        handleNext();
                     }
                     break;
             }

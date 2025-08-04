@@ -14,6 +14,7 @@ import {VirtualizedLine} from "./virtualized-line.tsx";
 import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
 import {SearchBar} from "./search-bar.tsx";
 import {SearchHighlights} from "./search-highlights.tsx";
+import {SearchScroll} from "./search-scroll.tsx";
 
 // Constants for layout measurements
 
@@ -505,6 +506,10 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
             charWidth={charWidth}
         />
         <SearchHighlights
+            searchStore={store.searchStore}
+            charWidth={charWidth}
+        />
+        <SearchScroll
             searchStore={store.searchStore}
             charWidth={charWidth}
         />
