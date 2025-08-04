@@ -1,5 +1,5 @@
 import {VSep} from "../helper-components.tsx";
-import {useStoreSubscribe, useStoreSubscribeToField} from "../../hooks/use-store-subscribe.tsx";
+import {useStoreSubscribe, useStoreSubscribeToField, useStoreSubscribeObservable} from "../../hooks/use-store-subscribe.tsx";
 import {EditorStore, type Line} from "./editor.store.ts";
 import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
@@ -37,8 +37,13 @@ interface LineNumbersPanelProps {
 
 function LineNumbersPanel({store}: LineNumbersPanelProps) {
     const editorState = useStoreSubscribe(store.editorState);
-    const currentChar = useStoreSubscribe(interpreterStore.currentChar);
+    const expandedPosition = useStoreSubscribe(interpreterStore.currentChar);
+    const sourcePosition = useStoreSubscribeObservable(interpreterStore.currentSourceChar, false, null);
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
+    
+    // Use source position for macro editor when available, expanded position for main editor
+    const isMacroEditor = store.getId() === 'macro';
+    const currentChar = (isMacroEditor && sourcePosition) ? sourcePosition : expandedPosition;
 
     const handleLineClick = (lineIndex: number) => {
         if (!store.showDebug) {
@@ -48,10 +53,23 @@ function LineNumbersPanel({store}: LineNumbersPanelProps) {
         const line = editorState.lines[lineIndex];
         if (!line) return;
 
-        for (let i = 0; i < line.text.length; i++) {
-            if ('><+-[].,$'.includes(line.text[i])) {
-                interpreterStore.toggleBreakpoint({line: lineIndex, column: i});
-                break;
+        if (isMacroEditor) {
+            // For macro editor, allow setting breakpoints on any non-empty line
+            const trimmed = line.text.trim();
+            if (trimmed.length > 0 && !trimmed.startsWith('//')) {
+                // Set breakpoint at first non-whitespace character
+                const firstNonWhitespace = line.text.search(/\S/);
+                if (firstNonWhitespace >= 0) {
+                    interpreterStore.toggleSourceBreakpoint({line: lineIndex, column: firstNonWhitespace});
+                }
+            }
+        } else {
+            // For main editor, look for Brainfuck commands
+            for (let i = 0; i < line.text.length; i++) {
+                if ('><+-[].,$'.includes(line.text[i])) {
+                    interpreterStore.toggleBreakpoint({line: lineIndex, column: i});
+                    break;
+                }
             }
         }
     };
@@ -59,8 +77,24 @@ function LineNumbersPanel({store}: LineNumbersPanelProps) {
     return (
         <div
             className="flex flex-col overflow-visible bg-zinc-950 sticky left-0 w-16 min-w-16 min-h-0 text-zinc-700 select-none z-1 py-1">
-            {editorState.lines.map((_, i) => {
-                const hasBreakpoint = breakpoints.some(bp => bp.line === i);
+            {editorState.lines.map((line, i) => {
+                let hasBreakpoint = false;
+                
+                if (isMacroEditor) {
+                    // For macro editor, check if there's a breakpoint on any non-empty, non-comment line
+                    const trimmed = line.text.trim();
+                    if (trimmed.length > 0 && !trimmed.startsWith('//')) {
+                        // Check at the first non-whitespace position
+                        const firstNonWhitespace = line.text.search(/\S/);
+                        if (firstNonWhitespace >= 0) {
+                            hasBreakpoint = interpreterStore.hasSourceBreakpointAt({line: i, column: firstNonWhitespace});
+                        }
+                    }
+                } else {
+                    // For main editor, check for BF commands
+                    hasBreakpoint = breakpoints.some(bp => bp.line === i);
+                }
+                
                 const isCurrentLine = currentChar.line === i;
 
                 return (
@@ -213,13 +247,22 @@ function Cursor({store}: CursorProps) {
     />;
 }
 
-function DebugMarker() {
-    const debugMarkerState = useStoreSubscribe(interpreterStore.currentChar);
+interface DebugMarkerProps {
+    store: EditorStore;
+}
+
+function DebugMarker({ store }: DebugMarkerProps) {
+    const expandedPosition = useStoreSubscribe(interpreterStore.currentChar);
+    const sourcePosition = useStoreSubscribeObservable(interpreterStore.currentSourceChar, false, null);
     const cw = useMemo(() => measureCharacterWidth(), []);
     const debugMarkerRef = useRef<HTMLDivElement>(null);
 
     const isRunning = useStoreSubscribeToField(interpreterStore.state, "isRunning");
     const isFinished = useStoreSubscribeToField(interpreterStore.state, "isStopped");
+
+    // Use source position for macro editor when available, expanded position for main editor
+    const isMacroEditor = store.getId() === 'macro';
+    const debugMarkerState = (isMacroEditor && sourcePosition) ? sourcePosition : expandedPosition;
 
     useLayoutEffect(() => {
         if (debugMarkerRef.current && (isRunning || !isFinished)) {
@@ -234,7 +277,11 @@ function DebugMarker() {
         height: `${CHAR_HEIGHT}px`,
     }
 
-    return (isRunning || debugMarkerState.line !== 0 || debugMarkerState.column !== 0) && <div
+    const shouldShow = isMacroEditor 
+        ? sourcePosition && (isRunning || sourcePosition.line !== 0 || sourcePosition.column !== 0)
+        : (isRunning || debugMarkerState.line !== 0 || debugMarkerState.column !== 0);
+
+    return shouldShow && <div
         className={clsx("absolute border border-green-500 pointer-events-none z-10", {})}
         style={stl}
         ref={debugMarkerRef}
@@ -260,8 +307,13 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
     const [macroExpansionVersion, setMacroExpansionVersion] = useState(0);
 
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
-    const currentDebuggingLine = useStoreSubscribeToField(interpreterStore.currentChar, "line");
+    const expandedLine = useStoreSubscribeToField(interpreterStore.currentChar, "line");
+    const sourceLine = useStoreSubscribeObservable(interpreterStore.currentSourceChar, false, null);
     const isRunning = useStoreSubscribeToField(interpreterStore.state, "isRunning");
+    
+    // Use source position for macro editor when available
+    const isMacroEditor = store.getId() === 'macro';
+    const currentDebuggingLine = (isMacroEditor && sourceLine) ? sourceLine.line : expandedLine;
 
     // Get tokenizer from store
     const tokenizer = store.getTokenizer();
@@ -294,14 +346,16 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
             return errs;
         }
         return [];
-    }, [isProgressiveMacro, tokenizer, macroExpansionVersion]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isProgressiveMacro, tokenizer, macroExpansionVersion]); // macroExpansionVersion forces re-render when tokenizer state changes
 
     const availableMacros: MacroDefinition[] = useMemo(() => {
         if (isProgressiveMacro && (tokenizer as ProgressiveMacroTokenizer).state) {
             return (tokenizer as ProgressiveMacroTokenizer).state.macroDefinitions || [];
         }
         return [];
-    }, [isProgressiveMacro, tokenizer]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isProgressiveMacro, tokenizer, macroExpansionVersion]); // macroExpansionVersion forces re-render when tokenizer state changes
 
 
     // Track cmd/ctrl key state
@@ -446,7 +500,6 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
                 return;
             }
 
-
             // Find the macro definition
             const macroDef = availableMacros.find(m => m.name === macroName);
             if (macroDef && macroDef.sourceLocation) {
@@ -457,14 +510,28 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
                     line: macroDef.sourceLocation.line,
                     column: macroDef.sourceLocation.column
                 });
-            } else {
             }
         }
     };
 
     const renderLine = (line: Line, lineIndex: number) => {
         const tokens = tokenizedLines[lineIndex] || [];
-        const hasBreakpoint = breakpoints.some(bp => bp.line === lineIndex);
+        let hasBreakpoint = false;
+        
+        if (isMacroEditor) {
+            // For macro editor, use the same logic as line numbers panel
+            const trimmed = line.text.trim();
+            if (trimmed.length > 0 && !trimmed.startsWith('//')) {
+                const firstNonWhitespace = line.text.search(/\S/);
+                if (firstNonWhitespace >= 0) {
+                    hasBreakpoint = interpreterStore.hasSourceBreakpointAt({line: lineIndex, column: firstNonWhitespace});
+                }
+            }
+        } else {
+            // For main editor, check regular breakpoints
+            hasBreakpoint = breakpoints.some(bp => bp.line === lineIndex);
+        }
+        
         const isCurrentLine = currentDebuggingLine === lineIndex;
 
         return (
@@ -528,7 +595,7 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
         )}
         <Cursor store={store}/>
         {
-            store.showDebug && <DebugMarker/>
+            store.showDebug && <DebugMarker store={store}/>
         }
     </div>;
 }

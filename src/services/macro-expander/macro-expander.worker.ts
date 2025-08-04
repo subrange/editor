@@ -1,4 +1,4 @@
-import { createMacroExpander, type MacroExpander, type MacroExpanderOptions, type MacroExpanderResult } from './macro-expander';
+import { createMacroExpanderV3, type MacroExpander, type MacroExpanderOptions, type MacroExpanderResult } from './macro-expander';
 
 // Message types for communication with main thread
 interface ExpandMessage {
@@ -22,8 +22,11 @@ interface ErrorMessage {
 
 type WorkerMessage = ExpandMessage;
 
-// Create a single instance of the macro expander
-const macroExpander: MacroExpander = createMacroExpander();
+// Create a single instance of the macro expander using V3 with source map support
+const macroExpander: MacroExpander = createMacroExpanderV3();
+
+// Log that we're using the updated expander with source map fixes
+console.log('Macro expander worker started with source map generation fixes');
 
 // Handle messages from main thread
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
@@ -40,10 +43,14 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
         };
         self.postMessage(response);
       } catch (error) {
+        console.error('Macro expansion error in worker:', error);
+        const errorMessage = error instanceof Error 
+          ? `${error.message}\n${error.stack}` 
+          : 'Unknown error';
         const response: ErrorMessage = {
           type: 'error',
           id: message.id,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: errorMessage
         };
         self.postMessage(response);
       }

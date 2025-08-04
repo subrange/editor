@@ -34,6 +34,7 @@ interface MacroTokenizerState {
     forLoopVariables: Set<string>; // Track loop variables from {for} constructs
     braceDepth: number; // Track nesting depth to manage scope
     forLoopScopes: Array<{ variable: string; depth: number }>; // Stack of for loop scopes
+    sourceMap?: import('../../services/macro-expander/source-map.ts').SourceMap;
 }
 
 export class ProgressiveMacroTokenizer implements ITokenizer {
@@ -79,6 +80,14 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
         this.lastProcessedText = '';
         this.cachedTokens = [];
         this.isExpanding = false;
+    }
+    
+    forceReExpand() {
+        // Force re-expansion by clearing the last processed text
+        this.lastProcessedText = '';
+        if (this.fullText) {
+            this.triggerAsyncExpansion();
+        }
     }
 
     // Check if a position on a line has an error
@@ -617,8 +626,12 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
         this.isExpanding = true;
         this.expansionStartTime = Date.now();
         
-        // Start async expansion
-        this.lastExpandPromise = this.asyncExpander!.expand(fullText).then(result => {
+        // Start async expansion with source map generation
+        this.lastExpandPromise = this.asyncExpander!.expand(fullText, {
+            generateSourceMap: true,
+            stripComments: true,
+            collapseEmptyLines: true
+        }).then(result => {
             // Only update if this is still the latest request
             if (this.fullText === fullText) {
                 const expansionTime = Date.now() - this.expansionStartTime;
@@ -632,6 +645,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                 this.state.expanderTokens = result.tokens;
                 this.state.expanderErrors = result.errors;
                 this.state.macroDefinitions = result.macros;
+                this.state.sourceMap = result.sourceMap;
                 this.isExpanding = false;
                 
                 // Re-tokenize with error information

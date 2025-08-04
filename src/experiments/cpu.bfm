@@ -1,12 +1,12 @@
 // MARK: ------------- START -------------
 
-
 #define clear [-]
 #define inc(n) {repeat(n, +)}
 #define dec(n) {repeat(n, -)}
 #define next(n) {repeat(n, >)}
 #define prev(n) {repeat(n, <)}
 #define nop +-
+
 
 // Aliases for readability
 #define right(n) @next(n)
@@ -88,15 +88,6 @@
 #define OP_LI   14
 #define OP_SLI  15
 #define OP_SRI  16
-
-/*
-| **0x10** | ADDI rd,rs,imm | I | rd = rs + sign_ext(imm) |
-| **0x11** | ANDI rd,rs,imm | I | rd = rs & zero_ext(imm) |
-| **0x12** | ORI rd,rs,imm | I | rd = rs \| zero_ext(imm) |
-| **0x13** | LI rd,imm | I | rd = imm << 10 |
-| **0x14** | SLLI rd,rs,imm | I | rd = rs << imm |
-| **0x15** | SRLI rd,rs,imm | I | rd = rs >> imm |
-*/
 
 // MARK: ----- Register Constants
 #define R0 0
@@ -262,6 +253,7 @@
     ]
     @lane_sA_end
 }
+
 
 #define fetch_from_register(offs_from_ip) {
     offs_from_ip
@@ -918,7 +910,6 @@
 
   @goto_ip
   @lane_ip_end
-
   @lane_value // Now we are at the opcode
   @copy_to_A
   @lane_value_end
@@ -951,3 +942,4 @@
 
   @goto_start
 }
+

@@ -6,6 +6,7 @@ import clsx from "clsx";
 import {settingsStore} from "../../stores/settings.store.ts";
 import {IconButton} from "../ui/icon-button.tsx";
 import {Bars3Icon, Bars2Icon, ViewColumnsIcon} from '@heroicons/react/24/solid';
+import {MacroContextPanel} from "./macro-context-panel.tsx";
 
 // Lane color palette - 10 distinct colors that work with dark theme
 const LANE_COLORS = [
@@ -621,6 +622,7 @@ export function Debugger() {
     return (
         <div className="flex flex-col h-full">
             <Tape/>
+            <MacroContextPanel/>
         </div>
     )
 }

@@ -2,6 +2,7 @@
 import {BehaviorSubject, Subscription} from "rxjs";
 import {type Position} from "../editor/editor.store.ts";
 import {interpreterStore as jsInterpreter, type TapeSnapshot} from "./interpreter.store.ts";
+import type {SourceMap} from "../../services/macro-expander/source-map.ts";
 
 type InterpreterState = {
     tape: Uint8Array | Uint16Array | Uint32Array;
@@ -12,11 +13,20 @@ type InterpreterState = {
     breakpoints: Position[];
     output: string;
     laneCount: number;
+    
+    // Source map support
+    sourceMap?: SourceMap;
+    currentSourcePosition?: Position;
+    macroContext?: Array<{
+        macroName: string;
+        parameters?: Record<string, string>;
+    }>;
 }
 
 type InterpreterInterface = {
     state: BehaviorSubject<InterpreterState>;
     currentChar: BehaviorSubject<Position>;
+    currentSourceChar?: BehaviorSubject<Position | null>;
     tapeSize: BehaviorSubject<number>;
     cellSize: BehaviorSubject<number>;
     laneCount: BehaviorSubject<number>;
@@ -35,12 +45,15 @@ type InterpreterInterface = {
     stop(): void;
 
     toggleBreakpoint(position: Position): void;
+    toggleSourceBreakpoint?(position: Position): void;
     clearBreakpoints(): void;
     hasBreakpointAt(position: Position): boolean;
+    hasSourceBreakpointAt?(position: Position): boolean;
 
     setTapeSize(size: number): void;
     setCellSize(size: number): void;
     setLaneCount(count: number): void;
+    setSourceMap?(sourceMap: SourceMap | undefined): void;
 
     loadSnapshot(snapshot: TapeSnapshot): void;
 }
@@ -52,6 +65,7 @@ class InterpreterFacade implements InterpreterInterface {
     // Proxy all the observables
     public state = new BehaviorSubject<InterpreterState>(jsInterpreter.state.getValue());
     public currentChar = new BehaviorSubject<Position>(jsInterpreter.currentChar.getValue());
+    public currentSourceChar = new BehaviorSubject<Position | null>(jsInterpreter.currentSourceChar?.getValue() || null);
     public tapeSize = new BehaviorSubject<number>(jsInterpreter.tapeSize.getValue());
     public cellSize = new BehaviorSubject<number>(jsInterpreter.cellSize.getValue());
     public laneCount = new BehaviorSubject<number>(jsInterpreter.laneCount.getValue());
@@ -73,6 +87,13 @@ class InterpreterFacade implements InterpreterInterface {
             this.currentInterpreter.cellSize.subscribe(value => this.cellSize.next(value)),
             this.currentInterpreter.laneCount.subscribe(value => this.laneCount.next(value))
         );
+        
+        // Proxy currentSourceChar if it exists
+        if (this.currentInterpreter.currentSourceChar) {
+            this.subscriptions.push(
+                this.currentInterpreter.currentSourceChar.subscribe(value => this.currentSourceChar.next(value))
+            );
+        }
     }
 
 
@@ -153,6 +174,25 @@ class InterpreterFacade implements InterpreterInterface {
 
     loadSnapshot(snapshot: TapeSnapshot) {
         this.currentInterpreter.loadSnapshot(snapshot);
+    }
+    
+    toggleSourceBreakpoint(position: Position) {
+        if (this.currentInterpreter.toggleSourceBreakpoint) {
+            this.currentInterpreter.toggleSourceBreakpoint(position);
+        }
+    }
+    
+    hasSourceBreakpointAt(position: Position) {
+        if (this.currentInterpreter.hasSourceBreakpointAt) {
+            return this.currentInterpreter.hasSourceBreakpointAt(position);
+        }
+        return false;
+    }
+    
+    setSourceMap(sourceMap: SourceMap | undefined) {
+        if (this.currentInterpreter.setSourceMap) {
+            this.currentInterpreter.setSourceMap(sourceMap);
+        }
     }
 }
 

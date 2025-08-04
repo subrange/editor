@@ -3,6 +3,8 @@
 import {BehaviorSubject, Subscription} from "rxjs";
 import {type Line, type Position} from "../editor/editor.store.ts";
 import {editorManager} from "../../services/editor-manager.service.ts";
+import type { SourceMap, SourceMapEntry } from "../../services/macro-expander/source-map.ts";
+import { SourceMapLookup } from "../../services/macro-expander/source-map.ts";
 
 type InterpreterState = {
     tape: Uint8Array | Uint16Array | Uint32Array;
@@ -16,6 +18,14 @@ type InterpreterState = {
 
     output: string;
     laneCount: number;
+    
+    // Source map support
+    sourceMap?: SourceMap;
+    currentSourcePosition?: Position;
+    macroContext?: Array<{
+        macroName: string;
+        parameters?: Record<string, string>;
+    }>;
 }
 
 export type TapeSnapshot = {
@@ -54,15 +64,22 @@ class InterpreterStore {
         isStopped: false,
         breakpoints: [],
         output: '',
-        laneCount: DEFAULT_LANE_COUNT
+        laneCount: DEFAULT_LANE_COUNT,
+        sourceMap: undefined,
+        currentSourcePosition: undefined,
+        macroContext: undefined
     })
 
     private code: Array<Line> = [];
+    private sourceMapLookup: SourceMapLookup | null = null;
 
     public currentChar = new BehaviorSubject<Position>({
         line: 0,
         column: 0
     })
+    
+    // Position in source (macro) code during debugging
+    public currentSourceChar = new BehaviorSubject<Position | null>(null);
 
     private loopMap: Map<string, Position> = new Map();
     private runInterval: number | null = null;
@@ -153,12 +170,16 @@ class InterpreterStore {
             isStopped: false,
             breakpoints: this.state.getValue().breakpoints, // Keep existing breakpoints
             output: '',
-            laneCount: this.laneCount.getValue()
+            laneCount: this.laneCount.getValue(),
+            sourceMap: this.state.getValue().sourceMap,
+            currentSourcePosition: undefined,
+            macroContext: undefined
         });
         this.currentChar.next({
             line: 0,
             column: 0
         });
+        this.currentSourceChar.next(null);
         if (this.runInterval) {
             clearInterval(this.runInterval);
             this.runInterval = null;
@@ -196,6 +217,11 @@ class InterpreterStore {
         // Set the current character position to start from
         this.currentChar.next(position);
         
+        // Update source position if we have a source map
+        if (this.sourceMapLookup) {
+            this.updateSourcePosition();
+        }
+        
         // Start running smoothly from this position
         this.runSmooth();
     }
@@ -216,6 +242,11 @@ class InterpreterStore {
         }
 
         this.currentChar.next(targetPosition);
+        
+        // Update source position if we have a source map
+        if (this.sourceMapLookup) {
+            this.updateSourcePosition();
+        }
 
         this.step();
     }
@@ -274,6 +305,12 @@ class InterpreterStore {
             // End of code
             return false;
         }
+        
+        // Update source position if we have a source map
+        if (this.sourceMapLookup) {
+            this.updateSourcePosition();
+        }
+        
         return true;
     }
 
@@ -286,6 +323,12 @@ class InterpreterStore {
                 line: current.line + 1,
                 column: 0
             });
+            
+            // Update source position if we have a source map
+            if (this.sourceMapLookup) {
+                this.updateSourcePosition();
+            }
+            
             return true;
         } else {
             // End of code
@@ -317,6 +360,114 @@ class InterpreterStore {
             breakpoints.push(position);
         }
 
+        this.state.next({
+            ...currentState,
+            breakpoints
+        });
+    }
+    
+    public toggleSourceBreakpoint(sourcePosition: Position) {
+        if (!this.sourceMapLookup) {
+            // No source map, fall back to regular breakpoint
+            this.toggleBreakpoint(sourcePosition);
+            return;
+        }
+        
+        // Get all expanded positions for this source position
+        // Note: source map uses 1-based line numbers
+        // When setting breakpoints at column 0, try column 1 first since source maps typically start at column 1
+        let expandedEntries = this.sourceMapLookup.getExpandedPositions(
+            sourcePosition.line + 1,
+            sourcePosition.column + 1
+        );
+        
+        // If no entries found at column 0, try column 1
+        if (expandedEntries.length === 0 && sourcePosition.column === 0) {
+            expandedEntries = this.sourceMapLookup.getExpandedPositions(
+                sourcePosition.line + 1,
+                1  // Column 1 in source map (1-based)
+            );
+        }
+        
+        if (expandedEntries.length === 0) {
+            // No direct mapping found. Try to find the nearest Brainfuck command on this line
+            // by looking for any source map entry that starts on this line
+            const lineKey = `line:${sourcePosition.line + 1}`;
+            const lineEntries = (this.sourceMapLookup as any).sourceMap?.sourceToExpanded.get(lineKey) || [];
+            
+            if (lineEntries.length > 0) {
+                // Found entries on this line, use them
+                expandedEntries = lineEntries;
+            } else {
+                // Still no entries found. This might be a comment line or empty line.
+                // We'll allow the breakpoint but warn the user
+                console.warn('No expanded positions found for source position:', sourcePosition);
+                console.warn('This line may not contain executable code (e.g., comment or empty line)');
+                
+                // Don't set a breakpoint that can't be hit
+                return;
+            }
+        }
+        
+        const currentState = this.state.getValue();
+        const breakpoints = [...currentState.breakpoints];
+        
+        // Find the entry that represents the full macro expansion (largest range)
+        let fullExpansionEntry = expandedEntries[0];
+        for (const entry of expandedEntries) {
+            const entryLength = entry.expandedRange.end.column - entry.expandedRange.start.column;
+            const fullLength = fullExpansionEntry.expandedRange.end.column - fullExpansionEntry.expandedRange.start.column;
+            if (entryLength > fullLength) {
+                fullExpansionEntry = entry;
+            }
+        }
+        
+        // For the full expansion, find the first BF command position
+        const expandedPositions: Position[] = [];
+        if (fullExpansionEntry) {
+            // For now, just use the start position of the full expansion
+            // TODO: Get the actual text to find the first BF command
+            expandedPositions.push({
+                line: fullExpansionEntry.expandedRange.start.line - 1,
+                column: fullExpansionEntry.expandedRange.start.column - 1
+            });
+        }
+        
+        // If no BF command found in the expansion, fall back to start position
+        if (expandedPositions.length === 0 && fullExpansionEntry) {
+            expandedPositions.push({
+                line: fullExpansionEntry.expandedRange.start.line - 1,
+                column: fullExpansionEntry.expandedRange.start.column - 1
+            });
+        }
+        
+        // Check if any expanded position already has a breakpoint
+        let hasBreakpoint = false;
+        for (const expandedPos of expandedPositions) {
+            if (breakpoints.some(bp => bp.line === expandedPos.line && bp.column === expandedPos.column)) {
+                hasBreakpoint = true;
+                break;
+            }
+        }
+        
+        if (hasBreakpoint) {
+            // Remove all breakpoints at expanded positions
+            console.log('Removing breakpoints at expanded positions:', expandedPositions);
+            for (const expandedPos of expandedPositions) {
+                const index = breakpoints.findIndex(
+                    bp => bp.line === expandedPos.line && bp.column === expandedPos.column
+                );
+                if (index !== -1) {
+                    breakpoints.splice(index, 1);
+                }
+            }
+        } else {
+            // Add breakpoints at all expanded positions
+            console.log('Adding breakpoints at expanded positions:', expandedPositions);
+            console.log('Source position:', sourcePosition, 'maps to', expandedPositions.length, 'expanded positions');
+            breakpoints.push(...expandedPositions);
+        }
+        
         this.state.next({
             ...currentState,
             breakpoints
@@ -426,6 +577,9 @@ class InterpreterStore {
                     const matchingPos = this.loopMap.get(this.posToKey(currentPos));
                     if (matchingPos) {
                         this.currentChar.next(matchingPos);
+                        if (this.sourceMapLookup) {
+                            this.updateSourcePosition();
+                        }
                         shouldMoveNext = true;
                     } else {
                         console.error(`No matching ] for [ at ${currentPos.line}:${currentPos.column}`);
@@ -437,6 +591,9 @@ class InterpreterStore {
                     const matchingPos = this.loopMap.get(this.posToKey(currentPos));
                     if (matchingPos) {
                         this.currentChar.next(matchingPos);
+                        if (this.sourceMapLookup) {
+                            this.updateSourcePosition();
+                        }
                         shouldMoveNext = true;
                     } else {
                         console.error(`No matching [ for ] at ${currentPos.line}:${currentPos.column}`);
@@ -667,6 +824,9 @@ class InterpreterStore {
                         const matchingPos = this.loopMap.get(this.posToKey(currentPos));
                         if (matchingPos) {
                             this.currentChar.next(matchingPos);
+                            if (this.sourceMapLookup) {
+                                this.updateSourcePosition();
+                            }
                             shouldMoveNext = true;
                         }
                     }
@@ -676,6 +836,9 @@ class InterpreterStore {
                         const matchingPos = this.loopMap.get(this.posToKey(currentPos));
                         if (matchingPos) {
                             this.currentChar.next(matchingPos);
+                            if (this.sourceMapLookup) {
+                                this.updateSourcePosition();
+                            }
                             shouldMoveNext = true;
                         }
                     }
@@ -815,7 +978,7 @@ class InterpreterStore {
                     break;
                 case '.': output += String.fromCharCode(tape[pointer]); break;
                 case ',': tape[pointer] = 0; break;
-                case '$':
+                case '$': {
                     // Hit in-code breakpoint - update state and pause
                     console.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
                     
@@ -845,6 +1008,7 @@ class InterpreterStore {
                     // Exit turbo mode and return to normal execution
                     console.log('Exiting turbo mode due to breakpoint. Use step or resume to continue.');
                     return;
+                }
             }
 
             pc++;
@@ -914,6 +1078,45 @@ class InterpreterStore {
             bp => bp.line === position.line && bp.column === position.column
         );
     }
+    
+    public hasSourceBreakpointAt(sourcePosition: Position): boolean {
+        if (!this.sourceMapLookup) {
+            // No source map, check regular breakpoints
+            return this.hasBreakpointAt(sourcePosition);
+        }
+        
+        // Get all expanded positions for this source position
+        let expandedEntries = this.sourceMapLookup.getExpandedPositions(
+            sourcePosition.line + 1,
+            sourcePosition.column + 1
+        );
+        
+        // If no entries found at column 0, try column 1
+        if (expandedEntries.length === 0 && sourcePosition.column === 0) {
+            expandedEntries = this.sourceMapLookup.getExpandedPositions(
+                sourcePosition.line + 1,
+                1  // Column 1 in source map (1-based)
+            );
+        }
+        
+        const currentState = this.state.getValue();
+        
+        // Check if any expanded position has a breakpoint
+        for (const entry of expandedEntries) {
+            const expandedPos: Position = {
+                line: entry.expandedRange.start.line - 1,
+                column: entry.expandedRange.start.column - 1
+            };
+            
+            if (currentState.breakpoints.some(
+                bp => bp.line === expandedPos.line && bp.column === expandedPos.column
+            )) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
 
     public setTapeSize(size: number) {
         if (size <= 0) {
@@ -981,6 +1184,97 @@ class InterpreterStore {
             tape: newTape,
             pointer: snapshot.pointer
         });
+    }
+    
+    public setSourceMap(sourceMap: SourceMap | undefined) {
+        this.sourceMapLookup = sourceMap ? new SourceMapLookup(sourceMap) : null;
+        const currentState = this.state.getValue();
+        this.state.next({
+            ...currentState,
+            sourceMap
+        });
+        
+        // Update current source position if we have a source map
+        if (this.sourceMapLookup) {
+            this.updateSourcePosition();
+        }
+    }
+    
+    private updateSourcePosition() {
+        if (!this.sourceMapLookup) {
+            this.currentSourceChar.next(null);
+            return;
+        }
+        
+        const currentPos = this.currentChar.getValue();
+        let entry: SourceMapEntry | null = null;
+        
+        // If we're at a breakpoint position, try to find the source map entry
+        // that corresponds to the outermost macro (where user likely set the breakpoint)
+        const currentState = this.state.getValue();
+        const isAtBreakpoint = currentState.breakpoints.some(
+            bp => bp.line === currentPos.line && bp.column === currentPos.column
+        );
+        
+        if (isAtBreakpoint && this.sourceMapLookup) {
+            // When at a breakpoint, try to use the outermost macro context
+            // This will be handled by our updated getMacroContext method
+            // which should return the full call stack
+        }
+        
+        // Fall back to normal lookup if not at breakpoint or no entries found
+        if (!entry) {
+            entry = this.sourceMapLookup.getSourcePosition(
+                currentPos.line + 1,
+                currentPos.column + 1
+            );
+        }
+        
+        if (entry) {
+            // Convert back to 0-based for consistency with rest of the codebase
+            const sourcePos = {
+                line: entry.sourceRange.start.line - 1,
+                column: entry.sourceRange.start.column - 1
+            };
+            this.currentSourceChar.next(sourcePos);
+            
+            // Update macro context
+            const context = this.sourceMapLookup.getMacroContext(
+                currentPos.line + 1,
+                currentPos.column + 1
+            );
+            
+            console.log('Macro context from source map:', context.length, 'entries');
+            context.forEach((e, i) => {
+                console.log(`  ${i}: ${e.macroName} ${e.parameterValues ? JSON.stringify(e.parameterValues) : ''}`);
+            });
+            
+            const macroContext = context.map(e => ({
+                macroName: e.macroName || '',
+                parameters: e.parameterValues
+            })).filter(c => c.macroName);
+            
+            const currentState = this.state.getValue();
+            this.state.next({
+                ...currentState,
+                currentSourcePosition: sourcePos,
+                macroContext: macroContext.length > 0 ? macroContext : undefined
+            });
+            
+            // Debug logging
+            console.log(`Source position updated: Expanded [${currentPos.line}:${currentPos.column}] -> Source [${sourcePos.line}:${sourcePos.column}] (${entry.macroName || 'direct'})`);
+        } else {
+            this.currentSourceChar.next(null);
+            const currentState = this.state.getValue();
+            this.state.next({
+                ...currentState,
+                currentSourcePosition: undefined,
+                macroContext: undefined
+            });
+            
+            // Debug logging
+            console.log(`No source position for expanded position [${currentPos.line}:${currentPos.column}]`);
+        }
     }
 }
 

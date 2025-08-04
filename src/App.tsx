@@ -12,13 +12,14 @@ import {editorManager} from "./services/editor-manager.service.ts";
 import {EditorStore} from "./components/editor/editor.store.ts";
 import {useEffect, useState, useCallback} from "react";
 import {ProgressiveMacroTokenizer} from "./components/editor/macro-tokenizer-progressive.ts";
-import {createMacroExpander} from "./services/macro-expander/macro-expander.ts";
+import {createAsyncMacroExpander} from "./services/macro-expander/create-macro-expander.ts";
 import {CpuChipIcon, ArrowPathIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 
 import { settingsStore } from "./stores/settings.store";
 import { useStoreSubscribe } from "./hooks/use-store-subscribe";
 import {WorkerTokenizer} from "./services/tokenizer/worker-tokenizer-adapter.ts";
+import {interpreterStore} from "./components/debugger/interpreter.store.ts";
 
 function EditorPanel() {
     const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
@@ -27,6 +28,7 @@ function EditorPanel() {
     const [showMainEditor, setShowMainEditor] = useLocalStorageState("showMainEditor", true);
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoExpand = settings?.macro.autoExpand ?? false;
+    const [macroExpander] = useState(() => createAsyncMacroExpander());
     
     useEffect(() => {
         // Create main editor on mount
@@ -51,7 +53,7 @@ function EditorPanel() {
                 tokenizer: new ProgressiveMacroTokenizer(),
                 mode: 'insert',
                 settings: {
-                    showDebug: false
+                    showDebug: true
                 },
                 initialContent: '#define clear [-]\n#define inc(n) {repeat(n, +)}\n#define dec(n) {repeat(n, -)}\n\n// Example usage:\n// @inc(5) @clear\n'
             });
@@ -64,18 +66,19 @@ function EditorPanel() {
             if (showMacroEditor) {
                 editorManager.destroyEditor('macro');
             }
+            macroExpander.destroy();
         };
-    }, [showMacroEditor]);
+    }, [showMacroEditor, macroExpander]);
     
     // Function to expand macros
-    const expandMacros = useCallback(() => {
+    const expandMacros = useCallback(async () => {
         if (!macroEditor || !mainEditor) return;
         
-        const expander = createMacroExpander();
         const macroCode = macroEditor.getText();
-        const result = expander.expand(macroCode, {
+        const result = await macroExpander.expand(macroCode, {
             stripComments: settings?.macro.stripComments ?? true,
-            collapseEmptyLines: settings?.macro.collapseEmptyLines ?? true
+            collapseEmptyLines: settings?.macro.collapseEmptyLines ?? true,
+            generateSourceMap: true // Enable source maps with V3 performance optimizations
         });
         
         if (result.errors.length > 0) {
@@ -86,12 +89,21 @@ function EditorPanel() {
             }
         } else {
             // Set expanded code to main editor
-            mainEditor.setContent(result.expanded.trim());
+            mainEditor.setContent(result.expanded);
+            
+            // Set source map in interpreter if available
+            if (result.sourceMap) {
+                interpreterStore.setSourceMap(result.sourceMap);
+            } else {
+                // Clear source map if not generated
+                interpreterStore.setSourceMap(undefined);
+            }
+            
             if (!autoExpand) {
                 console.log('Macros expanded successfully');
             }
         }
-    }, [macroEditor, mainEditor, settings, autoExpand]);
+    }, [macroEditor, mainEditor, settings, autoExpand, macroExpander]);
     
     // Auto-expand effect
     useEffect(() => {
@@ -138,7 +150,16 @@ function EditorPanel() {
                         }
                     } else {
                         // Set expanded code to main editor
-                        mainEditor.setContent(state.expanded.trim());
+                        mainEditor.setContent(state.expanded);
+                        
+                        // Set source map in interpreter if available
+                        if (state.sourceMap) {
+                            interpreterStore.setSourceMap(state.sourceMap);
+                            console.log(`Source map updated with ${state.sourceMap.entries.length} entries`);
+                        } else {
+                            interpreterStore.setSourceMap(undefined);
+                        }
+                        
                         if (!autoExpand) {
                             console.log('Macros expanded successfully');
                         }

@@ -31,6 +31,7 @@ export interface MacroToken {
 export interface MacroExpanderOptions {
   stripComments?: boolean;
   collapseEmptyLines?: boolean;
+  generateSourceMap?: boolean;
 }
 
 export interface MacroExpanderResult {
@@ -38,6 +39,7 @@ export interface MacroExpanderResult {
   errors: MacroExpansionError[];
   tokens: MacroToken[];
   macros: MacroDefinition[];
+  sourceMap?: import('./source-map.ts').SourceMap;
 }
 
 interface ParsedLine {
@@ -770,9 +772,10 @@ export class MacroExpanderImpl implements MacroExpander {
 
 // Import the implementations
 import { MacroExpanderV2 } from './macro-expander-v2.ts';
+import { MacroExpanderV3 } from './macro-expander-v3.ts';
 
 export function createMacroExpander(): MacroExpander {
-  return createMacroExpanderV2();
+  return createMacroExpanderV3();
 }
 
 // Export specific versions for testing
@@ -782,4 +785,8 @@ export function createMacroExpanderV1(): MacroExpander {
 
 export function createMacroExpanderV2(): MacroExpander {
   return new MacroExpanderV2();
+}
+
+export function createMacroExpanderV3(): MacroExpander {
+  return new MacroExpanderV3();
 }
