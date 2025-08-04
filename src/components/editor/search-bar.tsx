@@ -57,6 +57,17 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
         const query = e.target.value;
         searchStore.setQuery(query);
         onSearch(query);
+        
+        // After search, if we have matches, jump to the first one
+        setTimeout(() => {
+            const match = searchStore.getCurrentMatch();
+            if (match) {
+                editorStore.setCursorPosition({ 
+                    line: match.line, 
+                    column: match.startColumn 
+                });
+            }
+        }, 0);
     };
 
     const handleNext = () => {

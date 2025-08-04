@@ -15,6 +15,7 @@ interface SearchState {
     caseSensitive: boolean;
     wholeWord: boolean;
     useRegex: boolean;
+    scrollTrigger: number;
 }
 
 export class SearchStore {
@@ -26,6 +27,7 @@ export class SearchStore {
         caseSensitive: false,
         wholeWord: false,
         useRegex: false,
+        scrollTrigger: 0,
     };
 
     public readonly state = new BehaviorSubject<SearchState>(this.initialState);
@@ -58,6 +60,7 @@ export class SearchStore {
             ...this.state.value,
             matches,
             currentMatchIndex: matches.length > 0 ? 0 : -1,
+            scrollTrigger: this.state.value.scrollTrigger + 1,
         });
     }
 

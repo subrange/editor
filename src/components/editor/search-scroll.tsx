@@ -16,7 +16,7 @@ export function SearchScroll({ searchStore, charWidth }: SearchScrollProps) {
         if (scrollRef.current && searchState.currentMatchIndex >= 0) {
             scrollRef.current.scrollIntoView({ block: "center", inline: "center" });
         }
-    }, [searchState.currentMatchIndex]);
+    }, [searchState.currentMatchIndex, searchState.scrollTrigger]);
 
     const currentMatch = searchStore.getCurrentMatch();
     if (!currentMatch) {
