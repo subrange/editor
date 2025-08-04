@@ -1,6 +1,7 @@
 import {BehaviorSubject, Subscription} from "rxjs";
 import {keybindingsService} from "../../services/keybindings.service.ts";
 import { type ITokenizer } from "../../services/editor-manager.service.ts";
+import { SearchStore, type SearchMatch } from "./search.store.ts";
 
 export type Position = {
     line: number;
@@ -420,6 +421,7 @@ export class EditorStore {
     private id: string;
     private tokenizer: ITokenizer;
     private subscriptions: Subscription[] = [];
+    public searchStore: SearchStore;
     
     public editorState = new BehaviorSubject<EditorState>({
         selection: {
@@ -450,6 +452,7 @@ export class EditorStore {
     ) {
         this.id = id;
         this.tokenizer = tokenizer;
+        this.searchStore = new SearchStore();
 
         this.showDebug = settings?.showDebug || false;
         
@@ -533,6 +536,10 @@ export class EditorStore {
 
                 case "editor.selectall":
                     this.selectAll();
+                    break;
+
+                case "editor.search":
+                    this.searchStore.show();
                     break;
 
                 case "editor.selectright":
@@ -1378,6 +1385,47 @@ export class EditorStore {
         return this.id;
     }
     
+    public performSearch(query: string) {
+        const currentState = this.editorState.getValue();
+        const { caseSensitive, wholeWord, useRegex } = this.searchStore.state.value;
+        const matches: SearchMatch[] = [];
+
+        if (!query) {
+            this.searchStore.setMatches([]);
+            return;
+        }
+
+        let searchPattern: RegExp;
+        try {
+            if (useRegex) {
+                searchPattern = new RegExp(query, caseSensitive ? 'g' : 'gi');
+            } else {
+                // Escape special regex characters if not in regex mode
+                const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const pattern = wholeWord ? `\\b${escapedQuery}\\b` : escapedQuery;
+                searchPattern = new RegExp(pattern, caseSensitive ? 'g' : 'gi');
+            }
+        } catch (e) {
+            // Invalid regex, clear matches
+            this.searchStore.setMatches([]);
+            return;
+        }
+
+        // Search through all lines
+        currentState.lines.forEach((line, lineIndex) => {
+            let match;
+            while ((match = searchPattern.exec(line.text)) !== null) {
+                matches.push({
+                    line: lineIndex,
+                    startColumn: match.index,
+                    endColumn: match.index + match[0].length
+                });
+            }
+        });
+
+        this.searchStore.setMatches(matches);
+    }
+
     public destroy(): void {
         // Unsubscribe from all subscriptions
         this.subscriptions.forEach(sub => sub.unsubscribe());

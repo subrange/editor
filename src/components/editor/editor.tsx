@@ -12,6 +12,8 @@ import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";
 import {VirtualizedLine} from "./virtualized-line.tsx";
 import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
+import {SearchBar} from "./search-bar.tsx";
+import {SearchHighlights} from "./search-highlights.tsx";
 
 // Constants for layout measurements
 
@@ -30,7 +32,7 @@ interface LineNumbersPanelProps {
     store: EditorStore;
 }
 
-function LineNumbersPanel({ store }: LineNumbersPanelProps) {
+function LineNumbersPanel({store}: LineNumbersPanelProps) {
     const editorState = useStoreSubscribe(store.editorState);
     const currentChar = useStoreSubscribe(interpreterStore.currentChar);
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
@@ -79,7 +81,7 @@ interface SelectionProps {
     store: EditorStore;
 }
 
-function Selection({ store }: SelectionProps) {
+function Selection({store}: SelectionProps) {
     const selection = useStoreSubscribeToField(store.editorState, "selection");
     const lines = useStoreSubscribeToField(store.editorState, "lines");
     const cw = useMemo(() => measureCharacterWidth(), []);
@@ -167,7 +169,7 @@ interface CursorProps {
     store: EditorStore;
 }
 
-function Cursor({ store }: CursorProps) {
+function Cursor({store}: CursorProps) {
     const selection = useStoreSubscribeToField(store.editorState, "selection")
     const mode = useStoreSubscribeToField(store.editorState, "mode");
     const focused = useStoreSubscribe(store.focused);
@@ -234,7 +236,7 @@ interface LinesPanelProps {
     scrollLeft: number;
 }
 
-function LinesPanel({ store, editorWidth, scrollLeft }: LinesPanelProps) {
+function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
     const editorState = useStoreSubscribe(store.editorState);
     const lines = editorState.lines;
     const selection = editorState.selection;
@@ -273,10 +275,10 @@ function LinesPanel({ store, editorWidth, scrollLeft }: LinesPanelProps) {
         const lineTexts = lines.map(l => l.text);
         return tokenizer.tokenizeAllLines(lineTexts);
     }, [lines, tokenizer]); // Remove macroExpansionVersion - we don't need to re-tokenize
-    
+
     // Determine which token styles to use based on tokenizer type
     const isProgressiveMacro = tokenizer instanceof ProgressiveMacroTokenizer;
-    
+
     // Extract errors and macros if using enhanced tokenizer
     const errors: MacroExpansionError[] = useMemo(() => {
         if (isProgressiveMacro && (tokenizer as ProgressiveMacroTokenizer).state) {
@@ -286,7 +288,7 @@ function LinesPanel({ store, editorWidth, scrollLeft }: LinesPanelProps) {
         }
         return [];
     }, [isProgressiveMacro, tokenizer, macroExpansionVersion]);
-    
+
     const availableMacros: MacroDefinition[] = useMemo(() => {
         if (isProgressiveMacro && (tokenizer as ProgressiveMacroTokenizer).state) {
             return (tokenizer as ProgressiveMacroTokenizer).state.macroDefinitions || [];
@@ -430,17 +432,17 @@ function LinesPanel({ store, editorWidth, scrollLeft }: LinesPanelProps) {
         if ((e.metaKey || e.ctrlKey) && token.type === 'macro_invocation' && isProgressiveMacro) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             // Extract macro name from the token value (remove @ and parameters)
             const macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
             if (!macroName) {
                 console.log('Could not extract macro name from:', token.value);
                 return;
             }
-            
+
             console.log('Looking for macro:', macroName);
             console.log('Available macros:', availableMacros.map(m => m.name));
-            
+
             // Find the macro definition
             const macroDef = availableMacros.find(m => m.name === macroName);
             if (macroDef && macroDef.sourceLocation) {
@@ -502,12 +504,16 @@ function LinesPanel({ store, editorWidth, scrollLeft }: LinesPanelProps) {
             lines={lines}
             charWidth={charWidth}
         />
+        <SearchHighlights
+            searchStore={store.searchStore}
+            charWidth={charWidth}
+        />
         {isProgressiveMacro && errors.length > 0 && (
-            <ErrorDecorations store={store} errors={errors} />
+            <ErrorDecorations store={store} errors={errors}/>
         )}
         {isProgressiveMacro && (
-            <MacroAutocomplete 
-                store={store} 
+            <MacroAutocomplete
+                store={store}
                 macros={availableMacros}
                 charWidth={charWidth}
             />
@@ -525,7 +531,7 @@ export interface EditorProps {
     onBlur?: () => void;
 }
 
-export function Editor({ store, onFocus, onBlur }: EditorProps) {
+export function Editor({store, onFocus, onBlur}: EditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
     const focused = useStoreSubscribe(store.focused);
     const [editorContainerWidth, setEditorContainerWidth] = useState(0);
@@ -534,7 +540,7 @@ export function Editor({ store, onFocus, onBlur }: EditorProps) {
     // Track editor container width
     useEffect(() => {
         if (!editorRef.current) return;
-        
+
         const resizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 // Get the width of the editor minus the line numbers panel (64px) and separator (1px)
@@ -542,11 +548,11 @@ export function Editor({ store, onFocus, onBlur }: EditorProps) {
                 setEditorContainerWidth(width);
             }
         });
-        
+
         resizeObserver.observe(editorRef.current);
         // Initial width calculation
         setEditorContainerWidth(editorRef.current.offsetWidth - 65);
-        
+
         return () => resizeObserver.disconnect();
     }, []);
 
@@ -577,7 +583,7 @@ export function Editor({ store, onFocus, onBlur }: EditorProps) {
             keybindingsService.createKeybinding("shift+alt+arrowup", "editor.selectlineup" as AppCommand),
             keybindingsService.createKeybinding("shift+arrowdown", "editor.selectdown" as AppCommand),
             keybindingsService.createKeybinding("shift+alt+arrowdown", "editor.selectlinedown" as AppCommand),
-            
+
             // Line start/end movement
             keybindingsService.createKeybinding("meta+arrowleft", "editor.movelinestart" as AppCommand),
             keybindingsService.createKeybinding("meta+arrowright", "editor.movelineend" as AppCommand),
@@ -588,6 +594,9 @@ export function Editor({ store, onFocus, onBlur }: EditorProps) {
             keybindingsService.createKeybinding("meta+c", "editor.copy" as AppCommand),
             keybindingsService.createKeybinding("meta+x", "editor.cut" as AppCommand),
             keybindingsService.createKeybinding("meta+v", "editor.paste" as AppCommand),
+
+            // Search
+            keybindingsService.createKeybinding("meta+f", "editor.search" as AppCommand),
         ])
 
         store.focus();
@@ -602,24 +611,31 @@ export function Editor({ store, onFocus, onBlur }: EditorProps) {
     }
 
     return (
-        <div
-            ref={editorRef}
-            className={clsx(
-                "flex grow-1 bg-zinc-950 font-mono text-sm inset-shadow-sm overflow-auto relative select-none outline-0",
-                {
-                    "border border-zinc-700": focused,
-                    "border border-transparent": !focused
-                }
-            )}
-            onFocus={addEditorKeybindings}
-            tabIndex={0}
-            onBlur={removeEditorKeybindings}
-            onScroll={handleEditorScroll}
-        >
-            <div className="flex relative grow-1 overflow-visible min-h-0 h-fit ">
-                <LineNumbersPanel store={store}/>
-                <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
-                <LinesPanel store={store} editorWidth={editorContainerWidth} scrollLeft={editorScrollLeft}/>
+        <div className="flex overflow-hidden grow-1 ">
+            <SearchBar
+                searchStore={store.searchStore}
+                editorStore={store}
+                onSearch={(query) => store.performSearch(query)}
+            />
+            <div
+                ref={editorRef}
+                className={clsx(
+                    "flex grow-1 bg-zinc-950 font-mono text-sm inset-shadow-sm overflow-auto relative select-none outline-0",
+                    {
+                        "border border-zinc-700": focused,
+                        "border border-transparent": !focused
+                    }
+                )}
+                onFocus={addEditorKeybindings}
+                tabIndex={0}
+                onBlur={removeEditorKeybindings}
+                onScroll={handleEditorScroll}
+            >
+                <div className="flex relative grow-1 overflow-visible min-h-0 h-fit ">
+                    <LineNumbersPanel store={store}/>
+                    <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
+                    <LinesPanel store={store} editorWidth={editorContainerWidth} scrollLeft={editorScrollLeft}/>
+                </div>
             </div>
         </div>
     )
