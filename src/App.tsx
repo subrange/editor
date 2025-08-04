@@ -310,16 +310,18 @@ function DebugPanel() {
                     ? <ChevronDownIcon/>
                     : <ChevronUpIcon/>
             }
-            Tape Viewer
+            Debugger
         </button>
         {
             !collapsed && (
+                <><HSep/>
+
                 <div className="h h-full">
                     <div className="v h-full">
                         <Debugger/>
                     </div>
                     <MacroContextPanel/>
-                </div>
+                </div></>
             )
         }
 
