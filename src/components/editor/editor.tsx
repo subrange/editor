@@ -185,11 +185,9 @@ function Cursor({store}: CursorProps) {
     const cw = useMemo(() => measureCharacterWidth(), []);
 
     useLayoutEffect(() => {
-        console.log('Cursor useLayoutEffect - selection:', selection, 'isNavigating:', isNavigating);
         if (cursorRef.current) {
             // Use center scrolling when navigating, nearest otherwise
             const scrollBehavior = isNavigating ? "center" : "nearest";
-            console.log('Scrolling cursor into view with behavior:', scrollBehavior);
             cursorRef.current.scrollIntoView({block: scrollBehavior, inline: "nearest"});
             
             // Reset navigation flag after scrolling
@@ -268,14 +266,11 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
     // Get tokenizer from store
     const tokenizer = store.getTokenizer();
 
-    console.log('RERENDER')
 
     // Subscribe to tokenizer state changes if it's an enhanced macro tokenizer
     useEffect(() => {
         if (tokenizer instanceof ProgressiveMacroTokenizer) {
-            console.log('Subscribing to tokenizer state changes');
             const unsubscribe = tokenizer.onStateChange(() => {
-                console.log('Tokenizer state changed, forcing re-render');
                 // Force re-render by updating version
                 setMacroExpansionVersion(v => v + 1);
             });
@@ -296,7 +291,6 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
     const errors: MacroExpansionError[] = useMemo(() => {
         if (isProgressiveMacro && (tokenizer as ProgressiveMacroTokenizer).state) {
             const errs = (tokenizer as ProgressiveMacroTokenizer).state.expanderErrors || [];
-            console.log('Errors in editor:', errs, 'version:', macroExpansionVersion);
             return errs;
         }
         return [];
@@ -449,17 +443,13 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
             // Extract macro name from the token value (remove @ and parameters)
             const macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
             if (!macroName) {
-                console.log('Could not extract macro name from:', token.value);
                 return;
             }
 
-            console.log('Looking for macro:', macroName);
-            console.log('Available macros:', availableMacros.map(m => m.name));
 
             // Find the macro definition
             const macroDef = availableMacros.find(m => m.name === macroName);
             if (macroDef && macroDef.sourceLocation) {
-                console.log('Jumping to:', macroDef.sourceLocation);
                 // Set navigation flag for center scrolling
                 store.isNavigating.next(true);
                 // Jump to the macro definition
@@ -468,7 +458,6 @@ function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
                     column: macroDef.sourceLocation.column
                 });
             } else {
-                console.log('Macro definition not found or has no source location');
             }
         }
     };
@@ -734,12 +723,17 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                         }, 0);
                     }
                 }}
+                onHide={() => {
+                    // Focus the editor when search bar is hidden
+                    setTimeout(() => {
+                        editorRef.current?.focus();
+                    }, 0);
+                }}
             />
             <QuickNav
                 quickNavStore={store.quickNavStore}
                 editorStore={store}
                 onNavigate={(item: NavigationItem) => {
-                    console.log('QuickNav onNavigate called with:', item);
                     // Focus the editor first
                     editorRef.current?.focus();
                     // Then navigate after a small delay to ensure focus is established
@@ -750,6 +744,12 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                             line: item.line,
                             column: item.column
                         });
+                    }, 0);
+                }}
+                onHide={() => {
+                    // Focus the editor when quick nav is hidden
+                    setTimeout(() => {
+                        editorRef.current?.focus();
                     }, 0);
                 }}
             />

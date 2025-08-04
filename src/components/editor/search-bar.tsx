@@ -8,9 +8,10 @@ interface SearchBarProps {
     searchStore: SearchStore;
     editorStore: EditorStore;
     onSearch: (query: string, jumpToFirst?: boolean) => void;
+    onHide?: () => void;
 }
 
-export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps) {
+export function SearchBar({ searchStore, editorStore, onSearch, onHide }: SearchBarProps) {
     const searchState = useStoreSubscribe(searchStore.state);
     const inputRef = useRef<HTMLInputElement>(null);
     const isNavigatingRef = useRef<boolean>(false);
@@ -32,7 +33,7 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
                 case "Escape":
                     e.preventDefault();
                     searchStore.hide();
-                    editorStore.focus();
+                    onHide?.();
                     break;
                 case "Enter":
                     e.preventDefault();
@@ -53,7 +54,7 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
         // Use capture phase to intercept before editor
         document.addEventListener("keydown", handleKeyDown, true);
         return () => document.removeEventListener("keydown", handleKeyDown, true);
-    }, [searchState.isVisible, searchStore, editorStore]);
+    }, [searchState.isVisible, searchStore, onHide]);
 
     if (!searchState.isVisible) {
         return null;
@@ -197,7 +198,7 @@ export function SearchBar({ searchStore, editorStore, onSearch }: SearchBarProps
             <button
                 onClick={() => {
                     searchStore.hide();
-                    editorStore.focus();
+                    onHide?.();
                 }}
                 className="px-2 py-1 text-xs rounded hover:bg-zinc-800 ml-2"
                 title="Close (Escape)"

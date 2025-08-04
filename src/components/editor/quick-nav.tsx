@@ -8,9 +8,10 @@ interface QuickNavProps {
   quickNavStore: QuickNavStore;
   editorStore: EditorStore;
   onNavigate: (item: NavigationItem) => void;
+  onHide?: () => void;
 }
 
-export function QuickNav({ quickNavStore, editorStore, onNavigate }: QuickNavProps) {
+export function QuickNav({ quickNavStore, editorStore, onNavigate, onHide }: QuickNavProps) {
   const state = useStoreSubscribe(quickNavStore.state);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -42,13 +43,11 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate }: QuickNavPro
         case "Escape":
           e.preventDefault();
           quickNavStore.hide();
-          editorStore.focus();
+          onHide?.();
           break;
         case "Enter":
           e.preventDefault();
-          console.log('Enter pressed in QuickNav');
           const selectedItem = quickNavStore.getSelectedItem();
-          console.log('Selected item:', selectedItem);
           if (selectedItem) {
             onNavigate(selectedItem);
             quickNavStore.hide();
@@ -75,7 +74,7 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate }: QuickNavPro
 
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [state.isVisible, quickNavStore, editorStore, onNavigate]);
+  }, [state.isVisible, quickNavStore, editorStore, onNavigate, onHide]);
 
   if (!state.isVisible) {
     return null;
@@ -115,7 +114,7 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate }: QuickNavPro
           e.preventDefault();
           e.stopPropagation();
           quickNavStore.hide();
-          // Let the editor handle focusing itself
+          onHide?.();
         }}
       />
       
