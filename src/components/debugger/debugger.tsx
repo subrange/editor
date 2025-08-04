@@ -622,7 +622,6 @@ export function Debugger() {
     return (
         <div className="flex flex-col h-full">
             <Tape/>
-            <MacroContextPanel/>
         </div>
     )
 }
