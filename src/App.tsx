@@ -18,6 +18,8 @@ import {IconButton} from "./components/ui/icon-button.tsx";
 
 import { settingsStore } from "./stores/settings.store";
 import { useStoreSubscribe } from "./hooks/use-store-subscribe";
+import {DummyTokenizer} from "./components/editor/tokenizer.dummy.ts";
+import {WorkerTokenizer} from "./services/tokenizer/worker-tokenizer-adapter.ts";
 
 function EditorPanel() {
     const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
@@ -30,6 +32,10 @@ function EditorPanel() {
         // Create main editor on mount
         const editor = editorManager.createEditor({
             id: 'main',
+            tokenizer: new WorkerTokenizer(() => {
+                editor.editorState.next({ ...editor.editorState.value });
+            }),
+            // tokenizer: new DummyTokenizer(),
             mode: 'insert',
             settings: {
                 showDebug: true
@@ -79,7 +85,7 @@ function EditorPanel() {
             }
         } else {
             // Set expanded code to main editor
-            mainEditor.setContent(result.expanded);
+            mainEditor.setContent(result.expanded.trim());
             if (!autoExpand) {
                 console.log('Macros expanded successfully');
             }
@@ -88,29 +94,59 @@ function EditorPanel() {
     
     // Auto-expand effect
     useEffect(() => {
+        // if (!autoExpand || !macroEditor || !mainEditor) return;
+        //
+        // let timeoutId: number;
+        //
+        // // Subscribe to macro editor changes
+        // const subscription = macroEditor.editorState.subscribe(() => {
+        //     // Clear previous timeout
+        //     clearTimeout(timeoutId);
+        //
+        //     // Debounce the expansion to avoid too frequent updates
+        //     timeoutId = setTimeout(() => {
+        //         //expandMacros();
+        //     }, 500); // 500ms delay
+        // });
+        //
+        // // Initial expansion
+        // expandMacros();
+        //
+        // return () => {
+        //     clearTimeout(timeoutId);
+        //     subscription.unsubscribe();
+        // };
         if (!autoExpand || !macroEditor || !mainEditor) return;
-        
-        let timeoutId: number;
-        
-        // Subscribe to macro editor changes
-        const subscription = macroEditor.editorState.subscribe(() => {
-            // Clear previous timeout
-            clearTimeout(timeoutId);
-            
-            // Debounce the expansion to avoid too frequent updates
-            timeoutId = setTimeout(() => {
-                expandMacros();
-            }, 500); // 500ms delay
-        });
-        
-        // Initial expansion
-        expandMacros();
-        
-        return () => {
-            clearTimeout(timeoutId);
-            subscription.unsubscribe();
-        };
-    }, [autoExpand, macroEditor, mainEditor, settings, expandMacros]);
+        const tokenizer = macroEditor.getTokenizer();
+
+        // Subscribe to tokenizer state changes if it's an enhanced macro tokenizer
+        // useEffect(() => {
+            if (tokenizer instanceof ProgressiveMacroTokenizer) {
+                // console.log('Subscribing to tokenizer state changes');
+                const unsubscribe = tokenizer.onStateChange((state) => {
+                    // console.log('Tokenizer state changed, forcing re-render');
+                    // // Force re-render by updating version
+                    // setMacroExpansionVersion(v => v + 1);
+
+                    if (!state) return;
+
+                    if (state.expanderErrors.length > 0) {
+                        // In auto mode, don't show alerts, just log
+                        if (!autoExpand) {
+                            console.error('Macro expansion errors:', state.expanderErrors);
+                        }
+                    } else {
+                        // Set expanded code to main editor
+                        mainEditor.setContent(state.expanded.trim());
+                        if (!autoExpand) {
+                            console.log('Macros expanded successfully');
+                        }
+                    }
+                });
+                return unsubscribe;
+            }
+        // }, [tokenizer]);
+    }, [autoExpand, macroEditor, mainEditor, settings]);
     
     if (!mainEditor) {
         return <div className="v grow-1 bg-zinc-950">Loading...</div>;

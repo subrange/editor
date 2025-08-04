@@ -251,6 +251,8 @@ function LinesPanel({ store }: LinesPanelProps) {
     // Get tokenizer from store
     const tokenizer = store.getTokenizer();
 
+    console.log('RERENDER')
+
     // Subscribe to tokenizer state changes if it's an enhanced macro tokenizer
     useEffect(() => {
         if (tokenizer instanceof ProgressiveMacroTokenizer) {
@@ -282,14 +284,14 @@ function LinesPanel({ store }: LinesPanelProps) {
             return errs;
         }
         return [];
-    }, [isProgressiveMacro, tokenizer, tokenizedLines, macroExpansionVersion]);
+    }, [isProgressiveMacro, tokenizer, macroExpansionVersion]);
     
     const availableMacros: MacroDefinition[] = useMemo(() => {
         if (isProgressiveMacro && (tokenizer as ProgressiveMacroTokenizer).state) {
             return (tokenizer as ProgressiveMacroTokenizer).state.macroDefinitions || [];
         }
         return [];
-    }, [isProgressiveMacro, tokenizer, tokenizedLines, macroExpansionVersion]);
+    }, [isProgressiveMacro, tokenizer]);
 
     // Track cmd/ctrl key state
     useEffect(() => {
@@ -453,7 +455,11 @@ function LinesPanel({ store }: LinesPanelProps) {
     };
 
     const renderLine = (_line: Line, lineIndex: number) => {
-        const tokens = tokenizedLines[lineIndex] || [];
+        const tokens = tokenizedLines[lineIndex] || []
+
+        const strippedTokens = tokens.length > 500
+            ? tokens.slice(0, 500).concat({type: 'comment', value: '... (truncated)', start: 0, end: 0})
+            : tokens;
 
         const hasBreakpoint = breakpoints.some(bp => bp.line === lineIndex);
         const isCurrentLine = currentDebuggingLine === lineIndex;
@@ -469,10 +475,10 @@ function LinesPanel({ store }: LinesPanelProps) {
                 )}
                 style={{height: `${CHAR_HEIGHT}px`, lineHeight: `${CHAR_HEIGHT}px`}}
             >
-                {tokens.length === 0 ? (
+                {strippedTokens.length === 0 ? (
                     <span>&nbsp;</span>
                 ) : (
-                    tokens.map((token, tokenIndex) => (
+                    strippedTokens.map((token, tokenIndex) => (
                         <span
                             key={tokenIndex}
                             className={clsx(styles[token.type as keyof typeof styles] || '', {
@@ -535,6 +541,7 @@ export interface EditorProps {
 export function Editor({ store, onFocus, onBlur }: EditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
     const focused = useStoreSubscribe(store.focused);
+
 
     function addEditorKeybindings() {
         // Use editor-specific keybinding state to avoid conflicts

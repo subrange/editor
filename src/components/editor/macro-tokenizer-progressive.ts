@@ -20,6 +20,7 @@ export interface MacroToken {
 
 interface MacroTokenizerState {
     inMultiLineComment: boolean;
+    expanded: string;
     expanderTokens: ExpanderToken[];
     expanderErrors: MacroExpansionError[];
     macroDefinitions: MacroDefinition[];
@@ -37,6 +38,7 @@ interface MacroTokenizerState {
 
 export class ProgressiveMacroTokenizer implements ITokenizer {
     public state: MacroTokenizerState = {
+        expanded: '',
         inMultiLineComment: false,
         expanderTokens: [],
         expanderErrors: [],
@@ -52,7 +54,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
     private fullText = '';
     private lineOffsets: number[] = [];
     private lastExpandPromise: Promise<void> | null = null;
-    private stateChangeCallbacks: Set<() => void> = new Set();
+    private stateChangeCallbacks: Set<(state?: MacroTokenizerState) => void> = new Set();
     private lastProcessedText = '';
     private cachedTokens: MacroToken[][] = [];
     private isExpanding = false;
@@ -60,6 +62,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
 
     reset() {
         this.state = {
+            expanded: '',
             inMultiLineComment: false,
             expanderTokens: [],
             expanderErrors: [],
@@ -624,7 +627,8 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                     tokens: result.tokens.length,
                     macros: result.macros.length
                 });
-                
+
+                this.state.expanded = result.expanded;
                 this.state.expanderTokens = result.tokens;
                 this.state.expanderErrors = result.errors;
                 this.state.macroDefinitions = result.macros;
@@ -649,11 +653,11 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
     private notifyStateChange() {
         console.log('Notifying state change, callbacks:', this.stateChangeCallbacks.size);
         // Notify all registered callbacks
-        this.stateChangeCallbacks.forEach(callback => callback());
+        this.stateChangeCallbacks.forEach(callback => callback(this.state));
     }
     
     // Register a callback for state changes
-    public onStateChange(callback: () => void): () => void {
+    public onStateChange(callback: (newState?: MacroTokenizerState) => void): () => void {
         this.stateChangeCallbacks.add(callback);
         // Return unsubscribe function
         return () => {
