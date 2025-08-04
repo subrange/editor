@@ -1,5 +1,6 @@
 // MARK: ------------- START -------------
 
+
 #define clear [-]
 #define inc(n) {repeat(n, +)}
 #define dec(n) {repeat(n, -)}
@@ -77,8 +78,25 @@
 #define OP_XOR  5
 #define OP_SL   6 // Bit Shift Left
 #define OP_SR   7 // Bit Shift Right
-#define OP_SLT  8 // Set Less Than
-#define OP_SLTU 9
+#define OP_SLT  8 // Set Less Than signed
+#define OP_SLTU 9 // Set Less Than unsigned
+
+#define OP_ADDI 10
+#define OP_ANDI 11
+#define OP_ORI  12
+#define OP_XORI 13
+#define OP_LI   14
+#define OP_SLI  15
+#define OP_SRI  16
+
+/*
+| **0x10** | ADDI rd,rs,imm | I | rd = rs + sign_ext(imm) |
+| **0x11** | ANDI rd,rs,imm | I | rd = rs & zero_ext(imm) |
+| **0x12** | ORI rd,rs,imm | I | rd = rs \| zero_ext(imm) |
+| **0x13** | LI rd,imm | I | rd = imm << 10 |
+| **0x14** | SLLI rd,rs,imm | I | rd = rs << imm |
+| **0x15** | SRLI rd,rs,imm | I | rd = rs >> imm |
+*/
 
 // MARK: ----- Register Constants
 #define R0 0
@@ -321,13 +339,27 @@
 }
 
 #define one_register_op(op) {
-    @fetch_from_register(@prevword @prevword)
+    @fetch_from_register(@prevwords(2))
+    // Load immediate
+    @prevwords(3)
+    @copy_value_to_A
+    @nextwords(3)
     op
     @clear_and_mark_destination_register
     @move_result_to_destination_register
     @reset_register_mark
 }
 
+#define no_register_op(op) {
+    // Load immediate
+    @prevwords(2)
+    @copy_value_to_A
+    @nextwords(2)
+    op
+    @clear_and_mark_destination_register
+    @move_result_to_destination_register
+    @reset_register_mark
+}
 
 // MARK: ------------ ALU ops ------------
 // Result is stored in sB of the IP word
@@ -443,6 +475,7 @@
 }
 
 #define alu_sr {
+
   @setup_alu_shift
 
   @lane_sA
@@ -805,6 +838,14 @@
 #define slt  @lane_sB_end @two_registers_op(@alu_slt ) @lane_sB
 #define sltu @lane_sB_end @two_registers_op(@alu_sltu) @lane_sB
 
+#define addi @lane_sB_end @one_register_op(@alu_add  ) @lane_sB
+#define andi @lane_sB_end @one_register_op(@alu_and  ) @lane_sB
+#define ori  @lane_sB_end @one_register_op(@alu_or   ) @lane_sB
+#define xori @lane_sB_end @one_register_op(@alu_xor  ) @lane_sB
+#define li   @lane_sB_end @no_register_op( @alu_or   ) @lane_sB
+#define sli  @lane_sB_end @one_register_op(@alu_sl   ) @lane_sB
+#define sri  @lane_sB_end @one_register_op(@alu_sr   ) @lane_sB
+
 // MARK: ------------ MAIN ---------------
 // Set START marker
 @set(@STATE_RUNNING)
@@ -817,9 +858,9 @@
 // MARK: -- Set registers
 @nextword
 @goto_R2
---
++++++++++
 @nextword
-++
++
 @lane_reg_end
 
 @goto_start_slow
@@ -836,10 +877,10 @@
 @fillword(@T_OP, @OP_NOP, 1)
 @fillword(@T_OP, @OP_HALT, 1)
 
-@fillword(@T_VAL, @R3, 1) // rt
+@fillword(@T_VAL, 1, 1) // rt
 @fillword(@T_VAL, @R2, 1) // rs
 @fillword(@T_VAL, @R1, 1) // rd
-@fillword(@T_OP,  @OP_SLT, 0)
+@fillword(@T_OP,  @OP_SRI, 0)
 
 //@fillword(@T_VAL, @R2, 1) // rt
 //@fillword(@T_VAL, @R1, 1) // rs
@@ -885,7 +926,15 @@
   @inc(1) // To properly work with switch statement
 
   // MARK: ------- Opcode Switch
-  @switch(10, @default, >, <)
+  @switch(17, @default, >, <)
+
+    @case(17, @sri, >, <)
+    @case(16, @sli, >, <)
+    @case(15, @li, >, <)
+    @case(14, @xori, >, <)
+    @case(13, @ori, >, <)
+    @case(12, @andi, >, <)
+    @case(11, @addi, >, <)
     @case(10, @sltu, >, <)
     @case(9,  @slt, >, <)
     @case(8,  @sr, >, <)
