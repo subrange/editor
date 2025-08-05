@@ -7,7 +7,7 @@ import { Bars3Icon, Bars2Icon, ViewColumnsIcon, Square2StackIcon, Squares2X2Icon
 import { TapeCanvasRenderer } from './tape-canvas-renderer';
 import clsx from "clsx";
 
-export function DebuggerV2() {
+export function Debugger() {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const interpreterState = useStoreSubscribe(interpreterStore.state);
@@ -55,7 +55,7 @@ export function DebuggerV2() {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-2">
         <div className="flex items-center gap-4">
-          <h3 className="text-sm font-medium text-zinc-300">Memory Tape (Canvas)</h3>
+          <h3 className="text-sm font-medium text-zinc-300">Memory Tape</h3>
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <span className="px-2 py-0.5 rounded-sm bg-zinc-800">
               {cellInfo.bits}-bit cells
@@ -86,18 +86,6 @@ export function DebuggerV2() {
               label="Lane View"
               onClick={() => settingsStore.setDebuggerViewMode('lane')}
               variant={viewMode === 'lane' ? 'info' : 'default'}
-            />
-            <IconButton
-              icon={Square2StackIcon}
-              label="Canvas View"
-              onClick={() => {}}
-              variant={'success'}
-            />
-            <IconButton
-              icon={Squares2X2Icon}
-              label="DOM View"
-              onClick={() => settingsStore.setUseCanvasRenderer(false)}
-              variant={'default'}
             />
           </div>
           {/* Navigation buttons */}
@@ -155,8 +143,6 @@ export function DebuggerV2() {
           <span>Memory: {tape.length.toLocaleString()} cells</span>
           <span>•</span>
           <span>Range: 0-{cellInfo.max.toLocaleString()}</span>
-          <span>•</span>
-          <span className="text-green-500">Canvas Renderer (No DOM limits!)</span>
         </div>
         <span>Scroll with mouse wheel or trackpad</span>
       </div>

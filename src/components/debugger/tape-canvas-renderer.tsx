@@ -425,17 +425,6 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     ctx.fillStyle = '#18181b'; // zinc-900
     ctx.fillRect(0, 0, PADDING, height);
     
-    // Draw corner cell
-    ctx.fillStyle = '#09090b'; // zinc-950
-    ctx.fillRect(0, 0, PADDING, 25);
-    ctx.strokeStyle = '#3f3f46'; // zinc-700
-    ctx.lineWidth = 1;
-    ctx.strokeRect(0, 0, PADDING, 25);
-    ctx.fillStyle = '#71717a';
-    ctx.font = '9px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('L/C', PADDING / 2, 16);
-    
     // Draw lane numbers
     for (let lane = firstLane; lane <= lastLane; lane++) {
       const virtualY = HEADER_HEIGHT + 5 + lane * laneHeight;
@@ -467,6 +456,17 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     ctx.moveTo(0, HEADER_HEIGHT);
     ctx.lineTo(width, HEADER_HEIGHT);
     ctx.stroke();
+    
+    // Draw corner cell LAST so it's always on top
+    ctx.fillStyle = '#09090b'; // zinc-950
+    ctx.fillRect(0, 0, PADDING, HEADER_HEIGHT);
+    ctx.strokeStyle = '#3f3f46'; // zinc-700
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, PADDING, HEADER_HEIGHT);
+    ctx.fillStyle = '#71717a';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('L/W', PADDING / 2, 16);
     
     // Draw scroll indicator
     if (columnsCount * columnWidth > width) {

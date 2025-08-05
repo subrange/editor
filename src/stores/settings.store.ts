@@ -11,7 +11,6 @@ export type DebuggerViewMode = 'normal' | 'compact' | 'lane';
 export interface DebuggerSettings {
     compactView: boolean; // Keep for backwards compatibility
     viewMode: DebuggerViewMode;
-    useCanvasRenderer: boolean;
 }
 
 export interface Settings {
@@ -28,8 +27,7 @@ class SettingsStore {
         },
         debugger: {
             compactView: this.loadFromStorage('debuggerCompactView', false),
-            viewMode: this.loadFromStorage('debuggerViewMode', 'normal') as DebuggerViewMode,
-            useCanvasRenderer: this.loadFromStorage('debuggerUseCanvasRenderer', false)
+            viewMode: this.loadFromStorage('debuggerViewMode', 'normal') as DebuggerViewMode
         }
     });
 
@@ -96,17 +94,6 @@ class SettingsStore {
         this.saveToStorage('debuggerCompactView', value === 'compact');
     }
 
-    setUseCanvasRenderer(value: boolean) {
-        const current = this.settings.value;
-        this.settings.next({
-            ...current,
-            debugger: {
-                ...current.debugger,
-                useCanvasRenderer: value
-            }
-        });
-        this.saveToStorage('debuggerUseCanvasRenderer', value);
-    }
 
     private loadFromStorage<T>(key: string, defaultValue: T): T {
         const stored = localStorage.getItem(key);

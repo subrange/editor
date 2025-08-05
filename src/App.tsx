@@ -1,7 +1,7 @@
 import {Editor} from "./components/editor/editor.tsx";
 import {HSep, VSep} from "./components/helper-components.tsx";
 import {keybindingsService} from "./services/keybindings.service.ts";
-import {Debugger} from "./components/debugger/debugger.tsx";
+import {Debugger} from "./components/debugger/debugger-v2.tsx";
 import {Output} from "./components/editor/output.tsx";
 import {useLocalStorageState} from "./hooks/use-local-storage-state.tsx";
 import {Toolbar} from "./components/debugger/toolbar.tsx";
