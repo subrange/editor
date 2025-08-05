@@ -19,9 +19,6 @@ interface UseVirtualScrollOptions {
   getItemKey?: (index: number) => string | number;
 }
 
-// Maximum scrollable size to prevent browser issues (10 million pixels)
-const MAX_SCROLL_SIZE = 10_000_000;
-
 export function useVirtualScroll(options: UseVirtualScrollOptions) {
   const {
     count,
@@ -37,141 +34,79 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [containerSize, setContainerSize] = useState(0);
   const scrollElementRef = useRef<HTMLElement | null>(null);
-  const measuredSizes = useRef<Map<number, number>>(new Map());
 
-  // Get estimated item size
-  const estimatedItemSize = useMemo(() => estimateSize(), [estimateSize]);
+  // Get item size - it's constant for all items
+  const itemSize = useMemo(() => estimateSize(), [estimateSize]);
 
-  // Calculate if we need virtual scrolling based on total theoretical size
-  const needsVirtualScroll = useMemo(() => {
-    const theoreticalSize = paddingStart + (count * estimatedItemSize) + paddingEnd;
-    return theoreticalSize > MAX_SCROLL_SIZE;
-  }, [count, estimatedItemSize, paddingStart, paddingEnd]);
-
-  // Calculate scroll ratio for mapping virtual positions
-  const scrollRatio = useMemo(() => {
-    if (!needsVirtualScroll) return 1;
-    const theoreticalSize = paddingStart + (count * estimatedItemSize) + paddingEnd;
-    return (MAX_SCROLL_SIZE - containerSize) / (theoreticalSize - containerSize);
-  }, [needsVirtualScroll, count, estimatedItemSize, paddingStart, paddingEnd, containerSize]);
-
-  // Get item size (from cache or estimate)
-  const getItemSize = useCallback((index: number) => {
-    return measuredSizes.current.get(index) ?? estimatedItemSize;
-  }, [estimatedItemSize]);
-
-  // Calculate total scrollable size
+  // Calculate total size - no capping, let CSS handle overflow
   const totalSize = useMemo(() => {
-    if (!needsVirtualScroll) {
-      // Normal calculation for smaller datasets
-      return paddingStart + (count * estimatedItemSize) + paddingEnd;
-    }
-    // Cap at maximum for large datasets
-    return MAX_SCROLL_SIZE;
-  }, [needsVirtualScroll, count, estimatedItemSize, paddingStart, paddingEnd]);
+    return paddingStart + (count * itemSize) + paddingEnd;
+  }, [count, itemSize, paddingStart, paddingEnd]);
 
-  // Convert scroll position to actual item position
-  const actualScrollOffset = useMemo(() => {
-    if (!needsVirtualScroll) return scrollOffset;
-    // Map from virtual scroll position to actual position
-    return scrollOffset / scrollRatio;
-  }, [scrollOffset, scrollRatio, needsVirtualScroll]);
-
-  // Calculate visible range based on actual scroll position
+  // Calculate visible range based on scroll position
   const visibleRange = useMemo(() => {
     if (!containerSize || count === 0) {
       return { start: 0, end: 0 };
     }
 
-    // Calculate which items are visible based on actual offset
-    const startIndex = Math.floor((actualScrollOffset - paddingStart) / estimatedItemSize);
-    const endIndex = Math.ceil((actualScrollOffset + containerSize - paddingStart) / estimatedItemSize);
+    // Direct calculation since all items have the same size
+    const startIndex = Math.floor((scrollOffset - paddingStart) / itemSize);
+    const endIndex = Math.ceil((scrollOffset + containerSize - paddingStart) / itemSize);
 
-    // Apply overscan and bounds checking
+    // Apply overscan and bounds
     const overscanStart = Math.max(0, startIndex - overscan);
     const overscanEnd = Math.min(count - 1, endIndex + overscan);
 
     return { start: overscanStart, end: overscanEnd };
-  }, [actualScrollOffset, containerSize, count, estimatedItemSize, paddingStart, overscan]);
+  }, [scrollOffset, containerSize, count, itemSize, paddingStart, overscan]);
 
-  // Calculate positions only for visible items
-  const visibleItemPositions = useMemo(() => {
-    const positions: Array<{ index: number; start: number; size: number; end: number }> = [];
-    
-    if (visibleRange.start > visibleRange.end) {
-      return positions;
-    }
-
-    // Calculate the starting position for the first visible item
-    let offset = paddingStart + (visibleRange.start * estimatedItemSize);
-    
-    // For virtual scrolling, we need to map positions
-    if (needsVirtualScroll) {
-      offset = offset * scrollRatio;
-    }
-
-    // Calculate positions for visible items
-    for (let i = visibleRange.start; i <= visibleRange.end; i++) {
-      const size = getItemSize(i);
-      
-      positions.push({
-        index: i,
-        start: offset,
-        size: size, // Keep original size
-        end: offset + size,
-      });
-      offset += size;
-    }
-
-    return positions;
-  }, [visibleRange, estimatedItemSize, paddingStart, getItemSize, needsVirtualScroll, scrollRatio]);
-
-  // Get virtual items
+  // Get virtual items with their positions
   const getVirtualItems = useCallback(() => {
-    return visibleItemPositions.map(pos => ({
-      index: pos.index,
-      key: getItemKey(pos.index),
-      start: pos.start,
-      size: pos.size,
-      end: pos.end,
-    }));
-  }, [visibleItemPositions, getItemKey]);
+    const items: VirtualItem[] = [];
+    
+    for (let i = visibleRange.start; i <= visibleRange.end; i++) {
+      const start = paddingStart + (i * itemSize);
+      
+      items.push({
+        index: i,
+        key: getItemKey(i),
+        start: start,
+        size: itemSize,
+        end: start + itemSize,
+      });
+    }
+
+    return items;
+  }, [visibleRange, paddingStart, itemSize, getItemKey]);
 
   // Scroll to index
   const scrollToIndex = useCallback((index: number, options?: { align?: 'start' | 'center' | 'end' | 'auto' }) => {
     const scrollElement = scrollElementRef.current;
     if (!scrollElement || index < 0 || index >= count) return;
 
-    // Calculate actual position of the item
-    let actualPosition = paddingStart + (index * estimatedItemSize);
-    const itemSize = getItemSize(index);
-    
-    // Calculate target offset based on alignment
-    let targetOffset = actualPosition;
+    const itemStart = paddingStart + (index * itemSize);
+    const itemEnd = itemStart + itemSize;
     const align = options?.align || 'auto';
     
+    let targetOffset = itemStart;
+    
     if (align === 'center') {
-      targetOffset = actualPosition - (containerSize / 2) + (itemSize / 2);
+      targetOffset = itemStart - (containerSize / 2) + (itemSize / 2);
     } else if (align === 'end') {
-      targetOffset = actualPosition + itemSize - containerSize;
+      targetOffset = itemEnd - containerSize;
     } else if (align === 'auto') {
-      const currentStart = actualScrollOffset;
-      const currentEnd = actualScrollOffset + containerSize;
+      const currentStart = scrollOffset;
+      const currentEnd = scrollOffset + containerSize;
       
-      if (actualPosition >= currentStart && actualPosition + itemSize <= currentEnd) {
+      if (itemStart >= currentStart && itemEnd <= currentEnd) {
         return; // Already visible
       }
       
-      if (actualPosition < currentStart) {
-        targetOffset = actualPosition;
+      if (itemStart < currentStart) {
+        targetOffset = itemStart;
       } else {
-        targetOffset = actualPosition + itemSize - containerSize;
+        targetOffset = itemEnd - containerSize;
       }
-    }
-
-    // Map to virtual scroll position if needed
-    if (needsVirtualScroll) {
-      targetOffset = targetOffset * scrollRatio;
     }
 
     targetOffset = Math.max(0, Math.min(targetOffset, totalSize - containerSize));
@@ -181,7 +116,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
     } else {
       scrollElement.scrollTop = targetOffset;
     }
-  }, [count, containerSize, horizontal, actualScrollOffset, totalSize, estimatedItemSize, paddingStart, getItemSize, needsVirtualScroll, scrollRatio]);
+  }, [count, containerSize, horizontal, scrollOffset, totalSize, itemSize, paddingStart]);
 
   // Handle scroll event
   const handleScroll = useCallback(() => {
@@ -226,7 +161,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
     };
   }, [getScrollElement, handleScroll, handleResize]);
 
-  // Memoize the return object to prevent unnecessary re-renders
+  // Memoize the return object
   return useMemo(() => ({
     getVirtualItems,
     getTotalSize: () => totalSize,
