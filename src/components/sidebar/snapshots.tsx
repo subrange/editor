@@ -21,9 +21,15 @@ function loadSnapshots(): TapeSnapshot[] {
 
 function saveSnapshots(snapshots: TapeSnapshot[]) {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots));
+        const serialized = JSON.stringify(snapshots);
+        localStorage.setItem(STORAGE_KEY, serialized);
     } catch (error) {
         console.error("Failed to save snapshots:", error);
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+            alert("Failed to save snapshots: Storage quota exceeded. Please delete some old snapshots to free up space.");
+        } else {
+            alert(`Failed to save snapshots: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     }
 }
 
@@ -46,36 +52,64 @@ export function Snapshots() {
         
         const name = snapshotName.trim() || `Snapshot ${snapshots.length + 1}`;
         
-        // Convert tape to regular array for JSON serialization
-        const tapeArray = Array.from(state.tape);
-        
-        const snapshot: TapeSnapshot = {
-            id: Date.now().toString(),
-            name,
-            timestamp: Date.now(),
-            tape: tapeArray,
-            pointer: state.pointer,
-            cellSize,
-            tapeSize,
-            labels: {
-                lanes: { ...labels.lanes },
-                columns: { ...labels.columns },
-                cells: { ...labels.cells }
+        try {
+            // Find the highest non-zero index to minimize storage
+            let maxIndex = 0;
+            for (let i = state.tape.length - 1; i >= 0; i--) {
+                if (state.tape[i] !== 0) {
+                    maxIndex = i;
+                    break;
+                }
             }
-        };
-        
-        setSnapshots([snapshot, ...snapshots]);
-        setSnapshotName("");
+            
+            // Convert only the used portion of tape to regular array
+            const usedLength = Math.max(maxIndex + 1, state.pointer + 1);
+            const tapeArray = Array.from(state.tape.slice(0, usedLength));
+            
+            const snapshot: TapeSnapshot = {
+                id: Date.now().toString(),
+                name,
+                timestamp: Date.now(),
+                tape: tapeArray,
+                pointer: state.pointer,
+                cellSize,
+                tapeSize,
+                labels: {
+                    lanes: { ...labels.lanes },
+                    columns: { ...labels.columns },
+                    cells: { ...labels.cells }
+                }
+            };
+            
+            // Test if we can serialize it
+            const serialized = JSON.stringify(snapshot);
+            
+            // Check if it fits in localStorage (usually ~5-10MB limit)
+            if (serialized.length > 5 * 1024 * 1024) { // 5MB safety limit
+                alert(`Snapshot is too large (${(serialized.length / 1024 / 1024).toFixed(2)}MB). The tape has ${usedLength.toLocaleString()} non-empty cells. Consider using a smaller tape or clearing unused cells.`);
+                return;
+            }
+            
+            setSnapshots([snapshot, ...snapshots]);
+            setSnapshotName("");
+        } catch (error) {
+            console.error("Failed to create snapshot:", error);
+            if (error instanceof RangeError) {
+                alert(`Cannot create snapshot: The tape is too large (${state.tape.length.toLocaleString()} cells). The browser cannot allocate enough memory for this operation.`);
+            } else {
+                alert(`Failed to create snapshot: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+        }
     };
 
     const loadSnapshot = (snapshot: TapeSnapshot) => {
         interpreterStore.loadSnapshot(snapshot);
         
+        // Always clear existing labels first
+        tapeLabelsStore.clearAllLabels();
+        
         // Restore labels if available
         if (snapshot.labels) {
-            // Clear existing labels
-            tapeLabelsStore.clearAllLabels();
-            
             // Restore lane labels
             Object.entries(snapshot.labels.lanes).forEach(([index, label]) => {
                 tapeLabelsStore.setLaneLabel(parseInt(index), label);
@@ -97,11 +131,6 @@ export function Snapshots() {
 
     const deleteSnapshot = (id: string) => {
         setSnapshots(snapshots.filter(s => s.id !== id));
-    };
-
-    const formatDate = (timestamp: number) => {
-        const date = new Date(timestamp);
-        return date.toLocaleString();
     };
 
     return (

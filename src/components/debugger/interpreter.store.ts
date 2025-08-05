@@ -40,6 +40,7 @@ export type TapeSnapshot = {
     labels?: {
         lanes: Record<number, string>;
         columns: Record<number, string>;
+        cells: Record<number, string>;
     };
 }
 
