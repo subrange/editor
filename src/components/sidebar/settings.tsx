@@ -2,12 +2,46 @@ import clsx from "clsx";
 import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
 import {settingsStore} from "../../stores/settings.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
+import { TapeLabelsEditor } from "./tape-labels-editor";
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { useState } from 'react';
 
-function SettingSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+    const storageKey = `settings-section-${title.toLowerCase().replace(/\s+/g, '-')}`;
+    const [isOpen, setIsOpen] = useState(() => {
+        const stored = localStorage.getItem(storageKey);
+        return stored !== null ? JSON.parse(stored) : defaultOpen;
+    });
+    
+    const toggleOpen = () => {
+        const newState = !isOpen;
+        setIsOpen(newState);
+        localStorage.setItem(storageKey, JSON.stringify(newState));
+    };
+    
     return (
-        <div className="space-y-3">
-            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{title}</h3>
-            {children}
+        <div>
+            <button
+                onClick={toggleOpen}
+                className="flex items-center gap-1.5 w-full text-left group py-1.5 px-1 -mx-1 rounded hover:bg-zinc-800/50 transition-colors"
+            >
+                {isOpen ? (
+                    <ChevronDownIcon className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-400 transition-colors" />
+                ) : (
+                    <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-400 transition-colors" />
+                )}
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider group-hover:text-zinc-300 transition-colors">
+                    {title}
+                </h3>
+            </button>
+            <div className={clsx(
+                "overflow-hidden transition-all duration-200",
+                isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+            )}>
+                <div className="mt-3">
+                    {children}
+                </div>
+            </div>
         </div>
     );
 }
@@ -43,7 +77,7 @@ export function Settings() {
             </div>
 
             {/* Settings content */}
-            <div className="p-6 space-y-8">
+            <div className="p-6 space-y-4">
                 {/* Interpreter Settings */}
                 <SettingSection title="Interpreter">
                     {/* Tape Size */}
@@ -185,6 +219,11 @@ export function Settings() {
                             </div>
                         </div>
                     </div>
+                </SettingSection>
+
+                {/* Tape Labels */}
+                <SettingSection title="Tape Labels (Lane View)" defaultOpen={false}>
+                    <TapeLabelsEditor />
                 </SettingSection>
 
                 {/* Macro Settings */}

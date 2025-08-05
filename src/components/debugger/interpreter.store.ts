@@ -37,6 +37,10 @@ export type TapeSnapshot = {
     pointer: number;
     cellSize: number;
     tapeSize: number;
+    labels?: {
+        lanes: Record<number, string>;
+        columns: Record<number, string>;
+    };
 }
 
 const DEFAULT_TAPE_SIZE = 1024 * 1024; // 1 megabyte tape

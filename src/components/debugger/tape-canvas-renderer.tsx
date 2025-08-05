@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStoreSubscribe } from '../../hooks/use-store-subscribe';
 import { interpreterStore } from './interpreter-facade.store';
 import { settingsStore } from '../../stores/settings.store';
+import { tapeLabelsStore } from '../../stores/tape-labels.store';
+import { XMarkIcon } from '@heroicons/react/24/solid';
 
 interface TapeCanvasRendererProps {
   width: number;
@@ -29,6 +31,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
   const animationFrameRef = useRef<number>();
   const interpreterState = useStoreSubscribe(interpreterStore.state);
   const settings = useStoreSubscribe(settingsStore.settings);
+  const labels = useStoreSubscribe(tapeLabelsStore.labels);
   
   const tape = interpreterState.tape;
   const pointer = interpreterState.pointer;
@@ -49,6 +52,9 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
   const [isCanvasHovered, setIsCanvasHovered] = useState(false);
   const [isScrollBarHovered, setIsScrollBarHovered] = useState(false);
   const [isVerticalScrollBarHovered, setIsVerticalScrollBarHovered] = useState(false);
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'lane' | 'column' | 'cell'; index: number } | null>(null);
   
   // Animation state for smooth transitions
   const animationStateRef = useRef<Map<number, { 
@@ -194,14 +200,17 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         ctx.stroke();
       }
       
-      // Draw cell index
+      // Draw cell index or label
       if (dimensions.fontSize.index > 0) {
+        const hasLabel = labels.cells[i] !== undefined;
         ctx.fillStyle = isPointer ? 
           `rgba(250, 204, 21, ${opacity})` : 
-          `rgba(113, 113, 122, ${opacity})`; // yellow-400 : zinc-500
+          hasLabel ? `rgba(161, 161, 170, ${opacity})` : // zinc-400 for labels
+          `rgba(113, 113, 122, ${opacity})`; // zinc-500 for indices
         ctx.font = `${dimensions.fontSize.index}px monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText(`#${i}`, x + CELL_WIDTH / 2 + (viewMode === 'compact' ? 0 : 0), y + (viewMode === 'compact' ? 6 : 20));
+        const cellLabel = labels.cells[i] || `#${i}`;
+        ctx.fillText(cellLabel, x + CELL_WIDTH / 2 + (viewMode === 'compact' ? 0 : 0), y + (viewMode === 'compact' ? 6 : 20));
       }
       
       // Draw value
@@ -340,7 +349,8 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       ctx.fillStyle = '#71717a';
       ctx.font = '10px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(col.toString(), x, 18);
+      const columnLabel = labels.columns[col] || col.toString();
+      ctx.fillText(columnLabel, x, 18);
     }
     
     // Draw cells
@@ -364,6 +374,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         const opacity = getAnimatedOpacity(index, isDimmed);
         
         // Cell background with animated opacity
+        const hasLabel = labels.cells[index] !== undefined;
         if (isPointer) {
           ctx.fillStyle = `rgba(234, 179, 8, ${0.2 * opacity})`;
           ctx.strokeStyle = `rgba(234, 179, 8, ${0.5 * opacity})`;
@@ -373,7 +384,9 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
           const rgbaMatch = laneColor.fill.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/);
           if (rgbaMatch) {
             const [, r, g, b] = rgbaMatch;
-            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.1 * opacity})`;
+            // Make fillstype brighter for labeled cells
+            const opacityFactor = hasLabel ? 0.2 : 0.1;
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacityFactor * opacity})`;
           } else {
             ctx.fillStyle = laneColor.fill;
           }
@@ -384,11 +397,13 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
             const rDec = parseInt(r, 16);
             const gDec = parseInt(g, 16);
             const bDec = parseInt(b, 16);
-            ctx.strokeStyle = `rgba(${rDec}, ${gDec}, ${bDec}, ${0.4 * opacity})`;
+            // Make border brighter for labeled cells
+            const strokeOpacity = hasLabel ? 0.8 : 0.4;
+            ctx.strokeStyle = `rgba(${rDec}, ${gDec}, ${bDec}, ${strokeOpacity * opacity})`;
           } else {
             ctx.strokeStyle = laneColor.stroke;
           }
-          ctx.lineWidth = 1;
+          ctx.lineWidth = hasLabel ? 1.5 : 1; // Slightly thicker border for labeled cells
         }
         
         ctx.beginPath();
@@ -403,16 +418,19 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
           ctx.stroke();
         }
         
-        // Cell content with animated opacity
-        ctx.fillStyle = `rgba(113, 113, 122, ${opacity})`;
+        // Cell content with animated opacity - show label or index
+        ctx.fillStyle = hasLabel ?
+          `rgba(161, 161, 170, ${opacity})` : // zinc-400 for labels
+          `rgba(113, 113, 122, ${opacity})`; // zinc-500 for indices
         ctx.font = '9px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText(index.toString(), x + 3, y + CELL_HEIGHT / 2 - 2);
+        const cellLabel = labels.cells[index] || index.toString();
+        ctx.fillText(cellLabel, x + 3, y + CELL_HEIGHT / 2 - 2);
         
         ctx.fillStyle = isPointer ? 
           `rgba(253, 224, 71, ${opacity})` : 
           value !== 0 ? `rgba(147, 197, 253, ${opacity})` : 
-          `rgba(161, 161, 170, ${opacity})`;
+          `rgba(161, 161, 170, ${0.5 * opacity})`;
         ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'right';
         ctx.fillText(value.toString(), x + CELL_WIDTH - 3, y + CELL_HEIGHT / 2 + 4);
@@ -436,11 +454,12 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         ctx.fillRect(0, y, PADDING, laneHeight - 4);
       }
       
-      // Lane number
+      // Lane number or label
       ctx.fillStyle = '#a1a1aa';
       ctx.font = '11px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(lane.toString(), PADDING / 2, y + laneHeight / 2 + 3);
+      const laneLabel = labels.lanes[lane] || lane.toString();
+      ctx.fillText(laneLabel, PADDING / 2, y + laneHeight / 2 + 3);
     }
     
     // Draw vertical separator
@@ -544,7 +563,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         (canvasRef.current as any)._verticalScrollBarBounds = null;
       }
     }
-  }, [tape, pointer, laneCount, scrollX, scrollY, width, height, PADDING, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, hoveredIndex, hoveredColumn, hoveredLane, getAnimatedOpacity, isDraggingScrollBar, isScrollBarHovered, isCanvasHovered, isDraggingVerticalScrollBar, isVerticalScrollBarHovered]);
+  }, [tape, pointer, laneCount, scrollX, scrollY, width, height, PADDING, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, hoveredIndex, hoveredColumn, hoveredLane, getAnimatedOpacity, isDraggingScrollBar, isScrollBarHovered, isCanvasHovered, isDraggingVerticalScrollBar, isVerticalScrollBarHovered, labels]);
   
   // Animation loop
   useEffect(() => {
@@ -784,6 +803,94 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     }
   }, [scrollX, scrollY]);
   
+  // Handle right click for context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Lane view specific headers
+    if (viewMode === 'lane' && laneCount > 1) {
+      // Check if clicked on lane header
+      if (mouseX < PADDING && mouseY > 25) {
+        const HEADER_HEIGHT = 25;
+        const relativeY = mouseY - HEADER_HEIGHT - 5 + scrollY;
+        const lane = Math.floor(relativeY / (CELL_HEIGHT + 4));
+        if (lane >= 0 && lane < laneCount) {
+          setContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            type: 'lane',
+            index: lane
+          });
+          return;
+        }
+      }
+      
+      // Check if clicked on column header
+      if (mouseY < 25 && mouseX > PADDING) {
+        const COLUMN_OFFSET = 8;
+        const scrolledX = mouseX - PADDING - COLUMN_OFFSET + scrollX;
+        const col = Math.floor(scrolledX / (CELL_WIDTH + CELL_GAP));
+        const columnsCount = Math.ceil(tape.length / laneCount);
+        if (col >= 0 && col < columnsCount) {
+          setContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            type: 'column',
+            index: col
+          });
+          return;
+        }
+      }
+    }
+    
+    // Check if clicked on a cell (works in all views)
+    let cellIndex = -1;
+    
+    if (viewMode === 'lane' && laneCount > 1) {
+      // Lane view cell detection
+      const COLUMN_OFFSET = 8;
+      const HEADER_HEIGHT = 25;
+      const scrolledX = mouseX - PADDING - COLUMN_OFFSET + scrollX;
+      const relativeY = mouseY - HEADER_HEIGHT - 5 + scrollY;
+      
+      const col = Math.floor(scrolledX / (CELL_WIDTH + CELL_GAP));
+      const lane = Math.floor(relativeY / (CELL_HEIGHT + 4));
+      
+      if (col >= 0 && lane >= 0 && lane < laneCount) {
+        const columnsCount = Math.ceil(tape.length / laneCount);
+        if (col < columnsCount) {
+          cellIndex = col * laneCount + lane;
+        }
+      }
+    } else {
+      // Normal/compact view cell detection
+      const x = mouseX + scrollX;
+      const cellX = x - PADDING;
+      
+      if (cellX >= 0) {
+        const totalCellWidth = CELL_WIDTH + CELL_GAP;
+        cellIndex = Math.floor(cellX / totalCellWidth);
+      }
+    }
+    
+    if (cellIndex >= 0 && cellIndex < tape.length) {
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        type: 'cell',
+        index: cellIndex
+      });
+      return;
+    }
+    
+    setContextMenu(null);
+  }, [viewMode, laneCount, scrollX, scrollY, tape.length, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, PADDING]);
+  
   // Handle mouse move for scroll bar dragging
   const handleMouseMoveGlobal = useCallback((e: MouseEvent) => {
     // Handle horizontal scroll bar dragging
@@ -888,16 +995,117 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     };
   }, [viewMode, laneCount, tape.length, width, totalWidth, CELL_WIDTH, CELL_GAP, PADDING]);
   
+  // Context menu component
+  const renderContextMenu = () => {
+    if (!contextMenu) return null;
+    
+    const currentLabel = contextMenu.type === 'lane' 
+      ? labels.lanes[contextMenu.index] 
+      : contextMenu.type === 'column'
+      ? labels.columns[contextMenu.index]
+      : labels.cells[contextMenu.index];
+    
+    return (
+      <>
+        {/* Backdrop to close menu when clicking outside */}
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setContextMenu(null)}
+        />
+        
+        <div
+          className="fixed z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          {/* Header */}
+          <div className="px-3 py-2 bg-zinc-800 border-b border-zinc-700">
+            <h3 className="text-xs font-medium text-zinc-300">
+              Edit {contextMenu.type === 'lane' ? 'Lane' : contextMenu.type === 'column' ? 'Column' : 'Cell'} Label
+            </h3>
+            <p className="text-[10px] text-zinc-500 mt-0.5">
+              {contextMenu.type === 'lane' ? 'Lane' : contextMenu.type === 'column' ? 'Column' : 'Cell'} #{contextMenu.index}
+              {currentLabel && <span className="text-zinc-400"> • Current: "{currentLabel}"</span>}
+            </p>
+          </div>
+          
+          {/* Input section */}
+          <div className="p-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder={`Enter ${contextMenu.type} label...`}
+                defaultValue={currentLabel || ''}
+                className="flex-1 px-2 py-1.5 text-sm bg-zinc-800 border border-zinc-700 rounded focus:border-zinc-600 focus:outline-none"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const value = (e.target as HTMLInputElement).value.trim();
+                    if (value) {
+                      if (contextMenu.type === 'lane') {
+                        tapeLabelsStore.setLaneLabel(contextMenu.index, value);
+                      } else if (contextMenu.type === 'column') {
+                        tapeLabelsStore.setColumnLabel(contextMenu.index, value);
+                      } else {
+                        tapeLabelsStore.setCellLabel(contextMenu.index, value);
+                      }
+                    } else if (currentLabel) {
+                      // Only remove if there was a label before
+                      if (contextMenu.type === 'lane') {
+                        tapeLabelsStore.removeLaneLabel(contextMenu.index);
+                      } else if (contextMenu.type === 'column') {
+                        tapeLabelsStore.removeColumnLabel(contextMenu.index);
+                      } else {
+                        tapeLabelsStore.removeCellLabel(contextMenu.index);
+                      }
+                    }
+                    setContextMenu(null);
+                  } else if (e.key === 'Escape') {
+                    setContextMenu(null);
+                  }
+                }}
+              />
+              {currentLabel && (
+                <button
+                  className="p-1.5 rounded hover:bg-zinc-800 transition-colors group"
+                  onClick={() => {
+                    if (contextMenu.type === 'lane') {
+                      tapeLabelsStore.removeLaneLabel(contextMenu.index);
+                    } else if (contextMenu.type === 'column') {
+                      tapeLabelsStore.removeColumnLabel(contextMenu.index);
+                    } else {
+                      tapeLabelsStore.removeCellLabel(contextMenu.index);
+                    }
+                    setContextMenu(null);
+                  }}
+                  title="Remove label"
+                >
+                  <XMarkIcon className="w-4 h-4 text-zinc-500 group-hover:text-red-400" />
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-zinc-500 mt-2">
+              Press Enter to save, Escape to cancel
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   return (
-    <canvas
-      ref={canvasRef}
-      className="cursor-pointer"
-      onWheel={handleWheel}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onMouseDown={handleMouseDown}
-      style={{ cursor: isDraggingScrollBar || isDraggingVerticalScrollBar ? 'grabbing' : 'pointer' }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="cursor-pointer"
+        onWheel={handleWheel}
+        onMouseMove={handleMouseMove}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={handleMouseDown}
+        onContextMenu={handleContextMenu}
+        style={{ cursor: isDraggingScrollBar || isDraggingVerticalScrollBar ? 'grabbing' : 'pointer' }}
+      />
+      {renderContextMenu()}
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { useStoreSubscribe } from "../../hooks/use-store-subscribe.tsx";
 import { CameraIcon, TrashIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import type {TapeSnapshot} from "../debugger/interpreter.store.ts";
 import { Tooltip } from "../ui/tooltip.tsx";
+import { tapeLabelsStore } from "../../stores/tape-labels.store";
 
 const STORAGE_KEY = "brainfuck-tape-snapshots";
 
@@ -33,6 +34,7 @@ export function Snapshots() {
     const state = useStoreSubscribe(interpreterStore.state);
     const cellSize = useStoreSubscribe(interpreterStore.cellSize);
     const tapeSize = useStoreSubscribe(interpreterStore.tapeSize);
+    const labels = useStoreSubscribe(tapeLabelsStore.labels);
 
     // Save snapshots to localStorage whenever they change
     useEffect(() => {
@@ -54,7 +56,12 @@ export function Snapshots() {
             tape: tapeArray,
             pointer: state.pointer,
             cellSize,
-            tapeSize
+            tapeSize,
+            labels: {
+                lanes: { ...labels.lanes },
+                columns: { ...labels.columns },
+                cells: { ...labels.cells }
+            }
         };
         
         setSnapshots([snapshot, ...snapshots]);
@@ -63,6 +70,29 @@ export function Snapshots() {
 
     const loadSnapshot = (snapshot: TapeSnapshot) => {
         interpreterStore.loadSnapshot(snapshot);
+        
+        // Restore labels if available
+        if (snapshot.labels) {
+            // Clear existing labels
+            tapeLabelsStore.clearAllLabels();
+            
+            // Restore lane labels
+            Object.entries(snapshot.labels.lanes).forEach(([index, label]) => {
+                tapeLabelsStore.setLaneLabel(parseInt(index), label);
+            });
+            
+            // Restore column labels
+            Object.entries(snapshot.labels.columns).forEach(([index, label]) => {
+                tapeLabelsStore.setColumnLabel(parseInt(index), label);
+            });
+            
+            // Restore cell labels
+            if (snapshot.labels.cells) {
+                Object.entries(snapshot.labels.cells).forEach(([index, label]) => {
+                    tapeLabelsStore.setCellLabel(parseInt(index), label);
+                });
+            }
+        }
     };
 
     const deleteSnapshot = (id: string) => {
