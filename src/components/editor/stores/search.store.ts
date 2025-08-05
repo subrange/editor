@@ -1,5 +1,5 @@
 import { BehaviorSubject } from "rxjs";
-import type { Position } from "./editor.store";
+import type { Position } from "./editor.store.ts";
 
 export interface SearchMatch {
     line: number;

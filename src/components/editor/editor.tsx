@@ -1,16 +1,16 @@
 import {VSep} from "../helper-components.tsx";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
-import {EditorStore, type Line} from "./editor.store.ts";
+import {EditorStore, type Line} from "./stores/editor.store.ts";
 import clsx from "clsx";
 import {type AppCommand, keybindingsService, type KeybindingState} from "../../services/keybindings.service.ts";
 import {useRef, useState, useEffect, useCallback} from "react";
-import {ProgressiveMacroTokenizer} from "./macro-tokenizer-progressive.ts";
+import {ProgressiveMacroTokenizer} from "./services/macro-tokenizer-progressive.ts";
 import {type MacroExpansionError} from "../../services/macro-expander/macro-expander.ts";
-import {SearchBar} from "./search-bar.tsx";
-import {QuickNav} from "./quick-nav.tsx";
-import {type NavigationItem} from "./quick-nav.store.ts";
-import {LineNumbersPanel} from "./line-numbers-panel.tsx";
-import {LinesPanel} from "./lines-panel.tsx";
+import {SearchBar} from "./components/search-bar.tsx";
+import {QuickNav} from "./components/quick-nav.tsx";
+import {type NavigationItem} from "./stores/quick-nav.store.ts";
+import {LineNumbersPanel} from "./components/line-numbers-panel.tsx";
+import {LinesPanel} from "./components/lines-panel.tsx";
 
 
 export interface EditorProps {

@@ -1,6 +1,6 @@
 import {BehaviorSubject, Subscription} from "rxjs";
-import {keybindingsService} from "../../services/keybindings.service.ts";
-import { type ITokenizer } from "../../services/editor-manager.service.ts";
+import {keybindingsService} from "../../../services/keybindings.service.ts";
+import { type ITokenizer } from "../../../services/editor-manager.service.ts";
 import { SearchStore, type SearchMatch } from "./search.store.ts";
 import { QuickNavStore } from "./quick-nav.store.ts";
 

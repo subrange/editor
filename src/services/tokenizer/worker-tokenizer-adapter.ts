@@ -1,6 +1,6 @@
 import type { ITokenizer } from '../editor-manager.service';
 import { TokenizerWorkerClient } from './tokenizer-worker-client';
-import { FastTokenizer } from '../../components/editor/tokenizer.fast';
+import { FastTokenizer } from '../../components/editor/services/tokenizer.fast.ts';
 import type { Token } from './tokenizer-worker-client';
 import { BehaviorSubject } from 'rxjs';
 

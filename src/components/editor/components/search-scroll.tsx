@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { useStoreSubscribe } from "../../hooks/use-store-subscribe.tsx";
-import { SearchStore } from "./search.store.ts";
-import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "./constants.ts";
+import { useStoreSubscribe } from "../../../hooks/use-store-subscribe.tsx";
+import { SearchStore } from "../stores/search.store.ts";
+import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "../constants.ts";
 
 interface SearchScrollProps {
     searchStore: SearchStore;

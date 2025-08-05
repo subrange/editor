@@ -1,4 +1,4 @@
-import { type ITokenizer } from "../../services/editor-manager.service";
+import { type ITokenizer } from "../../../services/editor-manager.service.ts";
 
 // Token types for macro syntax
 interface MacroToken {

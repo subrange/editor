@@ -1,8 +1,8 @@
 import {useMemo, useRef, useLayoutEffect} from "react";
 import clsx from "clsx";
-import {useStoreSubscribe, useStoreSubscribeToField} from "../../hooks/use-store-subscribe.tsx";
-import {EditorStore} from "./editor.store.ts";
-import {LINE_PADDING_LEFT, LINE_PADDING_TOP, CHAR_HEIGHT} from "./constants.ts";
+import {useStoreSubscribe, useStoreSubscribeToField} from "../../../hooks/use-store-subscribe.tsx";
+import {EditorStore} from "../stores/editor.store.ts";
+import {LINE_PADDING_LEFT, LINE_PADDING_TOP, CHAR_HEIGHT} from "../constants.ts";
 
 interface CursorProps {
     store: EditorStore;

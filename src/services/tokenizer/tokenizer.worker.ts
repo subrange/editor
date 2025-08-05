@@ -1,4 +1,4 @@
-import { FastTokenizer, type Token } from '../../components/editor/tokenizer.fast';
+import { FastTokenizer, type Token } from '../../components/editor/services/tokenizer.fast.ts';
 
 // Message types for communication with main thread
 interface TokenizeLineMessage {

@@ -1,6 +1,6 @@
-import { useStoreSubscribeToField } from "../../hooks/use-store-subscribe.tsx";
-import { SearchStore, type SearchMatch } from "./search.store.ts";
-import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "./constants.ts";
+import { useStoreSubscribeToField } from "../../../hooks/use-store-subscribe.tsx";
+import { SearchStore, type SearchMatch } from "../stores/search.store.ts";
+import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "../constants.ts";
 import clsx from "clsx";
 
 interface SearchHighlightsProps {

@@ -1,5 +1,5 @@
 import { BehaviorSubject } from 'rxjs';
-import { Position, Line } from '../components/editor/editor.store';
+import { Position, Line } from '../components/editor/stores/editor.store.ts';
 
 interface WorkerMessage {
     type: string;

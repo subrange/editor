@@ -566,25 +566,34 @@ export class MacroExpanderV3 implements MacroExpander {
 
     // Prepare parameter substitutions if needed
     let parameterValues: Record<string, string> | undefined;
-    if (node.arguments && macro.parameters) {
-      if (node.arguments.length !== macro.parameters.length) {
-        this.errors.push({
-          type: 'parameter_mismatch',
-          message: `Macro '${node.name}' expects ${macro.parameters.length} parameter(s), got ${node.arguments.length}`,
-          location: {
-            line: node.position.line - 1,
-            column: node.position.column - 1,
-            length: node.position.end - node.position.start
-          }
-        });
-        this.appendToExpanded(`@${node.name}(${this.expressionsToString(node.arguments)})`, context, generateSourceMap, sourceRange);
-      } else {
-        parameterValues = {};
-        for (let i = 0; i < macro.parameters.length; i++) {
-          const param = macro.parameters[i];
-          const arg = node.arguments[i];
-          parameterValues[param] = this.expandExpressionToString(arg, context);
+    
+    // Check parameter count mismatch
+    const expectedParams = macro.parameters?.length || 0;
+    const providedArgs = node.arguments?.length || 0;
+    
+    if (expectedParams !== providedArgs) {
+      this.errors.push({
+        type: 'parameter_mismatch',
+        message: `Macro '${node.name}' expects ${expectedParams} parameter(s), got ${providedArgs}`,
+        location: {
+          line: node.position.line - 1,
+          column: node.position.column - 1,
+          length: node.position.end - node.position.start
         }
+      });
+      // Return early, don't expand the macro
+      this.expansionChain.delete(invocationSignature);
+      context.expansionDepth--;
+      return;
+    }
+    
+    // If we have parameters and arguments, create substitutions
+    if (macro.parameters && node.arguments) {
+      parameterValues = {};
+      for (let i = 0; i < macro.parameters.length; i++) {
+        const param = macro.parameters[i];
+        const arg = node.arguments[i];
+        parameterValues[param] = this.expandExpressionToString(arg, context);
       }
     }
 

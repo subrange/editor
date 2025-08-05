@@ -1,7 +1,7 @@
 // Modified brainfuck interpreter with loop support
 
 import {BehaviorSubject, Subscription} from "rxjs";
-import {type Line, type Position} from "../editor/editor.store.ts";
+import {type Line, type Position} from "../editor/stores/editor.store.ts";
 import {editorManager} from "../../services/editor-manager.service.ts";
 import type { SourceMap, SourceMapEntry } from "../../services/macro-expander/source-map.ts";
 import { SourceMapLookup } from "../../services/macro-expander/source-map.ts";

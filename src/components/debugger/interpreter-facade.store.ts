@@ -1,6 +1,6 @@
 // Facade that provides a unified interface to either JS or WASM interpreter
 import {BehaviorSubject, Subscription} from "rxjs";
-import {type Position} from "../editor/editor.store.ts";
+import {type Position} from "../editor/stores/editor.store.ts";
 import {interpreterStore as jsInterpreter, type TapeSnapshot} from "./interpreter.store.ts";
 import type {SourceMap} from "../../services/macro-expander/source-map.ts";
 

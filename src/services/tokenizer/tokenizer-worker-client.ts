@@ -101,4 +101,4 @@ export class TokenizerWorkerClient {
 }
 
 // Export token styles from the original tokenizer
-export { tokenStyles } from '../../components/editor/tokenizer.fast';
+export { tokenStyles } from '../../components/editor/services/tokenizer.fast.ts';

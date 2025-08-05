@@ -1,7 +1,7 @@
 import {useMemo} from "react";
-import {useStoreSubscribeToField} from "../../hooks/use-store-subscribe.tsx";
-import {EditorStore} from "./editor.store.ts";
-import {LINE_PADDING_LEFT, LINE_PADDING_TOP, CHAR_HEIGHT} from "./constants.ts";
+import {useStoreSubscribeToField} from "../../../hooks/use-store-subscribe.tsx";
+import {EditorStore} from "../stores/editor.store.ts";
+import {LINE_PADDING_LEFT, LINE_PADDING_TOP, CHAR_HEIGHT} from "../constants.ts";
 
 interface SelectionProps {
     store: EditorStore;

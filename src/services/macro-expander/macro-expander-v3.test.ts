@@ -686,6 +686,79 @@ describe('MacroExpander V3 - Nested Array and Tuple Iteration', () => {
   });
 });
 
+describe('MacroExpander V3 - Parameter Validation', () => {
+  it('should error when macro without parameters is called with arguments', () => {
+    const expander = createMacroExpanderV3();
+    const input = `#define goword >
+@goword(5)`;
+    
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].type).toBe('parameter_mismatch');
+    expect(result.errors[0].message).toBe("Macro 'goword' expects 0 parameter(s), got 1");
+  });
+
+  it('should error when macro with parameters is called without arguments', () => {
+    const expander = createMacroExpanderV3();
+    const input = `#define move(n) {repeat(n, >)}
+@move`;
+    
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].type).toBe('parameter_mismatch');
+    expect(result.errors[0].message).toBe("Macro 'move' expects 1 parameter(s), got 0");
+  });
+
+  it('should not error when macro without parameters is called correctly', () => {
+    const expander = createMacroExpanderV3();
+    const input = `#define right >
+@right`;
+    
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('>');
+  });
+
+  it('should not error when macro with parameters is called correctly', () => {
+    const expander = createMacroExpanderV3();
+    const input = `#define move(n) {repeat(n, >)}
+@move(5)`;
+    
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('>>>>>');
+  });
+
+  it('should error when macro is called with wrong number of arguments', () => {
+    const expander = createMacroExpanderV3();
+    const input = `#define add(a, b) a+b
+@add(1)`;
+    
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].type).toBe('parameter_mismatch');
+    expect(result.errors[0].message).toBe("Macro 'add' expects 2 parameter(s), got 1");
+  });
+
+  it('should not expand macro body when parameter count mismatches', () => {
+    const expander = createMacroExpanderV3();
+    const input = `#define print(msg) msg!!!
+@print()`;
+    
+    const result = expander.expand(input);
+    
+    // The macro should not be expanded at all
+    expect(result.expanded.trim()).toBe('');
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].type).toBe('parameter_mismatch');
+  });
+});
+
 describe('MacroExpander V3 - Source Map Support', () => {
   it('should generate source maps when requested', () => {
     const input = `#define inc(n) {repeat(n, +)}

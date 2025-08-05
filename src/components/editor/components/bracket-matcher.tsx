@@ -1,6 +1,6 @@
 // First, add a bracket matcher utility
 import {useMemo} from "react";
-import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "./constants.ts";
+import {CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP} from "../constants.ts";
 
 interface BracketPair {
     open: string;

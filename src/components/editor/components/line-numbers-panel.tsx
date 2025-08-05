@@ -1,6 +1,6 @@
-import {useStoreSubscribe, useStoreSubscribeToField, useStoreSubscribeObservable} from "../../hooks/use-store-subscribe.tsx";
-import {EditorStore} from "./editor.store.ts";
-import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
+import {useStoreSubscribe, useStoreSubscribeToField, useStoreSubscribeObservable} from "../../../hooks/use-store-subscribe.tsx";
+import {EditorStore} from "../stores/editor.store.ts";
+import {interpreterStore} from "../../debugger/interpreter-facade.store.ts";
 
 interface LineNumbersPanelProps {
     store: EditorStore;

@@ -1,11 +1,11 @@
-import { type ITokenizer } from "../../services/editor-manager.service";
+import { type ITokenizer } from "../../../services/editor-manager.service.ts";
 import {
     type MacroToken as ExpanderToken,
     type MacroExpansionError,
     type MacroDefinition
-} from "../../services/macro-expander/macro-expander.ts";
-import { createAsyncMacroExpander } from "../../services/macro-expander/create-macro-expander.ts";
-import { type MacroExpanderWorkerClient } from "../../services/macro-expander/macro-expander-worker-client.ts";
+} from "../../../services/macro-expander/macro-expander.ts";
+import { createAsyncMacroExpander } from "../../../services/macro-expander/create-macro-expander.ts";
+import { type MacroExpanderWorkerClient } from "../../../services/macro-expander/macro-expander-worker-client.ts";
 
 // Token types for macro syntax
 export interface MacroToken {
@@ -34,7 +34,7 @@ interface MacroTokenizerState {
     forLoopVariables: Set<string>; // Track loop variables from {for} constructs
     braceDepth: number; // Track nesting depth to manage scope
     forLoopScopes: Array<{ variable: string; depth: number }>; // Stack of for loop scopes
-    sourceMap?: import('../../services/macro-expander/source-map.ts').SourceMap;
+    sourceMap?: import('../../../services/macro-expander/source-map.ts').SourceMap;
 }
 
 export class ProgressiveMacroTokenizer implements ITokenizer {

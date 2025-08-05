@@ -1,9 +1,9 @@
 import { useRef, useState, useMemo } from 'react';
 import clsx from 'clsx';
-import { ViewportTokenizer, type ViewportToken } from './viewport-tokenizer';
-import { CHAR_HEIGHT } from './constants';
-import { tokenStyles } from './tokenizer';
-import { progressiveMacroTokenStyles } from './macro-tokenizer-progressive';
+import { ViewportTokenizer } from '../services/viewport-tokenizer.ts';
+import { CHAR_HEIGHT } from '../constants.ts';
+import { tokenStyles } from '../services/tokenizer.ts';
+import { progressiveMacroTokenStyles } from '../services/macro-tokenizer-progressive.ts';
 
 interface VirtualizedLineProps {
     tokens: any[];

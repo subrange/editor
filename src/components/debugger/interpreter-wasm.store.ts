@@ -1,7 +1,7 @@
 // WebAssembly-based interpreter store that maintains API compatibility with the original
 
 import { BehaviorSubject, Subscription } from "rxjs";
-import { type Line, type Position } from "../editor/editor.store.ts";
+import { type Line, type Position } from "../editor/stores/editor.store.ts";
 import { editorManager } from "../../services/editor-manager.service.ts";
 // @ts-ignore
 import init, { BrainfuckInterpreter } from "../../wasm/rust_bf.js";

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { useStoreSubscribe } from "../../hooks/use-store-subscribe.tsx";
-import { QuickNavStore, type NavigationItem } from "./quick-nav.store.ts";
-import { EditorStore } from "./editor.store.ts";
+import { useStoreSubscribe } from "../../../hooks/use-store-subscribe.tsx";
+import { QuickNavStore, type NavigationItem } from "../stores/quick-nav.store.ts";
+import { EditorStore } from "../stores/editor.store.ts";
 import clsx from "clsx";
 
 interface QuickNavProps {

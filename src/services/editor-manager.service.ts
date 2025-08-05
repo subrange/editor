@@ -1,6 +1,6 @@
 import { BehaviorSubject } from "rxjs";
-import {EditorStore, type IEditorSettings} from "../components/editor/editor.store";
-import { Tokenizer } from "../components/editor/tokenizer";
+import {EditorStore, type IEditorSettings} from "../components/editor/stores/editor.store.ts";
+import { Tokenizer } from "../components/editor/services/tokenizer.ts";
 
 export interface ITokenizer {
     reset(): void;

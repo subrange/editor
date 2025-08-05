@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { useStoreSubscribeToField } from "../../hooks/use-store-subscribe.tsx";
-import { EditorStore } from "./editor.store.ts";
-import { type MacroExpansionError } from "../../services/macro-expander/macro-expander.ts";
-import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "./constants.ts";
+import { useStoreSubscribeToField } from "../../../hooks/use-store-subscribe.tsx";
+import { EditorStore } from "../stores/editor.store.ts";
+import { type MacroExpansionError } from "../../../services/macro-expander/macro-expander.ts";
+import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "../constants.ts";
 
 interface ErrorDecorationsProps {
     store: EditorStore;
