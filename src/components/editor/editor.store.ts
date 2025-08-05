@@ -1242,7 +1242,34 @@ export class EditorStore {
         const selection = currentState.selection;
 
         if (isSelectionCollapsed(selection)) {
-            return; // Nothing to cut
+            // Cut the entire line when selection is collapsed
+            const lineIndex = selection.focus.line;
+            const line = currentState.lines[lineIndex];
+            if (!line) return;
+
+            // Include the newline character if not the last line
+            const isLastLine = lineIndex === currentState.lines.length - 1;
+            const textToCut = line.text + (isLastLine ? '' : '\n');
+
+            navigator.clipboard.writeText(textToCut).then(() => {
+                // Delete the entire line
+                const range: Range = {
+                    start: { line: lineIndex, column: 0 },
+                    end: isLastLine 
+                        ? { line: lineIndex, column: line.text.length }
+                        : { line: lineIndex + 1, column: 0 }
+                };
+
+                const deleteCommand: CommandData = {
+                    type: "delete",
+                    range,
+                    deletedText: textToCut
+                };
+                this.editorState.next(this.undoRedo.execute(deleteCommand, currentState));
+            }).catch(err => {
+                console.error("Failed to cut line:", err);
+            });
+            return;
         }
 
         const range = selectionToRange(selection);
