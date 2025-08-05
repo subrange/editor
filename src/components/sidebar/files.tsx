@@ -122,14 +122,14 @@ export function Files() {
     return (
         <div className="h-full overflow-y-auto w-[268px] border-l border-zinc-800">
             {/* Header */}
-            <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 px-6 py-4 z-10">
+            <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 px-4 py-3 z-10">
                 <h2 className="text-lg font-semibold text-zinc-100 whitespace-nowrap">Files</h2>
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-4">
                 {/* Save new file */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                     <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                         Save Current Editors
                     </h3>
@@ -144,12 +144,12 @@ export function Files() {
                                 }
                             }}
                             placeholder="File name (optional)"
-                            className="w-full px-3 py-2 bg-zinc-800 text-zinc-200 text-sm rounded border border-zinc-700 
+                            className="w-full px-2 py-1.5 bg-zinc-800 text-zinc-200 text-sm rounded border border-zinc-700 
                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                         <button
                             onClick={saveCurrentFile}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded transition-all
+                            className="w-full flex items-center justify-center gap-2 px-2 py-1.5 text-sm font-medium rounded transition-all
                                      bg-blue-600 hover:bg-blue-700 text-white"
                         >
                             <DocumentIcon className="h-4 w-4" />
@@ -159,70 +159,67 @@ export function Files() {
                 </div>
 
                 {/* Saved files */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                     <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                         Saved Files ({files.length})
                     </h3>
                     
                     {files.length === 0 ? (
-                        <p className="text-sm text-zinc-500 text-center py-8">
+                        <p className="text-sm text-zinc-500 text-center py-4">
                             No files saved yet
                         </p>
                     ) : (
-                        <div className="space-y-2">
-                            {files.map((file) => (
-                                <div
-                                    key={file.id}
-                                    className="bg-zinc-800 rounded-lg border border-zinc-700 p-3 space-y-2"
-                                >
-                                    <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                            {files.map((file) => {
+                                const mainLines = file.mainContent.split('\n').length;
+                                const macroLines = file.macroContent.split('\n').length;
+                                const hasMacros = file.macroContent.trim().length > 0;
+                                
+                                return (
+                                    <div
+                                        key={file.id}
+                                        className="group flex items-center gap-3 px-2 py-2 hover:bg-zinc-800/50 rounded transition-colors cursor-pointer"
+                                        onClick={() => loadFile(file)}
+                                    >
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="text-sm font-medium text-zinc-200 truncate">
-                                                {file.name}
-                                            </h4>
-                                            <p className="text-xs text-zinc-500 mt-1">
-                                                {formatDate(file.timestamp)}
-                                            </p>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-sm text-zinc-200 truncate">
+                                                    {file.name}
+                                                </span>
+                                                {hasMacros && (
+                                                    <span className="text-xs text-blue-400">M</span>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-zinc-500">
+                                                {new Date(file.timestamp).toLocaleDateString()} • {macroLines}L
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Tooltip content={hasMacros ? "Download .zip" : "Download .bf"} side="left">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        downloadFile(file);
+                                                    }}
+                                                    className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
+                                                >
+                                                    <ArrowDownIcon className="h-3.5 w-3.5" />
+                                                </button>
+                                            </Tooltip>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteFile(file.id);
+                                                }}
+                                                className="p-1 text-zinc-400 hover:text-red-400 transition-colors"
+                                            >
+                                                <TrashIcon className="h-3.5 w-3.5" />
+                                            </button>
                                         </div>
                                     </div>
-                                    
-                                    <div className="text-xs text-zinc-400 space-y-1">
-                                        <div>Main: {file.mainContent.split('\n').length} lines</div>
-                                        <div>Macro: {file.macroContent.split('\n').length} lines</div>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-2 pt-1">
-                                        <button
-                                            onClick={() => loadFile(file)}
-                                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs 
-                                                     bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded transition-colors"
-                                        >
-                                            <ArrowDownTrayIcon className="h-3 w-3" />
-                                            Load
-                                        </button>
-                                        <Tooltip 
-                                            content={file.macroContent.trim() ? "Download as .zip archive" : "Download .bf file"}
-                                            side="bottom"
-                                        >
-                                            <button
-                                                onClick={() => downloadFile(file)}
-                                                className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs 
-                                                         bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded transition-colors"
-                                            >
-                                                <ArrowDownIcon className="h-3 w-3" />
-                                                Download
-                                            </button>
-                                        </Tooltip>
-                                        <button
-                                            onClick={() => deleteFile(file.id)}
-                                            className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
-                                            title="Delete file"
-                                        >
-                                            <TrashIcon className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
