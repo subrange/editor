@@ -15,7 +15,6 @@
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tailwindcss/vite": "^4.1.11",
-    "@tanstack/react-virtual": "^3.13.12",
     "@types/jszip": "^3.4.0",
     "clsx": "^2.1.1",
     "jszip": "^3.10.1",

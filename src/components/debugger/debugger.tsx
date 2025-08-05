@@ -1,6 +1,6 @@
 import {interpreterStore} from "./interpreter-facade.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
-import {useVirtualizer} from '@tanstack/react-virtual';
+import {useVirtualScroll} from '../../hooks/use-virtual-scroll.tsx';
 import {useRef, useEffect, useState} from 'react';
 import clsx from "clsx";
 import {settingsStore} from "../../stores/settings.store.ts";
@@ -68,25 +68,30 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
     const columnsCount = Math.ceil(tape.length / laneCount);
     
     // Create virtualizer for horizontal scrolling of columns
-    const virtualizer = useVirtualizer({
+    const virtualizer = useVirtualScroll({
         horizontal: true,
         count: columnsCount,
         getScrollElement: () => containerRef.current,
         estimateSize: () => CELL_WIDTH + COLUMN_GAP,
         overscan: 5,
         paddingStart: 24,
-        paddingEnd: 24,
+        paddingEnd: 200,
     });
     
     // Auto-scroll to pointer column when it changes
+    const prevPointerRef = useRef(pointer);
     useEffect(() => {
-        const pointerColumn = Math.floor(pointer / laneCount);
-        if (pointerColumn < 10000) {
-            virtualizer.scrollToIndex(pointerColumn, {
-                align: 'center',
-            });
+        if (prevPointerRef.current !== pointer) {
+            prevPointerRef.current = pointer;
+            const pointerColumn = Math.floor(pointer / laneCount);
+            if (pointerColumn < 10000) {
+                virtualizer.scrollToIndex(pointerColumn, {
+                    align: 'center',
+                });
+            }
         }
-    }, [pointer, laneCount, virtualizer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pointer, laneCount]); // Remove virtualizer from deps to prevent infinite loop
     
     return (
         <div className="flex flex-col h-full bg-zinc-950">
@@ -361,7 +366,7 @@ function Tape() {
     const CELL_HEIGHT = compactView ? 40 : 120;
     const GAP = compactView ? 2 : 8; // Increased gap for better spacing
 
-    const virtualizer = useVirtualizer({
+    const virtualizer = useVirtualScroll({
         horizontal: true,
         count: tape.length,
         getScrollElement: () => containerRef.current,
@@ -373,13 +378,18 @@ function Tape() {
     });
 
     // Auto-scroll to pointer when it changes
+    const prevPointerRef2 = useRef(pointer);
     useEffect(() => {
-        if (pointer < 10000) { // Only if within visible range
-            virtualizer.scrollToIndex(pointer, {
-                align: 'center',
-            });
+        if (prevPointerRef2.current !== pointer) {
+            prevPointerRef2.current = pointer;
+            if (pointer < 10000) { // Only if within visible range
+                virtualizer.scrollToIndex(pointer, {
+                    align: 'center',
+                });
+            }
         }
-    }, [pointer, virtualizer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pointer]); // Remove virtualizer from deps to prevent infinite loop
 
     // Use lane view if enabled and lane count > 1
     if (viewMode === 'lane' && laneCount > 1) {

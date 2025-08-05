@@ -18,6 +18,8 @@ function formatBytes(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const MAX_TAPE_SIZE = 15_000_000; // 15 million bytes (15 MB)
+
 export function Settings() {
     const tapeSize = useStoreSubscribe(interpreterStore.tapeSize);
     const cellSize = useStoreSubscribe(interpreterStore.cellSize);
@@ -26,7 +28,7 @@ export function Settings() {
 
     const handleTapeSizeChange = (value: string) => {
         const size = parseInt(value) || 30000;
-        interpreterStore.setTapeSize(Math.max(100, Math.min(150000, size)));
+        interpreterStore.setTapeSize(Math.max(100, Math.min(MAX_TAPE_SIZE, size)));
     };
 
     const changeCellSize = (size: number) => {
@@ -58,7 +60,7 @@ export function Settings() {
                             <input
                                 type="range"
                                 min="100"
-                                max="150000"
+                                max={MAX_TAPE_SIZE}
                                 step="100"
                                 value={tapeSize}
                                 onChange={(e) => handleTapeSizeChange(e.target.value)}
