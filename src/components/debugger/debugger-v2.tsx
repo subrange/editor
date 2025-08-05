@@ -100,6 +100,40 @@ export function DebuggerV2() {
               variant={'default'}
             />
           </div>
+          {/* Navigation buttons */}
+          <button
+            onClick={() => {
+              const renderer = containerRef.current?.querySelector('canvas');
+              if (renderer) {
+                renderer.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index: 0 } }));
+              }
+            }}
+            className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+          >
+            Go to Start
+          </button>
+          <button
+            onClick={() => {
+              const renderer = containerRef.current?.querySelector('canvas');
+              if (renderer) {
+                renderer.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index: pointer } }));
+              }
+            }}
+            className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+          >
+            Go to Pointer
+          </button>
+          <button
+            onClick={() => {
+              const renderer = containerRef.current?.querySelector('canvas');
+              if (renderer) {
+                renderer.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index: tape.length - 1 } }));
+              }
+            }}
+            className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+          >
+            Go to End
+          </button>
         </div>
       </div>
       
