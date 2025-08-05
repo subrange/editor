@@ -18,7 +18,7 @@ function formatBytes(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const MAX_TAPE_SIZE = 15_000_000; // 15 million bytes (15 MB)
+const MAX_TAPE_SIZE = 100_000_000;
 
 export function Settings() {
     const tapeSize = useStoreSubscribe(interpreterStore.tapeSize);

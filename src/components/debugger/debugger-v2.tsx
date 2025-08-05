@@ -64,6 +64,12 @@ export function Debugger() {
             <span>Pointer: {pointer}</span>
             <span>•</span>
             <span>Value: {tape[pointer]}</span>
+            {viewMode === 'lane' && laneCount > 1 && (
+              <>
+                <span>•</span>
+                <span>Words: {Math.ceil(tape.length / laneCount)}</span>
+              </>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -128,7 +134,7 @@ export function Debugger() {
       {/* Canvas container */}
       <div ref={containerRef} className="flex-1 relative overflow-hidden">
         {containerSize.width > 0 && containerSize.height > 0 && (
-          <TapeCanvasRenderer 
+          <TapeCanvasRenderer
             width={containerSize.width} 
             height={containerSize.height}
             viewMode={viewMode}
