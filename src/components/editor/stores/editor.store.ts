@@ -416,6 +416,7 @@ class UndoRedo {
 
 export interface IEditorSettings {
     showDebug?: boolean;
+    showMinimap?: boolean;
 }
 
 export class EditorStore {
@@ -445,6 +446,7 @@ export class EditorStore {
     public focused = new BehaviorSubject(false);
 
     public showDebug = false;
+    public showMinimap = new BehaviorSubject<boolean>(false);
 
     constructor(
         id: string,
@@ -459,6 +461,7 @@ export class EditorStore {
         this.quickNavStore = new QuickNavStore();
 
         this.showDebug = settings?.showDebug || false;
+        this.showMinimap.next(settings?.showMinimap || false);
         
         // Load from localStorage using editor-specific key
         const savedState = localStorage.getItem(`editorState_${id}`);

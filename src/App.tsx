@@ -13,7 +13,7 @@ import {EditorStore} from "./components/editor/stores/editor.store.ts";
 import {useEffect, useState, useCallback} from "react";
 import {ProgressiveMacroTokenizer} from "./components/editor/services/macro-tokenizer-progressive.ts";
 import {createAsyncMacroExpander} from "./services/macro-expander/create-macro-expander.ts";
-import {CpuChipIcon, ArrowPathIcon} from "@heroicons/react/24/solid";
+import {CpuChipIcon, ArrowPathIcon, DocumentTextIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 
 import {settingsStore} from "./stores/settings.store";
@@ -32,6 +32,24 @@ function EditorPanel() {
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoExpand = settings?.macro.autoExpand ?? false;
     const [macroExpander] = useState(() => createAsyncMacroExpander());
+    
+    // Subscribe to minimap states
+    const [mainEditorMinimapEnabled, setMainEditorMinimapEnabled] = useState(false);
+    const [macroEditorMinimapEnabled, setMacroEditorMinimapEnabled] = useState(true);
+    
+    useEffect(() => {
+        if (mainEditor) {
+            const sub = mainEditor.showMinimap.subscribe(setMainEditorMinimapEnabled);
+            return () => sub.unsubscribe();
+        }
+    }, [mainEditor]);
+    
+    useEffect(() => {
+        if (macroEditor) {
+            const sub = macroEditor.showMinimap.subscribe(setMacroEditorMinimapEnabled);
+            return () => sub.unsubscribe();
+        }
+    }, [macroEditor]);
 
     useEffect(() => {
         // Create main editor on mount
@@ -44,7 +62,8 @@ function EditorPanel() {
             // tokenizer: new DummyTokenizer(),
             mode: 'insert',
             settings: {
-                showDebug: true
+                showDebug: true,
+                showMinimap: false  // Main editor: minimap off by default
             },
         });
         setMainEditor(editor);
@@ -56,7 +75,8 @@ function EditorPanel() {
                 tokenizer: new ProgressiveMacroTokenizer(),
                 mode: 'insert',
                 settings: {
-                    showDebug: false
+                    showDebug: false,
+                    showMinimap: true  // Macro editor: minimap on by default
                 },
                 initialContent: '#define clear [-]\n#define inc(n) {repeat(n, +)}\n#define dec(n) {repeat(n, -)}\n\n// Example usage:\n// @inc(5) @clear\n'
             });
@@ -214,6 +234,15 @@ function EditorPanel() {
                             variant={autoExpand ? "info" : "default"}
                         />
 
+                        <div className="w-px h-6 bg-zinc-700 mx-1"/>
+
+                        <IconButton
+                            icon={DocumentTextIcon}
+                            label="Toggle Minimap"
+                            onClick={() => macroEditor?.showMinimap.next(!macroEditorMinimapEnabled)}
+                            variant={macroEditorMinimapEnabled ? "info" : "default"}
+                        />
+
                         {!showMainEditor && (
                             <>
                                 <div className="w-px h-6 bg-zinc-700 mx-1"/>
@@ -250,6 +279,16 @@ function EditorPanel() {
             <div className="v grow-1 bg-zinc-950">
                 <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
                     Main Editor
+                    
+                    <div className="w-px h-6 bg-zinc-700 mx-1"/>
+                    
+                    <IconButton
+                        icon={DocumentTextIcon}
+                        label="Toggle Minimap"
+                        onClick={() => mainEditor?.showMinimap.next(!mainEditorMinimapEnabled)}
+                        variant={mainEditorMinimapEnabled ? "info" : "default"}
+                    />
+                    
                     <div className="ml-auto h gap-2">
                         {!showMacroEditor && (
                             <button

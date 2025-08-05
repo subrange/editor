@@ -11,6 +11,7 @@ import {QuickNav} from "./components/quick-nav.tsx";
 import {type NavigationItem} from "./stores/quick-nav.store.ts";
 import {LineNumbersPanel} from "./components/line-numbers-panel.tsx";
 import {LinesPanel} from "./components/lines-panel.tsx";
+import {Minimap} from "./components/minimap.tsx";
 
 
 export interface EditorProps {
@@ -22,6 +23,7 @@ export interface EditorProps {
 export function Editor({store, onFocus, onBlur}: EditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
     const focused = useStoreSubscribe(store.focused);
+    const showMinimap = useStoreSubscribe(store.showMinimap);
     const [editorContainerWidth, setEditorContainerWidth] = useState(0);
     const [editorScrollLeft, setEditorScrollLeft] = useState(0);
     const [macroErrors, setMacroErrors] = useState<MacroExpansionError[]>([]);
@@ -117,19 +119,24 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
         if (!editorRef.current) return;
 
         const resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                // Get the width of the editor minus the line numbers panel (64px) and separator (1px)
-                const width = entry.contentRect.width - 65;
-                setEditorContainerWidth(width);
-            }
+            requestAnimationFrame(() => {
+                for (const entry of entries) {
+                    // Get the width of the editor minus the line numbers panel (64px) and separator (1px)
+                    // Also subtract minimap width (120px) if visible
+                    const minimapWidth = showMinimap ? 120 : 0;
+                    const width = entry.contentRect.width - 65 - minimapWidth;
+                    setEditorContainerWidth(width);
+                }
+            });
         });
 
         resizeObserver.observe(editorRef.current);
         // Initial width calculation
-        setEditorContainerWidth(editorRef.current.offsetWidth - 65);
+        const minimapWidth = showMinimap ? 120 : 0;
+        setEditorContainerWidth(editorRef.current.offsetWidth - 65 - minimapWidth);
 
         return () => resizeObserver.disconnect();
-    }, []);
+    }, [showMinimap]);
 
     const handleEditorScroll = (e: React.UIEvent<HTMLDivElement>) => {
         setEditorScrollLeft((e.target as HTMLDivElement).scrollLeft);
@@ -273,10 +280,11 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 onBlur={removeEditorKeybindings}
                 onScroll={handleEditorScroll}
             >
-                <div className="flex relative grow-1 overflow-visible min-h-0 h-fit ">
+                <div className="flex relative grow-1 overflow-visible min-h-0 h-fit">
                     <LineNumbersPanel store={store}/>
                     <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
                     <LinesPanel store={store} editorWidth={editorContainerWidth} scrollLeft={editorScrollLeft}/>
+                    {showMinimap && <Minimap store={store} />}
                 </div>
             </div>
         </div>
