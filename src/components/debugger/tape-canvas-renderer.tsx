@@ -142,15 +142,11 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     ctx.fillStyle = '#09090b'; // zinc-950
     ctx.fillRect(0, 0, width, height);
     
-    // Save context state
-    ctx.save();
-    
-    // Apply scroll transform
-    ctx.translate(-scrollX, 0);
-    
-    // Draw visible cells
+    // Draw visible cells without using translate
     for (let i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-      const x = PADDING + i * (CELL_WIDTH + CELL_GAP);
+      // Calculate virtual position and then subtract scrollX to get screen position
+      const virtualX = PADDING + i * (CELL_WIDTH + CELL_GAP);
+      const x = virtualX - scrollX;
       const y = height / 2 - CELL_HEIGHT / 2;
       const value = tape[i];
       const isPointer = i === pointer;
@@ -239,9 +235,6 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       }
     }
     
-    // Restore context state
-    ctx.restore();
-    
     // Draw scroll indicator at bottom
     if (totalWidth > width) {
       const scrollBarHeight = 4;
@@ -296,15 +289,16 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     ctx.beginPath();
     ctx.rect(PADDING, 0, width - PADDING, height);
     ctx.clip();
-    
-    // Draw scrollable content
-    ctx.translate(-scrollX, 0);
-    
+
     // Draw column headers (scrollable)
     ctx.fillStyle = '#18181b';
-    ctx.fillRect(PADDING, 0, columnsCount * columnWidth, 25);
-    for (let col = firstColumn; col <= lastColumn; col++) {
-      const x = PADDING + col * columnWidth + CELL_WIDTH / 2;
+    const headerWidth = Math.min(columnsCount * columnWidth, 100000000); // Prevent overflow
+    const headerX = PADDING - scrollX;
+    ctx.fillRect(headerX, 0, headerWidth, 25);
+    
+    for (let col = firstColumn; col <= lastColumn && col < columnsCount; col++) {
+      const virtualX = PADDING + col * columnWidth + CELL_WIDTH / 2;
+      const x = virtualX - scrollX;
       ctx.fillStyle = '#71717a';
       ctx.font = '10px monospace';
       ctx.textAlign = 'center';
@@ -317,7 +311,8 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         const index = col * laneCount + lane;
         if (index >= tape.length) continue;
         
-        const x = PADDING + col * columnWidth;
+        const virtualX = PADDING + col * columnWidth;
+        const x = virtualX - scrollX;
         const y = 30 + lane * laneHeight;
         const value = tape[index];
         const isPointer = index === pointer;
@@ -338,7 +333,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
           // Parse the lane color and apply opacity
           const rgbaMatch = laneColor.fill.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/);
           if (rgbaMatch) {
-            const [_, r, g, b] = rgbaMatch;
+            const [, r, g, b] = rgbaMatch;
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.1 * opacity})`;
           } else {
             ctx.fillStyle = laneColor.fill;
@@ -346,7 +341,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
           
           const strokeMatch = laneColor.stroke.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
           if (strokeMatch) {
-            const [_, r, g, b] = strokeMatch;
+            const [, r, g, b] = strokeMatch;
             const rDec = parseInt(r, 16);
             const gDec = parseInt(g, 16);
             const bDec = parseInt(b, 16);
@@ -477,8 +472,17 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     };
   }, [draw]);
   
+  // Track previous pointer position to detect wrapping
+  const prevPointerRef = useRef(pointer);
+  
   // Auto-scroll to pointer
   useEffect(() => {
+    const prevPointer = prevPointerRef.current;
+    prevPointerRef.current = pointer;
+    
+    // Detect if pointer wrapped (jumped from near start to near end or vice versa)
+    const isWrap = Math.abs(pointer - prevPointer) > tape.length * 0.9;
+    
     let pointerX: number;
     let effectiveWidth: number;
     
@@ -495,10 +499,21 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     
     const pointerInView = pointerX >= scrollX && pointerX + CELL_WIDTH <= scrollX + width;
     
-    if (!pointerInView) {
+    if (!pointerInView || isWrap) {
       // Center the pointer in view
       const targetScroll = pointerX - width / 2 + CELL_WIDTH / 2;
-      setScrollX(Math.max(0, Math.min(targetScroll, effectiveWidth - width)));
+      const newScroll = Math.max(0, Math.min(targetScroll, effectiveWidth - width));
+      
+      // Use requestAnimationFrame to ensure clean rendering when wrapping
+      if (isWrap) {
+        // Clear animation states to prevent visual artifacts
+        animationStateRef.current.clear();
+        requestAnimationFrame(() => {
+          setScrollX(newScroll);
+        });
+      } else {
+        setScrollX(newScroll);
+      }
     }
   }, [pointer, width, totalWidth, viewMode, laneCount, tape.length, CELL_WIDTH, CELL_GAP, PADDING]);
   
