@@ -283,6 +283,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 tabIndex={0}
                 onBlur={removeEditorKeybindings}
                 onScroll={handleEditorScroll}
+                data-editor-scroll="true"
             >
                 <div className="flex relative grow-1 overflow-visible min-h-0 h-fit">
                     <LineNumbersPanel store={store}/>
