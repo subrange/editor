@@ -21,12 +21,14 @@ import {useStoreSubscribe} from "./hooks/use-store-subscribe";
 import {WorkerTokenizer} from "./services/tokenizer/worker-tokenizer-adapter.ts";
 import {interpreterStore} from "./components/debugger/interpreter.store.ts";
 import {MacroContextPanel} from "./components/debugger/macro-context-panel.tsx";
+import {DraggableVSep} from "./components/ui/draggable-vsep.tsx";
 
 function EditorPanel() {
     const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
     const [macroEditor, setMacroEditor] = useState<EditorStore | null>(null);
     const [showMacroEditor, setShowMacroEditor] = useLocalStorageState("showMacroEditor", false);
     const [showMainEditor, setShowMainEditor] = useLocalStorageState("showMainEditor", true);
+    const [leftPanelWidth, setLeftPanelWidth] = useLocalStorageState("editorLeftPanelWidth", 50); // percentage
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoExpand = settings?.macro.autoExpand ?? false;
     const [macroExpander] = useState(() => createAsyncMacroExpander());
@@ -171,14 +173,26 @@ function EditorPanel() {
         // }, [tokenizer]);
     }, [autoExpand, macroEditor, mainEditor, settings]);
 
+    const handleResize = useCallback((leftWidth: number) => {
+        const container = document.querySelector('.editor-panel-container');
+        if (container) {
+            const containerWidth = container.clientWidth;
+            const percentage = (leftWidth / containerWidth) * 100;
+            setLeftPanelWidth(Math.max(20, Math.min(80, percentage))); // Clamp between 20% and 80%
+        }
+    }, [setLeftPanelWidth]);
+
     if (!mainEditor) {
         return <div className="v grow-1 bg-zinc-950">Loading...</div>;
     }
 
-    return <div className="h grow-1 relative">
+    return <div className="h grow-1 relative editor-panel-container">
         {showMacroEditor && macroEditor && (
             <>
-                <div className="v grow-1 min-w-1/2 bg-zinc-950">
+                <div 
+                    className="v grow-0 shrink-0 bg-zinc-950"
+                    style={{ width: showMainEditor ? `${leftPanelWidth}%` : '100%' }}
+                >
                     <div
                         className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
                         <span className="mr-4">Macro Editor</span>
@@ -229,11 +243,11 @@ function EditorPanel() {
                         onFocus={() => editorManager.setActiveEditor('macro')}
                     />
                 </div>
-                {showMainEditor && <VSep/>}
+                {showMainEditor && <DraggableVSep onResize={handleResize} />}
             </>
         )}
         {showMainEditor && (
-            <div className="v grow-1 min-w-1/2 bg-zinc-950">
+            <div className="v grow-1 bg-zinc-950">
                 <div className="h bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
                     Main Editor
                     <div className="ml-auto h gap-2">
