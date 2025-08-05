@@ -92,7 +92,6 @@ export class MacroExpanderV3 implements MacroExpander {
     let sourceMap: SourceMap | undefined;
     if (opts.generateSourceMap) {
       sourceMap = context.sourceMapBuilder.build();
-      console.log('Built source map with', sourceMap?.entries?.length || 0, 'entries');
     }
 
     // Post-process and update source map if needed
@@ -287,7 +286,6 @@ export class MacroExpanderV3 implements MacroExpander {
         const endLine = startLine + lineCount - 1;
         
         // Create a source map entry for each line in the macro definition
-        console.log(`MacroDefinition ${macroDefNode.name}: lines ${startLine}-${endLine}`);
         for (let line = startLine; line <= endLine; line++) {
           if (generateSourceMap) {
             // Map each source line to the current expanded position (empty line)
@@ -295,7 +293,6 @@ export class MacroExpanderV3 implements MacroExpander {
               start: { line: line, column: 1 },
               end: { line: line, column: 1000 } // Use a large column to cover the whole line
             };
-            console.log(`  Adding source map for line ${line}`);
             this.appendToExpanded('', context, generateSourceMap, sourceRange);
           }
         }

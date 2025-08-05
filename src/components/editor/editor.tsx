@@ -12,6 +12,7 @@ import {type NavigationItem} from "./stores/quick-nav.store.ts";
 import {LineNumbersPanel} from "./components/line-numbers-panel.tsx";
 import {LinesPanel} from "./components/lines-panel.tsx";
 import {Minimap} from "./components/minimap.tsx";
+import {getDimensionsStore} from "./stores/dimensions.store.ts";
 
 
 export interface EditorProps {
@@ -26,13 +27,14 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
     const showMinimap = useStoreSubscribe(store.showMinimap);
     const [editorContainerWidth, setEditorContainerWidth] = useState(0);
     const [editorScrollLeft, setEditorScrollLeft] = useState(0);
+    const [editorScrollTop, setEditorScrollTop] = useState(0);
     const [macroErrors, setMacroErrors] = useState<MacroExpansionError[]>([]);
-    
+
     // Extract navigation items from content
     const extractNavigationItems = useCallback((lines: Line[]): NavigationItem[] => {
         const items: NavigationItem[] = [];
         const tokenizer = store.getTokenizer();
-        
+
         // Get macro definitions if using ProgressiveMacroTokenizer
         if (tokenizer instanceof ProgressiveMacroTokenizer) {
             const macros = tokenizer.state?.macroDefinitions || [];
@@ -47,7 +49,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 }
             });
         }
-        
+
         // Extract MARK comments
         lines.forEach((line, index) => {
             const markMatch = line.text.match(/\/\/\s*MARK:\s*(.+)/);
@@ -60,7 +62,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 });
             }
         });
-        
+
         // Sort by line number
         return items.sort((a, b) => a.line - b.line);
     }, [store]);
@@ -69,7 +71,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
     useEffect(() => {
         let debounceTimer: number;
         let lastContent = "";
-        
+
         const subscription = store.editorState.subscribe((state) => {
             const searchState = store.searchStore.state.value;
             if (searchState.query && searchState.isVisible) {
@@ -85,12 +87,12 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                     }, 100);
                 }
             }
-            
+
             // Update navigation items
             const navItems = extractNavigationItems(state.lines);
             store.quickNavStore.setItems(navItems);
         });
-        
+
         return () => {
             clearTimeout(debounceTimer);
             subscription.unsubscribe();
@@ -105,7 +107,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 // Update navigation items when macros change
                 const navItems = extractNavigationItems(store.editorState.value.lines);
                 store.quickNavStore.setItems(navItems);
-                
+
                 // Update errors
                 const errors = tokenizer.state?.expanderErrors || [];
                 setMacroErrors(errors);
@@ -126,6 +128,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                     const minimapWidth = showMinimap ? 120 : 0;
                     const width = entry.contentRect.width - 65 - minimapWidth;
                     setEditorContainerWidth(width);
+                    getDimensionsStore(store.getId()).updateSize(width, entry.contentRect.height);
                 }
             });
         });
@@ -140,6 +143,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
 
     const handleEditorScroll = (e: React.UIEvent<HTMLDivElement>) => {
         setEditorScrollLeft((e.target as HTMLDivElement).scrollLeft);
+        setEditorScrollTop((e.target as HTMLDivElement).scrollTop);
     };
 
     function addEditorKeybindings() {
@@ -179,7 +183,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
 
             // Search
             keybindingsService.createKeybinding("meta+f", "editor.search" as AppCommand),
-            
+
             // Quick Navigation
             keybindingsService.createKeybinding("meta+p", "editor.quicknav" as AppCommand),
         ])
@@ -207,9 +211,9 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                         setTimeout(() => {
                             const match = store.searchStore.getCurrentMatch();
                             if (match) {
-                                store.setCursorPosition({ 
-                                    line: match.line, 
-                                    column: match.startColumn 
+                                store.setCursorPosition({
+                                    line: match.line,
+                                    column: match.startColumn
                                 });
                             }
                         }, 0);
@@ -246,7 +250,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 }}
             />
             {store.getId() === 'macro' && macroErrors.length > 0 && (
-                <div 
+                <div
                     className="absolute top-2 right-2 bg-red-900 text-red-200 px-3 py-1 rounded-md flex items-center gap-2 cursor-pointer z-50 hover:bg-red-800 shadow-lg"
                     onClick={() => {
                         // Jump to the first error with a location
@@ -284,9 +288,15 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                     <LineNumbersPanel store={store}/>
                     <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
                     <LinesPanel store={store} editorWidth={editorContainerWidth} scrollLeft={editorScrollLeft}/>
-                    {showMinimap && <Minimap store={store} />}
+
                 </div>
             </div>
+
+            {showMinimap && <Minimap
+                store={store}
+                dimensionsStore={getDimensionsStore(store.getId())}
+                scrollTop={editorRef.current?.scrollTop || 0}
+            />}
         </div>
     )
 }
