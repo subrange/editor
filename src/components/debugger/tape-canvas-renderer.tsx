@@ -37,6 +37,8 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
   // Scroll state
   const [scrollX, setScrollX] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
+  const [hoveredLane, setHoveredLane] = useState<number | null>(null);
   
   // Cell dimensions based on view mode
   const dimensions = viewMode === 'compact' ? {
@@ -110,19 +112,23 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       const value = tape[i];
       const isPointer = i === pointer;
       const isHovered = i === hoveredIndex;
+      const isDimmed = hoveredIndex !== null && !isHovered;
+      
+      // Apply dimming effect
+      const opacity = isDimmed ? 0.3 : 1;
       
       // Cell background
       if (isPointer) {
-        ctx.fillStyle = 'rgba(234, 179, 8, 0.1)'; // yellow-500/10
-        ctx.strokeStyle = '#eab308'; // yellow-500
+        ctx.fillStyle = isDimmed ? 'rgba(234, 179, 8, 0.03)' : 'rgba(234, 179, 8, 0.1)'; // yellow-500
+        ctx.strokeStyle = isDimmed ? 'rgba(234, 179, 8, 0.3)' : '#eab308'; // yellow-500
         ctx.lineWidth = 2;
       } else if (value !== 0) {
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)'; // blue-500/10
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)'; // blue-500/50
+        ctx.fillStyle = isDimmed ? 'rgba(59, 130, 246, 0.03)' : 'rgba(59, 130, 246, 0.1)'; // blue-500
+        ctx.strokeStyle = isDimmed ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.5)'; // blue-500
         ctx.lineWidth = 1;
       } else {
-        ctx.fillStyle = 'rgba(63, 63, 70, 0.5)'; // zinc-700/50
-        ctx.strokeStyle = '#3f3f46'; // zinc-700
+        ctx.fillStyle = isDimmed ? 'rgba(63, 63, 70, 0.15)' : 'rgba(63, 63, 70, 0.5)'; // zinc-700
+        ctx.strokeStyle = isDimmed ? 'rgba(63, 63, 70, 0.3)' : '#3f3f46'; // zinc-700
         ctx.lineWidth = 1;
       }
       
@@ -141,14 +147,18 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       
       // Draw cell index
       if (dimensions.fontSize.index > 0) {
-        ctx.fillStyle = isPointer ? '#facc15' : '#71717a'; // yellow-400 : zinc-500
+        ctx.fillStyle = isDimmed ? 
+          (isPointer ? 'rgba(250, 204, 21, 0.3)' : 'rgba(113, 113, 122, 0.3)') : 
+          (isPointer ? '#facc15' : '#71717a'); // yellow-400 : zinc-500
         ctx.font = `${dimensions.fontSize.index}px monospace`;
         ctx.textAlign = 'center';
         ctx.fillText(`#${i}`, x + CELL_WIDTH / 2, y + (viewMode === 'compact' ? 15 : 20));
       }
       
       // Draw value
-      ctx.fillStyle = isPointer ? '#fde047' : value !== 0 ? '#93c5fd' : '#a1a1aa'; // yellow-300 : blue-300 : zinc-400
+      ctx.fillStyle = isDimmed ?
+        (isPointer ? 'rgba(253, 224, 71, 0.3)' : value !== 0 ? 'rgba(147, 197, 253, 0.3)' : 'rgba(161, 161, 170, 0.3)') :
+        (isPointer ? '#fde047' : value !== 0 ? '#93c5fd' : '#a1a1aa'); // yellow-300 : blue-300 : zinc-400
       ctx.font = `bold ${dimensions.fontSize.value}px monospace`;
       ctx.textAlign = 'center';
       ctx.fillText(value.toString(), x + CELL_WIDTH / 2, y + CELL_HEIGHT / 2 + (viewMode === 'compact' ? 4 : 8));
@@ -156,21 +166,25 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       // Draw binary representation for small values (not in compact mode)
       if (cellBits === 8 && dimensions.fontSize.binary > 0) {
         const binary = value.toString(2).padStart(8, '0');
-        ctx.fillStyle = isPointer ? 'rgba(250, 204, 21, 0.7)' : value !== 0 ? 'rgba(147, 197, 253, 0.7)' : '#52525b'; // zinc-600
+        ctx.fillStyle = isDimmed ?
+          (isPointer ? 'rgba(250, 204, 21, 0.2)' : value !== 0 ? 'rgba(147, 197, 253, 0.2)' : 'rgba(82, 82, 91, 0.3)') :
+          (isPointer ? 'rgba(250, 204, 21, 0.7)' : value !== 0 ? 'rgba(147, 197, 253, 0.7)' : '#52525b'); // zinc-600
         ctx.font = `${dimensions.fontSize.binary}px monospace`;
         ctx.fillText(binary, x + CELL_WIDTH / 2, y + CELL_HEIGHT - 20);
       }
       
       // Draw ASCII for printable 8-bit values (not in compact mode)
       if (cellBits === 8 && value >= 32 && value <= 126 && dimensions.fontSize.ascii > 0) {
-        ctx.fillStyle = isPointer ? '#facc15' : '#a1a1aa';
+        ctx.fillStyle = isDimmed ?
+          (isPointer ? 'rgba(250, 204, 21, 0.3)' : 'rgba(161, 161, 170, 0.3)') :
+          (isPointer ? '#facc15' : '#a1a1aa');
         ctx.font = `${dimensions.fontSize.ascii}px monospace`;
         ctx.fillText(`'${String.fromCharCode(value)}'`, x + CELL_WIDTH / 2, y + CELL_HEIGHT - 8);
       }
       
       // Draw pointer indicator
-      if (isPointer) {
-        ctx.fillStyle = '#eab308';
+      if (isPointer && viewMode === 'normal') {
+        ctx.fillStyle = isDimmed ? 'rgba(234, 179, 8, 0.3)' : '#eab308';
         ctx.beginPath();
         ctx.moveTo(x + CELL_WIDTH / 2 - 6, y + CELL_HEIGHT + 5);
         ctx.lineTo(x + CELL_WIDTH / 2 + 6, y + CELL_HEIGHT + 5);
@@ -264,15 +278,17 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         const isPointer = index === pointer;
         const isHovered = index === hoveredIndex;
         const laneColor = LANE_COLORS[lane % LANE_COLORS.length];
+        const isDimmed = hoveredIndex !== null && hoveredColumn !== null && hoveredLane !== null && 
+                        (col !== hoveredColumn && lane !== hoveredLane);
         
         // Cell background
         if (isPointer) {
-          ctx.fillStyle = 'rgba(234, 179, 8, 0.2)';
-          ctx.strokeStyle = '#eab308';
+          ctx.fillStyle = isDimmed ? 'rgba(234, 179, 8, 0.05)' : 'rgba(234, 179, 8, 0.2)';
+          ctx.strokeStyle = isDimmed ? 'rgba(234, 179, 8, 0.3)' : '#eab308';
           ctx.lineWidth = 2;
         } else {
-          ctx.fillStyle = laneColor.fill;
-          ctx.strokeStyle = laneColor.stroke;
+          ctx.fillStyle = isDimmed ? 'rgba(63, 63, 70, 0.05)' : laneColor.fill;
+          ctx.strokeStyle = isDimmed ? 'rgba(63, 63, 70, 0.2)' : laneColor.stroke;
           ctx.lineWidth = 1;
         }
         
@@ -289,12 +305,14 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         }
         
         // Cell content
-        ctx.fillStyle = '#71717a';
+        ctx.fillStyle = isDimmed ? 'rgba(113, 113, 122, 0.3)' : '#71717a';
         ctx.font = '9px monospace';
         ctx.textAlign = 'left';
         ctx.fillText(index.toString(), x + 3, y + CELL_HEIGHT / 2 - 2);
         
-        ctx.fillStyle = isPointer ? '#fde047' : value !== 0 ? '#93c5fd' : '#a1a1aa';
+        ctx.fillStyle = isDimmed ?
+          (isPointer ? 'rgba(253, 224, 71, 0.3)' : value !== 0 ? 'rgba(147, 197, 253, 0.3)' : 'rgba(161, 161, 170, 0.3)') :
+          (isPointer ? '#fde047' : value !== 0 ? '#93c5fd' : '#a1a1aa');
         ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'right';
         ctx.fillText(value.toString(), x + CELL_WIDTH - 3, y + CELL_HEIGHT / 2 + 4);
@@ -363,7 +381,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       ctx.fillStyle = '#52525b';
       ctx.fillRect(scrollBarX, scrollBarY, scrollBarWidth, scrollBarHeight);
     }
-  }, [tape, pointer, laneCount, scrollX, width, height, PADDING, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, hoveredIndex]);
+  }, [tape, pointer, laneCount, scrollX, width, height, PADDING, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, hoveredIndex, hoveredColumn, hoveredLane]);
   
   // Animation loop
   useEffect(() => {
@@ -435,6 +453,8 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       // Lane view hover detection
       if (mouseX < PADDING || mouseY < 25) {
         setHoveredIndex(null);
+        setHoveredColumn(null);
+        setHoveredLane(null);
         return;
       }
       
@@ -451,10 +471,15 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
           if (scrolledX >= cellStartX && scrolledX <= cellStartX + CELL_WIDTH &&
               mouseY >= cellStartY && mouseY <= cellStartY + CELL_HEIGHT) {
             setHoveredIndex(index);
+            setHoveredColumn(col);
+            setHoveredLane(lane);
             return;
           }
         }
       }
+      setHoveredIndex(null);
+      setHoveredColumn(null);
+      setHoveredLane(null);
     } else {
       // Normal/compact view hover detection
       const x = mouseX + scrollX;
@@ -473,10 +498,14 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     }
     
     setHoveredIndex(null);
+    setHoveredColumn(null);
+    setHoveredLane(null);
   }, [scrollX, tape.length, viewMode, laneCount, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, PADDING]);
   
   const handleMouseLeave = useCallback(() => {
     setHoveredIndex(null);
+    setHoveredColumn(null);
+    setHoveredLane(null);
   }, []);
   
   return (
