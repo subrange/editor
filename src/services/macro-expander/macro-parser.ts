@@ -67,7 +67,8 @@ export type ExpressionNode =
   | ExpressionListNode
   | TextNode
   | BrainfuckCommandNode
-  | ArrayLiteralNode;
+  | ArrayLiteralNode
+  | TuplePatternNode;
 
 export interface NumberNode extends ASTNode {
   type: 'Number';
@@ -77,6 +78,11 @@ export interface NumberNode extends ASTNode {
 export interface IdentifierNode extends ASTNode {
   type: 'Identifier';
   name: string;
+}
+
+export interface TuplePatternNode extends ASTNode {
+  type: 'TuplePattern';
+  elements: string[];
 }
 
 export interface ExpressionListNode extends ASTNode {
@@ -588,18 +594,62 @@ export class MacroParser {
     
     this.skipWhitespace();
     
-    // Parse variable name
-    if (!this.check(TokenType.IDENTIFIER)) {
-      this.addError('Expected variable name in for loop', this.peek().position);
+    // Parse variable name or tuple pattern
+    if (this.check(TokenType.LPAREN)) {
+      // Parse tuple pattern: (a, b, c, ...)
+      const start = this.peek().position.start;
+      const startPos = this.peek().position;
+      this.advance(); // consume (
+      
+      const elements: string[] = [];
+      
+      this.skipWhitespace();
+      while (!this.check(TokenType.RPAREN) && !this.isAtEnd()) {
+        if (!this.check(TokenType.IDENTIFIER)) {
+          this.addError('Expected identifier in tuple pattern', this.peek().position);
+          break;
+        }
+        
+        const ident = this.advance();
+        elements.push(ident.value);
+        
+        this.skipWhitespace();
+        if (!this.check(TokenType.RPAREN)) {
+          if (!this.consume(TokenType.COMMA)) {
+            this.addError('Expected , or ) in tuple pattern', this.peek().position);
+            break;
+          }
+          this.skipWhitespace();
+        }
+      }
+      
+      if (!this.consume(TokenType.RPAREN)) {
+        this.addError('Expected ) to close tuple pattern', this.peek().position);
+      }
+      
+      const end = this.previous().position.end;
+      args.push({
+        type: 'TuplePattern',
+        elements,
+        position: {
+          start,
+          end,
+          line: startPos.line,
+          column: startPos.column
+        }
+      });
+    } else if (this.check(TokenType.IDENTIFIER)) {
+      // Single variable
+      const varName = this.advance();
+      args.push({
+        type: 'Identifier',
+        name: varName.value,
+        position: varName.position
+      });
+    } else {
+      this.addError('Expected variable name or tuple pattern in for loop', this.peek().position);
       return args;
     }
-    
-    const varName = this.advance();
-    args.push({
-      type: 'Identifier',
-      name: varName.value,
-      position: varName.position
-    });
     
     this.skipWhitespace();
     

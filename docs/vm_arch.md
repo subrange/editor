@@ -2,41 +2,41 @@
 
 ### The Instructions
 
-| Opcode | Mnemonic | Format | Description |
-|--------|----------|--------|-------------|
-| **0x00** | NOP | R | No operation |
-| **0x01** | ADD rd,rs,rt | R | rd = rs + rt |
-| **0x02** | SUB rd,rs,rt | R | rd = rs - rt |
-| **0x03** | AND rd,rs,rt | R | rd = rs & rt |
-| **0x04** | OR rd,rs,rt | R | rd = rs \| rt |
-| **0x05** | XOR rd,rs,rt | R | rd = rs ^ rt |
-| **0x06** | SLL rd,rs,rt | R | rd = rs << (rt & 15) |
-| **0x07** | SRL rd,rs,rt | R | rd = rs >> (rt & 15) |
-| **0x08** | SLT rd,rs,rt | R | rd = (rs < rt) ? 1 : 0 |
-| **0x09** | SLTU rd,rs,rt | R | rd = unsigned compare |
+| Opcode | Mnemonic        | Format | Description |
+|--------|-----------------|--------|-------------|
+| **0x00** | NOP             | R | No operation |
+| **0x01** | ADD rd,rs,rt    | R | rd = rs + rt |
+| **0x02** | SUB rd,rs,rt    | R | rd = rs - rt |
+| **0x03** | AND rd,rs,rt    | R | rd = rs & rt |
+| **0x04** | OR rd,rs,rt     | R | rd = rs \| rt |
+| **0x05** | XOR rd,rs,rt    | R | rd = rs ^ rt |
+| **0x06** | SLL rd,rs,rt    | R | rd = rs << (rt & 15) |
+| **0x07** | SRL rd,rs,rt    | R | rd = rs >> (rt & 15) |
+| **0x08** | SLT rd,rs,rt    | R | rd = (rs < rt) ? 1 : 0 |
+| **0x09** | SLTU rd,rs,rt   | R | rd = unsigned compare |
+| |                 | | |
+| **0x10** | ADDI rd,rs,imm  | I | rd = rs + sign_ext(imm) |
+| **0x11** | ANDI rd,rs,imm  | I | rd = rs & zero_ext(imm) |
+| **0x12** | ORI rd,rs,imm   | I | rd = rs \| zero_ext(imm) |
+| **0x13** | ORI rd,rs,imm   | I | rd = rs \| zero_ext(imm) |
+| **0x14** | LI rd,imm       | I | rd = imm << 10 |
+| **0x15** | SLLI rd,rs,imm  | I | rd = rs << imm |
+| **0x16** | SRLI rd,rs,imm  | I | rd = rs >> imm |
+
+| **0x17** | GETPC rd  | I | rd = PC |
+| |                 | | |
+| **0x20** | LOAD rd,rs,imm  | I | rd = mem[rs + imm] |
+| **0x21** | STORE rd,rs,imm | I | mem[rs + imm] = rd |
+
+| **0x30** | BEQ rs,rt,imm | I | if(rs==rt) PC += imm |
+| **0x31** | BNE rs,rt,imm | I | if(rs!=rt) PC += imm |
+| **0x32** | BLT rs,rt,imm | I | if(rs<rt) PC += imm |
+| **0x33** | BGE rs,rt,imm | I | if(rs>=rt) PC += imm |
 | | | | |
-| **0x10** | ADDI rd,rs,imm | I | rd = rs + sign_ext(imm) |
-| **0x11** | ANDI rd,rs,imm | I | rd = rs & zero_ext(imm) |
-| **0x12** | ORI rd,rs,imm | I | rd = rs \| zero_ext(imm) |
-| **0x13** | ORI rd,rs,imm | I | rd = rs \| zero_ext(imm) |
-| **0x14** | LI rd,imm | I | rd = imm << 10 |
-| **0x15** | SLLI rd,rs,imm | I | rd = rs << imm |
-| **0x16** | SRLI rd,rs,imm | I | rd = rs >> imm |
-| | | | |
-| **0x20** | LW rd,rs,imm | I | rd = mem[rs + imm] |
-| **0x21** | SW rd,rs,imm | I | mem[rs + imm] = rd |
-| **0x22** | LB rd,rs,imm | I | rd = byte from mem |
-| **0x23** | SB rd,rs,imm | I | store byte to mem |
-| | | | |
-| **0x30** | BEQ rs,rt,imm | I | if(rs==rt) PC += imm*2 |
-| **0x31** | BNE rs,rt,imm | I | if(rs!=rt) PC += imm*2 |
-| **0x32** | BLT rs,rt,imm | I | if(rs<rt) PC += imm*2 |
-| **0x33** | BGE rs,rt,imm | I | if(rs>=rt) PC += imm*2 |
-| | | | |
-| **0x38** | J addr | J | PC = addr * 2 |
-| **0x39** | JAL addr | J | R7 = PC+2; PC = addr*2 |
+| **0x38** | J addr | J | PC = addr  |
+| **0x39** | JAL addr | J | R7 = PC+1; PC = addr |
 | **0x3A** | JR rs | R | PC = rs |
-| **0x3B** | JALR rd,rs | R | rd = PC+2; PC = rs |
+| **0x3B** | JALR rd,rs | R | rd = PC+1; PC = rs |
 | | | | |
 | **0x3E** | TRAP imm | J | System call |
 | **0x3F** | HALT | J | Stop execution |

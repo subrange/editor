@@ -15,6 +15,7 @@ type InterpreterState = {
     isStopped: boolean;
 
     breakpoints: Position[];
+    sourceBreakpoints?: Position[]; // Breakpoints set in source (macro) code
 
     output: string;
     laneCount: number;
@@ -63,6 +64,7 @@ class InterpreterStore {
         isPaused: false,
         isStopped: false,
         breakpoints: [],
+        sourceBreakpoints: [],
         output: '',
         laneCount: DEFAULT_LANE_COUNT,
         sourceMap: undefined,
@@ -156,22 +158,25 @@ class InterpreterStore {
             isPaused: false,
             isStopped: false,
             breakpoints: [],
+            sourceBreakpoints: [],
             output: '',
             laneCount: this.laneCount.getValue()
         });
     }
 
     public reset() {
+        const currentState = this.state.getValue();
         this.state.next({
             tape: sizeToTape(this.cellSize.getValue(), this.tapeSize.getValue()),
             pointer: 0,
             isRunning: false,
             isPaused: false,
             isStopped: false,
-            breakpoints: this.state.getValue().breakpoints, // Keep existing breakpoints
+            breakpoints: currentState.breakpoints, // Keep existing breakpoints
+            sourceBreakpoints: currentState.sourceBreakpoints, // Keep existing source breakpoints
             output: '',
             laneCount: this.laneCount.getValue(),
-            sourceMap: this.state.getValue().sourceMap,
+            sourceMap: currentState.sourceMap,
             currentSourcePosition: undefined,
             macroContext: undefined
         });
@@ -367,8 +372,26 @@ class InterpreterStore {
     }
     
     public toggleSourceBreakpoint(sourcePosition: Position) {
+        const currentState = this.state.getValue();
+        const sourceBreakpoints = [...(currentState.sourceBreakpoints || [])];
+        const index = sourceBreakpoints.findIndex((bp: Position) => bp.line === sourcePosition.line && bp.column === sourcePosition.column);
+        
+        if (index !== -1) {
+            // Remove source breakpoint
+            sourceBreakpoints.splice(index, 1);
+        } else {
+            // Add source breakpoint
+            sourceBreakpoints.push(sourcePosition);
+        }
+        
+        // Update source breakpoints in state
+        this.state.next({
+            ...currentState,
+            sourceBreakpoints
+        });
+        
         if (!this.sourceMapLookup) {
-            // No source map, fall back to regular breakpoint
+            // No source map, also update regular breakpoints
             this.toggleBreakpoint(sourcePosition);
             return;
         }
@@ -409,7 +432,6 @@ class InterpreterStore {
             }
         }
         
-        const currentState = this.state.getValue();
         const breakpoints = [...currentState.breakpoints];
         
         // Find the entry that represents the full macro expansion (largest range)
@@ -452,7 +474,6 @@ class InterpreterStore {
         
         if (hasBreakpoint) {
             // Remove all breakpoints at expanded positions
-            console.log('Removing breakpoints at expanded positions:', expandedPositions);
             for (const expandedPos of expandedPositions) {
                 const index = breakpoints.findIndex(
                     bp => bp.line === expandedPos.line && bp.column === expandedPos.column
@@ -463,14 +484,13 @@ class InterpreterStore {
             }
         } else {
             // Add breakpoints at all expanded positions
-            console.log('Adding breakpoints at expanded positions:', expandedPositions);
-            console.log('Source position:', sourcePosition, 'maps to', expandedPositions.length, 'expanded positions');
             breakpoints.push(...expandedPositions);
         }
         
         this.state.next({
             ...currentState,
-            breakpoints
+            breakpoints,
+            sourceBreakpoints  // Preserve the source breakpoints we just set
         });
     }
 
@@ -478,7 +498,8 @@ class InterpreterStore {
         const currentState = this.state.getValue();
         this.state.next({
             ...currentState,
-            breakpoints: []
+            breakpoints: [],
+            sourceBreakpoints: []
         });
         this.lastPausedBreakpoint = null; // Clear last paused breakpoint as well
     }
@@ -1080,42 +1101,13 @@ class InterpreterStore {
     }
     
     public hasSourceBreakpointAt(sourcePosition: Position): boolean {
-        if (!this.sourceMapLookup) {
-            // No source map, check regular breakpoints
-            return this.hasBreakpointAt(sourcePosition);
-        }
-        
-        // Get all expanded positions for this source position
-        let expandedEntries = this.sourceMapLookup.getExpandedPositions(
-            sourcePosition.line + 1,
-            sourcePosition.column + 1
-        );
-        
-        // If no entries found at column 0, try column 1
-        if (expandedEntries.length === 0 && sourcePosition.column === 0) {
-            expandedEntries = this.sourceMapLookup.getExpandedPositions(
-                sourcePosition.line + 1,
-                1  // Column 1 in source map (1-based)
-            );
-        }
-        
         const currentState = this.state.getValue();
+        const sourceBreakpoints = currentState.sourceBreakpoints || [];
         
-        // Check if any expanded position has a breakpoint
-        for (const entry of expandedEntries) {
-            const expandedPos: Position = {
-                line: entry.expandedRange.start.line - 1,
-                column: entry.expandedRange.start.column - 1
-            };
-            
-            if (currentState.breakpoints.some(
-                bp => bp.line === expandedPos.line && bp.column === expandedPos.column
-            )) {
-                return true;
-            }
-        }
-        
-        return false;
+        // Check if there's a source breakpoint at this exact position
+        return sourceBreakpoints.some(
+            bp => bp.line === sourcePosition.line && bp.column === sourcePosition.column
+        );
     }
 
     public setTapeSize(size: number) {

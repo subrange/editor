@@ -48,12 +48,6 @@ export function Sidebar() {
             {/* Sidebar buttons */}
             <div className="w-12 flex flex-col bg-zinc-900">
                 <SidebarTabButton
-                    icon={CogIcon}
-                    label="Settings"
-                    active={activeTab === 'settings'}
-                    onClick={() => setActiveTab(activeTab === 'settings' ? null : 'settings')}
-                />
-                <SidebarTabButton
                     icon={CameraIcon}
                     label="Snapshots"
                     active={activeTab === 'snapshots'}
@@ -70,6 +64,13 @@ export function Sidebar() {
                     label="Marks"
                     active={activeTab === 'marks'}
                     onClick={() => setActiveTab(activeTab === 'marks' ? null : 'marks')}
+                />
+                <div className="flex-1" />
+                <SidebarTabButton
+                    icon={CogIcon}
+                    label="Settings"
+                    active={activeTab === 'settings'}
+                    onClick={() => setActiveTab(activeTab === 'settings' ? null : 'settings')}
                 />
             </div>
 

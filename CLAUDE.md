@@ -104,3 +104,8 @@ When modifying the editor, be aware that it uses a custom vim implementation - c
 For macro system changes, the expansion logic is in `macro-expander-v2.ts` with comprehensive tests in the same directory.
 
 The interpreter can run in both JavaScript and WASM modes - ensure changes work with both implementations.
+
+## Development Guidelines
+
+- **Testing and Execution**
+  - Please, do not try to run "npm run dev". If you want to test something, either use vitest (which can actually help us a lot), or create temporary .ts file and run it with npx tsx

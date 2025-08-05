@@ -701,6 +701,13 @@ export class EditorStore {
                     };
 
                     this.editorState.next(this.undoRedo.execute(command, currentState));
+                } else if (char === "Tab") {
+                    const command: CommandData = {
+                        type: "insert",
+                        position: selection.focus,
+                        text: "  " // 2 spaces for tab
+                    };
+                    this.editorState.next(this.undoRedo.execute(command, currentState));
                 }
             } else if (currentState.mode === "command") {
                 console.log(`Command mode input: ${event.key}`);

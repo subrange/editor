@@ -11,6 +11,7 @@ type InterpreterState = {
     isPaused: boolean;
     isStopped: boolean;
     breakpoints: Position[];
+    sourceBreakpoints?: Position[]; // Breakpoints set in source (macro) code
     output: string;
     laneCount: number;
     
@@ -63,7 +64,10 @@ class InterpreterFacade implements InterpreterInterface {
     private subscriptions: Subscription[] = [];
 
     // Proxy all the observables
-    public state = new BehaviorSubject<InterpreterState>(jsInterpreter.state.getValue());
+    public state = new BehaviorSubject<InterpreterState>({
+        ...jsInterpreter.state.getValue(),
+        sourceBreakpoints: jsInterpreter.state.getValue().sourceBreakpoints || []
+    });
     public currentChar = new BehaviorSubject<Position>(jsInterpreter.currentChar.getValue());
     public currentSourceChar = new BehaviorSubject<Position | null>(jsInterpreter.currentSourceChar?.getValue() || null);
     public tapeSize = new BehaviorSubject<number>(jsInterpreter.tapeSize.getValue());

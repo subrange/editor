@@ -11,7 +11,7 @@ import type {
   ASTNode, ContentNode, MacroInvocationNode, BuiltinFunctionNode, 
   ExpressionNode, BodyNode, ProgramNode, MacroDefinitionNode, 
   CodeLineNode, BrainfuckCommandNode, TextNode, NumberNode, 
-  IdentifierNode, ExpressionListNode, ArrayLiteralNode 
+  IdentifierNode, ExpressionListNode, ArrayLiteralNode, TuplePatternNode
 } from './macro-parser.ts';
 import { SourceMapBuilder, type Range, type Position, type SourceMap, type SourceMapEntry } from './source-map.ts';
 
@@ -35,6 +35,7 @@ export class MacroExpanderV3 implements MacroExpander {
   private tokens: MacroToken[] = [];
   private expansionChain: Set<string> = new Set();
   private maxExpansionDepth = 100;
+  private input: string = '';
 
   expand(input: string, options?: MacroExpanderOptions): MacroExpanderResult {
     const opts = {
@@ -48,6 +49,7 @@ export class MacroExpanderV3 implements MacroExpander {
     this.macros.clear();
     this.errors = [];
     this.tokens = [];
+    this.input = input;
     this.expansionChain.clear();
 
     // Parse the input
@@ -275,6 +277,28 @@ export class MacroExpanderV3 implements MacroExpander {
         this.appendToExpanded('\n', context, generateSourceMap, null);
       } else if (statement.type === 'MacroDefinition') {
         // Macro definitions are replaced with empty lines
+        // But we need to create source map entries for each line of the definition
+        const macroDefNode = statement as MacroDefinitionNode;
+        const startLine = macroDefNode.position.line;
+        
+        // Calculate end line by counting newlines in the source text
+        const sourceText = this.input.substring(macroDefNode.position.start, macroDefNode.position.end);
+        const lineCount = (sourceText.match(/\n/g) || []).length + 1;
+        const endLine = startLine + lineCount - 1;
+        
+        // Create a source map entry for each line in the macro definition
+        console.log(`MacroDefinition ${macroDefNode.name}: lines ${startLine}-${endLine}`);
+        for (let line = startLine; line <= endLine; line++) {
+          if (generateSourceMap) {
+            // Map each source line to the current expanded position (empty line)
+            const sourceRange: Range = {
+              start: { line: line, column: 1 },
+              end: { line: line, column: 1000 } // Use a large column to cover the whole line
+            };
+            console.log(`  Adding source map for line ${line}`);
+            this.appendToExpanded('', context, generateSourceMap, sourceRange);
+          }
+        }
         this.appendToExpanded('\n', context, generateSourceMap, null);
       }
     }
@@ -349,6 +373,11 @@ export class MacroExpanderV3 implements MacroExpander {
         offset: node.position.end
       }
     };
+    
+    this.expandContentWithSourceRange(node, context, generateSourceMap, sourceRange);
+  }
+  
+  private expandContentWithSourceRange(node: ContentNode, context: ExpansionContext, generateSourceMap: boolean, sourceRange: Range): void {
 
     switch (node.type) {
       case 'BrainfuckCommand':
@@ -617,7 +646,28 @@ export class MacroExpanderV3 implements MacroExpander {
 
   private expandBodyNodes(nodes: BodyNode[], context: ExpansionContext, generateSourceMap: boolean): void {
     for (const node of nodes) {
-      this.expandContent(node as ContentNode, context, generateSourceMap);
+      // Pass the node's actual position from the macro definition
+      const nodeSourceRange: Range = {
+        start: {
+          line: node.position.line,
+          column: node.position.column,
+          offset: node.position.start
+        },
+        end: {
+          line: node.position.line,
+          column: node.position.column + (node.position.end - node.position.start),
+          offset: node.position.end
+        }
+      };
+      
+      // Update current source position to the macro definition line
+      context.currentSourcePosition = {
+        line: node.position.line,
+        column: node.position.column,
+        offset: node.position.start
+      };
+      
+      this.expandContentWithSourceRange(node, context, generateSourceMap, nodeSourceRange);
     }
   }
 
@@ -634,7 +684,12 @@ export class MacroExpanderV3 implements MacroExpander {
           .sort((a, b) => b[0].length - a[0].length);
         
         for (const [param, value] of sortedSubstitutions) {
-          text = text.split(param).join(value);
+          // Only replace the parameter if it appears as a standalone identifier
+          // This prevents replacing 'a' inside 'val' but allows single letters
+          // We look for the param surrounded by non-alphanumeric characters or at string boundaries
+          const escapedParam = param.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(^|[^a-zA-Z0-9_])${escapedParam}(?=$|[^a-zA-Z0-9_])`, 'g');
+          text = text.replace(regex, (match, prefix) => prefix + value);
         }
         
         const sourceRange: Range = {
@@ -697,11 +752,35 @@ export class MacroExpanderV3 implements MacroExpander {
           }
         });
       } else if (node.type === 'BrainfuckCommand') {
-        // Pass through BF commands directly
-        this.expandContent(node as ContentNode, context, generateSourceMap);
+        // Pass through BF commands directly with proper source range
+        const commandSourceRange: Range = {
+          start: {
+            line: node.position.line,
+            column: node.position.column,
+            offset: node.position.start
+          },
+          end: {
+            line: node.position.line,
+            column: node.position.column + (node.position.end - node.position.start),
+            offset: node.position.end
+          }
+        };
+        this.expandContentWithSourceRange(node, context, generateSourceMap, commandSourceRange);
       } else {
-        // For other node types, expand normally
-        this.expandContent(node as ContentNode, context, generateSourceMap);
+        // For other node types, expand normally with proper source range
+        const otherSourceRange: Range = {
+          start: {
+            line: node.position.line,
+            column: node.position.column,
+            offset: node.position.start
+          },
+          end: {
+            line: node.position.line,
+            column: node.position.column + (node.position.end - node.position.start),
+            offset: node.position.end
+          }
+        };
+        this.expandContentWithSourceRange(node, context, generateSourceMap, otherSourceRange);
       }
     }
   }
@@ -753,7 +832,12 @@ export class MacroExpanderV3 implements MacroExpander {
           .sort((a, b) => b[0].length - a[0].length);
         
         for (const [param, value] of sortedSubstitutions) {
-          text = text.split(param).join(value);
+          // Only replace the parameter if it appears as a standalone identifier
+          // This prevents replacing 'a' inside 'val' but allows single letters
+          // We look for the param surrounded by non-alphanumeric characters or at string boundaries
+          const escapedParam = param.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(^|[^a-zA-Z0-9_])${escapedParam}(?=$|[^a-zA-Z0-9_])`, 'g');
+          text = text.replace(regex, (match, prefix) => prefix + value);
         }
         if (text !== textNode.value) {
           return {
@@ -913,10 +997,18 @@ export class MacroExpanderV3 implements MacroExpander {
       const arrayNode = node.arguments[1];
       const bodyNode = node.arguments[2];
       
-      if (varNode.type !== 'Identifier') {
+      let varNames: string[] = [];
+      let isTuplePattern = false;
+      
+      if (varNode.type === 'Identifier') {
+        varNames = [(varNode as IdentifierNode).name];
+      } else if (varNode.type === 'TuplePattern') {
+        varNames = (varNode as TuplePatternNode).elements;
+        isTuplePattern = true;
+      } else {
         this.errors.push({
           type: 'syntax_error',
-          message: `Expected variable name in for loop, got ${varNode.type}`,
+          message: `Expected variable name or tuple pattern in for loop, got ${varNode.type}`,
           location: {
             line: node.position.line - 1,
             column: node.position.column - 1,
@@ -927,18 +1019,54 @@ export class MacroExpanderV3 implements MacroExpander {
         return;
       }
       
-      const varName = (varNode as any).name;
       let values: string[] = [];
       
       if (arrayNode.type === 'ArrayLiteral') {
         const arrayLiteral = arrayNode as any;
         values = arrayLiteral.elements.map((el: any) => this.expandExpressionToString(el, context).trim());
+      } else if (arrayNode.type === 'Identifier' || arrayNode.type === 'Text') {
+        // Handle identifiers and text nodes that might contain array values
+        const expanded = this.expandExpressionToString(arrayNode, context).trim();
+        
+        // Check if it's an array-like structure
+        // Special case: if we're doing tuple destructuring and the value looks like a tuple
+        if (isTuplePattern && expanded.startsWith('{') && expanded.endsWith('}') && !this.looksLikeArrayOfArrays(expanded)) {
+          // Treat the entire value as a single tuple to destructure
+          // e.g., when a = "{1, 0, 1}" in {for((x,y,z) in a, ...)}
+          values = [expanded];
+        } else if (this.looksLikeArrayOfArrays(expanded)) {
+          // Parse as array of arrays without outer braces
+          values = this.parseArrayElements(expanded);
+        } else if (expanded.startsWith('{') && expanded.endsWith('}')) {
+          const inner = expanded.slice(1, -1);
+          // Parse array elements considering nested braces
+          values = this.parseArrayElements(inner);
+          
+          // Special case: if we have a single element that looks like a tuple
+          // and we're doing tuple destructuring, treat it as a tuple directly
+          if (isTuplePattern && values.length === 1 && values[0].startsWith('{') && values[0].endsWith('}')) {
+            // This handles the case where {a} expands to {{1,0,1}}
+            // We want to treat {1,0,1} as a tuple, not as a single element
+            values = [values[0]]; // Keep it as is - the tuple parsing below will handle it
+          }
+        } else if (expanded.includes(',')) {
+          values = expanded.split(',').map(v => v.trim());
+        } else {
+          // Single value case
+          values = [expanded];
+        }
       } else {
         const expanded = this.expandExpressionToString(arrayNode, context).trim();
         
-        if (expanded.startsWith('{') && expanded.endsWith('}')) {
+        // Check if it's an array-like structure
+        // First check if it looks like an array with nested arrays: {1},{2}
+        if (this.looksLikeArrayOfArrays(expanded)) {
+          // Parse as array of arrays without outer braces
+          values = this.parseArrayElements(expanded);
+        } else if (expanded.startsWith('{') && expanded.endsWith('}')) {
           const inner = expanded.slice(1, -1);
-          values = inner.split(',').map(v => v.trim());
+          // Parse array elements considering nested braces
+          values = this.parseArrayElements(inner);
         } else if (expanded.includes(',')) {
           values = expanded.split(',').map(v => v.trim());
         } else {
@@ -957,7 +1085,33 @@ export class MacroExpanderV3 implements MacroExpander {
       }
       
       for (const value of values) {
-        const tempSubstitutions: Record<string, string> = { [varName]: value };
+        const tempSubstitutions: Record<string, string> = {};
+        
+        if (isTuplePattern) {
+          // Parse the value as a tuple if it's in the format {a, b, c}
+          let tupleElements: string[] = [];
+          
+          if (value.startsWith('{') && value.endsWith('}')) {
+            // Parse tuple elements
+            tupleElements = this.parseArrayElements(value.slice(1, -1));
+          } else {
+            // Try to parse as comma-separated values
+            tupleElements = value.split(',').map(v => v.trim());
+          }
+          
+          // Map tuple elements to variable names
+          for (let i = 0; i < varNames.length; i++) {
+            if (i < tupleElements.length) {
+              tempSubstitutions[varNames[i]] = tupleElements[i];
+            } else {
+              // If not enough elements, use empty string
+              tempSubstitutions[varNames[i]] = '';
+            }
+          }
+        } else {
+          // Single variable case
+          tempSubstitutions[varNames[0]] = value;
+        }
         
         if (bodyNode.type === 'ExpressionList') {
           const list = bodyNode as ExpressionListNode;
@@ -1158,6 +1312,49 @@ export class MacroExpanderV3 implements MacroExpander {
     }
 
     return nonEmptyLines.join('\n');
+  }
+
+  private looksLikeArrayOfArrays(str: string): boolean {
+    // Check if string contains comma-separated items that start and end with braces
+    // e.g., "{1},{2}" or "{a,b},{c,d}"
+    const trimmed = str.trim();
+    if (!trimmed.includes(',')) return false;
+    
+    // Simple check - if it has the pattern },{
+    return trimmed.includes('},{');
+  }
+
+  private parseArrayElements(inner: string): string[] {
+    const elements: string[] = [];
+    let current = '';
+    let braceDepth = 0;
+    
+    for (let i = 0; i < inner.length; i++) {
+      const char = inner[i];
+      
+      if (char === '{') {
+        braceDepth++;
+        current += char;
+      } else if (char === '}') {
+        braceDepth--;
+        current += char;
+      } else if (char === ',' && braceDepth === 0) {
+        // Only split at commas that are not inside braces
+        if (current.trim()) {
+          elements.push(current.trim());
+        }
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    // Don't forget the last element
+    if (current.trim()) {
+      elements.push(current.trim());
+    }
+    
+    return elements;
   }
 
   private collapseEmptyLinesWithSourceMap(code: string, sourceMap: SourceMap): { code: string; sourceMap: SourceMap } {

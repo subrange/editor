@@ -54,7 +54,7 @@ function EditorPanel() {
                 tokenizer: new ProgressiveMacroTokenizer(),
                 mode: 'insert',
                 settings: {
-                    showDebug: true
+                    showDebug: false
                 },
                 initialContent: '#define clear [-]\n#define inc(n) {repeat(n, +)}\n#define dec(n) {repeat(n, -)}\n\n// Example usage:\n// @inc(5) @clear\n'
             });
@@ -320,7 +320,7 @@ function DebugPanel() {
                     <div className="v h-full">
                         <Debugger/>
                     </div>
-                    <MacroContextPanel/>
+                    {/*<MacroContextPanel/>*/}
                 </div></>
             )
         }

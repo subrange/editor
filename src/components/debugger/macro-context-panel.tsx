@@ -73,7 +73,7 @@ export function MacroContextPanel() {
                                                     <span key={k}>
                                                         <span className="text-zinc-500">{k}</span>
                                                         <span className="text-zinc-600">=</span>
-                                                        <span className="text-yellow-400">{v}</span>
+                                                        <span className="text-yellow-400">{v.length > 50 ? `${v.slice(0, 50)}...` : v}</span>
                                                     </span>
                                                 ).reduce((prev, curr, i) => 
                                                     i === 0 ? [curr] : [...prev, <span key={`sep-${i}`} className="text-zinc-600">, </span>, curr]

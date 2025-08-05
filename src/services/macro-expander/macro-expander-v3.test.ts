@@ -527,6 +527,165 @@ describe('MacroExpander V3 - Validation Features', () => {
   });
 });
 
+describe('MacroExpander V3 - Nested Array Support', () => {
+  it('should handle macros that expand to nested arrays in for loops', () => {
+    const input = `#define PROGRAM {{1}, {2}}
+#define set(v) +
+{for(a in @PROGRAM, {for(v in a, @set(v))})}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('++');
+  });
+
+  it('should handle nested arrays with multiple elements', () => {
+    const input = `#define ARRAYS {{1, 2}, {3, 4, 5}}
+#define process(x) {repeat(x, -)}
+{for(arr in @ARRAYS, {for(val in arr, @process(val))})}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('---------------'); // 1+2+3+4+5 = 15 dashes
+  });
+
+  it('should handle direct nested array literals in for loops', () => {
+    const input = `{for(a in {{1, 2}, {3}}, {for(v in a, v)})}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded).toBe('123');
+  });
+});
+
+describe('MacroExpander V3 - Tuple Destructuring in For Loops', () => {
+  it('should support tuple destructuring with two variables', () => {
+    const input = `#define PROGRAM {1, 2}
+#define set(a) +
+#define next(b) >
+{for((a, b) in {@PROGRAM}, @set(a) @next(b))}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('+>');
+  });
+
+  it('should iterate over array of tuples', () => {
+    const input = `#define PAIRS {{1, 2}, {3, 4}, {5, 6}}
+#define process(x, y) {repeat(x, +)}{repeat(y, -)}
+{for((a, b) in @PAIRS, @process(a, b))}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('+--+++----+++++------');
+  });
+
+  it('should support tuple destructuring with three or more variables', () => {
+    const input = `#define TRIPLES {{1, 2, 3}, {4, 5, 6}}
+{for((x, y, z) in @TRIPLES, xyz)}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('123456');
+  });
+
+  it('should handle direct tuple literals', () => {
+    const input = `{for((a, b) in {{10, 20}, {30, 40}}, a-b)}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded).toBe('10-2030-40');
+  });
+
+  it('should handle tuples with missing elements gracefully', () => {
+    const input = `#define MIXED {{1}, {2, 3}, {4, 5, 6}}
+{for((a, b, c) in @MIXED, abc)}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('123456');
+  });
+
+  it('should work with nested for loops and tuples', () => {
+    const input = `#define OUTER {{1, 2}, {3, 4}}
+#define INNER {a, b}
+{for((x, y) in @OUTER, {for(z in @INNER, xyz)})}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    // When (x,y) = (1,2), we iterate z over {a,b} giving: 12a, 12b
+    // When (x,y) = (3,4), we iterate z over {a,b} giving: 34a, 34b
+    expect(result.expanded.trim()).toBe('12a12b34a34b');
+  });
+});
+
+describe('MacroExpander V3 - Nested Array and Tuple Iteration', () => {
+  it('should handle nested for loops with array of tuples', () => {
+    const input = `#define T_OP 1
+#define OP_NOP 0
+#define fillword(type, val, flf) {repeat(type, +)}{repeat(val, -)}{repeat(flf, >)}
+
+#define PROGRAM {
+{@T_OP, @OP_NOP, 1}, 
+{@T_OP, @OP_NOP, 2}
+}
+
+{for(a in @PROGRAM, {for((type, val, flf) in {a}, @fillword(type, val, flf))})}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    // First tuple: type=1, val=0, flf=1 -> +>
+    // Second tuple: type=1, val=0, flf=2 -> +>>
+    expect(result.expanded.trim()).toBe('+>+>>');
+  });
+
+  it('should handle direct nested iteration', () => {
+    const input = `#define show(x, y) x:y
+{for(item in {{a, b}, {c, d}}, {for((x, y) in {item}, @show(x, y))})}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('a:bc:d');
+  });
+
+  it('should work with complex nested structures', () => {
+    const input = `#define DATA {
+{1, 2, 3},
+{4, 5, 6},
+{7, 8, 9}
+}
+#define process(a, b, c) [abc]
+{for(row in @DATA, {for((a, b, c) in {row}, @process(a, b, c))})}`;
+    
+    const expander = createMacroExpanderV3();
+    const result = expander.expand(input);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.expanded.trim()).toBe('[123][456][789]');
+  });
+});
+
 describe('MacroExpander V3 - Source Map Support', () => {
   it('should generate source maps when requested', () => {
     const input = `#define inc(n) {repeat(n, +)}

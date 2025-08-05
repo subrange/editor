@@ -278,7 +278,7 @@ function DebugMarker({ store }: DebugMarkerProps) {
     }
 
     const shouldShow = isMacroEditor 
-        ? sourcePosition && (isRunning || sourcePosition.line !== 0 || sourcePosition.column !== 0)
+        ? sourcePosition && isRunning
         : (isRunning || debugMarkerState.line !== 0 || debugMarkerState.column !== 0);
 
     return shouldShow && <div
