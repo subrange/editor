@@ -426,6 +426,11 @@ export class EditorStore {
     public searchStore: SearchStore;
     public quickNavStore: QuickNavStore;
     
+    // Konami code tracking
+    private konamiSequence: string[] = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    private konamiProgress: number = 0;
+    private konamiTimer: number = 0;
+    
     public editorState = new BehaviorSubject<EditorState>({
         selection: {
             anchor: {line: 0, column: 0},
@@ -507,6 +512,31 @@ export class EditorStore {
             clearTimeout(this.cursorBlinkRestoreTimeout);
 
             const currentState = this.editorState.getValue();
+
+            // Check for Konami code arrow keys in macro editor
+            if (this.id === 'macro' && currentState.mode === "insert") {
+                let konamiKey: string | null = null;
+                switch (s) {
+                    case "editor.moveup":
+                        konamiKey = 'ArrowUp';
+                        break;
+                    case "editor.movedown":
+                        konamiKey = 'ArrowDown';
+                        break;
+                    case "editor.moveleft":
+                        konamiKey = 'ArrowLeft';
+                        break;
+                    case "editor.moveright":
+                        konamiKey = 'ArrowRight';
+                        break;
+                }
+                
+                if (konamiKey && this.checkKonamiCode(konamiKey)) {
+                    // Konami code completed!
+                    this.triggerEasterEgg(currentState);
+                    return;
+                }
+            }
 
             switch (s) {
                 case "editor.undo":
@@ -619,6 +649,16 @@ export class EditorStore {
 
             if (!this.focused.getValue()) {
                 return; // Ignore commands if editor is not focused
+            }
+
+            // Check for Konami code letter keys in macro editor
+            if (this.id === 'macro' && currentState.mode === "insert") {
+                // Only check for 'b' and 'a' keys here, arrow keys are handled in keybinding subscription
+                if ((event.key === 'b' || event.key === 'a') && this.checkKonamiCode(event.key)) {
+                    // Konami code completed!
+                    this.triggerEasterEgg(currentState);
+                    return;
+                }
             }
 
             if (currentState.mode === "insert") {
@@ -1483,6 +1523,110 @@ export class EditorStore {
                 anchor: { ...currentState.selection.anchor }
             }
         });
+    }
+
+    private checkKonamiCode(key: string): boolean {
+        // Clear timer and reset if taking too long between keys
+        clearTimeout(this.konamiTimer);
+        this.konamiTimer = window.setTimeout(() => {
+            this.konamiProgress = 0;
+        }, 2000); // 2 second timeout between keys
+
+        // Check if the key matches the expected next key in sequence
+        if (key === this.konamiSequence[this.konamiProgress]) {
+            this.konamiProgress++;
+            
+            // Check if complete
+            if (this.konamiProgress === this.konamiSequence.length) {
+                this.konamiProgress = 0;
+                clearTimeout(this.konamiTimer);
+                return true;
+            }
+        } else {
+            // Reset if wrong key
+            this.konamiProgress = 0;
+        }
+        
+        return false;
+    }
+
+    private triggerEasterEgg(currentState: EditorState): void {
+        // We need to delete 'b' that was already inserted
+        // Since we intercept before 'a' is inserted, we only need to delete the 'b'
+        const selection = currentState.selection;
+        const focus = selection.focus;
+        
+        // Check if we have at least 1 character to delete (the 'b')
+        if (focus.column >= 1) {
+            const range: Range = {
+                start: {
+                    line: focus.line,
+                    column: focus.column - 1
+                },
+                end: focus
+            };
+            
+            const deletedText = CommandExecutor.extractText(range, currentState);
+            
+            const deleteCommand: CommandData = {
+                type: "delete",
+                range,
+                deletedText
+            };
+            
+            this.editorState.next(this.undoRedo.execute(deleteCommand, currentState));
+        }
+        
+        // Show the easter egg image
+        this.showEasterEggImage();
+    }
+
+    private showEasterEggImage(): void {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100vw';
+        overlay.style.height = '100vh';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.zIndex = '9999';
+        overlay.style.cursor = 'pointer';
+        
+        // Create image
+        const img = document.createElement('img');
+        img.src = '/ee.png';
+        img.style.maxWidth = '80%';
+        img.style.maxHeight = '80%';
+        img.style.borderRadius = '8px';
+        img.style.boxShadow = '0 10px 50px rgba(0, 0, 0, 0.5)';
+        
+        // Add click to close
+        overlay.onclick = () => {
+            overlay.remove();
+        };
+        
+        // Add escape key to close
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                overlay.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        overlay.appendChild(img);
+        document.body.appendChild(overlay);
+        
+        // Auto close after 5 seconds
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                overlay.remove();
+            }
+        }, 5000);
     }
 
     public destroy(): void {

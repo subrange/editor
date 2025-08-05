@@ -128,7 +128,7 @@ export const Minimap = React.memo(function Minimap({store, dimensionsStore, widt
 
     return (
         <div
-            className="absolute right-0 top-0 bottom-0 bg-zinc-950 border-l border-zinc-800 opacity-30 hover:opacity-100 transition-opacity"
+            className="absolute right-0 top-0 bottom-0 bg-zinc-950 border-l border-zinc-800 opacity-20 hover:opacity-100 transition-opacity"
             style={{width: `${width}px`}}
         >
             <canvas
