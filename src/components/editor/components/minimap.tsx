@@ -155,7 +155,8 @@ export const Minimap = React.memo(function Minimap({store, dimensionsStore, widt
                     const handleMouseMove = (e: MouseEvent) => {
                         const deltaY = e.clientY - startY;
                         // Convert pixel movement to editor scroll units
-                        const scrollRatio = currentEditorTotalHeight / totalContentHeight;
+                        // When minimap is smaller than content, we need to amplify the movement
+                        const scrollRatio = currentEditorTotalHeight / minimapHeight;
                         const newScrollTop = startScrollTop + (deltaY * scrollRatio);
 
                         // Find and scroll the editor element
