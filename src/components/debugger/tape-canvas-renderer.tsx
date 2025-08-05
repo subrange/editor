@@ -36,15 +36,19 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
   
   // Scroll state
   const [scrollX, setScrollX] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
   const [hoveredLane, setHoveredLane] = useState<number | null>(null);
   
   // Scroll bar dragging state
   const [isDraggingScrollBar, setIsDraggingScrollBar] = useState(false);
+  const [isDraggingVerticalScrollBar, setIsDraggingVerticalScrollBar] = useState(false);
   const [scrollBarDragStart, setScrollBarDragStart] = useState<{ mouseX: number; scrollX: number } | null>(null);
+  const [verticalScrollBarDragStart, setVerticalScrollBarDragStart] = useState<{ mouseY: number; scrollY: number } | null>(null);
   const [isCanvasHovered, setIsCanvasHovered] = useState(false);
   const [isScrollBarHovered, setIsScrollBarHovered] = useState(false);
+  const [isVerticalScrollBarHovered, setIsVerticalScrollBarHovered] = useState(false);
   
   // Animation state for smooth transitions
   const animationStateRef = useRef<Map<number, { 
@@ -308,10 +312,15 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     const columnWidth = CELL_WIDTH + CELL_GAP;
     const laneHeight = CELL_HEIGHT + 4; // 4px gap between lanes
     const COLUMN_OFFSET = 8; // Add small offset after lane numbers panel
+    const HEADER_HEIGHT = 25;
+    const totalLanesHeight = laneCount * laneHeight;
+    const viewportHeight = height - HEADER_HEIGHT - 20; // 20px for bottom padding
     
-    // Visible columns
+    // Visible columns and lanes
     const firstColumn = Math.max(0, Math.floor((scrollX - PADDING - COLUMN_OFFSET) / columnWidth));
     const lastColumn = Math.min(columnsCount - 1, Math.ceil((scrollX + width - PADDING - COLUMN_OFFSET) / columnWidth));
+    const firstLane = Math.max(0, Math.floor(scrollY / laneHeight));
+    const lastLane = Math.min(laneCount - 1, Math.ceil((scrollY + viewportHeight) / laneHeight));
     
     // Set up clipping region for scrollable content
     ctx.save();
@@ -336,13 +345,14 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     
     // Draw cells
     for (let col = firstColumn; col <= lastColumn; col++) {
-      for (let lane = 0; lane < laneCount; lane++) {
+      for (let lane = firstLane; lane <= lastLane; lane++) {
         const index = col * laneCount + lane;
         if (index >= tape.length) continue;
         
         const virtualX = PADDING + COLUMN_OFFSET + col * columnWidth;
         const x = virtualX - scrollX;
-        const y = 30 + lane * laneHeight;
+        const virtualY = HEADER_HEIGHT + 5 + lane * laneHeight;
+        const y = virtualY - scrollY;
         const value = tape[index];
         const isPointer = index === pointer;
         const isHovered = index === hoveredIndex;
@@ -427,8 +437,9 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     ctx.fillText('L/C', PADDING / 2, 16);
     
     // Draw lane numbers
-    for (let lane = 0; lane < laneCount; lane++) {
-      const y = 30 + lane * laneHeight;
+    for (let lane = firstLane; lane <= lastLane; lane++) {
+      const virtualY = HEADER_HEIGHT + 5 + lane * laneHeight;
+      const y = virtualY - scrollY;
       
       // Subtle background for lane rows
       if (lane % 2 === 0) {
@@ -453,8 +464,8 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     
     // Draw horizontal separator under headers
     ctx.beginPath();
-    ctx.moveTo(0, 25);
-    ctx.lineTo(width, 25);
+    ctx.moveTo(0, HEADER_HEIGHT);
+    ctx.lineTo(width, HEADER_HEIGHT);
     ctx.stroke();
     
     // Draw scroll indicator
@@ -495,7 +506,45 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         (canvasRef.current as any)._scrollBarBounds = null;
       }
     }
-  }, [tape, pointer, laneCount, scrollX, width, height, PADDING, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, hoveredIndex, hoveredColumn, hoveredLane, getAnimatedOpacity, isDraggingScrollBar, isScrollBarHovered, isCanvasHovered]);
+    
+    // Draw vertical scroll indicator (for lanes)
+    if (totalLanesHeight > viewportHeight) {
+      const vScrollBarWidth = 8;
+      const vScrollBarX = width - vScrollBarWidth - 10;
+      const vScrollBarHeight = Math.max(50, (viewportHeight / totalLanesHeight) * viewportHeight);
+      const vScrollBarY = HEADER_HEIGHT + (scrollY / (totalLanesHeight - viewportHeight)) * (viewportHeight - vScrollBarHeight);
+      
+      // Calculate opacity based on hover state
+      const opacity = isDraggingVerticalScrollBar ? 0.8 : 
+                     isVerticalScrollBarHovered ? 0.6 : 
+                     isCanvasHovered ? 0.2 : 0;
+      
+      if (opacity > 0) {
+        // Scroll track
+        ctx.fillStyle = `rgba(39, 39, 42, ${opacity})`;
+        ctx.fillRect(vScrollBarX, HEADER_HEIGHT, vScrollBarWidth, viewportHeight);
+        
+        // Scroll thumb
+        const thumbColor = isDraggingVerticalScrollBar ? '113, 113, 122' : '82, 82, 91';
+        ctx.fillStyle = `rgba(${thumbColor}, ${opacity})`;
+        ctx.fillRect(vScrollBarX, vScrollBarY, vScrollBarWidth, vScrollBarHeight);
+      }
+      
+      // Store vertical scroll bar dimensions for hit testing
+      if (!canvasRef.current) return;
+      (canvasRef.current as any)._verticalScrollBarBounds = {
+        x: vScrollBarX,
+        y: vScrollBarY,
+        width: vScrollBarWidth,
+        height: vScrollBarHeight
+      };
+    } else {
+      // Clear vertical scroll bar bounds if no scroll bar
+      if (canvasRef.current) {
+        (canvasRef.current as any)._verticalScrollBarBounds = null;
+      }
+    }
+  }, [tape, pointer, laneCount, scrollX, scrollY, width, height, PADDING, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, hoveredIndex, hoveredColumn, hoveredLane, getAnimatedOpacity, isDraggingScrollBar, isScrollBarHovered, isCanvasHovered, isDraggingVerticalScrollBar, isVerticalScrollBarHovered]);
   
   // Animation loop
   useEffect(() => {
@@ -574,21 +623,37 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
   // Handle mouse wheel scrolling
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaX || e.deltaY;
-    const newScroll = scrollX + delta;
     
-    let maxScroll: number;
     if (viewMode === 'lane' && laneCount > 1) {
-      const columnsCount = Math.ceil(tape.length / laneCount);
-      const COLUMN_OFFSET = 8; // Same offset as in drawLaneView
-      const laneViewWidth = PADDING + COLUMN_OFFSET + columnsCount * (CELL_WIDTH + CELL_GAP) + PADDING;
-      maxScroll = Math.max(0, laneViewWidth - width);
+      const deltaX = e.deltaX;
+      const deltaY = e.deltaY;
+      
+      // Handle horizontal scrolling
+      if (Math.abs(deltaX) > Math.abs(deltaY) || e.shiftKey) {
+        const delta = e.shiftKey ? deltaY : deltaX;
+        const newScrollX = scrollX + delta;
+        const columnsCount = Math.ceil(tape.length / laneCount);
+        const COLUMN_OFFSET = 8;
+        const laneViewWidth = PADDING + COLUMN_OFFSET + columnsCount * (CELL_WIDTH + CELL_GAP) + PADDING;
+        const maxScrollX = Math.max(0, laneViewWidth - width);
+        setScrollX(Math.max(0, Math.min(newScrollX, maxScrollX)));
+      } else {
+        // Handle vertical scrolling
+        const newScrollY = scrollY + deltaY;
+        const HEADER_HEIGHT = 25;
+        const totalLanesHeight = laneCount * (CELL_HEIGHT + 4);
+        const viewportHeight = height - HEADER_HEIGHT - 20;
+        const maxScrollY = Math.max(0, totalLanesHeight - viewportHeight);
+        setScrollY(Math.max(0, Math.min(newScrollY, maxScrollY)));
+      }
     } else {
-      maxScroll = Math.max(0, totalWidth - width);
+      // Normal/compact view - only horizontal scrolling
+      const delta = e.deltaX || e.deltaY;
+      const newScroll = scrollX + delta;
+      const maxScroll = Math.max(0, totalWidth - width);
+      setScrollX(Math.max(0, Math.min(newScroll, maxScroll)));
     }
-    
-    setScrollX(Math.max(0, Math.min(newScroll, maxScroll)));
-  }, [scrollX, totalWidth, width, viewMode, laneCount, tape.length, CELL_WIDTH, CELL_GAP, PADDING]);
+  }, [scrollX, scrollY, totalWidth, width, height, viewMode, laneCount, tape.length, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, PADDING]);
   
   // Handle mouse move for hover
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -598,7 +663,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     
-    // Check if hovering over scroll bar
+    // Check if hovering over horizontal scroll bar
     const scrollBarBounds = canvasRef.current ? (canvasRef.current as any)._scrollBarBounds : null;
     if (scrollBarBounds) {
       const { x, y, width, height } = scrollBarBounds;
@@ -606,6 +671,16 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       setIsScrollBarHovered(isOverScrollBar);
     } else {
       setIsScrollBarHovered(false);
+    }
+    
+    // Check if hovering over vertical scroll bar
+    const verticalScrollBarBounds = canvasRef.current ? (canvasRef.current as any)._verticalScrollBarBounds : null;
+    if (verticalScrollBarBounds) {
+      const { x, y, width, height } = verticalScrollBarBounds;
+      const isOverVerticalScrollBar = mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
+      setIsVerticalScrollBarHovered(isOverVerticalScrollBar);
+    } else {
+      setIsVerticalScrollBarHovered(false);
     }
     
     if (viewMode === 'lane' && laneCount > 1) {
@@ -619,7 +694,8 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       
       const COLUMN_OFFSET = 8; // Same offset as in drawLaneView
       const scrolledX = mouseX - PADDING - COLUMN_OFFSET + scrollX;
-      const relativeY = mouseY - 30;
+      const HEADER_HEIGHT = 25;
+      const relativeY = mouseY - HEADER_HEIGHT - 5 + scrollY;
       
       // Simple calculation - each cell owns its space plus gap
       const col = Math.floor(scrolledX / (CELL_WIDTH + CELL_GAP));
@@ -661,7 +737,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     setHoveredIndex(null);
     setHoveredColumn(null);
     setHoveredLane(null);
-  }, [scrollX, tape.length, viewMode, laneCount, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, PADDING]);
+  }, [scrollX, scrollY, tape.length, viewMode, laneCount, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, PADDING]);
   
   const handleMouseLeave = useCallback(() => {
     setHoveredIndex(null);
@@ -669,6 +745,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     setHoveredLane(null);
     setIsCanvasHovered(false);
     setIsScrollBarHovered(false);
+    setIsVerticalScrollBarHovered(false);
   }, []);
   
   const handleMouseEnter = useCallback(() => {
@@ -683,7 +760,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     
-    // Check if mouse is on scroll bar
+    // Check if mouse is on horizontal scroll bar
     const scrollBarBounds = (canvasRef.current as any)._scrollBarBounds;
     if (scrollBarBounds) {
       const { x, y, width, height } = scrollBarBounds;
@@ -691,47 +768,79 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         setIsDraggingScrollBar(true);
         setScrollBarDragStart({ mouseX: e.clientX, scrollX });
         e.preventDefault();
+        return;
       }
     }
-  }, [scrollX]);
+    
+    // Check if mouse is on vertical scroll bar
+    const verticalScrollBarBounds = (canvasRef.current as any)._verticalScrollBarBounds;
+    if (verticalScrollBarBounds) {
+      const { x, y, width, height } = verticalScrollBarBounds;
+      if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+        setIsDraggingVerticalScrollBar(true);
+        setVerticalScrollBarDragStart({ mouseY: e.clientY, scrollY });
+        e.preventDefault();
+      }
+    }
+  }, [scrollX, scrollY]);
   
   // Handle mouse move for scroll bar dragging
   const handleMouseMoveGlobal = useCallback((e: MouseEvent) => {
-    if (!isDraggingScrollBar || !scrollBarDragStart) return;
-    
-    const deltaX = e.clientX - scrollBarDragStart.mouseX;
-    
-    // Calculate max scroll based on view mode
-    let maxScroll: number;
-    let totalVirtualWidth: number;
-    
-    if (viewMode === 'lane' && laneCount > 1) {
-      const columnsCount = Math.ceil(tape.length / laneCount);
-      const COLUMN_OFFSET = 8; // Same offset as in drawLaneView
-      totalVirtualWidth = PADDING + COLUMN_OFFSET + columnsCount * (CELL_WIDTH + CELL_GAP) + PADDING;
-      maxScroll = Math.max(0, totalVirtualWidth - width);
-    } else {
-      totalVirtualWidth = totalWidth;
-      maxScroll = Math.max(0, totalWidth - width);
+    // Handle horizontal scroll bar dragging
+    if (isDraggingScrollBar && scrollBarDragStart) {
+      const deltaX = e.clientX - scrollBarDragStart.mouseX;
+      
+      // Calculate max scroll based on view mode
+      let maxScroll: number;
+      let totalVirtualWidth: number;
+      
+      if (viewMode === 'lane' && laneCount > 1) {
+        const columnsCount = Math.ceil(tape.length / laneCount);
+        const COLUMN_OFFSET = 8; // Same offset as in drawLaneView
+        totalVirtualWidth = PADDING + COLUMN_OFFSET + columnsCount * (CELL_WIDTH + CELL_GAP) + PADDING;
+        maxScroll = Math.max(0, totalVirtualWidth - width);
+      } else {
+        totalVirtualWidth = totalWidth;
+        maxScroll = Math.max(0, totalWidth - width);
+      }
+      
+      // Calculate new scroll position
+      const scrollRatio = deltaX / width;
+      const scrollDelta = scrollRatio * totalVirtualWidth;
+      const newScroll = scrollBarDragStart.scrollX + scrollDelta;
+      
+      setScrollX(Math.max(0, Math.min(newScroll, maxScroll)));
     }
     
-    // Calculate new scroll position
-    const scrollRatio = deltaX / width;
-    const scrollDelta = scrollRatio * totalVirtualWidth;
-    const newScroll = scrollBarDragStart.scrollX + scrollDelta;
-    
-    setScrollX(Math.max(0, Math.min(newScroll, maxScroll)));
-  }, [isDraggingScrollBar, scrollBarDragStart, width, totalWidth, viewMode, laneCount, tape.length, CELL_WIDTH, CELL_GAP, PADDING]);
+    // Handle vertical scroll bar dragging
+    if (isDraggingVerticalScrollBar && verticalScrollBarDragStart) {
+      const deltaY = e.clientY - verticalScrollBarDragStart.mouseY;
+      
+      const HEADER_HEIGHT = 25;
+      const totalLanesHeight = laneCount * (CELL_HEIGHT + 4);
+      const viewportHeight = height - HEADER_HEIGHT - 20;
+      const maxScrollY = Math.max(0, totalLanesHeight - viewportHeight);
+      
+      // Calculate new scroll position
+      const scrollRatio = deltaY / viewportHeight;
+      const scrollDelta = scrollRatio * totalLanesHeight;
+      const newScrollY = verticalScrollBarDragStart.scrollY + scrollDelta;
+      
+      setScrollY(Math.max(0, Math.min(newScrollY, maxScrollY)));
+    }
+  }, [isDraggingScrollBar, scrollBarDragStart, isDraggingVerticalScrollBar, verticalScrollBarDragStart, width, height, totalWidth, viewMode, laneCount, tape.length, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, PADDING]);
   
   // Handle mouse up for scroll bar dragging
   const handleMouseUpGlobal = useCallback(() => {
     setIsDraggingScrollBar(false);
     setScrollBarDragStart(null);
+    setIsDraggingVerticalScrollBar(false);
+    setVerticalScrollBarDragStart(null);
   }, []);
   
   // Add global mouse event listeners for dragging
   useEffect(() => {
-    if (isDraggingScrollBar) {
+    if (isDraggingScrollBar || isDraggingVerticalScrollBar) {
       window.addEventListener('mousemove', handleMouseMoveGlobal);
       window.addEventListener('mouseup', handleMouseUpGlobal);
       
@@ -740,7 +849,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         window.removeEventListener('mouseup', handleMouseUpGlobal);
       };
     }
-  }, [isDraggingScrollBar, handleMouseMoveGlobal, handleMouseUpGlobal]);
+  }, [isDraggingScrollBar, isDraggingVerticalScrollBar, handleMouseMoveGlobal, handleMouseUpGlobal]);
   
   // Handle scroll-to events from parent component
   useEffect(() => {
@@ -788,7 +897,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDown}
-      style={{ cursor: isDraggingScrollBar ? 'grabbing' : 'pointer' }}
+      style={{ cursor: isDraggingScrollBar || isDraggingVerticalScrollBar ? 'grabbing' : 'pointer' }}
     />
   );
 }
