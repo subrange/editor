@@ -163,15 +163,15 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       // Cell background with animated opacity
       if (isPointer) {
         ctx.fillStyle = `rgba(234, 179, 8, ${0.1 * opacity})`; // yellow-500
-        ctx.strokeStyle = `rgba(234, 179, 8, ${opacity})`;
+        ctx.strokeStyle = `rgba(234, 179, 8, ${0.5 * opacity})`;
         ctx.lineWidth = 2;
       } else if (value !== 0) {
         ctx.fillStyle = `rgba(59, 130, 246, ${0.1 * opacity})`; // blue-500
-        ctx.strokeStyle = `rgba(59, 130, 246, ${0.5 * opacity})`;
+        ctx.strokeStyle = `rgba(59, 130, 246, ${0.3 * opacity})`;
         ctx.lineWidth = 1;
       } else {
         ctx.fillStyle = `rgba(63, 63, 70, ${0.5 * opacity})`; // zinc-700
-        ctx.strokeStyle = `rgba(63, 63, 70, ${opacity})`;
+        ctx.strokeStyle = `rgba(63, 63, 70, ${0.4 * opacity})`;
         ctx.lineWidth = 1;
       }
       
@@ -183,7 +183,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       
       // Draw hover effect
       if (isHovered && !isPointer) {
-        ctx.strokeStyle = '#a1a1aa'; // zinc-400
+        ctx.strokeStyle = 'rgba(161, 161, 170, 0.6)'; // zinc-400 with reduced opacity
         ctx.lineWidth = 2;
         ctx.stroke();
       }
@@ -332,7 +332,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         // Cell background with animated opacity
         if (isPointer) {
           ctx.fillStyle = `rgba(234, 179, 8, ${0.2 * opacity})`;
-          ctx.strokeStyle = `rgba(234, 179, 8, ${opacity})`;
+          ctx.strokeStyle = `rgba(234, 179, 8, ${0.5 * opacity})`;
           ctx.lineWidth = 2;
         } else {
           // Parse the lane color and apply opacity
@@ -350,7 +350,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
             const rDec = parseInt(r, 16);
             const gDec = parseInt(g, 16);
             const bDec = parseInt(b, 16);
-            ctx.strokeStyle = `rgba(${rDec}, ${gDec}, ${bDec}, ${opacity})`;
+            ctx.strokeStyle = `rgba(${rDec}, ${gDec}, ${bDec}, ${0.4 * opacity})`;
           } else {
             ctx.strokeStyle = laneColor.stroke;
           }
@@ -364,7 +364,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         
         // Draw hover effect
         if (isHovered && !isPointer) {
-          ctx.strokeStyle = '#e4e4e7'; // zinc-200
+          ctx.strokeStyle = 'rgba(228, 228, 231, 0.5)'; // zinc-200 with reduced opacity
           ctx.lineWidth = 2;
           ctx.stroke();
         }
@@ -538,17 +538,17 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       }
       
       const scrolledX = mouseX - PADDING + scrollX;
-      const col = Math.floor(scrolledX / (CELL_WIDTH + CELL_GAP));
-      const lane = Math.floor((mouseY - 30) / (CELL_HEIGHT + 4));
+      const relativeY = mouseY - 30;
       
-      if (col >= 0 && lane >= 0 && lane < laneCount) {
-        const index = col * laneCount + lane;
-        if (index < tape.length) {
-          const cellStartX = col * (CELL_WIDTH + CELL_GAP);
-          const cellStartY = 30 + lane * (CELL_HEIGHT + 4);
-          
-          if (scrolledX >= cellStartX && scrolledX <= cellStartX + CELL_WIDTH &&
-              mouseY >= cellStartY && mouseY <= cellStartY + CELL_HEIGHT) {
+      // Simple calculation - each cell owns its space plus gap
+      const col = Math.floor(scrolledX / (CELL_WIDTH + CELL_GAP));
+      const lane = Math.floor(relativeY / (CELL_HEIGHT + 4));
+      
+      if (col >= 0 && lane >= 0 && lane < laneCount && relativeY >= 0) {
+        const columnsCount = Math.ceil(tape.length / laneCount);
+        if (col < columnsCount) {
+          const index = col * laneCount + lane;
+          if (index < tape.length) {
             setHoveredIndex(index);
             setHoveredColumn(col);
             setHoveredLane(lane);
@@ -565,13 +565,14 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
       const cellX = x - PADDING;
       
       if (cellX >= 0) {
-        const index = Math.floor(cellX / (CELL_WIDTH + CELL_GAP));
+        // Calculate which cell we're hovering over by dividing the position
+        // Each cell "owns" the space from its start to the start of the next cell
+        const totalCellWidth = CELL_WIDTH + CELL_GAP;
+        const index = Math.floor(cellX / totalCellWidth);
+        
         if (index >= 0 && index < tape.length) {
-          const cellStartX = index * (CELL_WIDTH + CELL_GAP);
-          if (cellX >= cellStartX && cellX <= cellStartX + CELL_WIDTH) {
-            setHoveredIndex(index);
-            return;
-          }
+          setHoveredIndex(index);
+          return;
         }
       }
     }
