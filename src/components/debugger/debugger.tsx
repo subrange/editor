@@ -5,8 +5,9 @@ import {useRef, useEffect, useState} from 'react';
 import clsx from "clsx";
 import {settingsStore} from "../../stores/settings.store.ts";
 import {IconButton} from "../ui/icon-button.tsx";
-import {Bars3Icon, Bars2Icon, ViewColumnsIcon} from '@heroicons/react/24/solid';
+import {Bars3Icon, Bars2Icon, ViewColumnsIcon, Square2StackIcon} from '@heroicons/react/24/solid';
 import {MacroContextPanel} from "./macro-context-panel.tsx";
+import {DebuggerV2} from "./debugger-v2.tsx";
 
 // Lane color palette - 10 distinct colors that work with dark theme
 const LANE_COLORS = [
@@ -131,6 +132,12 @@ function LaneTapeView({ tape, pointer, laneCount, cellInfo }: {
                             label="Lane View"
                             onClick={() => settingsStore.setDebuggerViewMode('lane')}
                             variant={'info'}
+                        />
+                        <IconButton
+                            icon={Square2StackIcon}
+                            label="Canvas View"
+                            onClick={() => settingsStore.setUseCanvasRenderer(true)}
+                            variant={'default'}
                         />
                     </div>
                     <button
@@ -437,6 +444,12 @@ function Tape() {
                             variant={viewMode === 'lane' ? 'info' : 'default'}
                             disabled={laneCount === 1}
                         />
+                        <IconButton
+                            icon={Square2StackIcon}
+                            label="Canvas View"
+                            onClick={() => settingsStore.setUseCanvasRenderer(true)}
+                            variant={'default'}
+                        />
                     </div>
                     <button
                         onClick={() => virtualizer.scrollToIndex(0)}
@@ -475,6 +488,13 @@ function Tape() {
                         position: 'relative',
                     }}
                 >
+                    <div
+                        style={{
+                            position: 'relative',
+                            width: '100%',
+                            height: '100%',
+                        }}
+                    >
                     {virtualizer.getVirtualItems().map((virtualItem) => {
                         const index = virtualItem.index;
                         const value = tape[index];
@@ -609,6 +629,7 @@ function Tape() {
                             </div>
                         );
                     })}
+                    </div>
                 </div>
             </div>
 
@@ -629,6 +650,15 @@ function Tape() {
 }
 
 export function Debugger() {
+    const settings = useStoreSubscribe(settingsStore.settings);
+    const useCanvas = settings?.debugger.useCanvasRenderer ?? false;
+    
+    if (useCanvas) {
+        return  <div className="flex flex-col h-full w-full">
+        <DebuggerV2 />
+        </div>
+    }
+    
     return (
         <div className="flex flex-col h-full">
             <Tape/>

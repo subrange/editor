@@ -38,7 +38,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
   // Get item size - it's constant for all items
   const itemSize = useMemo(() => estimateSize(), [estimateSize]);
 
-  // Calculate total size - no capping, let CSS handle overflow
+  // Calculate total size
   const totalSize = useMemo(() => {
     return paddingStart + (count * itemSize) + paddingEnd;
   }, [count, itemSize, paddingStart, paddingEnd]);
@@ -164,7 +164,12 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
   // Memoize the return object
   return useMemo(() => ({
     getVirtualItems,
-    getTotalSize: () => totalSize,
+    getTotalSize: () => {
+      // Cap at a safe value to prevent browser issues
+      // 8,999,999 is safely under 1e7 (10,000,000)
+      const MAX_SAFE_CSS_SIZE = 8999999;
+      return Math.min(totalSize, MAX_SAFE_CSS_SIZE);
+    },
     scrollToIndex,
   }), [getVirtualItems, totalSize, scrollToIndex]);
 }
