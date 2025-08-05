@@ -611,6 +611,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
     const focused = useStoreSubscribe(store.focused);
     const [editorContainerWidth, setEditorContainerWidth] = useState(0);
     const [editorScrollLeft, setEditorScrollLeft] = useState(0);
+    const [macroErrors, setMacroErrors] = useState<MacroExpansionError[]>([]);
     
     // Extract navigation items from content
     const extractNavigationItems = useCallback((lines: Line[]): NavigationItem[] => {
@@ -689,6 +690,10 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 // Update navigation items when macros change
                 const navItems = extractNavigationItems(store.editorState.value.lines);
                 store.quickNavStore.setItems(navItems);
+                
+                // Update errors
+                const errors = tokenizer.state?.expanderErrors || [];
+                setMacroErrors(errors);
             });
             return unsubscribe;
         }
@@ -771,7 +776,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
     }
 
     return (
-        <div className="flex overflow-hidden grow-1 ">
+        <div className="flex overflow-hidden grow-1 relative">
             <SearchBar
                 searchStore={store.searchStore}
                 editorStore={store}
@@ -820,6 +825,27 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                     }, 0);
                 }}
             />
+            {store.getId() === 'macro' && macroErrors.length > 0 && (
+                <div 
+                    className="absolute top-2 right-2 bg-red-900 text-red-200 px-3 py-1 rounded-md flex items-center gap-2 cursor-pointer z-50 hover:bg-red-800 shadow-lg"
+                    onClick={() => {
+                        // Jump to the first error with a location
+                        const firstError = macroErrors.find(e => e.location);
+                        if (firstError?.location) {
+                            store.isNavigating.next(true);
+                            store.setCursorPosition({
+                                line: firstError.location.line,
+                                column: firstError.location.column
+                            });
+                        }
+                    }}
+                >
+                    <span className="text-sm font-medium">
+                        {macroErrors.length} {macroErrors.length === 1 ? 'error' : 'errors'}
+                    </span>
+                    <span className="text-xs opacity-75">Click to jump</span>
+                </div>
+            )}
             <div
                 ref={editorRef}
                 className={clsx(
