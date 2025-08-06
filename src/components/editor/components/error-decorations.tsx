@@ -29,6 +29,8 @@ export function ErrorDecorations({ store, errors }: ErrorDecorationsProps) {
     if (locatedErrors.length === 0) {
         return null;
     }
+
+    console.log("ERRORZ", locatedErrors)
     
     return (
         <div 

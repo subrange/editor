@@ -256,11 +256,16 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                         // Jump to the first error with a location
                         const firstError = macroErrors.find(e => e.location);
                         if (firstError?.location) {
-                            store.isNavigating.next(true);
-                            store.setCursorPosition({
-                                line: firstError.location.line,
-                                column: firstError.location.column
-                            });
+                            // Focus the editor first
+                            editorRef.current?.focus();
+                            // Then navigate after a small delay to ensure focus is established
+                            setTimeout(() => {
+                                store.isNavigating.next(true);
+                                store.setCursorPosition({
+                                    line: firstError.location.line,
+                                    column: firstError.location.column
+                                });
+                            }, 0);
                         }
                     }}
                 >
