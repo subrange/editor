@@ -17,6 +17,7 @@ interface VirtualizedLineProps {
     showDebug: boolean;
     onTokenClick?: (e: React.MouseEvent, token: any) => void;
     isMetaKeyHeld?: boolean;
+    isShiftKeyHeld?: boolean;
     editorWidth: number;  // Width of the editor viewport
     editorScrollLeft?: number;  // Horizontal scroll position of the editor
 }
@@ -33,6 +34,7 @@ export function VirtualizedLine({
     showDebug,
     onTokenClick,
     isMetaKeyHeld,
+    isShiftKeyHeld,
     editorWidth,
     editorScrollLeft = 0
 }: VirtualizedLineProps) {
@@ -89,7 +91,9 @@ export function VirtualizedLine({
                         <span
                             key={tokenIndex}
                             className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
+                                'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
+                                    'cursor-pointer hover:bg-zinc-800 hover:px-1 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
+                                'cursor-pointer hover:bg-zinc-800 hover:px-1 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                             })}
                             onClick={(e) => onTokenClick?.(e, token)}
                         >
@@ -129,7 +133,8 @@ export function VirtualizedLine({
                             <span
                                 key={tokenIndex}
                                 className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                    'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
+                                    'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
+                                    'cursor-pointer hover:bg-zinc-800 hover:px-1 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                                 })}
                                 style={{
                                     position: 'absolute',
@@ -195,7 +200,8 @@ export function VirtualizedLine({
                             <span
                                 key={tokenIndex}
                                 className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                    'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
+                                    'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
+                                    'cursor-pointer hover:bg-zinc-800 hover:px-1 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                                 })}
                                 style={{
                                     position: 'absolute',

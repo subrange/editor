@@ -15,6 +15,7 @@ import {Selection} from "./selection.tsx";
 import {Cursor} from "./cursor.tsx";
 import {DebugMarker} from "./debug-marker.tsx";
 import {MacroUsagesModal, type MacroUsage} from "./macro-usages-modal.tsx";
+import {MacroRenameModal} from "./macro-rename-modal.tsx";
 
 interface LinesPanelProps {
     store: EditorStore;
@@ -44,10 +45,15 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
     const isDraggingRef = useRef(false);
     const dragStartedRef = useRef(false);
     const [isMetaKeyHeld, setIsMetaKeyHeld] = useState(false);
+    const [isShiftKeyHeld, setIsShiftKeyHeld] = useState(false);
     const [macroExpansionVersion, setMacroExpansionVersion] = useState(0);
     const [macroUsagesModal, setMacroUsagesModal] = useState<{
         macroName: string;
         usages: MacroUsage[];
+    } | null>(null);
+    const [macroRenameModal, setMacroRenameModal] = useState<{
+        macroName: string;
+        position: Position;
     } | null>(null);
 
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
@@ -126,18 +132,113 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
         return usages;
     };
 
+    // Function to rename a macro throughout the file
+    const renameMacro = (oldName: string, newName: string) => {
+        // Find all occurrences to replace
+        const replacements: Array<{line: number, start: number, end: number}> = [];
+        
+        // Find macro definition by looking for macro_name tokens
+        tokenizedLines.forEach((tokens, lineIndex) => {
+            tokens.forEach((token) => {
+                if (token.type === 'macro_name' && token.value === oldName) {
+                    // This is the macro name in the definition
+                    replacements.push({
+                        line: lineIndex,
+                        start: token.start,
+                        end: token.end
+                    });
+                }
+            });
+        });
+        
+        // Find all invocations
+        tokenizedLines.forEach((tokens, lineIndex) => {
+            tokens.forEach((token) => {
+                if (token.type === 'macro_invocation') {
+                    const tokenMacroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+                    if (tokenMacroName === oldName) {
+                        // Replace just the name part after @
+                        replacements.push({
+                            line: lineIndex,
+                            start: token.start + 1, // Skip the @
+                            end: token.start + 1 + oldName.length
+                        });
+                    }
+                }
+            });
+        });
+        
+        // Sort replacements by line (descending) then by column (descending)
+        // This ensures we replace from bottom to top, right to left
+        replacements.sort((a, b) => {
+            if (a.line !== b.line) return b.line - a.line;
+            return b.start - a.start;
+        });
+        
+        // Perform all replacements
+        replacements.forEach(({line, start, end}) => {
+            store.replaceRange(
+                {line, column: start},
+                {line, column: end},
+                newName
+            );
+        });
+    };
 
-    // Track cmd/ctrl key state
+
+    // Track cmd/ctrl key state and handle F2 for rename
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.metaKey || e.ctrlKey) {
                 setIsMetaKeyHeld(true);
+            }
+            if (e.shiftKey) {
+                setIsShiftKeyHeld(true);
+            }
+            
+            // Handle F2 for rename
+            if (e.key === 'F2' && isProgressiveMacro) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Get current cursor position
+                const cursorPos = store.editorState.value.selection.focus;
+                const line = lines[cursorPos.line];
+                if (!line) return;
+                
+                // Get token at cursor position
+                const tokens = tokenizedLines[cursorPos.line] || [];
+                const tokenAtCursor = tokens.find(token => 
+                    token.start <= cursorPos.column && token.end > cursorPos.column
+                );
+                
+                if (tokenAtCursor) {
+                    if (tokenAtCursor.type === 'macro_invocation') {
+                        // Extract macro name from invocation
+                        const macroName = tokenAtCursor.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+                        if (macroName) {
+                            setMacroRenameModal({
+                                macroName,
+                                position: cursorPos
+                            });
+                        }
+                    } else if (tokenAtCursor.type === 'macro_name') {
+                        // Direct macro name in definition
+                        setMacroRenameModal({
+                            macroName: tokenAtCursor.value,
+                            position: cursorPos
+                        });
+                    }
+                }
             }
         };
 
         const handleKeyUp = (e: KeyboardEvent) => {
             if (!e.metaKey && !e.ctrlKey) {
                 setIsMetaKeyHeld(false);
+            }
+            if (!e.shiftKey) {
+                setIsShiftKeyHeld(false);
             }
         };
 
@@ -148,7 +249,7 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
         };
-    }, []);
+    }, [isProgressiveMacro, lines, tokenizedLines, store]);
 
     // Helper to convert mouse position to text position
     const getPositionFromMouse = (e: React.MouseEvent) => {
@@ -258,7 +359,33 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
     };
 
     const handleTokenClick = (e: React.MouseEvent, token: MacroToken) => {
-        if (!(e.metaKey || e.ctrlKey) || !isProgressiveMacro) {
+        if (!isProgressiveMacro) {
+            return;
+        }
+
+        // Handle Shift+Click for rename
+        if (e.shiftKey && (token.type === 'macro_invocation' || token.type === 'macro_name')) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            let macroName: string | undefined;
+            if (token.type === 'macro_invocation') {
+                macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+            } else {
+                macroName = token.value;
+            }
+            
+            if (macroName) {
+                setMacroRenameModal({
+                    macroName,
+                    position: {line: 0, column: 0} // Position not used currently
+                });
+            }
+            return;
+        }
+
+        // Handle Cmd/Ctrl+Click for navigation
+        if (!(e.metaKey || e.ctrlKey)) {
             return;
         }
 
@@ -332,6 +459,7 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
                 showDebug={store.showDebug}
                 onTokenClick={handleTokenClick}
                 isMetaKeyHeld={isMetaKeyHeld}
+                isShiftKeyHeld={isShiftKeyHeld}
                 editorWidth={editorWidth || 1000}
                 editorScrollLeft={scrollLeft}
             />
@@ -418,6 +546,28 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
                         }, 0);
                     }, 0);
                 }}
+            />
+        )}
+        {macroRenameModal && (
+            <MacroRenameModal
+                isOpen={true}
+                currentName={macroRenameModal.macroName}
+                onClose={() => {
+                    setMacroRenameModal(null);
+                    // Focus the editor when modal is closed
+                    setTimeout(() => {
+                        editorRef.current?.focus();
+                    }, 0);
+                }}
+                onRename={(newName) => {
+                    renameMacro(macroRenameModal.macroName, newName);
+                    setMacroRenameModal(null);
+                    // Focus the editor after rename
+                    setTimeout(() => {
+                        editorRef.current?.focus();
+                    }, 0);
+                }}
+                existingMacroNames={availableMacros.map(m => m.name)}
             />
         )}
     </div>;
