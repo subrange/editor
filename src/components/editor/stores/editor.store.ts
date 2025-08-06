@@ -745,12 +745,8 @@ export class EditorStore {
 
                     this.editorState.next(this.undoRedo.execute(command, currentState));
                 } else if (char === "Tab") {
-                    const command: CommandData = {
-                        type: "insert",
-                        position: selection.focus,
-                        text: "  " // 2 spaces for tab
-                    };
-                    this.editorState.next(this.undoRedo.execute(command, currentState));
+                    // Check if shift is held for shift+tab
+                    this.handleTab(event.shiftKey);
                 }
             } else if (currentState.mode === "command") {
                 console.log(`Command mode input: ${event.key}`);
@@ -1698,6 +1694,161 @@ export class EditorStore {
             };
             
             this.editorState.next(restoredState);
+        }
+    }
+    
+    public handleTab(isShiftTab: boolean) {
+        const currentState = this.editorState.getValue();
+        const selection = currentState.selection;
+        
+        if (isSelectionCollapsed(selection)) {
+            // No selection - just insert spaces at cursor
+            if (!isShiftTab) {
+                const command: CommandData = {
+                    type: "insert",
+                    position: selection.focus,
+                    text: "  " // 2 spaces for tab
+                };
+                this.editorState.next(this.undoRedo.execute(command, currentState));
+            } else {
+                // For shift+tab with no selection, remove up to 2 spaces before cursor
+                const line = currentState.lines[selection.focus.line];
+                const textBefore = line.text.slice(0, selection.focus.column);
+                
+                // Count spaces to remove (up to 2)
+                let spacesToRemove = 0;
+                for (let i = textBefore.length - 1; i >= Math.max(0, textBefore.length - 2); i--) {
+                    if (textBefore[i] === ' ') {
+                        spacesToRemove++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (spacesToRemove > 0) {
+                    const range: Range = {
+                        start: {
+                            line: selection.focus.line,
+                            column: selection.focus.column - spacesToRemove
+                        },
+                        end: selection.focus
+                    };
+                    const deletedText = CommandExecutor.extractText(range, currentState);
+                    
+                    const command: CommandData = {
+                        type: "delete",
+                        range,
+                        deletedText
+                    };
+                    this.editorState.next(this.undoRedo.execute(command, currentState));
+                }
+            }
+        } else {
+            // Selection exists - indent/outdent all lines in selection
+            const range = selectionToRange(selection);
+            const startLine = range.start.line;
+            const endLine = range.end.line;
+            
+            const commands: CommandData[] = [];
+            
+            for (let lineIdx = startLine; lineIdx <= endLine; lineIdx++) {
+                const line = currentState.lines[lineIdx];
+                if (!line) continue;
+                
+                if (!isShiftTab) {
+                    // Add 2 spaces at beginning of line
+                    commands.push({
+                        type: "insert",
+                        position: { line: lineIdx, column: 0 },
+                        text: "  "
+                    });
+                } else {
+                    // Remove up to 2 spaces from beginning of line
+                    let spacesToRemove = 0;
+                    for (let i = 0; i < Math.min(2, line.text.length); i++) {
+                        if (line.text[i] === ' ') {
+                            spacesToRemove++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    if (spacesToRemove > 0) {
+                        const deleteRange: Range = {
+                            start: { line: lineIdx, column: 0 },
+                            end: { line: lineIdx, column: spacesToRemove }
+                        };
+                        const deletedText = line.text.slice(0, spacesToRemove);
+                        
+                        commands.push({
+                            type: "delete",
+                            range: deleteRange,
+                            deletedText
+                        });
+                    }
+                }
+            }
+            
+            if (commands.length > 0) {
+                const compositeCommand: CommandData = {
+                    type: "composite",
+                    commands
+                };
+                
+                // Execute the composite command
+                const newState = this.undoRedo.execute(compositeCommand, currentState);
+                
+                // Adjust selection to maintain the same lines selected
+                // Account for the indentation changes
+                let newAnchorColumn = selection.anchor.column;
+                let newFocusColumn = selection.focus.column;
+                
+                // Adjust columns based on the operation
+                if (selection.anchor.line >= startLine && selection.anchor.line <= endLine) {
+                    if (!isShiftTab) {
+                        newAnchorColumn += 2;
+                    } else {
+                        // Calculate how many spaces were actually removed from anchor line
+                        const anchorLine = currentState.lines[selection.anchor.line];
+                        let spacesRemoved = 0;
+                        for (let i = 0; i < Math.min(2, anchorLine.text.length); i++) {
+                            if (anchorLine.text[i] === ' ') {
+                                spacesRemoved++;
+                            } else {
+                                break;
+                            }
+                        }
+                        newAnchorColumn = Math.max(0, newAnchorColumn - spacesRemoved);
+                    }
+                }
+                
+                if (selection.focus.line >= startLine && selection.focus.line <= endLine) {
+                    if (!isShiftTab) {
+                        newFocusColumn += 2;
+                    } else {
+                        // Calculate how many spaces were actually removed from focus line
+                        const focusLine = currentState.lines[selection.focus.line];
+                        let spacesRemoved = 0;
+                        for (let i = 0; i < Math.min(2, focusLine.text.length); i++) {
+                            if (focusLine.text[i] === ' ') {
+                                spacesRemoved++;
+                            } else {
+                                break;
+                            }
+                        }
+                        newFocusColumn = Math.max(0, newFocusColumn - spacesRemoved);
+                    }
+                }
+                
+                // Update state with adjusted selection
+                this.editorState.next({
+                    ...newState,
+                    selection: {
+                        anchor: { line: selection.anchor.line, column: newAnchorColumn },
+                        focus: { line: selection.focus.line, column: newFocusColumn }
+                    }
+                });
+            }
         }
     }
 }

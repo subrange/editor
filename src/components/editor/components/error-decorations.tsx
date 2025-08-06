@@ -51,40 +51,52 @@ export function ErrorDecorations({ store, errors }: ErrorDecorationsProps) {
                 const y = error.location.line * CHAR_HEIGHT;
                 
                 return (
-                    <div key={index} className="relative group">
-                        {/* Wavy underline */}
-                        <svg
-                            className="absolute"
-                            style={{
-                                left: `${startX}px`,
-                                top: `${y + CHAR_HEIGHT - 4}px`,
-                                width: `${width}px`,
-                                height: "4px"
-                            }}
-                        >
-                            <path
-                                d={`M 0 2 Q 2 0 4 2 T 8 2 T 12 2 T 16 2 T 20 2 T 24 2 T 28 2 T 32 2 T 36 2 T 40 2 T 44 2 T 48 2 T 52 2 T 56 2 T 60 2 T 64 2 T 68 2 T 72 2 T 76 2 T 80 2 T 84 2 T 88 2 T 92 2 T 96 2 T 100 2 T 104 2 T 108 2 T 112 2 T 116 2 T 120 2`}
-                                stroke="rgb(239 68 68)"
-                                strokeWidth="2"
-                                fill="none"
-                                className="animate-pulse"
-                            />
-                        </svg>
-                        
-                        {/* Error tooltip on hover */}
+                    <div key={index} className="relative">
+                        {/* Invisible hover area that matches the error location */}
                         <div
-                            className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 pointer-events-auto"
+                            className="absolute group"
                             style={{
                                 left: `${startX}px`,
-                                top: `${y + CHAR_HEIGHT + 4}px`,
-                                minWidth: '200px'
+                                top: `${y}px`,
+                                width: `${width}px`,
+                                height: `${CHAR_HEIGHT}px`,
+                                pointerEvents: 'auto'
                             }}
                         >
-                            <div className="bg-zinc-900 border border-red-500 rounded p-2 text-xs text-red-400">
-                                <div className="font-bold mb-1 capitalize">
-                                    {error.type.replace(/_/g, ' ')}
+                            {/* Wavy underline */}
+                            <svg
+                                className="absolute pointer-events-none"
+                                style={{
+                                    left: 0,
+                                    top: `${CHAR_HEIGHT - 4}px`,
+                                    width: `${width}px`,
+                                    height: "4px"
+                                }}
+                            >
+                                <path
+                                    d={`M 0 2 Q 2 0 4 2 T 8 2 T 12 2 T 16 2 T 20 2 T 24 2 T 28 2 T 32 2 T 36 2 T 40 2 T 44 2 T 48 2 T 52 2 T 56 2 T 60 2 T 64 2 T 68 2 T 72 2 T 76 2 T 80 2 T 84 2 T 88 2 T 92 2 T 96 2 T 100 2 T 104 2 T 108 2 T 112 2 T 116 2 T 120 2`}
+                                    stroke="rgb(239 68 68)"
+                                    strokeWidth="2"
+                                    fill="none"
+                                    className="animate-pulse"
+                                />
+                            </svg>
+                            
+                            {/* Error tooltip on hover */}
+                            <div
+                                className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 pointer-events-none"
+                                style={{
+                                    left: 0,
+                                    top: `${CHAR_HEIGHT + 4}px`,
+                                    minWidth: '200px'
+                                }}
+                            >
+                                <div className="bg-zinc-900 border border-red-500 rounded p-2 text-xs text-red-400">
+                                    <div className="font-bold mb-1 capitalize">
+                                        {error.type.replace(/_/g, ' ')}
+                                    </div>
+                                    <div>{error.message}</div>
                                 </div>
-                                <div>{error.message}</div>
                             </div>
                         </div>
                     </div>
