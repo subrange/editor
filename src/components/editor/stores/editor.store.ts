@@ -1639,4 +1639,65 @@ export class EditorStore {
         this.cursorBlinkState.complete();
         this.focused.complete();
     }
+    
+    // Batch replace multiple ranges as a single undoable operation
+    public batchReplace(replacements: Array<{start: Position, end: Position, text: string}>) {
+        const currentState = this.editorState.getValue();
+        
+        // Sort replacements by position (bottom to top, right to left)
+        const sortedReplacements = [...replacements].sort((a, b) => {
+            if (a.start.line !== b.start.line) return b.start.line - a.start.line;
+            return b.start.column - a.start.column;
+        });
+        
+        // Create composite command
+        const commands: CommandData[] = [];
+        
+        for (const {start, end, text} of sortedReplacements) {
+            const range: Range = {start, end};
+            const deletedText = CommandExecutor.extractText(range, currentState);
+            
+            // Delete the old text
+            if (start.line !== end.line || start.column !== end.column) {
+                commands.push({
+                    type: "delete",
+                    range,
+                    deletedText
+                });
+            }
+            
+            // Insert the new text
+            if (text.length > 0) {
+                commands.push({
+                    type: "insert",
+                    position: start,
+                    text
+                });
+            }
+        }
+        
+        if (commands.length > 0) {
+            const compositeCommand: CommandData = {
+                type: "composite",
+                commands
+            };
+            
+            // Save current cursor position
+            const originalCursor = currentState.selection.focus;
+            
+            // Execute the composite command
+            const newState = this.undoRedo.execute(compositeCommand, currentState);
+            
+            // Restore cursor position
+            const restoredState = {
+                ...newState,
+                selection: {
+                    anchor: originalCursor,
+                    focus: originalCursor
+                }
+            };
+            
+            this.editorState.next(restoredState);
+        }
+    }
 }

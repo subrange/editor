@@ -16,6 +16,7 @@ import {Cursor} from "./cursor.tsx";
 import {DebugMarker} from "./debug-marker.tsx";
 import {MacroUsagesModal, type MacroUsage} from "./macro-usages-modal.tsx";
 import {MacroRenameModal} from "./macro-rename-modal.tsx";
+import {UnusedMacroHighlights} from "./unused-macro-highlights.tsx";
 
 interface LinesPanelProps {
     store: EditorStore;
@@ -107,6 +108,30 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isProgressiveMacro, tokenizer, macroExpansionVersion]); // macroExpansionVersion forces re-render when tokenizer state changes
 
+    // Find which macros are unused
+    const unusedMacros = useMemo(() => {
+        const unused = new Set<string>();
+        
+        // First, collect all macro names
+        availableMacros.forEach(macro => {
+            unused.add(macro.name);
+        });
+        
+        // Then remove any that are used
+        tokenizedLines.forEach((tokens) => {
+            tokens.forEach((token) => {
+                if (token.type === 'macro_invocation') {
+                    const macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+                    if (macroName) {
+                        unused.delete(macroName);
+                    }
+                }
+            });
+        });
+        
+        return unused;
+    }, [availableMacros, tokenizedLines]);
+    
     // Function to find all usages of a macro
     const findMacroUsages = (macroName: string): MacroUsage[] => {
         const usages: MacroUsage[] = [];
@@ -135,7 +160,7 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
     // Function to rename a macro throughout the file
     const renameMacro = (oldName: string, newName: string) => {
         // Find all occurrences to replace
-        const replacements: Array<{line: number, start: number, end: number}> = [];
+        const replacements: Array<{start: Position, end: Position, text: string}> = [];
         
         // Find macro definition by looking for macro_name tokens
         tokenizedLines.forEach((tokens, lineIndex) => {
@@ -143,9 +168,9 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
                 if (token.type === 'macro_name' && token.value === oldName) {
                     // This is the macro name in the definition
                     replacements.push({
-                        line: lineIndex,
-                        start: token.start,
-                        end: token.end
+                        start: {line: lineIndex, column: token.start},
+                        end: {line: lineIndex, column: token.end},
+                        text: newName
                     });
                 }
             });
@@ -159,30 +184,17 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
                     if (tokenMacroName === oldName) {
                         // Replace just the name part after @
                         replacements.push({
-                            line: lineIndex,
-                            start: token.start + 1, // Skip the @
-                            end: token.start + 1 + oldName.length
+                            start: {line: lineIndex, column: token.start + 1}, // Skip the @
+                            end: {line: lineIndex, column: token.start + 1 + oldName.length},
+                            text: newName
                         });
                     }
                 }
             });
         });
         
-        // Sort replacements by line (descending) then by column (descending)
-        // This ensures we replace from bottom to top, right to left
-        replacements.sort((a, b) => {
-            if (a.line !== b.line) return b.line - a.line;
-            return b.start - a.start;
-        });
-        
-        // Perform all replacements
-        replacements.forEach(({line, start, end}) => {
-            store.replaceRange(
-                {line, column: start},
-                {line, column: end},
-                newName
-            );
-        });
+        // Use the new batchReplace method for atomic undo/redo
+        store.batchReplace(replacements);
     };
 
 
@@ -499,11 +511,18 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
             <ErrorDecorations store={store} errors={errors}/>
         )}
         {isProgressiveMacro && (
-            <MacroAutocomplete
-                store={store}
-                macros={availableMacros}
-                charWidth={charWidth}
-            />
+            <>
+                <MacroAutocomplete
+                    store={store}
+                    macros={availableMacros}
+                    charWidth={charWidth}
+                />
+                <UnusedMacroHighlights
+                    unusedMacros={unusedMacros}
+                    tokenizedLines={tokenizedLines}
+                    charWidth={charWidth}
+                />
+            </>
         )}
         <Cursor store={store}/>
         {
