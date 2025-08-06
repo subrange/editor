@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useStoreSubscribe } from "../../../hooks/use-store-subscribe.tsx";
 import { QuickNavStore, type NavigationItem } from "../stores/quick-nav.store.ts";
 import { EditorStore } from "../stores/editor.store.ts";
+import { Modal, ModalFooter } from "../../common/modal.tsx";
 import clsx from "clsx";
 
 interface QuickNavProps {
@@ -40,11 +41,6 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate, onHide }: Qui
 
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
-        case "Escape":
-          e.preventDefault();
-          quickNavStore.hide();
-          onHide?.();
-          break;
         case "Enter":
           e.preventDefault();
           const selectedItem = quickNavStore.getSelectedItem();
@@ -76,10 +72,6 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate, onHide }: Qui
     return () => document.removeEventListener("keydown", handleKeyDown, true);
   }, [state.isVisible, quickNavStore, editorStore, onNavigate, onHide]);
 
-  if (!state.isVisible) {
-    return null;
-  }
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     quickNavStore.setQuery(e.target.value);
   };
@@ -98,28 +90,16 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate, onHide }: Qui
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-start justify-center pt-24"
-      onKeyDown={(e) => {
-        // Prevent browser shortcuts while QuickNav is open
-        if (e.metaKey || e.ctrlKey) {
-          e.preventDefault();
-        }
+    <Modal
+      isOpen={state.isVisible}
+      onClose={() => {
+        quickNavStore.hide();
+        onHide?.();
       }}
+      position="top"
+      width="w-[600px]"
+      maxHeight="max-h-[400px]"
     >
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/30"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          quickNavStore.hide();
-          onHide?.();
-        }}
-      />
-      
-      {/* Modal */}
-      <div className="relative bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl w-[600px] max-h-[400px] flex flex-col">
         {/* Search Input */}
         <div className="p-3 border-b border-zinc-700">
           <input
@@ -164,13 +144,13 @@ export function QuickNav({ quickNavStore, editorStore, onNavigate, onHide }: Qui
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-2 border-t border-zinc-700 text-xs text-zinc-500 flex items-center gap-4">
-          <span>↑↓ Navigate</span>
-          <span>Enter Select</span>
-          <span>Esc Cancel</span>
-        </div>
-      </div>
-    </div>
+        <ModalFooter>
+          <div className="flex items-center gap-4">
+            <span>↑↓ Navigate</span>
+            <span>Enter Select</span>
+            <span>Esc Cancel</span>
+          </div>
+        </ModalFooter>
+    </Modal>
   );
 }

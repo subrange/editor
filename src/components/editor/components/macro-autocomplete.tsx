@@ -164,7 +164,10 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
     // Calculate popup position and height
     const x = triggerPosition ? triggerPosition.column * charWidth + LINE_PADDING_LEFT : 0;
     const lineY = triggerPosition ? triggerPosition.line * CHAR_HEIGHT + LINE_PADDING_TOP : 0;
-    const popupHeight = Math.min(200, filteredMacros.length * 40 + 8); // Approximate height
+    // Compact height calculation - each item is ~28px (single line with padding)
+    const itemHeight = 28;
+    const footerHeight = 26; // Footer with shortcuts
+    const popupHeight = Math.min(280, filteredMacros.length * itemHeight + footerHeight);
     
     // Check if we should show above or below
     useEffect(() => {
@@ -218,12 +221,12 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
     return (
         <div
             ref={menuRef}
-            className="absolute z-50 bg-zinc-900 border border-zinc-700 rounded-md shadow-lg overflow-hidden"
+            className="absolute z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden"
             style={{
                 left: `${x}px`,
                 top: `${y}px`,
-                minWidth: '200px',
-                maxWidth: '400px',
+                minWidth: '400px',
+                maxWidth: '600px',
                 maxHeight: `${popupHeight}px`
             }}
             onMouseDown={(e) => {
@@ -236,9 +239,10 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                     <div
                         key={macro.name}
                         className={clsx(
-                            "px-3 py-1.5 cursor-pointer text-sm",
-                            "hover:bg-zinc-800",
-                            index === selectedIndex && "bg-zinc-800 text-purple-400"
+                            "px-2 py-1 cursor-pointer text-sm",
+                            index === selectedIndex
+                                ? "bg-zinc-800 text-zinc-100"
+                                : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                         )}
                         onMouseEnter={() => setSelectedIndex(index)}
                         onMouseDown={(e) => {
@@ -251,24 +255,32 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                             insertMacro(macro);
                         }}
                     >
-                        <div className="flex items-center justify-between">
-                            <span className="font-mono">
-                                @{macro.name}
-                                {macro.parameters && (
-                                    <span className="text-zinc-500">
+                        <div className="flex items-center gap-2 w-full">
+                            <span className="text-blue-400">@</span>
+                            <span className="font-mono flex-shrink-0">
+                                {macro.name}
+                                {macro.parameters && macro.parameters.length > 0 && (
+                                    <span className="text-zinc-500 text-xs ml-1">
                                         ({macro.parameters.join(", ")})
                                     </span>
                                 )}
                             </span>
-                            <span className="text-xs text-zinc-600 ml-2">macro</span>
-                        </div>
-                        {/* Show macro body preview */}
-                        <div className="text-xs text-zinc-500 truncate mt-0.5">
-                            {macro.body}
+                            <span className="text-zinc-600 mx-2">→</span>
+                            <span className="text-xs text-zinc-500 truncate font-mono flex-1">
+                                {macro.body}
+                            </span>
                         </div>
                     </div>
                 ))}
             </div>
+            {/* Footer with shortcuts */}
+            {filteredMacros.length > 0 && (
+                <div className="px-2 py-1 border-t border-zinc-700 text-xs text-zinc-500 flex items-center gap-2 text-[10px]">
+                    <span>↑↓ Navigate</span>
+                    <span>Tab/Enter Select</span>
+                    <span>Esc Cancel</span>
+                </div>
+            )}
         </div>
     );
 }

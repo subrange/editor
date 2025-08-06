@@ -89,7 +89,7 @@ export function VirtualizedLine({
                         <span
                             key={tokenIndex}
                             className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                'cursor-pointer hover:underline': isMetaKeyHeld && token.type === 'macro_invocation' && isProgressiveMacro
+                                'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                             })}
                             onClick={(e) => onTokenClick?.(e, token)}
                         >
@@ -129,7 +129,7 @@ export function VirtualizedLine({
                             <span
                                 key={tokenIndex}
                                 className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                    'cursor-pointer hover:underline': isMetaKeyHeld && token.type === 'macro_invocation' && isProgressiveMacro
+                                    'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                                 })}
                                 style={{
                                     position: 'absolute',
@@ -195,7 +195,7 @@ export function VirtualizedLine({
                             <span
                                 key={tokenIndex}
                                 className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                    'cursor-pointer hover:underline': isMetaKeyHeld && token.type === 'macro_invocation' && isProgressiveMacro
+                                    'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                                 })}
                                 style={{
                                     position: 'absolute',

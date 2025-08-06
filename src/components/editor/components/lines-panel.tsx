@@ -14,11 +14,13 @@ import {SearchScroll} from "./search-scroll.tsx";
 import {Selection} from "./selection.tsx";
 import {Cursor} from "./cursor.tsx";
 import {DebugMarker} from "./debug-marker.tsx";
+import {MacroUsagesModal, type MacroUsage} from "./macro-usages-modal.tsx";
 
 interface LinesPanelProps {
     store: EditorStore;
     editorWidth: number;
     scrollLeft: number;
+    editorRef: React.RefObject<HTMLDivElement>;
 }
 
 function measureCharacterWidth() {
@@ -32,7 +34,7 @@ function measureCharacterWidth() {
     return width;
 }
 
-export function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
+export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPanelProps) {
     const editorState = useStoreSubscribe(store.editorState);
     const lines = editorState.lines;
     const selection = editorState.selection;
@@ -43,6 +45,10 @@ export function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
     const dragStartedRef = useRef(false);
     const [isMetaKeyHeld, setIsMetaKeyHeld] = useState(false);
     const [macroExpansionVersion, setMacroExpansionVersion] = useState(0);
+    const [macroUsagesModal, setMacroUsagesModal] = useState<{
+        macroName: string;
+        usages: MacroUsage[];
+    } | null>(null);
 
     const breakpoints = useStoreSubscribeToField(interpreterStore.state, "breakpoints");
     const expandedLine = useStoreSubscribeToField(interpreterStore.currentChar, "line");
@@ -94,6 +100,31 @@ export function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
         return [];
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isProgressiveMacro, tokenizer, macroExpansionVersion]); // macroExpansionVersion forces re-render when tokenizer state changes
+
+    // Function to find all usages of a macro
+    const findMacroUsages = (macroName: string): MacroUsage[] => {
+        const usages: MacroUsage[] = [];
+        
+        // Search through all tokenized lines
+        tokenizedLines.forEach((tokens, lineIndex) => {
+            tokens.forEach((token) => {
+                if (token.type === 'macro_invocation') {
+                    // Extract the macro name from the token value (remove @ and any parameters)
+                    const tokenMacroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+                    if (tokenMacroName === macroName) {
+                        usages.push({
+                            line: lineIndex,
+                            column: token.start,
+                            text: lines[lineIndex].text.trim(),
+                            lineNumber: `${lineIndex + 1}`
+                        });
+                    }
+                }
+            });
+        });
+        
+        return usages;
+    };
 
 
     // Track cmd/ctrl key state
@@ -227,11 +258,15 @@ export function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
     };
 
     const handleTokenClick = (e: React.MouseEvent, token: MacroToken) => {
-        // Check if cmd/ctrl is held and we're clicking on a macro invocation
-        if ((e.metaKey || e.ctrlKey) && token.type === 'macro_invocation' && isProgressiveMacro) {
-            e.preventDefault();
-            e.stopPropagation();
+        if (!(e.metaKey || e.ctrlKey) || !isProgressiveMacro) {
+            return;
+        }
 
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Check if we're clicking on a macro invocation
+        if (token.type === 'macro_invocation') {
             // Extract macro name from the token value (remove @ and parameters)
             const macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
             if (!macroName) {
@@ -249,6 +284,17 @@ export function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
                     column: macroDef.sourceLocation.column
                 });
             }
+        }
+        // Check if we're clicking on a macro name in a definition
+        else if (token.type === 'macro_name') {
+            const macroName = token.value;
+            const usages = findMacroUsages(macroName);
+            
+            // Show the modal with usages
+            setMacroUsagesModal({
+                macroName,
+                usages
+            });
         }
     };
 
@@ -335,5 +381,44 @@ export function LinesPanel({store, editorWidth, scrollLeft}: LinesPanelProps) {
         {
             store.showDebug && <DebugMarker store={store}/>
         }
+        {macroUsagesModal && (
+            <MacroUsagesModal
+                macroName={macroUsagesModal.macroName}
+                usages={macroUsagesModal.usages}
+                isOpen={true}
+                onClose={() => {
+                    setMacroUsagesModal(null);
+                    // Focus the editor when modal is closed
+                    setTimeout(() => {
+                        editorRef.current?.focus();
+                    }, 0);
+                }}
+                onNavigate={(usage) => {
+                    // Close modal first to ensure proper focus handling
+                    setMacroUsagesModal(null);
+                    
+                    // Then navigate after modal is closed
+                    setTimeout(() => {
+                        // Focus the editor - this should trigger onFocus handler
+                        if (editorRef.current) {
+                            editorRef.current.focus();
+                            // Force focus event if needed
+                            editorRef.current.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+                        }
+                        
+                        // Then navigate after another small delay
+                        setTimeout(() => {
+                            // Set navigation flag for center scrolling
+                            store.isNavigating.next(true);
+                            // Jump to the usage location
+                            store.setCursorPosition({
+                                line: usage.line,
+                                column: usage.column
+                            });
+                        }, 0);
+                    }, 0);
+                }}
+            />
+        )}
     </div>;
 }

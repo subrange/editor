@@ -293,7 +293,7 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
                 <div className="flex relative grow-1 overflow-visible min-h-0 h-fit">
                     <LineNumbersPanel store={store}/>
                     <VSep className="sticky left-16 z-1 top-0 bottom-0"></VSep>
-                    <LinesPanel store={store} editorWidth={editorContainerWidth} scrollLeft={editorScrollLeft}/>
+                    <LinesPanel store={store} editorWidth={editorContainerWidth} scrollLeft={editorScrollLeft} editorRef={editorRef}/>
 
                 </div>
             </div>
