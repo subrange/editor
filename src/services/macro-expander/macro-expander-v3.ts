@@ -36,14 +36,18 @@ export class MacroExpanderV3 implements MacroExpander {
   private expansionChain: Set<string> = new Set();
   private maxExpansionDepth = 100;
   private input: string = '';
+  private enableCircularDependencyDetection = false;
 
   expand(input: string, options?: MacroExpanderOptions): MacroExpanderResult {
     const opts = {
       stripComments: true,
       collapseEmptyLines: false,
       generateSourceMap: false,
+      enableCircularDependencyDetection: false,
       ...options
     };
+    
+    this.enableCircularDependencyDetection = opts.enableCircularDependencyDetection;
 
     // Reset state
     this.macros.clear();
@@ -529,7 +533,7 @@ export class MacroExpanderV3 implements MacroExpander {
 
     const invocationSignature = this.createInvocationSignature(node);
 
-    if (this.expansionChain.has(invocationSignature)) {
+    if (this.enableCircularDependencyDetection && this.expansionChain.has(invocationSignature)) {
       const chain = Array.from(this.expansionChain).join(' → ');
       this.errors.push({
         type: 'circular_dependency',
@@ -559,7 +563,9 @@ export class MacroExpanderV3 implements MacroExpander {
       return;
     }
 
-    this.expansionChain.add(invocationSignature);
+    if (this.enableCircularDependencyDetection) {
+      this.expansionChain.add(invocationSignature);
+    }
 
     // Prepare parameter substitutions if needed
     let parameterValues: Record<string, string> | undefined;
@@ -647,7 +653,9 @@ export class MacroExpanderV3 implements MacroExpander {
     // Pop macro context
     context.macroCallStack.pop();
     context.expansionDepth--;
-    this.expansionChain.delete(invocationSignature);
+    if (this.enableCircularDependencyDetection) {
+      this.expansionChain.delete(invocationSignature);
+    }
   }
 
   private expandBodyNodes(nodes: BodyNode[], context: ExpansionContext, generateSourceMap: boolean): void {

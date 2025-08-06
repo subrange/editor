@@ -398,11 +398,24 @@ describe('MacroExpander V3 - Validation Features', () => {
 @a`;
 
       const expander = createMacroExpanderV3();
-      const result = expander.expand(input);
+      const result = expander.expand(input, { enableCircularDependencyDetection: true });
       
       // Should not crash during validation, but will error during expansion
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors.some(e => e.type === 'circular_dependency')).toBe(true);
+    });
+    
+    it('should not detect circular dependencies when flag is disabled', () => {
+      const input = `#define a @b
+#define b @c
+#define c @a
+@a`;
+
+      const expander = createMacroExpanderV3();
+      const result = expander.expand(input); // Default is disabled
+      
+      // Should not have circular dependency errors
+      expect(result.errors.some(e => e.type === 'circular_dependency')).toBe(false);
     });
 
     it('should validate macros with mixed valid and invalid references', () => {

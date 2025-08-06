@@ -32,6 +32,7 @@ export interface MacroExpanderOptions {
   stripComments?: boolean;
   collapseEmptyLines?: boolean;
   generateSourceMap?: boolean;
+  enableCircularDependencyDetection?: boolean;
 }
 
 export interface MacroExpanderResult {
