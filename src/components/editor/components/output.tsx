@@ -170,7 +170,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                             {processedOutput}
                         </pre>
                     ) : (
-                        <VMOutput outputRef={outputContainer} />
+                        <VMOutput outputRef={outputContainer} isActive={activeTab === 'vm'} />
                     )}
                 </div>
             )}

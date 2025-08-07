@@ -3,6 +3,8 @@
 #define FALSE 0
 #define TRUE  1
 
+#define ENDL 0xA
+
 #define clear [-]
 #define inc(n) {repeat(n, +)}
 #define dec(n) {repeat(n, -)}
@@ -137,13 +139,13 @@
 #define R15  17
 
 // MARK: -- Memory mapping
-#define OUT      0
-#define OUT_FLAG 1
+#define OUT      0x00
+#define OUT_FLAG 0x01
 
 // MARK: -- Lane Operations
 
-#define nextword @next(@LANES_COUNT)
-#define prevword @prev(@LANES_COUNT)
+#define nextword @next(#LANES_COUNT)
+#define prevword @prev(#LANES_COUNT)
 #define lane_start(n) @next(n)
 #define lane_end(n) {repeat(n, <)}
 
@@ -1387,7 +1389,7 @@
 
 // MARK: -- Program code
 
-#define HELLO {'H', 'e', 'l', 'l', 'o', ',', ' ', 'R', 'i', 'p', 'p', 'l', 'e'}
+#define HELLO {'H', 'e', 'l', 'l', 'o', ',', ' ', 'R', 'i', 'p', 'p', 'l', 'e', #ENDL}
 
 @nextword
 @lane(#L_MEM,

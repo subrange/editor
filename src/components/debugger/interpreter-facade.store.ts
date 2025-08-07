@@ -69,6 +69,8 @@ class InterpreterFacade implements InterpreterInterface {
     private workerInterpreter: InterpreterWorkerStore | null = null;
     private subscriptions: Subscription[] = [];
     private isUsingWorker = false;
+    private pendingVMOutputCallback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null = null;
+    private pendingVMOutputConfig: { outCellIndex: number; outFlagCellIndex: number; sparseCellPattern?: any } | null = null;
 
     // Proxy all the observables
     public state = new BehaviorSubject<InterpreterState>({
@@ -123,7 +125,7 @@ class InterpreterFacade implements InterpreterInterface {
         const currentState = jsInterpreter.state.getValue();
         const currentCode = jsInterpreter.getCode();
         
-        // Initialize worker with current code
+        // Initialize worker with current code (may be empty on initial load)
         this.workerInterpreter.setCode(currentCode);
         
         // Copy breakpoints
@@ -148,6 +150,15 @@ class InterpreterFacade implements InterpreterInterface {
         this.currentInterpreter = this.workerInterpreter as any;
         this.isUsingWorker = true;
         this.setupProxying();
+        
+        // Apply pending VM output config and callback if any
+        if (this.pendingVMOutputConfig && 'setVMOutputConfig' in this.workerInterpreter) {
+            (this.workerInterpreter as any).setVMOutputConfig(this.pendingVMOutputConfig);
+        }
+        
+        if (this.pendingVMOutputCallback && 'setVMOutputCallback' in this.workerInterpreter) {
+            (this.workerInterpreter as any).setVMOutputCallback(this.pendingVMOutputCallback);
+        }
     }
 
     private switchToJS() {
@@ -278,16 +289,30 @@ class InterpreterFacade implements InterpreterInterface {
         }
     }
     
-    setVMOutputCallback(callback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null) {
-        if ('setVMOutputCallback' in this.currentInterpreter) {
-            (this.currentInterpreter as any).setVMOutputCallback(callback);
+    async setVMOutputCallback(callback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null) {
+        // Store the callback to be set when we switch to worker
+        this.pendingVMOutputCallback = callback;
+        
+        // If we're already using the worker, set it immediately
+        if (this.isUsingWorker && this.workerInterpreter) {
+            if ('setVMOutputCallback' in this.workerInterpreter) {
+                (this.workerInterpreter as any).setVMOutputCallback(callback);
+            }
         }
+        // Otherwise, the callback will be set when we switch to worker for execution
     }
     
-    setVMOutputConfig(config: { outCellIndex: number; outFlagCellIndex: number }) {
-        if ('setVMOutputConfig' in this.currentInterpreter) {
-            (this.currentInterpreter as any).setVMOutputConfig(config);
+    async setVMOutputConfig(config: { outCellIndex: number; outFlagCellIndex: number; sparseCellPattern?: any }) {
+        // Store the config to be set when we switch to worker
+        this.pendingVMOutputConfig = config;
+        
+        // If we're already using the worker, set it immediately
+        if (this.isUsingWorker && this.workerInterpreter) {
+            if ('setVMOutputConfig' in this.workerInterpreter) {
+                (this.workerInterpreter as any).setVMOutputConfig(config);
+            }
         }
+        // Otherwise, the config will be set when we switch to worker for execution
     }
 }
 

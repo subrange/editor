@@ -7,9 +7,10 @@ import { CogIcon } from "@heroicons/react/24/outline";
 
 interface VMOutputProps {
     outputRef?: React.RefObject<HTMLDivElement | null>;
+    isActive?: boolean;
 }
 
-export function VMOutput({ outputRef }: VMOutputProps) {
+export function VMOutput({ outputRef, isActive = true }: VMOutputProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const activeRef = outputRef || containerRef;
     const [showConfig, setShowConfig] = useState(false);
@@ -26,16 +27,10 @@ export function VMOutput({ outputRef }: VMOutputProps) {
     
     // Set up the VM output callback
     useEffect(() => {
-        // Set the config with sparse cell pattern
-        interpreterStore.setVMOutputConfig({ 
-            outCellIndex, 
-            outFlagCellIndex,
-            sparseCellPattern: {
-                start: 4,
-                step: 8,
-                count: 1024
-            }
-        });
+        // Only register callback when this tab is active
+        if (!isActive) {
+            return;
+        }
         
         const callback = (tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => {
             // Check if indices are valid
@@ -48,14 +43,29 @@ export function VMOutput({ outputRef }: VMOutputProps) {
             vmTerminalStore.appendOutput(char);
         };
         
-        // Register the callback
-        interpreterStore.setVMOutputCallback(callback);
+        // Register the callback and config (now async)
+        const registerCallback = async () => {
+            // Set the config with sparse cell pattern
+            await interpreterStore.setVMOutputConfig({ 
+                outCellIndex, 
+                outFlagCellIndex,
+                sparseCellPattern: {
+                    start: 4,
+                    step: 8,
+                    count: 1024
+                }
+            });
+            
+            await interpreterStore.setVMOutputCallback(callback);
+        };
         
-        // Cleanup on unmount or when indices change
+        registerCallback();
+        
+        // Cleanup on unmount or when tab becomes inactive
         return () => {
             interpreterStore.setVMOutputCallback(null);
         };
-    }, [outCellIndex, outFlagCellIndex]);
+    }, [outCellIndex, outFlagCellIndex, isActive]);
 
     // Auto-scroll to bottom when content changes
     useLayoutEffect(() => {
