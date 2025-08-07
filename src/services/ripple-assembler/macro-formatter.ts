@@ -139,9 +139,31 @@ export class MacroFormatter {
     lines.push(`// Data segment`);
     lines.push(`@lane(#L_MEM,`);
     
-    for (const value of data) {
-      lines.push(`  @set(${value}) @nextword`);
-    }
+    // Convert data array to mixed format array (decimal, hex, or char)
+    const formattedData: string[] = data.map(value => {
+      // Use character format for printable ASCII (space through ~)
+      if (value >= 32 && value <= 126) {
+        const char = String.fromCharCode(value);
+        // Escape single quotes and backslashes
+        if (char === "'") {
+          return "'\\''"
+        } else if (char === "\\") {
+          return "'\\\\'"
+        }
+        return `'${char}'`;
+      }
+      // Use hex for values that look better in hex
+      else if (value >= 128 || (value > 15 && value % 16 === 0)) {
+        return `0x${value.toString(16).toUpperCase()}`;
+      }
+      // Use decimal for everything else
+      else {
+        return value.toString();
+      }
+    });
+    
+    // Create the {for} loop with formatted data
+    lines.push(`  {for(s in {${formattedData.join(',')}}, @set(s) @nextword)}`);
     
     lines.push(`)`);
     
@@ -154,21 +176,50 @@ export class MacroFormatter {
     comments?: Map<number, string>,
     header?: string
   ): string {
-    const sections: string[] = [];
+    const lines: string[] = [];
     
     if (header) {
-      sections.push(`// ${header}`);
-      sections.push('');
+      lines.push(`// ${header}`);
+      lines.push('');
     }
     
+    lines.push('@prg(');
+    
+    // Format data section or @nop if empty
     if (data && data.length > 0) {
-      sections.push(this.formatDataSection(data));
-      sections.push('');
+      lines.push('  // Memory');
+      const dataLines = this.formatDataSection(data).split('\n');
+      dataLines.forEach((line, index) => {
+        if (index === 0 && line.startsWith('// Data segment')) {
+          // Skip the old header comment
+          return;
+        }
+        if (line === ')') {
+          // Change the closing paren to include comma
+          lines.push('  ),');
+        } else {
+          lines.push('  ' + line);
+        }
+      });
+      lines.push('  ');
+    } else {
+      lines.push('  @nop,');
+      lines.push('  ');
     }
     
-    sections.push('// Program');
-    sections.push(this.formatProgram(instructions, comments));
+    // Format program section or @nop if empty
+    if (instructions && instructions.length > 0) {
+      lines.push('  // Program');
+      const programLines = this.formatProgram(instructions, comments).split('\n');
+      programLines.forEach(line => {
+        lines.push('  ' + line);
+      });
+    } else {
+      lines.push('  @nop');
+    }
     
-    return sections.join('\n');
+    lines.push(')');
+    
+    return lines.join('\n');
   }
 }

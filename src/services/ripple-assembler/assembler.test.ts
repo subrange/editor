@@ -412,12 +412,14 @@ describe('RippleAssembler', () => {
       );
       
       expect(output).toContain('// Test with sections');
-      expect(output).toContain('// Data segment');
-      expect(output).toContain('@set(72) @nextword');
-      expect(output).toContain('@set(105) @nextword');
-      expect(output).toContain('@set(33) @nextword');
-      expect(output).toContain('@set(0) @nextword');
+      expect(output).toContain('@prg(');
+      expect(output).toContain('// Memory');
+      expect(output).toContain('@lane(#L_MEM,');
+      expect(output).toContain("{for(s in {'H','i','!',0}, @set(s) @nextword)}");
+      expect(output).toContain('),');
+      expect(output).toContain('// Program');
       expect(output).toContain('@program_start(@OP_LI');
+      expect(output).toContain(')');
     });
   });
 
@@ -655,11 +657,14 @@ describe('RippleAssembler', () => {
       );
       
       expect(fullOutput).toContain('// Hello World Program');
-      expect(fullOutput).toContain('// Data segment');
+      expect(fullOutput).toContain('@prg(');
+      expect(fullOutput).toContain('// Memory');
       expect(fullOutput).toContain('@lane(#L_MEM,');
-      expect(fullOutput).toContain('@set(72) @nextword');
+      expect(fullOutput).toContain("{for(s in {'H','e','l','l','o',0}, @set(s) @nextword)}");
+      expect(fullOutput).toContain('),');
       expect(fullOutput).toContain('// Program');
       expect(fullOutput).toContain('// Initialize pointer');
+      expect(fullOutput).toContain(')');
     });
   });
 });

@@ -12,7 +12,7 @@ for asm_file in src/services/ripple-assembler/examples/*.asm; do
     if [ -f "$asm_file" ]; then
         basename=$(basename "$asm_file" .asm)
         echo "Building $basename..."
-        npx tsx src/services/ripple-assembler/cli.ts "$asm_file" -o "build/examples/$basename.bfm"
+        npx tsx src/services/ripple-assembler/cli.ts "$asm_file" -o "build/examples/$basename.bfm" -h "RippleVM Example"
     fi
 done
 
