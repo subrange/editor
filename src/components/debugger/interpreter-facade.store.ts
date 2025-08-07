@@ -208,6 +208,18 @@ class InterpreterFacade implements InterpreterInterface {
             this.currentInterpreter.setSourceMap(sourceMap);
         }
     }
+    
+    setVMOutputCallback(callback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null) {
+        if ('setVMOutputCallback' in this.currentInterpreter) {
+            (this.currentInterpreter as any).setVMOutputCallback(callback);
+        }
+    }
+    
+    setVMOutputConfig(config: { outCellIndex: number; outFlagCellIndex: number }) {
+        if ('setVMOutputConfig' in this.currentInterpreter) {
+            (this.currentInterpreter as any).setVMOutputConfig(config);
+        }
+    }
 }
 
 // Export a single instance that all components can use

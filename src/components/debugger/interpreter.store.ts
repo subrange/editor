@@ -82,6 +82,21 @@ class InterpreterStore {
 
     private code: Array<Line> = [];
     private sourceMapLookup: SourceMapLookup | null = null;
+    
+    // VM output monitoring callback - called on every instruction during execution
+    private vmOutputCallback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null = null;
+    private vmOutputConfig: { outCellIndex: number; outFlagCellIndex: number } | null = null;
+    private lastVMFlagValue: number = 0;
+    
+    public setVMOutputCallback(callback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null) {
+        this.vmOutputCallback = callback;
+        console.log('VM output callback set:', callback ? 'yes' : 'no');
+    }
+    
+    public setVMOutputConfig(config: { outCellIndex: number; outFlagCellIndex: number }) {
+        this.vmOutputConfig = config;
+        this.lastVMFlagValue = 0;
+    }
 
     public currentChar = new BehaviorSubject<Position>({
         line: 0,
@@ -637,6 +652,11 @@ class InterpreterStore {
                 break;
         }
 
+        // Call VM output callback after each instruction
+        if (this.vmOutputCallback) {
+            this.vmOutputCallback(currentState.tape, currentState.pointer);
+        }
+
         this.state.next(currentState);
 
         if (shouldMoveNext) {
@@ -1041,6 +1061,24 @@ class InterpreterStore {
                 }
             }
             
+            // Check VM output flag more efficiently in turbo mode
+            if (this.vmOutputCallback && this.vmOutputConfig) {
+                const flagValue = tape[this.vmOutputConfig.outFlagCellIndex];
+                if (flagValue === 1 && this.lastVMFlagValue === 0) {
+                    this.vmOutputCallback(tape, pointer);
+                }
+                this.lastVMFlagValue = flagValue;
+            }
+            
+            // Check VM output flag more efficiently in turbo mode
+            if (this.vmOutputCallback && this.vmOutputConfig) {
+                const flagValue = tape[this.vmOutputConfig.outFlagCellIndex];
+                if (flagValue === 1 && this.lastVMFlagValue === 0) {
+                    this.vmOutputCallback(tape, pointer);
+                }
+                this.lastVMFlagValue = flagValue;
+            }
+            
             pc++;
             opsExecuted++;
             
@@ -1163,6 +1201,9 @@ class InterpreterStore {
         const startTime = performance.now();
         const UPDATE_INTERVAL = 500_000_000;
         let opsExecuted = 0;
+        
+        // Reset VM output tracking
+        this.lastVMFlagValue = 0;
 
         while (pc < ops.length) {
             const op = ops[pc];
@@ -1215,6 +1256,15 @@ class InterpreterStore {
                     console.log('Exiting turbo mode due to breakpoint. Use step or resume to continue.');
                     return;
                 }
+            }
+
+            // Check VM output flag more efficiently in turbo mode
+            if (this.vmOutputCallback && this.vmOutputConfig) {
+                const flagValue = tape[this.vmOutputConfig.outFlagCellIndex];
+                if (flagValue === 1 && this.lastVMFlagValue === 0) {
+                    this.vmOutputCallback(tape, pointer);
+                }
+                this.lastVMFlagValue = flagValue;
             }
 
             pc++;
