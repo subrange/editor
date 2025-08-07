@@ -226,7 +226,9 @@ export class MacroExpanderV3 implements MacroExpander {
             const mightBeLoopVar = text.length === 1 && /^[a-zA-Z]$/.test(text);
             // Don't validate if it's a valid parameter - it will be substituted later
             let isValidNumber = false;
-            if (text.startsWith('0x') || text.startsWith('0X')) {
+            if (text.match(/^'.'$/)) {
+              isValidNumber = true; // Character literal is always valid
+            } else if (text.startsWith('0x') || text.startsWith('0X')) {
               isValidNumber = !isNaN(parseInt(text, 16));
             } else {
               isValidNumber = !isNaN(parseInt(text, 10));
@@ -949,10 +951,13 @@ export class MacroExpanderV3 implements MacroExpander {
       
       const countExpr = this.expandExpressionToString(node.arguments[0], context);
       let count: number;
-      if (countExpr.trim().startsWith('0x') || countExpr.trim().startsWith('0X')) {
-        count = parseInt(countExpr.trim(), 16);
+      const trimmed = countExpr.trim();
+      if (trimmed.match(/^'.'$/)) {
+        count = trimmed.charCodeAt(1);
+      } else if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+        count = parseInt(trimmed, 16);
       } else {
-        count = parseInt(countExpr.trim(), 10);
+        count = parseInt(trimmed, 10);
       }
       
       if (isNaN(count) || count < 0) {
@@ -999,10 +1004,13 @@ export class MacroExpanderV3 implements MacroExpander {
       
       const conditionExpr = this.expandExpressionToString(node.arguments[0], context);
       let condition: number;
-      if (conditionExpr.trim().startsWith('0x') || conditionExpr.trim().startsWith('0X')) {
-        condition = parseInt(conditionExpr.trim(), 16);
+      const trimmed = conditionExpr.trim();
+      if (trimmed.match(/^'.'$/)) {
+        condition = trimmed.charCodeAt(1);
+      } else if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+        condition = parseInt(trimmed, 16);
       } else {
-        condition = parseInt(conditionExpr.trim(), 10);
+        condition = parseInt(trimmed, 10);
       }
       
       if (isNaN(condition)) {
@@ -1094,7 +1102,7 @@ export class MacroExpanderV3 implements MacroExpander {
             values = [values[0]]; // Keep it as is - the tuple parsing below will handle it
           }
         } else if (expanded.includes(',')) {
-          values = expanded.split(',').map(v => v.trim());
+          values = this.parseArrayElements(expanded);
         } else {
           // Single value case
           values = [expanded];
@@ -1112,7 +1120,7 @@ export class MacroExpanderV3 implements MacroExpander {
           // Parse array elements considering nested braces
           values = this.parseArrayElements(inner);
         } else if (expanded.includes(',')) {
-          values = expanded.split(',').map(v => v.trim());
+          values = this.parseArrayElements(expanded);
         } else {
           this.errors.push({
             type: 'syntax_error',
@@ -1372,18 +1380,41 @@ export class MacroExpanderV3 implements MacroExpander {
     const elements: string[] = [];
     let current = '';
     let braceDepth = 0;
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let escaped = false;
     
     for (let i = 0; i < inner.length; i++) {
       const char = inner[i];
       
-      if (char === '{') {
+      // Handle escape sequences
+      if (escaped) {
+        current += char;
+        escaped = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        escaped = true;
+        current += char;
+        continue;
+      }
+      
+      // Track quote state
+      if (char === "'" && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+        current += char;
+      } else if (char === '"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+        current += char;
+      } else if (char === '{' && !inSingleQuote && !inDoubleQuote) {
         braceDepth++;
         current += char;
-      } else if (char === '}') {
+      } else if (char === '}' && !inSingleQuote && !inDoubleQuote) {
         braceDepth--;
         current += char;
-      } else if (char === ',' && braceDepth === 0) {
-        // Only split at commas that are not inside braces
+      } else if (char === ',' && braceDepth === 0 && !inSingleQuote && !inDoubleQuote) {
+        // Only split at commas that are not inside braces or quotes
         if (current.trim()) {
           elements.push(current.trim());
         }

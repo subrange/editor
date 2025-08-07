@@ -490,12 +490,23 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                 }
             }
 
-            // Check for numbers (including hexadecimal)
+            // Check for numbers (including hexadecimal and character literals)
             if (!matched) {
+                const charLiteralMatch = text.slice(position).match(/^'.'/);
                 const hexMatch = text.slice(position).match(/^0[xX][0-9a-fA-F]+/);
                 const decimalMatch = text.slice(position).match(/^\d+/);
                 
-                if (hexMatch) {
+                if (charLiteralMatch) {
+                    tokens.push({
+                        type: 'number',
+                        value: charLiteralMatch[0],
+                        start: position,
+                        end: position + charLiteralMatch[0].length,
+                        error: error
+                    });
+                    position += charLiteralMatch[0].length;
+                    matched = true;
+                } else if (hexMatch) {
                     tokens.push({
                         type: 'number',
                         value: hexMatch[0],

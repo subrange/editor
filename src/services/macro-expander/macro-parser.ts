@@ -819,14 +819,32 @@ export class MacroParser {
     // For simple text arguments, return as a single text node
     if (isSimpleText && rawText.trim()) {
       const trimmed = rawText.trim();
-      // Try to parse as number (including hexadecimal)
+      // Try to parse as number (including hexadecimal and character literals)
       let num: number;
-      if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+      if (trimmed.match(/^'.*'$/)) {
+        // Character literal - handle escape sequences
+        const content = trimmed.slice(1, -1); // Remove quotes
+        if (content.startsWith('\\') && content.length === 2) {
+          // Escape sequence
+          switch (content[1]) {
+            case 'n': num = 10; break; // newline
+            case 't': num = 9; break;  // tab
+            case 'r': num = 13; break; // carriage return
+            case '\\': num = 92; break; // backslash
+            case "'": num = 39; break; // single quote
+            case '0': num = 0; break;  // null
+            default: num = content.charCodeAt(1); // Unknown escape, use literal
+          }
+        } else {
+          // Regular character
+          num = content.charCodeAt(0);
+        }
+      } else if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
         num = parseInt(trimmed, 16);
       } else {
         num = parseInt(trimmed, 10);
       }
-      if (!isNaN(num) && (trimmed === num.toString() || trimmed.toLowerCase() === '0x' + num.toString(16))) {
+      if (!isNaN(num) && (trimmed === num.toString() || trimmed.toLowerCase() === '0x' + num.toString(16) || trimmed.match(/^'.*'$/))) {
         return {
           type: 'Number',
           value: num,
@@ -855,15 +873,33 @@ export class MacroParser {
       // Special handling for single expressions
       const expr = expressions[0];
       if (expr.type === 'Text') {
-        // Try to parse as number (including hexadecimal)
+        // Try to parse as number (including hexadecimal and character literals)
         const trimmed = (expr as TextNode).value.trim();
         let num: number;
-        if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+        if (trimmed.match(/^'.*'$/)) {
+          // Character literal - handle escape sequences
+          const content = trimmed.slice(1, -1); // Remove quotes
+          if (content.startsWith('\\') && content.length === 2) {
+            // Escape sequence
+            switch (content[1]) {
+              case 'n': num = 10; break; // newline
+              case 't': num = 9; break;  // tab
+              case 'r': num = 13; break; // carriage return
+              case '\\': num = 92; break; // backslash
+              case "'": num = 39; break; // single quote
+              case '0': num = 0; break;  // null
+              default: num = content.charCodeAt(1); // Unknown escape, use literal
+            }
+          } else {
+            // Regular character
+            num = content.charCodeAt(0);
+          }
+        } else if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
           num = parseInt(trimmed, 16);
         } else {
           num = parseInt(trimmed, 10);
         }
-        if (!isNaN(num) && (trimmed === num.toString() || trimmed.toLowerCase() === '0x' + num.toString(16))) {
+        if (!isNaN(num) && (trimmed === num.toString() || trimmed.toLowerCase() === '0x' + num.toString(16) || trimmed.match(/^'.*'$/))) {
           return {
             type: 'Number',
             value: num,

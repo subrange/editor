@@ -185,6 +185,62 @@ export class MacroLexer {
       return this.createToken(TokenType.IDENTIFIER, value, start, this.position);
     }
 
+    // Check for character literals 'c'
+    if (this.peek() === "'") {
+      // Look ahead to check if it's a valid character literal
+      let checkPos = 1;
+      let escaped = false;
+      
+      if (this.peekAhead(checkPos) === '\\') {
+        // Escape sequence
+        escaped = true;
+        checkPos = 2;
+      }
+      
+      // Check if there's a closing quote at the right position
+      const expectedClosePos = escaped ? 3 : 2;
+      if (this.peekAhead(expectedClosePos) === "'") {
+        this.advance(); // consume opening '
+        
+        let charValue: string;
+        if (escaped) {
+          this.advance(); // consume \
+          const escapeChar = this.advance();
+          // Handle common escape sequences
+          switch (escapeChar) {
+            case 'n': charValue = '\n'; break;
+            case 't': charValue = '\t'; break;
+            case 'r': charValue = '\r'; break;
+            case '\\': charValue = '\\'; break;
+            case "'": charValue = "'"; break;
+            case '0': charValue = '\0'; break;
+            default: charValue = escapeChar; // Unknown escape, use literal
+          }
+        } else {
+          charValue = this.advance(); // consume the character
+        }
+        
+        this.advance(); // consume closing '
+        
+        // Store the full literal representation for tokenizer
+        let fullLiteral: string;
+        if (escaped) {
+          // Preserve the escape sequence in the token value
+          const escapeSequence = charValue === '\n' ? 'n' : 
+                               charValue === '\t' ? 't' : 
+                               charValue === '\r' ? 'r' : 
+                               charValue === '\\' ? '\\' : 
+                               charValue === "'" ? "'" : 
+                               charValue === '\0' ? '0' : 
+                               escapeChar; // Use the original escape char for unknown sequences
+          fullLiteral = `'\\${escapeSequence}'`;
+        } else {
+          fullLiteral = `'${charValue}'`;
+        }
+        return this.createToken(TokenType.NUMBER, fullLiteral, start, this.position);
+      }
+    }
+
     // Check for numbers (including hexadecimal)
     if (this.isDigit(this.peek()) || 
         (this.peek() === '-' && this.isDigit(this.peekAhead(1))) ||

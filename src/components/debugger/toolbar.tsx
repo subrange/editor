@@ -52,12 +52,6 @@ export function Toolbar() {
                 <div className="flex items-center gap-1 pr-2 border-r border-zinc-700">
                     {isPaused ? (
                         <>
-                            <IconButton
-                                icon={PlayIcon}
-                                label="Resume"
-                                onClick={() => interpreterStore.resume()}
-                                variant="success"
-                            />
                             {lastExecutionMode === 'turbo' && (
                                 <IconButton
                                     icon={BoltIcon}
@@ -66,6 +60,12 @@ export function Toolbar() {
                                     variant="success"
                                 />
                             )}
+                            <IconButton
+                                icon={PlayIcon}
+                                label="Resume"
+                                onClick={() => interpreterStore.resume()}
+                                variant="success"
+                            />
                         </>
                     ) : (
                         <>
