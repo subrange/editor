@@ -55,7 +55,7 @@ after_bottle_print:
     JALR RA, R5, print_string
     
     ; Decrement counter
-    SUBI R3, R3, 1
+    ADDI R3, R3, 65535  ; R3 = R3 - 1 (using 65535 to represent -1 in 16-bit signed)
     
     ; Print newline
     LI R5, newline

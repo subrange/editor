@@ -101,7 +101,7 @@ The IDE supports standard Brainfuck plus:
 
 When modifying the editor, be aware that it uses a custom vim implementation - check `editor.store.ts` for mode handling and command processing.
 
-For macro system changes, the expansion logic is in `macro-expander-v2.ts` with comprehensive tests in the same directory.
+For macro system changes, the expansion logic is in `macro-expander-v3.ts` with comprehensive tests in the same directory.
 
 The interpreter can run in both JavaScript and WASM modes - ensure changes work with both implementations.
 
