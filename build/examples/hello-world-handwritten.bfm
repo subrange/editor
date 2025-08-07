@@ -1,0 +1,33 @@
+// Data segment
+@lane(#L_MEM,
+  @set(0) @nextword
+  @set(0) @nextword
+  @set(72) @nextword
+  @set(101) @nextword
+  @set(108) @nextword
+  @set(108) @nextword
+  @set(111) @nextword
+  @set(44) @nextword
+  @set(32) @nextword
+  @set(87) @nextword
+  @set(111) @nextword
+  @set(114) @nextword
+  @set(108) @nextword
+  @set(100) @nextword
+  @set(33) @nextword
+  @set(10) @nextword
+  @set(0) @nextword
+)
+
+// Program
+@program_start(@OP_LI    , @R3 , 0   , 0)
+@cmd(@OP_LI    , @R4 , 4   , 0)
+@cmd(@OP_LI    , @R5 , 2   , 0)
+@cmd(@OP_JALR  , @R4 , @R0 , @R4)
+@cmd(@OP_LOAD  , @R3 , @R0 , @R5)
+@cmd(@OP_BNE   , @R3 , @R0 , 1)
+@cmd(@OP_HALT  , 0   , 0   , 0)
+@cmd(@OP_ADDI  , @R5 , @R5 , 1)
+@cmd(@OP_STOR  , @R3 , @R0 , 0)
+@cmd(@OP_JALR  , @R4 , @R0 , @R4)
+@program_end
