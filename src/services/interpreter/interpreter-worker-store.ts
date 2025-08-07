@@ -208,6 +208,7 @@ export class InterpreterWorkerStore {
     
     // If tape data is included in the message, update our local tape
     if (message.tapeData) {
+      console.log('Received tape data from worker, size:', message.tapeData.byteLength);
       const cellSize = this.cellSize.getValue();
       if (cellSize === 256) {
         tape = new Uint8Array(message.tapeData);
@@ -221,6 +222,12 @@ export class InterpreterWorkerStore {
       if (!this.sharedTapeBuffer) {
         this.sharedTape = tape;
       }
+      
+      // Log some tape values for debugging
+      const nonZeroCount = Array.from(tape.slice(0, 100)).filter(v => v !== 0).length;
+      console.log('Tape values (first 100 cells):', nonZeroCount, 'non-zero cells');
+    } else {
+      console.log('No tape data in state update');
     }
     
     // Update state

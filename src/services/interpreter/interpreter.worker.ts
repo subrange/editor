@@ -140,7 +140,8 @@ class WorkerInterpreter {
     
     this.sourceMapLookup = message.sourceMap ? new SourceMapLookup(message.sourceMap) : null;
     this.buildLoopMap();
-    this.sendStateUpdate();
+    // Send initial state with tape data
+    this.sendStateUpdate(true);
   }
 
   private createTapeFromSharedBuffer(buffer: SharedArrayBuffer, cellSize: number): Uint8Array | Uint16Array | Uint32Array {
@@ -188,7 +189,8 @@ class WorkerInterpreter {
     this.lastPausedBreakpoint = null;
     this.currentSourcePosition = undefined;
     this.macroContext = undefined;
-    this.sendStateUpdate();
+    // Send tape data after reset
+    this.sendStateUpdate(true);
   }
 
   private buildLoopMap() {
@@ -607,6 +609,7 @@ class WorkerInterpreter {
           this.currentChar = nextOp.position;
           this.lastPausedBreakpoint = { ...nextOp.position };
           this.isPaused = true;
+          // Always send tape data when hitting a breakpoint
           this.sendStateUpdate(true);
           return;
         }
@@ -715,24 +718,16 @@ class WorkerInterpreter {
     // Check if SharedArrayBuffer exists before using instanceof
     const isSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' && this.tape.buffer instanceof SharedArrayBuffer;
     
-    if (includeTapeData && !isSharedArrayBuffer) {
-      // For large tapes, only send a portion around the pointer
-      const WINDOW_SIZE = 10000; // Send 10k cells around pointer
-      const start = Math.max(0, this.pointer - WINDOW_SIZE / 2);
-      const end = Math.min(this.tape.length, this.pointer + WINDOW_SIZE / 2);
+    // Always send tape data when paused, stopped, or explicitly requested
+    const shouldSendTape = !isSharedArrayBuffer && (includeTapeData || this.isPaused || this.isStopped || !this.isRunning);
+    
+    if (shouldSendTape) {
+      // Send a copy of the tape buffer
+      const bufferCopy = this.tape.buffer.slice(0);
+      message.tapeData = bufferCopy;
       
-      // Only send full tape if it's small or if we're stopped/paused
-      if (this.tape.length <= 100000 || !this.isRunning) {
-        // Send a copy of the tape buffer
-        const bufferCopy = this.tape.buffer.slice(0);
-        message.tapeData = bufferCopy;
-        
-        // Use transferable for efficiency
-        self.postMessage(message, [bufferCopy]);
-      } else {
-        // For large tapes during execution, send without tape data
-        self.postMessage(message);
-      }
+      // Use transferable for efficiency
+      self.postMessage(message, [bufferCopy]);
     } else {
       self.postMessage(message);
     }

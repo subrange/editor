@@ -641,7 +641,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
   
   // Handle mouse wheel scrolling
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
+    // e.preventDefault();
     
     if (viewMode === 'lane' && laneCount > 1) {
       const deltaX = e.deltaX;
