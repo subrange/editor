@@ -81,8 +81,9 @@ interface StateUpdateMessage {
 
 interface VMOutputMessage {
   type: 'vmOutput';
-  // Don't send tape - it's shared
   pointer: number;
+  // Include tape data for VM output when not using SharedArrayBuffer
+  tapeData?: ArrayBuffer;
 }
 
 interface ErrorMessage {
@@ -734,11 +735,21 @@ class WorkerInterpreter {
   }
 
   private sendVMOutput() {
+    const isSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' && this.tape.buffer instanceof SharedArrayBuffer;
+    
     const message: VMOutputMessage = {
       type: 'vmOutput',
       pointer: this.pointer
     };
-    self.postMessage(message);
+    
+    // Include tape data if not using SharedArrayBuffer
+    if (!isSharedArrayBuffer) {
+      const bufferCopy = this.tape.buffer.slice(0);
+      message.tapeData = bufferCopy;
+      self.postMessage(message, [bufferCopy]);
+    } else {
+      self.postMessage(message);
+    }
   }
 
   private log(message: string) {

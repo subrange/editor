@@ -253,9 +253,33 @@ export class InterpreterWorkerStore {
   }
 
   private handleVMOutput(message: any) {
-    if (this.vmOutputCallback && this.sharedTape) {
-      // With SharedArrayBuffer, tape is already up to date
-      this.vmOutputCallback(this.sharedTape, message.pointer);
+    if (this.vmOutputCallback) {
+      let tape = this.state.getValue().tape;
+      
+      // If tape data is included, use it
+      if (message.tapeData) {
+        const cellSize = this.cellSize.getValue();
+        if (cellSize === 256) {
+          tape = new Uint8Array(message.tapeData);
+        } else if (cellSize === 65536) {
+          tape = new Uint16Array(message.tapeData);
+        } else {
+          tape = new Uint32Array(message.tapeData);
+        }
+        
+        // Update our local tape reference
+        if (!this.sharedTapeBuffer) {
+          this.sharedTape = tape;
+          // Also update state so the tape is current
+          const currentState = this.state.getValue();
+          this.state.next({
+            ...currentState,
+            tape: tape
+          });
+        }
+      }
+      
+      this.vmOutputCallback(tape, message.pointer);
     }
   }
 
