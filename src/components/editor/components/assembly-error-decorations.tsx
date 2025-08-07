@@ -1,28 +1,83 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useStoreSubscribeToField } from "../../../hooks/use-store-subscribe.tsx";
 import { EditorStore } from "../stores/editor.store.ts";
-import { type MacroExpansionError } from "../../../services/macro-expander/macro-expander.ts";
-import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "../constants.ts";
-import { measureCharacterWidth } from "../../helpers.ts";
+import { assemblyOutputStore } from "../../../stores/assembly-output.store.ts";
+import { LINE_PADDING_LEFT, LINE_PADDING_TOP, CHAR_HEIGHT } from "../constants.ts";
 
-interface ErrorDecorationsProps {
+interface AssemblyErrorDecorationsProps {
     store: EditorStore;
-    errors: MacroExpansionError[];
+    charWidth: number;
 }
 
-export function ErrorDecorations({ store, errors }: ErrorDecorationsProps) {
+interface ParsedError {
+    line: number;
+    column: number;
+    length: number;
+    message: string;
+}
+
+function parseErrors(errorString: string): ParsedError[] {
+    const errors: ParsedError[] = [];
+    const lines = errorString.split('\n');
+    
+    for (const line of lines) {
+        // Parse error format: "Line X: message" or "Line X, Column Y: message"
+        const lineMatch = line.match(/Line (\d+)(?:, Column (\d+))?: (.+)/);
+        if (lineMatch) {
+            const lineNum = parseInt(lineMatch[1]) - 1; // Convert to 0-based
+            const column = lineMatch[2] ? parseInt(lineMatch[2]) - 1 : 0;
+            const message = lineMatch[3];
+            
+            // Try to extract the problematic token from the error message
+            let length = 10; // Default length
+            
+            // Look for quoted text in the error message
+            const quotedMatch = message.match(/['"]([^'"]+)['"]/);
+            if (quotedMatch) {
+                length = quotedMatch[1].length;
+            } else if (message.includes('Invalid operand:') || 
+                       message.includes('Unknown mnemonic:') ||
+                       message.includes('Invalid register:')) {
+                // Extract the problematic token after the colon
+                const tokenMatch = message.match(/:\s*(\S+)/);
+                if (tokenMatch) {
+                    length = tokenMatch[1].length;
+                }
+            }
+            
+            errors.push({
+                line: lineNum,
+                column: column,
+                length: length,
+                message: message
+            });
+        }
+    }
+    
+    return errors;
+}
+
+export function AssemblyErrorDecorations({ store, charWidth }: AssemblyErrorDecorationsProps) {
+    const [errors, setErrors] = useState<ParsedError[]>([]);
     const lines = useStoreSubscribeToField(store.editorState, "lines");
-    const cw = useMemo(() => measureCharacterWidth(), []);
     
-    // Filter errors that have location information
-    const locatedErrors = errors.filter(e => e.location);
-    
-    if (locatedErrors.length === 0) {
+    // Subscribe to assembly output errors
+    useEffect(() => {
+        const subscription = assemblyOutputStore.state.subscribe(state => {
+            if (state.error) {
+                setErrors(parseErrors(state.error));
+            } else {
+                setErrors([]);
+            }
+        });
+        
+        return () => subscription.unsubscribe();
+    }, []);
+
+    if (errors.length === 0) {
         return null;
     }
 
-    console.log("ERRORZ", locatedErrors)
-    
     return (
         <div 
             className="absolute inset-0 pointer-events-none"
@@ -31,15 +86,15 @@ export function ErrorDecorations({ store, errors }: ErrorDecorationsProps) {
                 paddingTop: `${LINE_PADDING_TOP}px`
             }}
         >
-            {locatedErrors.map((error, index) => {
-                if (!error.location || error.location.line >= lines.length) {
+            {errors.map((error, index) => {
+                if (error.line >= lines.length) {
                     return null;
                 }
                 
-                const lineText = lines[error.location.line].text;
-                const startX = error.location.column * cw;
-                const width = Math.min(error.location.length, lineText.length - error.location.column) * cw;
-                const y = error.location.line * CHAR_HEIGHT;
+                const lineText = lines[error.line].text;
+                const startX = error.column * charWidth;
+                const width = Math.min(error.length, lineText.length - error.column) * charWidth;
+                const y = error.line * CHAR_HEIGHT;
                 
                 return (
                     <div key={index} className="relative">
@@ -83,9 +138,7 @@ export function ErrorDecorations({ store, errors }: ErrorDecorationsProps) {
                                 }}
                             >
                                 <div className="bg-zinc-900 border border-red-500 rounded p-2 text-xs text-red-400">
-                                    <div className="font-bold mb-1 capitalize">
-                                        {error.type.replace(/_/g, ' ')}
-                                    </div>
+                                    <div className="font-bold mb-1">Assembly Error</div>
                                     <div>{error.message}</div>
                                 </div>
                             </div>

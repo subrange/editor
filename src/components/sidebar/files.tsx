@@ -12,6 +12,7 @@ export interface SavedFile {
     timestamp: number;
     mainContent: string;
     macroContent: string;
+    assemblyContent?: string;
 }
 
 function loadFiles(): SavedFile[] {
@@ -44,6 +45,7 @@ export function Files() {
     const saveCurrentFile = () => {
         const mainEditor = editorManager.getEditor("main");
         const macroEditor = editorManager.getEditor("macro");
+        const assemblyEditor = editorManager.getEditor("assembly");
         
         if (!mainEditor || !macroEditor) return;
         
@@ -54,7 +56,8 @@ export function Files() {
             name,
             timestamp: Date.now(),
             mainContent: mainEditor.getText(),
-            macroContent: macroEditor.getText()
+            macroContent: macroEditor.getText(),
+            assemblyContent: assemblyEditor?.getText() || ''
         };
         
         setFiles([file, ...files]);
@@ -64,6 +67,7 @@ export function Files() {
     const loadFile = (file: SavedFile) => {
         const mainEditor = editorManager.getEditor("main");
         const macroEditor = editorManager.getEditor("macro");
+        const assemblyEditor = editorManager.getEditor("assembly");
         
         if (mainEditor) {
             mainEditor.setContent(file.mainContent);
@@ -71,6 +75,10 @@ export function Files() {
         
         if (macroEditor) {
             macroEditor.setContent(file.macroContent);
+        }
+        
+        if (assemblyEditor && file.assemblyContent) {
+            assemblyEditor.setContent(file.assemblyContent);
         }
     };
 
@@ -85,8 +93,9 @@ export function Files() {
 
     const downloadFile = async (file: SavedFile) => {
         const hasMacroContent = file.macroContent.trim().length > 0;
+        const hasAssemblyContent = file.assemblyContent?.trim().length > 0;
         
-        if (!hasMacroContent) {
+        if (!hasMacroContent && !hasAssemblyContent) {
             // Download single .bf file
             const blob = new Blob([file.mainContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
@@ -98,10 +107,15 @@ export function Files() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         } else {
-            // Create a zip archive with both files
+            // Create a zip archive with all files
             const zip = new JSZip();
             zip.file(`${file.name}.bf`, file.mainContent);
-            zip.file(`${file.name}.bfm`, file.macroContent);
+            if (hasMacroContent) {
+                zip.file(`${file.name}.bfm`, file.macroContent);
+            }
+            if (hasAssemblyContent) {
+                zip.file(`${file.name}.asm`, file.assemblyContent!);
+            }
             
             try {
                 const blob = await zip.generateAsync({ type: 'blob' });
@@ -188,6 +202,9 @@ export function Files() {
                                                 </span>
                                                 {hasMacros && (
                                                     <span className="text-xs text-blue-400">M</span>
+                                                )}
+                                                {file.assemblyContent?.trim() && (
+                                                    <span className="text-xs text-green-400">A</span>
                                                 )}
                                             </div>
                                             <div className="text-xs text-zinc-500">

@@ -1,4 +1,5 @@
-import { Instruction, Opcode, InstructionFormat, opcodeInfo, DEFAULT_MAX_IMMEDIATE } from './types';
+import type { Instruction } from './types.ts';
+import { Opcode, InstructionFormat, opcodeInfo, DEFAULT_MAX_IMMEDIATE } from './types.ts';
 
 export class InstructionEncoder {
   private maxImmediate: number;

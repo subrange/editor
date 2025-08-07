@@ -1,4 +1,4 @@
-import { ParsedLine } from './types';
+import type { ParsedLine } from './types.ts';
 
 export class Parser {
   private caseInsensitive: boolean;

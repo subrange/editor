@@ -1,19 +1,21 @@
-import {
+import type {
   AssemblerOptions,
   AssemblerResult,
   AssemblerState,
+  ParsedLine
+} from './types.ts';
+import {
   Opcode,
   Register,
   DEFAULT_BANK_SIZE,
   DEFAULT_MAX_IMMEDIATE,
   INSTRUCTION_SIZE,
   opcodeInfo,
-  ParsedLine,
   Section
-} from './types';
-import { InstructionEncoder } from './encoder';
-import { Parser } from './parser';
-import { MacroFormatter } from './macro-formatter';
+} from './types.ts';
+import { InstructionEncoder } from './encoder.ts';
+import { Parser } from './parser.ts';
+import { MacroFormatter } from './macro-formatter.ts';
 
 export class RippleAssembler {
   private encoder: InstructionEncoder;

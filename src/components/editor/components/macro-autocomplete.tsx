@@ -4,21 +4,12 @@ import { EditorStore, type Position } from "../stores/editor.store.ts";
 import { type MacroDefinition } from "../../../services/macro-expander/macro-expander.ts";
 import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from "../constants.ts";
 import clsx from "clsx";
+import { measureCharacterWidth } from "../../helpers.ts";
 
 interface MacroAutocompleteProps {
     store: EditorStore;
     macros: MacroDefinition[];
     charWidth: number;
-}
-
-function measureCharacterWidth() {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (!context) {
-        throw new Error("Failed to get canvas context");
-    }
-    context.font = "14px monospace";
-    return context.measureText("M").width;
 }
 
 export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocompleteProps) {

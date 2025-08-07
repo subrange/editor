@@ -2,9 +2,12 @@ import {useMemo, useRef, useState, useEffect} from "react";
 import {useStoreSubscribe, useStoreSubscribeToField, useStoreSubscribeObservable} from "../../../hooks/use-store-subscribe.tsx";
 import {EditorStore, type Line} from "../stores/editor.store.ts";
 import {ProgressiveMacroTokenizer, type MacroToken} from "../services/macro-tokenizer-progressive.ts";
+import {AssemblyTokenizer} from "../services/assembly-tokenizer.ts";
 import {ErrorDecorations} from "./error-decorations.tsx";
 import {type MacroExpansionError, type MacroDefinition} from "../../../services/macro-expander/macro-expander.ts";
 import {MacroAutocomplete} from "./macro-autocomplete.tsx";
+import {AssemblyAutocompleteWrapper} from "./assembly-autocomplete-wrapper.tsx";
+import {AssemblyErrorDecorations} from "./assembly-error-decorations.tsx";
 import {LINE_PADDING_LEFT, LINE_PADDING_TOP, CHAR_HEIGHT} from "../constants.ts";
 import {BracketHighlights} from "./bracket-matcher.tsx";
 import {VirtualizedLine} from "./virtualized-line.tsx";
@@ -17,23 +20,13 @@ import {DebugMarker} from "./debug-marker.tsx";
 import {MacroUsagesModal, type MacroUsage} from "./macro-usages-modal.tsx";
 import {MacroRenameModal} from "./macro-rename-modal.tsx";
 import {UnusedMacroHighlights} from "./unused-macro-highlights.tsx";
+import {measureCharacterWidth} from "../../helpers.ts";
 
 interface LinesPanelProps {
     store: EditorStore;
     editorWidth: number;
     scrollLeft: number;
     editorRef: React.RefObject<HTMLDivElement>;
-}
-
-function measureCharacterWidth() {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (!context) {
-        throw new Error("Failed to get canvas context");
-    }
-    context.font = "14px monospace"; // Match your font-mono text-sm
-    const width = context.measureText("M").width;
-    return width;
 }
 
 export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPanelProps) {
@@ -89,6 +82,7 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
 
     // Determine which token styles to use based on tokenizer type
     const isProgressiveMacro = tokenizer instanceof ProgressiveMacroTokenizer;
+    const isAssembly = tokenizer instanceof AssemblyTokenizer;
 
     // Extract errors and macros if using enhanced tokenizer
     const errors: MacroExpansionError[] = useMemo(() => {
@@ -372,6 +366,71 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
     };
 
     const handleTokenClick = (e: React.MouseEvent, token: MacroToken) => {
+        // Handle assembly label navigation
+        if (isAssembly && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const assemblyToken = token as any; // Token might be AssemblyToken
+            
+            // Handle label reference click - jump to label definition
+            if (assemblyToken.type === 'label_ref') {
+                const labelName = assemblyToken.value;
+                
+                // Find the label definition
+                for (let i = 0; i < lines.length; i++) {
+                    const labelMatch = lines[i].text.match(/^([a-zA-Z_][a-zA-Z0-9_]*):/);
+                    if (labelMatch && labelMatch[1] === labelName) {
+                        // Set navigation flag for center scrolling
+                        store.isNavigating.next(true);
+                        // Jump to the label definition
+                        store.setCursorPosition({ line: i, column: 0 });
+                        break;
+                    }
+                }
+            }
+            // Handle label definition click - show usages
+            else if (assemblyToken.type === 'label') {
+                const labelName = assemblyToken.value.slice(0, -1); // Remove colon
+                
+                // Find all usages of this label
+                const usages: MacroUsage[] = [];
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].text;
+                    let index = 0;
+                    
+                    // Skip the definition line
+                    if (line.match(new RegExp(`^${labelName}:`))) {
+                        continue;
+                    }
+                    
+                    // Find all occurrences of the label in the line
+                    while ((index = line.indexOf(labelName, index)) !== -1) {
+                        // Check if it's a whole word (not part of another identifier)
+                        const before = index > 0 ? line[index - 1] : ' ';
+                        const after = index + labelName.length < line.length ? line[index + labelName.length] : ' ';
+                        
+                        if (/\W/.test(before) && /\W/.test(after)) {
+                            usages.push({
+                                line: i,
+                                column: index,
+                                text: line.trim(),
+                                lineNumber: (i + 1).toString()
+                            });
+                        }
+                        index += labelName.length;
+                    }
+                }
+                
+                // Show the modal with usages
+                setMacroUsagesModal({
+                    macroName: labelName,
+                    usages
+                });
+            }
+            return;
+        }
+        
         if (!isProgressiveMacro) {
             return;
         }
@@ -466,6 +525,7 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
                 lineIndex={lineIndex}
                 charWidth={charWidth}
                 isProgressiveMacro={isProgressiveMacro}
+                isAssembly={isAssembly}
                 hasBreakpoint={hasBreakpoint}
                 isCurrentLine={isCurrentLine}
                 isRunning={isRunning}
@@ -521,6 +581,18 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
                 <UnusedMacroHighlights
                     unusedMacros={unusedMacros}
                     tokenizedLines={tokenizedLines}
+                    charWidth={charWidth}
+                />
+            </>
+        )}
+        {isAssembly && (
+            <>
+                <AssemblyAutocompleteWrapper
+                    store={store}
+                    charWidth={charWidth}
+                />
+                <AssemblyErrorDecorations
+                    store={store}
                     charWidth={charWidth}
                 />
             </>

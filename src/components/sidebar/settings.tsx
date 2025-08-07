@@ -377,6 +377,41 @@ export function Settings() {
                 {/*    </div>*/}
                 {/*</SettingSection>*/}
 
+                {/* Assembly Settings */}
+                <SettingSection title="Assembly Editor">
+                    <div className="space-y-4">
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                Auto-compile
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={settings?.assembly?.autoCompile ?? false}
+                                onChange={(e) => settingsStore.setAssemblyAutoCompile(e.target.checked)}
+                                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                            />
+                        </label>
+                        <p className="text-xs text-zinc-500 -mt-2">
+                            Automatically compile assembly code as you type
+                        </p>
+
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                Auto-open Output
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={settings?.assembly?.autoOpenOutput ?? true}
+                                onChange={(e) => settingsStore.setAssemblyAutoOpenOutput(e.target.checked)}
+                                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                            />
+                        </label>
+                        <p className="text-xs text-zinc-500 -mt-2">
+                            Automatically open output panel when compiling
+                        </p>
+                    </div>
+                </SettingSection>
+
                 {/* Settings Management */}
                 <SettingSection title="Settings Management">
                     <div className="space-y-4">

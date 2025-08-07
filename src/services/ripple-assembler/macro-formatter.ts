@@ -1,4 +1,5 @@
-import { Instruction, Opcode, Register } from './types';
+import type { Instruction } from './types.ts';
+import { Opcode, Register } from './types.ts';
 
 export class MacroFormatter {
   private opcodeToMacro: Map<number, string> = new Map([

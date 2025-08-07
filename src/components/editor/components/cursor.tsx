@@ -3,20 +3,10 @@ import clsx from "clsx";
 import {useStoreSubscribe, useStoreSubscribeToField} from "../../../hooks/use-store-subscribe.tsx";
 import {EditorStore} from "../stores/editor.store.ts";
 import {LINE_PADDING_LEFT, LINE_PADDING_TOP, CHAR_HEIGHT} from "../constants.ts";
+import {measureCharacterWidth} from "../../helpers.ts";
 
 interface CursorProps {
     store: EditorStore;
-}
-
-function measureCharacterWidth() {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (!context) {
-        throw new Error("Failed to get canvas context");
-    }
-    context.font = "14px monospace"; // Match your font-mono text-sm
-    const width = context.measureText("M").width;
-    return width;
 }
 
 export function Cursor({store}: CursorProps) {

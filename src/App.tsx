@@ -13,17 +13,18 @@ import {EditorStore} from "./components/editor/stores/editor.store.ts";
 import {useEffect, useState, useCallback} from "react";
 import {ProgressiveMacroTokenizer} from "./components/editor/services/macro-tokenizer-progressive.ts";
 import {createAsyncMacroExpander} from "./services/macro-expander/create-macro-expander.ts";
-import {CpuChipIcon, ArrowPathIcon, DocumentTextIcon} from "@heroicons/react/24/solid";
+import {CpuChipIcon, ArrowPathIcon, DocumentTextIcon, CommandLineIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 
 import {settingsStore} from "./stores/settings.store";
 import {useStoreSubscribe} from "./hooks/use-store-subscribe";
 import {WorkerTokenizer} from "./services/tokenizer/worker-tokenizer-adapter.ts";
 import {interpreterStore} from "./components/debugger/interpreter.store.ts";
-import {MacroContextPanel} from "./components/debugger/macro-context-panel.tsx";
+// import {MacroContextPanel} from "./components/debugger/macro-context-panel.tsx";
 import {DraggableVSep} from "./components/ui/draggable-vsep.tsx";
 import {outputStore} from "./stores/output.store.ts";
 import {vmOutputService} from "./services/vm-output.service.ts";
+import {AssemblyEditor} from "./components/assembly-editor/assembly-editor.tsx";
 
 // Initialize VM output service
 vmOutputService.initialize();
@@ -377,7 +378,7 @@ function DebugPanel() {
                     <div className="v h-full grow">
                         <Debugger/>
                     </div>
-                    {/*<MacroContextPanel/>*/}
+                    {/* <MacroContextPanel/> */}
                 </div></>
             )
         }
@@ -386,11 +387,49 @@ function DebugPanel() {
 }
 
 function WorkspacePanel() {
+    const [activeEditor, setActiveEditor] = useLocalStorageState<'brainfuck' | 'assembly'>('activeEditorType', 'brainfuck');
+    
     return <div className="v grow-1 bg-zinc-950">
-        <DebugPanel/>
-        <Toolbar/>
-        <HSep/>
-        <EditorPanel/>
+        {/* Editor selector tabs */}
+        <div className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold px-2 min-h-8 border-b border-zinc-800">
+            <div className="h gap-0">
+                <button
+                    className={clsx(
+                        "px-3 py-2 text-xs font-bold transition-colors",
+                        activeEditor === 'brainfuck' 
+                            ? "text-zinc-400 bg-zinc-800" 
+                            : "text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50"
+                    )}
+                    onClick={() => setActiveEditor('brainfuck')}
+                >
+                    Brainfuck IDE
+                </button>
+                <button
+                    className={clsx(
+                        "px-3 py-2 text-xs font-bold transition-colors",
+                        activeEditor === 'assembly' 
+                            ? "text-zinc-400 bg-zinc-800" 
+                            : "text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50"
+                    )}
+                    onClick={() => setActiveEditor('assembly')}
+                >
+                    <CommandLineIcon className="w-3 h-3 inline mr-1" />
+                    Assembly Editor
+                </button>
+            </div>
+        </div>
+        
+        {/* Content based on active editor */}
+        {activeEditor === 'brainfuck' ? (
+            <>
+                <DebugPanel/>
+                <Toolbar/>
+                <HSep/>
+                <EditorPanel/>
+            </>
+        ) : (
+            <AssemblyEditor />
+        )}
     </div>;
 }
 

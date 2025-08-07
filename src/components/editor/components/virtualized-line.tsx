@@ -1,9 +1,11 @@
 import { useRef, useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { ViewportTokenizer } from '../services/viewport-tokenizer.ts';
-import { CHAR_HEIGHT } from '../constants.ts';
+import { CHAR_HEIGHT, LINE_PADDING_LEFT, LINE_PADDING_TOP } from '../constants.ts';
 import { tokenStyles } from '../services/tokenizer.ts';
 import { progressiveMacroTokenStyles } from '../services/macro-tokenizer-progressive.ts';
+import { assemblyTokenStyles } from '../services/assembly-tokenizer.ts';
+import { AssemblyHoverTooltip } from './assembly-hover-tooltip.tsx';
 
 interface VirtualizedLineProps {
     tokens: any[];
@@ -11,6 +13,7 @@ interface VirtualizedLineProps {
     lineIndex: number;
     charWidth: number;
     isProgressiveMacro: boolean;
+    isAssembly?: boolean;
     hasBreakpoint: boolean;
     isCurrentLine: boolean;
     isRunning: boolean;
@@ -28,6 +31,7 @@ export function VirtualizedLine({
     lineIndex,
     charWidth,
     isProgressiveMacro,
+    isAssembly = false,
     hasBreakpoint,
     isCurrentLine,
     isRunning,
@@ -40,11 +44,13 @@ export function VirtualizedLine({
 }: VirtualizedLineProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [localScrollLeft, setLocalScrollLeft] = useState(0);
+    const [hoveredToken, setHoveredToken] = useState<{token: any, index: number} | null>(null);
+    const [mousePosition, setMousePosition] = useState<{x: number, y: number}>({x: 0, y: 0});
     
     // Use editor scroll if available, otherwise use local scroll
     const scrollLeft = editorScrollLeft || localScrollLeft;
     
-    const styles = isProgressiveMacro ? progressiveMacroTokenStyles : tokenStyles;
+    const styles = isAssembly ? assemblyTokenStyles : (isProgressiveMacro ? progressiveMacroTokenStyles : tokenStyles);
     
     // Calculate if we should virtualize
     const shouldVirtualize = lineText.length > 1000;
@@ -75,32 +81,58 @@ export function VirtualizedLine({
     if (!shouldVirtualize) {
         // For short lines, use the original rendering
         return (
-            <div
-                className={clsx(
-                    "whitespace-pre pl-2 pr-4", {
-                        "bg-zinc-900": showDebug && isCurrentLine && isRunning && !hasBreakpoint,
-                        "bg-red-950": showDebug && hasBreakpoint
-                    }
+            <>
+                <div
+                    ref={containerRef}
+                    className={clsx(
+                        "whitespace-pre pl-2 pr-4", {
+                            "bg-zinc-900": showDebug && isCurrentLine && isRunning && !hasBreakpoint,
+                            "bg-red-950": showDebug && hasBreakpoint
+                        }
+                    )}
+                    style={{height: `${CHAR_HEIGHT}px`, lineHeight: `${CHAR_HEIGHT}px`}}
+                >
+                    {tokens.length === 0 ? (
+                        <span>&nbsp;</span>
+                    ) : (
+                        tokens.map((token, tokenIndex) => (
+                            <span
+                                key={tokenIndex}
+                                className={clsx(styles[token.type as keyof typeof styles] || '', {
+                                    'cursor-pointer hover:underline': isMetaKeyHeld && ((token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro || (token.type === 'label' || token.type === 'label_ref') && isAssembly),
+                                    'cursor-pointer hover:bg-zinc-800 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
+                                })}
+                                onClick={(e) => onTokenClick?.(e, token)}
+                                onMouseEnter={(e) => {
+                                    if (isAssembly && isMetaKeyHeld && (token.type === 'instruction' || token.type === 'register' || token.type === 'directive')) {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setHoveredToken({token, index: tokenIndex});
+                                        setMousePosition({
+                                            x: rect.left - (containerRef.current?.getBoundingClientRect().left || 0),
+                                            y: rect.top - (containerRef.current?.getBoundingClientRect().top || 0)
+                                        });
+                                    }
+                                }}
+                                onMouseLeave={() => {
+                                    if (hoveredToken?.index === tokenIndex) {
+                                        setHoveredToken(null);
+                                    }
+                                }}
+                            >
+                                {token.value}
+                            </span>
+                        ))
+                    )}
+                </div>
+                {isAssembly && hoveredToken && isMetaKeyHeld && (
+                    <AssemblyHoverTooltip
+                        token={hoveredToken.token}
+                        x={mousePosition.x}
+                        y={mousePosition.y}
+                        visible={true}
+                    />
                 )}
-                style={{height: `${CHAR_HEIGHT}px`, lineHeight: `${CHAR_HEIGHT}px`}}
-            >
-                {tokens.length === 0 ? (
-                    <span>&nbsp;</span>
-                ) : (
-                    tokens.map((token, tokenIndex) => (
-                        <span
-                            key={tokenIndex}
-                            className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
-                                'cursor-pointer hover:bg-zinc-800 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
-                            })}
-                            onClick={(e) => onTokenClick?.(e, token)}
-                        >
-                            {token.value}
-                        </span>
-                    ))
-                )}
-            </div>
+            </>
         );
     }
     
@@ -108,19 +140,21 @@ export function VirtualizedLine({
     // If we have editor scroll, don't add local scroll container
     if (editorScrollLeft !== undefined) {
         return (
-            <div
-                className={clsx(
-                    "whitespace-pre pl-2 pr-4", {
-                        "bg-zinc-900": showDebug && isCurrentLine && isRunning && !hasBreakpoint,
-                        "bg-red-950": showDebug && hasBreakpoint
-                    }
-                )}
-                style={{
-                    height: `${CHAR_HEIGHT}px`,
-                    lineHeight: `${CHAR_HEIGHT}px`,
-                    width: `${totalWidth}px`
-                }}
-            >
+            <>
+                <div
+                    ref={containerRef}
+                    className={clsx(
+                        "whitespace-pre pl-2 pr-4", {
+                            "bg-zinc-900": showDebug && isCurrentLine && isRunning && !hasBreakpoint,
+                            "bg-red-950": showDebug && hasBreakpoint
+                        }
+                    )}
+                    style={{
+                        height: `${CHAR_HEIGHT}px`,
+                        lineHeight: `${CHAR_HEIGHT}px`,
+                        width: `${totalWidth}px`
+                    }}
+                >
                 <div className="relative">
                     {visibleTokens.map((token, tokenIndex) => {
                         if (token.type === 'truncation-indicator') {
@@ -132,7 +166,7 @@ export function VirtualizedLine({
                             <span
                                 key={tokenIndex}
                                 className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                    'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
+                                    'cursor-pointer hover:underline': isMetaKeyHeld && ((token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro || (token.type === 'label' || token.type === 'label_ref') && isAssembly),
                                     'cursor-pointer hover:bg-zinc-800 hover:px-1 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                                 })}
                                 style={{
@@ -140,6 +174,21 @@ export function VirtualizedLine({
                                     left: `${token.originalStart * charWidth}px`
                                 }}
                                 onClick={(e) => onTokenClick?.(e, token)}
+                                onMouseEnter={(e) => {
+                                    if (isAssembly && isMetaKeyHeld && (token.type === 'instruction' || token.type === 'register' || token.type === 'directive')) {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setHoveredToken({token, index: tokenIndex});
+                                        setMousePosition({
+                                            x: rect.left - (containerRef.current?.getBoundingClientRect().left || 0),
+                                            y: rect.top - (containerRef.current?.getBoundingClientRect().top || 0)
+                                        });
+                                    }
+                                }}
+                                onMouseLeave={() => {
+                                    if (hoveredToken?.index === tokenIndex) {
+                                        setHoveredToken(null);
+                                    }
+                                }}
                             >
                                 {token.value}
                             </span>
@@ -147,14 +196,24 @@ export function VirtualizedLine({
                     })}
                 </div>
             </div>
+            {isAssembly && hoveredToken && isMetaKeyHeld && (
+                <AssemblyHoverTooltip
+                    token={hoveredToken.token}
+                    x={mousePosition.x}
+                    y={mousePosition.y}
+                    visible={true}
+                />
+            )}
+        </>
         );
     }
     
     // For individual line scrolling (fallback)
     return (
-        <div
-            ref={containerRef}
-            className={clsx(
+        <>
+            <div
+                ref={containerRef}
+                className={clsx(
                 "overflow-x-auto whitespace-pre", {
                     "bg-zinc-900": showDebug && isCurrentLine && isRunning && !hasBreakpoint,
                     "bg-red-950": showDebug && hasBreakpoint
@@ -199,7 +258,7 @@ export function VirtualizedLine({
                             <span
                                 key={tokenIndex}
                                 className={clsx(styles[token.type as keyof typeof styles] || '', {
-                                    'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
+                                    'cursor-pointer hover:underline': isMetaKeyHeld && ((token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro || (token.type === 'label' || token.type === 'label_ref') && isAssembly),
                                     'cursor-pointer hover:bg-zinc-800 hover:px-1 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                                 })}
                                 style={{
@@ -207,6 +266,21 @@ export function VirtualizedLine({
                                     left: `${token.originalStart * charWidth}px`
                                 }}
                                 onClick={(e) => onTokenClick?.(e, token)}
+                                onMouseEnter={(e) => {
+                                    if (isAssembly && isMetaKeyHeld && (token.type === 'instruction' || token.type === 'register' || token.type === 'directive')) {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setHoveredToken({token, index: tokenIndex});
+                                        setMousePosition({
+                                            x: rect.left - (containerRef.current?.getBoundingClientRect().left || 0),
+                                            y: rect.top - (containerRef.current?.getBoundingClientRect().top || 0)
+                                        });
+                                    }
+                                }}
+                                onMouseLeave={() => {
+                                    if (hoveredToken?.index === tokenIndex) {
+                                        setHoveredToken(null);
+                                    }
+                                }}
                             >
                                 {token.value}
                             </span>
@@ -215,5 +289,14 @@ export function VirtualizedLine({
                 </div>
             </div>
         </div>
+        {isAssembly && hoveredToken && isMetaKeyHeld && (
+            <AssemblyHoverTooltip
+                token={hoveredToken.token}
+                x={mousePosition.x}
+                y={mousePosition.y}
+                visible={true}
+            />
+        )}
+    </>
     );
 }

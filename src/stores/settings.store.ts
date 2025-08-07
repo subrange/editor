@@ -13,9 +13,15 @@ export interface DebuggerSettings {
     viewMode: DebuggerViewMode;
 }
 
+export interface AssemblySettings {
+    autoCompile: boolean;
+    autoOpenOutput: boolean;
+}
+
 export interface Settings {
     macro: MacroSettings;
     debugger: DebuggerSettings;
+    assembly: AssemblySettings;
 }
 
 class SettingsStore {
@@ -28,6 +34,10 @@ class SettingsStore {
         debugger: {
             compactView: this.loadFromStorage('debuggerCompactView', false),
             viewMode: this.loadFromStorage('debuggerViewMode', 'normal') as DebuggerViewMode
+        },
+        assembly: {
+            autoCompile: this.loadFromStorage('assemblyAutoCompile', false),
+            autoOpenOutput: this.loadFromStorage('assemblyAutoOpenOutput', true)
         }
     });
 
@@ -92,6 +102,30 @@ class SettingsStore {
         });
         this.saveToStorage('debuggerViewMode', value);
         this.saveToStorage('debuggerCompactView', value === 'compact');
+    }
+    
+    setAssemblyAutoCompile(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            assembly: {
+                ...current.assembly,
+                autoCompile: value
+            }
+        });
+        this.saveToStorage('assemblyAutoCompile', value);
+    }
+    
+    setAssemblyAutoOpenOutput(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            assembly: {
+                ...current.assembly,
+                autoOpenOutput: value
+            }
+        });
+        this.saveToStorage('assemblyAutoOpenOutput', value);
     }
 
 
