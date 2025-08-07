@@ -128,6 +128,10 @@ class WorkerInterpreter {
     };
   } | null = null;
   private lastVMFlagValue = 0;
+  private lastOutputLength = 0;
+  private outputUpdateInterval = 100; // Send output updates every 100 chars
+  private lastOutputUpdateTime = 0;
+  private outputUpdateTimeInterval = 100; // Send output updates every 100ms (10fps) to avoid interfering with VM output
 
   constructor() {
     this.tapeSize = 1024 * 1024;
@@ -200,6 +204,8 @@ class WorkerInterpreter {
     this.lastPausedBreakpoint = null;
     this.currentSourcePosition = undefined;
     this.macroContext = undefined;
+    this.lastOutputLength = 0;
+    this.lastOutputUpdateTime = 0;
     // Send tape data after reset
     this.sendStateUpdate(true);
   }
@@ -431,6 +437,8 @@ class WorkerInterpreter {
     this.tape.fill(0);
     this.pointer = 0;
     this.output = '';
+    this.lastOutputLength = 0;
+    this.lastOutputUpdateTime = performance.now();
     let pc = 0;
     const startTime = performance.now();
     const UPDATE_INTERVAL = 50_000_000; // Match main thread interval
@@ -442,6 +450,7 @@ class WorkerInterpreter {
     const tapeSize = this.tapeSize;
     const cellSize = this.cellSize;
     let output = this.output;
+    const vmOutputConfig = this.vmOutputConfig;
     
     this.lastVMFlagValue = 0;
 
@@ -463,7 +472,20 @@ class WorkerInterpreter {
             pc = jumpTable.get(pc) || pc;
           }
           break;
-        case '.': output += String.fromCharCode(tape[pointer]); break;
+        case '.': 
+          output += String.fromCharCode(tape[pointer]);
+          // Check if we should send an output update (but not if VM output is active)
+          const now = performance.now();
+          const vmOutputActive = vmOutputConfig && tape[vmOutputConfig.outFlagCellIndex] === 1;
+          if (!vmOutputActive && 
+              (output.length - this.lastOutputLength >= this.outputUpdateInterval || 
+               now - this.lastOutputUpdateTime >= this.outputUpdateTimeInterval)) {
+            this.output = output;
+            this.lastOutputLength = output.length;
+            this.lastOutputUpdateTime = now;
+            this.sendStateUpdate(false); // Don't send tape data for output updates
+          }
+          break;
         case ',': tape[pointer] = 0; break;
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
@@ -482,8 +504,11 @@ class WorkerInterpreter {
 
       // Check VM output flag in turbo mode
       if (this.vmOutputConfig) {
-        const flagValue = this.tape[this.vmOutputConfig.outFlagCellIndex];
+        const flagValue = tape[this.vmOutputConfig.outFlagCellIndex];
         if (flagValue === 1 && this.lastVMFlagValue === 0) {
+          // Update instance variables before sending VM output
+          this.pointer = pointer;
+          this.output = output;
           this.sendVMOutput();
         }
         this.lastVMFlagValue = flagValue;
@@ -585,6 +610,10 @@ class WorkerInterpreter {
     const UPDATE_INTERVAL = 500_000_000; // Match main thread interval
     let opsExecuted = 0;
     
+    // Reset output tracking for resume
+    this.lastOutputLength = this.output.length;
+    this.lastOutputUpdateTime = performance.now();
+    
     while (pc < ops.length && this.isRunning && !this.isPaused) {
       const op = ops[pc];
 
@@ -603,7 +632,19 @@ class WorkerInterpreter {
             pc = jumpTable.get(pc) || pc;
           }
           break;
-        case '.': this.output += String.fromCharCode(this.tape[this.pointer]); break;
+        case '.': 
+          this.output += String.fromCharCode(this.tape[this.pointer]);
+          // Check if we should send an output update (but not if VM output is active)
+          const now = performance.now();
+          const vmOutputActive = this.vmOutputConfig && this.tape[this.vmOutputConfig.outFlagCellIndex] === 1;
+          if (!vmOutputActive && 
+              (this.output.length - this.lastOutputLength >= this.outputUpdateInterval || 
+               now - this.lastOutputUpdateTime >= this.outputUpdateTimeInterval)) {
+            this.lastOutputLength = this.output.length;
+            this.lastOutputUpdateTime = now;
+            this.sendStateUpdate(false); // Don't send tape data for output updates
+          }
+          break;
         case ',': this.tape[this.pointer] = 0; break;
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
@@ -619,8 +660,11 @@ class WorkerInterpreter {
 
       // Check VM output flag in turbo mode
       if (this.vmOutputConfig) {
-        const flagValue = this.tape[this.vmOutputConfig.outFlagCellIndex];
+        const flagValue = tape[this.vmOutputConfig.outFlagCellIndex];
         if (flagValue === 1 && this.lastVMFlagValue === 0) {
+          // Update instance variables before sending VM output
+          this.pointer = pointer;
+          this.output = output;
           this.sendVMOutput();
         }
         this.lastVMFlagValue = flagValue;
