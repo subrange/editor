@@ -3,6 +3,7 @@ import {BehaviorSubject, Subscription} from "rxjs";
 import {type Position} from "../editor/stores/editor.store.ts";
 import {interpreterStore as jsInterpreter, type TapeSnapshot} from "./interpreter.store.ts";
 import type {SourceMap} from "../../services/macro-expander/source-map.ts";
+import {InterpreterWorkerStore} from "../../services/interpreter/interpreter-worker-store.ts";
 
 type InterpreterState = {
     tape: Uint8Array | Uint16Array | Uint32Array;
@@ -65,7 +66,9 @@ type InterpreterInterface = {
 
 class InterpreterFacade implements InterpreterInterface {
     private currentInterpreter: InterpreterInterface = jsInterpreter;
+    private workerInterpreter: InterpreterWorkerStore | null = null;
     private subscriptions: Subscription[] = [];
+    private isUsingWorker = false;
 
     // Proxy all the observables
     public state = new BehaviorSubject<InterpreterState>({
@@ -104,6 +107,61 @@ class InterpreterFacade implements InterpreterInterface {
         }
     }
 
+    private async switchToWorker() {
+        if (this.isUsingWorker && this.workerInterpreter) {
+            return;
+        }
+
+        console.log('Switching to worker-based interpreter for turbo mode');
+        
+        // Create worker interpreter if not exists
+        if (!this.workerInterpreter) {
+            this.workerInterpreter = new InterpreterWorkerStore();
+        }
+
+        // Get current state from JS interpreter
+        const currentState = jsInterpreter.state.getValue();
+        const currentCode = jsInterpreter.getCode();
+        
+        // Initialize worker with current code
+        this.workerInterpreter.setCode(currentCode);
+        
+        // Copy breakpoints
+        if (currentState.breakpoints.length > 0 || (currentState.sourceBreakpoints?.length || 0) > 0) {
+            // Use the proper method to set breakpoints
+            currentState.breakpoints.forEach(bp => {
+                this.workerInterpreter.toggleBreakpoint(bp);
+            });
+            if (currentState.sourceBreakpoints) {
+                currentState.sourceBreakpoints.forEach(bp => {
+                    this.workerInterpreter.toggleSourceBreakpoint(bp);
+                });
+            }
+        }
+
+        // Copy source map if exists
+        if (currentState.sourceMap) {
+            this.workerInterpreter.setSourceMap(currentState.sourceMap);
+        }
+
+        // Switch current interpreter
+        this.currentInterpreter = this.workerInterpreter as any;
+        this.isUsingWorker = true;
+        this.setupProxying();
+    }
+
+    private switchToJS() {
+        if (!this.isUsingWorker) {
+            return;
+        }
+
+        console.log('Switching back to JS interpreter');
+        
+        this.currentInterpreter = jsInterpreter;
+        this.isUsingWorker = false;
+        this.setupProxying();
+    }
+
 
     // Delegate all methods to current interpreter
     reset() {
@@ -115,10 +173,14 @@ class InterpreterFacade implements InterpreterInterface {
     }
 
     run(delay?: number) {
+        // Switch back to JS for normal run
+        this.switchToJS();
         this.currentInterpreter.run(delay);
     }
 
     runSmooth() {
+        // Switch back to JS for smooth run
+        this.switchToJS();
         this.currentInterpreter.runSmooth();
     }
 
@@ -135,10 +197,17 @@ class InterpreterFacade implements InterpreterInterface {
     }
 
     async runTurbo() {
+        // Switch to worker for turbo mode
+        await this.switchToWorker();
         await this.currentInterpreter.runTurbo();
     }
 
     async resumeTurbo() {
+        // If we're in turbo mode, use worker
+        if (this.state.getValue().lastExecutionMode === 'turbo') {
+            await this.switchToWorker();
+        }
+        
         if (this.currentInterpreter.resumeTurbo) {
             await this.currentInterpreter.resumeTurbo();
         }

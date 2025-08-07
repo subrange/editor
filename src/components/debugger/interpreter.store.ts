@@ -1427,6 +1427,10 @@ class InterpreterStore {
         }
     }
     
+    public getCode(): Line[] {
+        return this.code;
+    }
+    
     private updateSourcePosition() {
         if (!this.sourceMapLookup) {
             this.currentSourceChar.next(null);
