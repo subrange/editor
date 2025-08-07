@@ -442,7 +442,7 @@ class WorkerInterpreter {
     this.output = '';
     let pc = 0;
     const startTime = performance.now();
-    const UPDATE_INTERVAL = 50_000_000; // Less frequent updates for performance
+    const UPDATE_INTERVAL = 100_000_000; // Less frequent updates for performance
     let opsExecuted = 0;
     
     this.lastVMFlagValue = 0;

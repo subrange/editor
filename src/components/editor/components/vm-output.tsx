@@ -23,12 +23,12 @@ export function VMOutput({ outputRef, isActive = true }: VMOutputProps) {
     
     const { tape } = interpreterState;
     const { config, output } = vmTerminalState;
-    const { outCellIndex, outFlagCellIndex, clearOnRead } = config;
+    const { outCellIndex, outFlagCellIndex, clearOnRead, enabled } = config;
     
     // Set up the VM output callback
     useEffect(() => {
-        // Only register callback when this tab is active
-        if (!isActive) {
+        // Only register callback when this tab is active and VM output is enabled
+        if (!isActive || !enabled) {
             return;
         }
         
@@ -65,7 +65,7 @@ export function VMOutput({ outputRef, isActive = true }: VMOutputProps) {
         return () => {
             interpreterStore.setVMOutputCallback(null);
         };
-    }, [outCellIndex, outFlagCellIndex, isActive]);
+    }, [outCellIndex, outFlagCellIndex, isActive, enabled]);
 
     // Auto-scroll to bottom when content changes
     useLayoutEffect(() => {
@@ -95,9 +95,22 @@ export function VMOutput({ outputRef, isActive = true }: VMOutputProps) {
     return (
         <div ref={activeRef} className="flex flex-col h-full overflow-auto">
             <div className="p-2 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between">
-                <div className="flex gap-4 text-xs text-zinc-500">
-                    <span>OUT: cell[{outCellIndex}]</span>
-                    <span>FLAG: cell[{outFlagCellIndex}]</span>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => vmTerminalStore.updateConfig({ enabled: !enabled })}
+                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                            enabled 
+                                ? 'bg-emerald-900/50 text-emerald-400 hover:bg-emerald-900/70' 
+                                : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'
+                        }`}
+                        title={enabled ? 'VM output sync is enabled' : 'VM output sync is disabled'}
+                    >
+                        {enabled ? 'Sync ON' : 'Sync OFF'}
+                    </button>
+                    <div className="flex gap-4 text-xs text-zinc-500">
+                        <span>OUT: cell[{outCellIndex}]</span>
+                        <span>FLAG: cell[{outFlagCellIndex}]</span>
+                    </div>
                 </div>
                 <button
                     onClick={() => setShowConfig(!showConfig)}
@@ -179,7 +192,14 @@ export function VMOutput({ outputRef, isActive = true }: VMOutputProps) {
             )}
             
             <pre className="text-xs text-white whitespace-pre-wrap font-mono p-4 flex-1">
-                {output || <span className="text-zinc-600 italic">No output yet. VM will output when cell[{outFlagCellIndex}] = 1</span>}
+                {output || (
+                    <span className="text-zinc-600 italic">
+                        {enabled 
+                            ? `No output yet. VM will output when cell[${outFlagCellIndex}] = 1`
+                            : 'VM output sync is disabled. Enable it to see output.'
+                        }
+                    </span>
+                )}
             </pre>
             
             {output && (

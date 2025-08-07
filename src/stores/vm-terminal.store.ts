@@ -4,6 +4,7 @@ export interface VMTerminalConfig {
     outCellIndex: number;
     outFlagCellIndex: number;
     clearOnRead: boolean;
+    enabled: boolean;
 }
 
 export interface VMTerminalState {
@@ -14,7 +15,8 @@ export interface VMTerminalState {
 const DEFAULT_CONFIG: VMTerminalConfig = {
     outCellIndex: 4,
     outFlagCellIndex: 12,
-    clearOnRead: true
+    clearOnRead: true,
+    enabled: true
 };
 
 const loadConfigFromStorage = (): VMTerminalConfig => {
