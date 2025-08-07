@@ -1,46 +1,41 @@
-; Hello World Example for Ripple VM
-; Demonstrates basic string output
+; Hello World Example for Ripple VM (Fixed)
+; This version matches the working handwritten code
 
 .data
-hello_msg:  .asciiz "Hello, World!\n"
-
-;@program_start(@OP_LI,     #R3, 0,   0)     // R3 is loader
-;@cmd(          @OP_LI,     #R4, 4,   0)     // jump address, stable
-;@cmd(          @OP_LI,     #R5, 2,   0)     // memory pointer
-
-;@cmd(          @OP_JALR,   #R4, 0,   #R4)   // unnecessary, but let it be
-
-;@cmd(          @OP_LOAD,   #R3, 0,   #R5)   // load letter
-;@cmd(          @OP_BNE,    #R3, 0,   1)     // if 0 - halt
-
-;@cmd(          @OP_HALT,   0,   0,   0)
-
-;@cmd(          @OP_ADDI,   #R5, #R5, 1)     // inc r5
-
-;@cmd(          @OP_STOR,   #R3, 0,   0)     // send letter to i/o output
-
-;@cmd(          @OP_JALR,   #R4, 0, #R4)
+; Note: In the working version, data starts at offset 2
+; We need to add padding
+padding:    .space 2        ; Reserve 2 bytes at start
+hello_msg:  .asciiz "Hello, Ripple!\n"
 
 .code
 start:
-    ; Load address of hello message
-    LI R5, hello_msg
+    ; R3 will hold the character being loaded
+    LI R3, 0
+    
+    ; R4 holds the jump address for the loop (instruction 4)
+    LI R4, 4
+    
+    ; R5 holds the memory pointer (starts at 2 where our string begins)
+    LI R5, 2
+    
+    ; Jump to print_loop (this is redundant but matches the working version)
+    JALR R4, R0, R4
     
 print_loop:
-    ; Load character from string
+    ; Load character from memory at address in R5
     LOAD R3, R5, 0
     
-    ; Check if null terminator
-    BEQ R3, R0, done
+    ; If character is not zero, continue printing
+    BNE R3, R0, 1
     
-    ; Output character (I/O is at address 0)
-    STORE R3, R0, 0
+    ; Character was zero, halt
+    HALT
     
-    ; Move to next character
+    ; Increment memory pointer
     ADDI R5, R5, 1
     
-    ; Continue loop
-    JAL print_loop
+    ; Output character to I/O (address 0)
+    STORE R3, R0, 0
     
-done:
-    HALT
+    ; Jump back to print_loop
+    JALR R4, R0, R4

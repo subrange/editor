@@ -1,3 +1,5 @@
+// -v
+
 // Data segment
 @lane(#L_MEM,
   @set(0) @nextword

@@ -47,7 +47,7 @@ To assemble and run these examples:
 
 ```bash
 # Assemble to macro format
-ripple-asm examples/hello-world.asm -o hello-world.bfm
+ripple-asm examples/hello-world-old.asm -o hello-world.bfm
 
 # Or use the assembler programmatically
 npx tsx your-script.ts
