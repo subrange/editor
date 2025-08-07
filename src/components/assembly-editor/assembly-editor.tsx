@@ -55,14 +55,14 @@ export function AssemblyEditor() {
                 });
             }
             
-            // Extract mark comments (; #mark_name)
-            const markMatch = line.text.match(/;\s*#([a-zA-Z_][a-zA-Z0-9_]*)/);
+            // Extract mark comments (// MARK:)
+            const markMatch = line.text.match(/\/\/\s*MARK:\s*(.+)/);
             if (markMatch) {
                 items.push({
                     type: 'mark',
-                    name: markMatch[1],
+                    name: markMatch[1].trim(),
                     line: lineIndex,
-                    column: line.text.indexOf('#' + markMatch[1])
+                    column: line.text.indexOf('// MARK:')
                 });
             }
         });

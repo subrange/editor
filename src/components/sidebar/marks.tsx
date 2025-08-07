@@ -6,30 +6,42 @@ interface Mark {
     line: number;
     text: string;
     content: string;
+    editorId: 'macro' | 'assembly';
 }
 
 export function Marks() {
     const [marks, setMarks] = useState<Mark[]>([]);
+    const [activeEditor, setActiveEditor] = useState<'macro' | 'assembly'>('macro');
 
     useEffect(() => {
         const extractMarks = () => {
-            const macroEditor = editorManager.getEditor("macro");
-            if (!macroEditor) {
+            const currentActiveEditor = editorManager.activeEditorId;
+            const editorId = (currentActiveEditor === 'assembly' || currentActiveEditor === 'macro') 
+                ? currentActiveEditor 
+                : activeEditor;
+            
+            setActiveEditor(editorId);
+            
+            const editor = editorManager.getEditor(editorId);
+            if (!editor) {
                 setMarks([]);
                 return;
             }
 
-            const text = macroEditor.getText();
+            const text = editor.getText();
             const lines = text.split('\n');
             const extractedMarks: Mark[] = [];
 
             lines.forEach((line, index) => {
+                // Both editors use // MARK: format
                 const markMatch = line.match(/\/\/\s*MARK:\s*(.+)/);
+                
                 if (markMatch) {
                     extractedMarks.push({
                         line: index,
                         text: markMatch[1].trim(),
-                        content: line
+                        content: line,
+                        editorId: editorId
                     });
                 }
             });
@@ -40,31 +52,58 @@ export function Marks() {
         // Initial extraction
         extractMarks();
 
-        // Subscribe to macro editor changes
+        // Subscribe to both editors
+        const subscriptions: Array<() => void> = [];
+        
         const macroEditor = editorManager.getEditor("macro");
         if (macroEditor) {
-            const subscription = macroEditor.editorState.subscribe(() => {
-                extractMarks();
+            const sub = macroEditor.editorState.subscribe(() => {
+                if (editorManager.activeEditorId === 'macro') {
+                    extractMarks();
+                }
             });
-
-            return () => {
-                subscription.unsubscribe();
-            };
+            subscriptions.push(() => sub.unsubscribe());
         }
-    }, []);
+        
+        const assemblyEditor = editorManager.getEditor("assembly");
+        if (assemblyEditor) {
+            const sub = assemblyEditor.editorState.subscribe(() => {
+                if (editorManager.activeEditorId === 'assembly') {
+                    extractMarks();
+                }
+            });
+            subscriptions.push(() => sub.unsubscribe());
+        }
+
+        // Subscribe to active editor changes
+        const activeEditorSub = editorManager.activeEditorId$.subscribe(() => {
+            extractMarks();
+        });
+        subscriptions.push(() => activeEditorSub.unsubscribe());
+
+        return () => {
+            subscriptions.forEach(unsub => unsub());
+        };
+    }, [activeEditor]);
 
     const navigateToMark = (mark: Mark) => {
-        const macroEditor = editorManager.getEditor("macro");
-        if (!macroEditor) return;
+        const editor = editorManager.getEditor(mark.editorId);
+        if (!editor) return;
 
+        // Set navigation flag for center scrolling
+        editor.isNavigating.next(true);
+        
         // Set cursor position to the mark line
-        macroEditor.setCursorPosition({
+        editor.setCursorPosition({
             line: mark.line,
             column: 0
         });
 
-        // Ensure macro editor is active
-        editorManager.setActiveEditor("macro");
+        // Ensure the correct editor is active
+        editorManager.setActiveEditor(mark.editorId);
+        
+        // Focus the editor
+        editor.focus();
     };
 
     return (
@@ -78,12 +117,12 @@ export function Marks() {
             <div className="p-4 space-y-4">
                 <div className="space-y-2">
                     <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                        Macro Editor Marks ({marks.length})
+                        {activeEditor === 'macro' ? 'Macro' : 'Assembly'} Editor Marks ({marks.length})
                     </h3>
 
                     {marks.length === 0 ? (
                         <p className="text-sm text-zinc-500 text-center py-8">
-                            No MARK comments found in macro editor
+                            No marks found in {activeEditor} editor
                         </p>
                     ) : (
                         <div className="space-y-0.5">
@@ -107,7 +146,7 @@ export function Marks() {
                 </div>
 
                 <div className="text-xs text-zinc-500 space-y-1">
-                    <p>Use // MARK: comments in the macro editor to create navigation points.</p>
+                    <p>Use // MARK: comments to create navigation points.</p>
                     <p>Click on a mark to jump to its location.</p>
                 </div>
             </div>

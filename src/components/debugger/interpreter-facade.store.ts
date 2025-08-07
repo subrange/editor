@@ -26,6 +26,10 @@ type InterpreterState = {
     
     // Execution mode tracking
     lastExecutionMode?: 'normal' | 'turbo';
+    
+    // Execution metrics
+    lastExecutionTime?: number; // Time in seconds
+    lastOperationCount?: number; // Number of operations executed
 }
 
 type InterpreterInterface = {
@@ -94,7 +98,16 @@ class InterpreterFacade implements InterpreterInterface {
 
         // Proxy observables from current interpreter
         this.subscriptions.push(
-            this.currentInterpreter.state.subscribe(value => this.state.next(value)),
+            this.currentInterpreter.state.subscribe(value => {
+                console.log('Facade proxying state:', {
+                    isRunning: value.isRunning,
+                    isPaused: value.isPaused,
+                    isStopped: value.isStopped,
+                    lastExecutionTime: value.lastExecutionTime,
+                    lastOperationCount: value.lastOperationCount
+                });
+                this.state.next(value);
+            }),
             this.currentInterpreter.currentChar.subscribe(value => this.currentChar.next(value)),
             this.currentInterpreter.tapeSize.subscribe(value => this.tapeSize.next(value)),
             this.currentInterpreter.cellSize.subscribe(value => this.cellSize.next(value)),

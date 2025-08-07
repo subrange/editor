@@ -402,7 +402,8 @@ function WorkspacePanel() {
                     )}
                     onClick={() => setActiveEditor('brainfuck')}
                 >
-                    Brainfuck IDE
+                    <CpuChipIcon className="w-3 h-3 inline mr-1" />
+                    Brainfuck
                 </button>
                 <button
                     className={clsx(
@@ -414,7 +415,7 @@ function WorkspacePanel() {
                     onClick={() => setActiveEditor('assembly')}
                 >
                     <CommandLineIcon className="w-3 h-3 inline mr-1" />
-                    Assembly Editor
+                    Assembly
                 </button>
             </div>
         </div>

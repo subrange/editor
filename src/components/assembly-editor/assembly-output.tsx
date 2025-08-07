@@ -14,6 +14,7 @@ interface AssemblyOutputProps {
 export function AssemblyOutput({ onJumpToLabel }: AssemblyOutputProps) {
     const outputState = useStoreSubscribe(assemblyOutputStore.state);
     const [selectedTab, setSelectedTab] = useLocalStorageState<'assembly' | 'labels' | 'data' | 'macros'>('assemblySelectedTab', 'macros');
+    const [showCopied, setShowCopied] = useState(false);
     
     const { output, error, isCompiling } = outputState;
 
@@ -35,6 +36,10 @@ export function AssemblyOutput({ onJumpToLabel }: AssemblyOutputProps) {
         }
         
         navigator.clipboard.writeText(content);
+        
+        // Show copied indicator
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 2000);
     }, [output, selectedTab]);
 
     const downloadAsFile = useCallback(() => {
@@ -122,10 +127,23 @@ export function AssemblyOutput({ onJumpToLabel }: AssemblyOutputProps) {
                         <>
                             <button
                                 onClick={copyToClipboard}
-                                className="p-1 text-zinc-600 hover:text-zinc-400 transition-colors"
-                                title="Copy to clipboard"
+                                className={clsx(
+                                    "p-1 transition-all duration-200 relative",
+                                    showCopied 
+                                        ? "text-green-400" 
+                                        : "text-zinc-600 hover:text-zinc-400"
+                                )}
+                                title={showCopied ? "Copied!" : "Copy to clipboard"}
                             >
-                                <ClipboardDocumentIcon className="w-4 h-4" />
+                                <ClipboardDocumentIcon className={clsx(
+                                    "w-4 h-4 transition-transform duration-200",
+                                    showCopied && "scale-110"
+                                )} />
+                                {showCopied && (
+                                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                                        Copied!
+                                    </span>
+                                )}
                             </button>
                             <button
                                 onClick={downloadAsFile}

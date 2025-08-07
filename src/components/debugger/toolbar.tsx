@@ -18,9 +18,14 @@ import { editorManager } from "../../services/editor-manager.service.ts";
 
 export function Toolbar() {
     const interpreterState = useStoreSubscribe(interpreterStore.state);
-    const { isRunning, isPaused, isStopped, lastExecutionMode } = interpreterState;
+    const { isRunning, isPaused, isStopped, lastExecutionMode, lastExecutionTime, lastOperationCount } = interpreterState;
     const [delay, setDelay] = useState(50);
     const [showDelayInput, setShowDelayInput] = useState(false);
+    
+    // Debug logging
+    if (isStopped) {
+        console.log('Toolbar: Program stopped. Execution time:', lastExecutionTime, 'Operation count:', lastOperationCount);
+    }
 
     const handleDelayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value) || 0;
@@ -213,6 +218,11 @@ export function Toolbar() {
                             <div className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-blue-500" />
                                 <span className="text-blue-500">Finished</span>
+                                {lastExecutionTime !== undefined && lastOperationCount !== undefined && (
+                                    <span className="text-zinc-500 ml-2">
+                                        ({lastExecutionTime.toFixed(2)}s, {Math.round(lastOperationCount / lastExecutionTime).toLocaleString()} ops/s)
+                                    </span>
+                                )}
                             </div>
                         )
                     }

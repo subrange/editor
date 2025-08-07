@@ -285,18 +285,18 @@ export class AssemblyTokenizer implements ITokenizer {
 
 // Token styles for assembly syntax
 export const assemblyTokenStyles: Record<AssemblyToken['type'], string> = {
-    directive: 'text-purple-400',
-    instruction: 'text-blue-400',
-    register: 'text-green-400',
-    number: 'text-amber-400',
-    label: 'text-rose-400',
-    label_ref: 'text-rose-300 italic',
-    string: 'text-orange-300',
-    comment: 'text-gray-500 italic',
+    directive: 'text-purple-400/85',
+    instruction: 'text-blue-300/85',
+    register: 'text-green-400/75',
+    number: 'text-amber-400/80',
+    label: 'text-rose-400/85',
+    label_ref: 'text-rose-300/75 italic',
+    string: 'text-orange-300/80',
+    comment: 'text-gray-400/85 italic',
     mark_comment: 'text-yellow-300 bg-yellow-900/30',
-    operator: 'text-cyan-300',
-    punctuation: 'text-zinc-400',
+    operator: 'text-cyan-400/85',
+    punctuation: 'text-zinc-400/70',
     whitespace: '',
-    unknown: 'text-gray-600',
-    error: 'text-red-400 underline decoration-wavy'
+    unknown: 'text-gray-500/75',
+    error: 'text-red-300/90 underline decoration-wavy'
 };

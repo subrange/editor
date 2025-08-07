@@ -30,6 +30,10 @@ type InterpreterState = {
     
     // Execution mode tracking
     lastExecutionMode?: 'normal' | 'turbo';
+    
+    // Execution metrics
+    lastExecutionTime?: number; // Time in seconds
+    lastOperationCount?: number; // Number of operations executed
 }
 
 export type TapeSnapshot = {
@@ -111,6 +115,10 @@ class InterpreterStore {
     private runAnimationFrameId: number | null = null;
 
     private lastPausedBreakpoint: Position | null = null;
+    
+    // Execution tracking
+    private executionStartTime: number | null = null;
+    private operationCount: number = 0;
 
     public tapeSize = new BehaviorSubject<number>(DEFAULT_TAPE_SIZE);
     public cellSize = new BehaviorSubject<number>(DEFAULT_CELL_SIZE);
@@ -201,7 +209,9 @@ class InterpreterStore {
             laneCount: this.laneCount.getValue(),
             sourceMap: currentState.sourceMap,
             currentSourcePosition: undefined,
-            macroContext: undefined
+            macroContext: undefined,
+            lastExecutionTime: undefined,
+            lastOperationCount: undefined
         });
         this.currentChar.next({
             line: 0,
@@ -219,6 +229,8 @@ class InterpreterStore {
         }
 
         this.lastPausedBreakpoint = null;
+        this.executionStartTime = null;
+        this.operationCount = 0;
     }
 
     public runFromPosition(position: Position) {
@@ -606,15 +618,19 @@ class InterpreterStore {
         switch (char) {
             case '>':
                 currentState.pointer = (currentState.pointer + 1) % currentState.tape.length;
+                this.operationCount++;
                 break;
             case '<':
                 currentState.pointer = (currentState.pointer - 1 + currentState.tape.length) % currentState.tape.length;
+                this.operationCount++;
                 break;
             case '+':
                 currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] + 1) % this.cellSize.getValue();
+                this.operationCount++;
                 break;
             case '-':
                 currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] - 1 + this.cellSize.getValue()) % this.cellSize.getValue();
+                this.operationCount++;
                 break;
             case '[':
                 if (currentState.tape[currentState.pointer] === 0) {
@@ -629,6 +645,7 @@ class InterpreterStore {
                         console.error(`No matching ] for [ at ${currentPos.line}:${currentPos.column}`);
                     }
                 }
+                this.operationCount++;
                 break;
             case ']':
                 if (currentState.tape[currentState.pointer] !== 0) {
@@ -643,12 +660,15 @@ class InterpreterStore {
                         console.error(`No matching [ for ] at ${currentPos.line}:${currentPos.column}`);
                     }
                 }
+                this.operationCount++;
                 break;
             case '.':
                 currentState.output += String.fromCharCode(currentState.tape[currentState.pointer]);
+                this.operationCount++;
                 break;
             case ',':
                 console.log(`Input requested at position ${currentState.pointer}`);
+                this.operationCount++;
                 break;
         }
 
@@ -706,6 +726,11 @@ class InterpreterStore {
             clearInterval(this.runInterval);
         }
 
+        if (!this.executionStartTime) {
+            this.executionStartTime = performance.now();
+            this.operationCount = 0;
+        }
+
         this.state.next({
             ...this.state.getValue(),
             isRunning: true,
@@ -729,6 +754,11 @@ class InterpreterStore {
 
     public runSmooth = () => {
         // Run with requestAnimationFrame for smooth execution
+        if (!this.executionStartTime) {
+            this.executionStartTime = performance.now();
+            this.operationCount = 0;
+        }
+        
         this.state.next({
             ...this.state.getValue(),
             isRunning: true,
@@ -1125,15 +1155,17 @@ class InterpreterStore {
         }
         
         // Completed
+        const totalTime = (performance.now() - startTime) / 1000;
         this.state.next({
             ...this.state.getValue(),
             tape: tape,
             pointer: pointer,
             output: this.state.getValue().output + output,
-            isRunning: false
+            isRunning: false,
+            lastExecutionTime: totalTime,
+            lastOperationCount: opsExecuted
         });
         
-        const totalTime = (performance.now() - startTime) / 1000;
         console.log(`Turbo execution completed: ${opsExecuted} operations in ${totalTime}s`);
     }
 
@@ -1295,15 +1327,17 @@ class InterpreterStore {
         }
 
         // Final update
+        const totalTime = (performance.now() - startTime) / 1000;
         this.state.next({
             ...this.state.getValue(),
             tape: tape,
             pointer: pointer,
             output: this.state.getValue().output + output,
-            isRunning: false
+            isRunning: false,
+            lastExecutionTime: totalTime,
+            lastOperationCount: opsExecuted
         });
 
-        const totalTime = (performance.now() - startTime) / 1000;
         console.log(`Turbo execution completed: ${opsExecuted} operations in ${totalTime}s (${Math.round(opsExecuted/totalTime)} ops/sec)`);
     }
 
@@ -1318,11 +1352,20 @@ class InterpreterStore {
             this.runAnimationFrameId = null;
         }
 
+        // Calculate execution time if we were running
+        let executionTime: number | undefined;
+        if (this.executionStartTime) {
+            executionTime = (performance.now() - this.executionStartTime) / 1000;
+            this.executionStartTime = null;
+        }
+
         this.state.next({
             ...this.state.getValue(),
             isRunning: false,
             isPaused: false,
-            isStopped: true
+            isStopped: true,
+            lastExecutionTime: executionTime || this.state.getValue().lastExecutionTime,
+            lastOperationCount: this.operationCount || this.state.getValue().lastOperationCount
         });
 
         this.lastPausedBreakpoint = null;

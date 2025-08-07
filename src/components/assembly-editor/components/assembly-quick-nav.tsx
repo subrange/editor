@@ -41,10 +41,14 @@ export function AssemblyQuickNav({ quickNavStore, onNavigate, onHide }: Assembly
             switch (e.key) {
                 case "Enter":
                     e.preventDefault();
+                    e.stopPropagation();
                     const selectedItem = quickNavStore.getSelectedItem();
                     if (selectedItem) {
-                        onNavigate(selectedItem);
                         quickNavStore.hide();
+                        // Small delay to ensure modal is hidden before navigation
+                        setTimeout(() => {
+                            onNavigate(selectedItem);
+                        }, 0);
                     }
                     break;
                 case "ArrowDown":
@@ -75,8 +79,11 @@ export function AssemblyQuickNav({ quickNavStore, onNavigate, onHide }: Assembly
     };
 
     const handleItemClick = (item: AssemblyNavigationItem) => {
-        onNavigate(item);
         quickNavStore.hide();
+        // Small delay to ensure modal is hidden before navigation
+        setTimeout(() => {
+            onNavigate(item);
+        }, 0);
     };
 
     const renderIcon = (type: 'label' | 'mark') => {

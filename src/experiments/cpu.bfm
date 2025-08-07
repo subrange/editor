@@ -1,5 +1,40 @@
 // MARK: ------------- START -------------
 
+#define PROGRAM {
+@prg(
+  // Memory
+  @lane(#L_MEM,
+    {for(s in {0,0,'H','e','l','l','o',',',' ','R','i','p','p','l','e','!',10,0}, @set(s) @nextword)}
+  ),
+
+  // Program
+  @program_start(@OP_LI    , @R3 , 0   , 0) // probably should always nop?
+  @cmd(@OP_LI    , @R4 , 3   , 0)
+  @cmd(@OP_LI    , @R5 , 2   , 0)
+  @cmd(@OP_LOAD  , @R3 , @R0 , @R5)
+  @cmd(@OP_BNE   , @R3 , @R0 , 2)
+  @cmd(@OP_HALT  , 0   , 0   , 0)
+  @cmd(@OP_ADDI  , @R5 , @R5 , 1)
+  @cmd(@OP_STOR  , @R3 , @R0 , 0)
+  @cmd(@OP_JALR  , @R0 , @R0 , @R4)
+  @program_end
+)
+}
+
+// MARK: ----------- CODE END ----------
+
+
+
+
+
+
+
+
+
+
+
+
+
 #define FALSE 0
 #define TRUE  1
 
@@ -203,8 +238,42 @@
 
 // MARK: -- IP movement
 
+#define set_noinc_pc_flag {
+  @prevword
+  @goto_start
+  @lane(@L_SA, @set(1))
+  @nextword
+  @goto_ip_word
+}
+
 // Requires to be on IP
 #define move_ip_next_command {
+
+  @prevword
+  @goto_start
+  @lane(@L_SA,
+    @if
+      @lane_end(@L_SA)
+      @lane(@L_REG,
+          @nextwords(2) @dec(1) @prevwords(2) // PC
+      )
+
+      @nextword
+      @goto_ip_word
+      @fl(@prevword
+        - @prevword
+        - @prevword
+        - @prevword
+        - @prevword
+      )
+      @goto_start
+      @lane_start(@L_SA)
+    @endif
+  )
+
+  @nextword
+  @goto_ip_word
+
   @fl( {repeat(@CMD_SIZE, +@nextword)} ) @prevword
   @goto_PC @inc(1) @lane_end(@L_REG)
   // TODO: IF INCREMENT WRAPPED PC, NEED TO INC PCB!!!
@@ -729,7 +798,7 @@
       @set(@CMD_SIZE)
     @prevwords(2)
 
-    // So now, @CMD_SIZE * PC times we need to :
+    // So now, @CMD_SIZE * PC + 1 times we need to :
     @nextwords(2)
     @times( // @CMD_SIZE times
       // Copy PC to sA
@@ -766,6 +835,7 @@
   @nextword
   @goto_ip_word
 
+  @fl({repeat(4, @set(1) @nextword)})
   @prevword
   @fl(@clear) // We need 0 in the last fastlane pos
 }
@@ -835,6 +905,8 @@
   )
 
   // Now bank and addr are in word[-2] and word[-3]
+
+  @set_noinc_pc_flag
 
   @_jump_to_bank_addr
 }
@@ -915,6 +987,8 @@
     @copy_value_to_B
 
     @nextwords(2)
+
+
     @lane(@L_SA,
       @move_to(@prevwords(2) >, < @nextwords(2)) < // Very important! calculating addr by PC + imm
     )
@@ -940,7 +1014,10 @@
     @nextwords(4)
     // Copied. Safe to jump!
 
-    @_jump_to_bank_addr
+    // MARK: HERE!!!
+    @set_noinc_pc_flag
+
+    @_jump_to_bank_addr // ?
 
   @endif
 }
@@ -1376,64 +1453,9 @@
 )
 
 @goto_start_slow
-@nextword
 
-// MARK: -- Program code
-
-// @program_start(@OP_LI,      @R3, 5,   0)       // R3 ← 5
-// @cmd(          @OP_LI,      @R4, 5,   0)       // R4 ← 5
-// @cmd(          @OP_BEQ,     @R3, @R4, 2)       // jump +1 if equal → skip HALT
-// @cmd(          @OP_HALT,    0,   0,   0)
-// @cmd(          @OP_LI,      @R5, 42,  0)       // should be executed
-// @program_end
-
-// MARK: -- Program code
-
-#define HELLO {'H', 'e', 'l', 'l', 'o', ',', ' ', 'R', 'i', 'p', 'p', 'l', 'e', #ENDL}
-
-@nextword
-@lane(#L_MEM,
-  {for(s in #HELLO, @set(s) @nextword)}
-)
-
-@goto_start_slow
-@nextword
-
-@program_start(@OP_LI,     #R3, 0,   0)     // R3 is loader
-@cmd(          @OP_LI,     #R4, 4,   0)     // jump address, stable
-@cmd(          @OP_LI,     #R5, 2,   0)     // memory pointer
-
-@cmd(          @OP_JALR,   #R4, 0,   #R4)   // unnecessary, but let it be
-
-@cmd(          @OP_LOAD,   #R3, 0,   #R5)   // load letter
-@cmd(          @OP_BNE,    #R3, 0,   1)     // if 0 - halt
-
-@cmd(          @OP_HALT,   0,   0,   0)
-
-@cmd(          @OP_ADDI,   #R5, #R5, 1)     // inc r5
-
-@cmd(          @OP_STOR,   #R3, 0,   0)     // send letter to i/o output
-
-@cmd(          @OP_JALR,   #R4, 0, #R4)     // loop
-
-
-
-
-// @program_start(@OP_LI,     @R3, 5,   0)
-// @cmd(          @OP_LI,     @R4, 3,   0)
-// @cmd(          @OP_JALR,   @R4, 0,   @R4)     // call loop
-
-// -------- LOOP BODY START (addr 3) --------
-// @cmd(          @OP_LI,     @R6, 1,   0)       // R4 ← 1
-// @cmd(          @OP_SUB,    @R3, @R3, @R6)     // R1 -= 1
-// @cmd(          @OP_ADD,    @R8, @R8, @R6)     // R1 -= 1
-// @cmd(          @OP_BNE,    @R3, @R0, 1)       // If R1 ≠ 0, jump over next line
-// @cmd(          @OP_HALT,   0,   0,   0)       // If equal, HALT
-// @cmd(          @OP_JALR,   @RA, 0,   @R4)     // call loop again
-// @cmd(          @OP_LI,     @R6, 42,  0)       // Should never be executed
-@program_end
-@nop
-// MARK: -- Program code end
+#define prg(data, code) data @goto_start_slow @nextword code
+@PROGRAM
 
 @prevword
 @clear_to_zero_left_lane

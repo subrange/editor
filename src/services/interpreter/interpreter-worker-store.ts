@@ -21,6 +21,8 @@ type InterpreterState = {
     parameters?: Record<string, string>;
   }>;
   lastExecutionMode?: 'normal' | 'turbo';
+  lastExecutionTime?: number;
+  lastOperationCount?: number;
 };
 
 export class InterpreterWorkerStore {
@@ -203,6 +205,14 @@ export class InterpreterWorkerStore {
   }
 
   private handleStateUpdate(message: any) {
+    console.log('Worker store received state update:', {
+      isRunning: message.isRunning,
+      isPaused: message.isPaused,
+      isStopped: message.isStopped,
+      lastExecutionTime: message.lastExecutionTime,
+      lastOperationCount: message.lastOperationCount
+    });
+    
     const currentState = this.state.getValue();
     let tape = this.sharedTape || currentState.tape;
     
@@ -240,7 +250,9 @@ export class InterpreterWorkerStore {
       isStopped: message.isStopped,
       output: message.output,
       currentSourcePosition: message.currentSourcePosition,
-      macroContext: message.macroContext
+      macroContext: message.macroContext,
+      lastExecutionTime: message.lastExecutionTime,
+      lastOperationCount: message.lastOperationCount
     });
 
     this.currentChar.next(message.currentChar);
@@ -311,7 +323,9 @@ export class InterpreterWorkerStore {
       isPaused: false,
       isStopped: false,
       pointer: 0,
-      output: ''
+      output: '',
+      lastExecutionTime: undefined,
+      lastOperationCount: undefined
     });
     
     // Clear the tape

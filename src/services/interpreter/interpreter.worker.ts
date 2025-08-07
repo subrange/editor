@@ -85,6 +85,8 @@ interface StateUpdateMessage {
     macroName: string;
     parameters?: Record<string, string>;
   }>;
+  lastExecutionTime?: number;
+  lastOperationCount?: number;
 }
 
 
@@ -133,6 +135,10 @@ class WorkerInterpreter {
   private outputUpdateInterval = 100; // Send output updates every 100 chars
   private lastOutputUpdateTime = 0;
   private outputUpdateTimeInterval = 100; // Send output updates every 100ms (10fps) to avoid interfering with VM output
+  
+  // Execution tracking
+  private lastExecutionTime?: number;
+  private lastOperationCount?: number;
 
   constructor() {
     this.tapeSize = 1024 * 1024;
@@ -207,6 +213,8 @@ class WorkerInterpreter {
     this.macroContext = undefined;
     this.lastOutputLength = 0;
     this.lastOutputUpdateTime = 0;
+    this.lastExecutionTime = undefined;
+    this.lastOperationCount = undefined;
     // Send tape data after reset
     this.sendStateUpdate(true);
   }
@@ -557,6 +565,8 @@ class WorkerInterpreter {
     this.sendStateUpdate(true);
     
     const totalTime = (performance.now() - startTime) / 1000;
+    this.lastExecutionTime = totalTime;
+    this.lastOperationCount = opsExecuted;
     this.log(`Turbo execution completed: ${opsExecuted} operations in ${totalTime}s`);
   }
 
@@ -708,6 +718,8 @@ class WorkerInterpreter {
     this.sendStateUpdate(true);
     
     const totalTime = (performance.now() - startTime) / 1000;
+    this.lastExecutionTime = totalTime;
+    this.lastOperationCount = opsExecuted;
     this.log(`Turbo execution completed: ${opsExecuted} operations in ${totalTime}s from position ${startPc}`);
   }
 
@@ -787,6 +799,11 @@ class WorkerInterpreter {
   }
 
   private sendStateUpdate(includeTapeData = false) {
+    // Debug log when finishing
+    if (this.isStopped && this.lastExecutionTime !== undefined) {
+      this.log(`Sending finished state with metrics: time=${this.lastExecutionTime}s, ops=${this.lastOperationCount}`);
+    }
+    
     const message: StateUpdateMessage = {
       type: 'stateUpdate',
       pointer: this.pointer,
@@ -796,7 +813,9 @@ class WorkerInterpreter {
       output: this.output,
       currentChar: this.currentChar,
       currentSourcePosition: this.currentSourcePosition,
-      macroContext: this.macroContext
+      macroContext: this.macroContext,
+      lastExecutionTime: this.lastExecutionTime,
+      lastOperationCount: this.lastOperationCount
     };
     
     // Include tape data when requested or when not using SharedArrayBuffer

@@ -39,7 +39,7 @@ export class AssemblyQuickNavStore {
 
     hide() {
         this.state.next({
-            ...this.state.value,
+            ...this.initialState,
             isVisible: false
         });
     }
