@@ -45,7 +45,7 @@
 #define STATE_RUNNING 2
 #define STATE_HALT    1
 
-#define BANK_SIZE 128 // should be 65535, BUT 8*0xffff = A LOT OF CELLS, let's wait for the perf improvement of the tape UI
+#define BANK_SIZE 16384 // should be 65535, BUT 8*0xffff = A LOT OF CELLS, let's wait for the perf improvement of the tape UI
 #define CMD_SIZE 4
 
 #define LANES_COUNT 8
@@ -444,7 +444,7 @@
   @lane(@L_SA,
     [-@nextword+@prevword]
     @nextword
-    @move_to(@nextword @nextword>, < @prevword @prevword)
+    @move_to(@nextword @nextword >, < @prevword @prevword)
     <
   )
 }
@@ -764,7 +764,7 @@
 
 #define ins_jal {
   @prevword
-  @goto_PCB
+  @goto_PC
   @lane_reg_end
 
   @_copy_pc_ra
@@ -939,7 +939,7 @@
 
 #define mem_ptr_fill_banks(offs_from_ip) {
   @lane(@L_SB,
-    @set_int_max
+    @set(@BANK_SIZE)
   )
   @lane(@L_SA,
     @times(
@@ -993,7 +993,7 @@
   @goto_ptr_end
   @prevword
     @lane(@L_RAM, @clear)
-  @goto_start
+  @goto_ptr_start
   @nextword
   @goto_ip_word
 
@@ -1006,7 +1006,8 @@
       @goto_start
       @goto_ptr_end
         @lane(@L_RAM, @inc(1))
-      @goto_start
+        @prevword
+      @goto_ptr_start
       @nextword
       @goto_ip_word
 
@@ -1036,8 +1037,12 @@
   @goto_ptr_end
 
   @lane(@L_RAM,
+    [->+>+<<] >> [-<<+>>] << // Copy ram value to sA via sB
+  )
+
+  @lane(@L_SA,
     @times(
-      @lane_end(@L_RAM)
+      @lane_end(@L_SA)
 
       @prevword @goto_ptr_start
 
@@ -1048,7 +1053,7 @@
       @goto_start
 
       @goto_ptr_end
-      @lane_start(@L_RAM)
+      @lane_start(@L_SA)
     )
   )
 
@@ -1233,7 +1238,7 @@
   >
 }
 
-#define _cmp_unsigned_lt {
+#define _cmp_unsigned_lt { // TODO: Replace with @lt
 // Requires [0, 0, 0, b, a, 0, 0]
   @lane(@L_SA,
 
@@ -1278,11 +1283,11 @@
 #define sli  @ophandler(@one_register_op(@alu_sl))
 #define sri  @ophandler(@one_register_op(@alu_sr))
 
-#define load @ophandler(@two_registers_op(@ins_load))
+#define load @ophandler(@two_registers_op(@ins_load)) // MARK: TODO: SHOULD FUCKING COPY THE VALUE
 #define stor @ophandler(@two_registers_op_no_set(@ins_stor))
 
-#define jal   @ophandler(@no_register_imm2_op(@ins_jal))
-#define jalr  @ophandler(@two_registers_op_no_set(@ins_jal))
+#define jal  @ophandler(@no_register_imm2_op(@ins_jal))
+#define jalr @ophandler(@two_registers_op_no_set(@ins_jal))
 
 #define beq  @ophandler(@two_registers_branch_op(@ins_beq(@FALSE))) // beq rs rt imm, jumps to current pcb+pc+imm
 #define bne  @ophandler(@two_registers_branch_op(@ins_beq(@TRUE)))
@@ -1293,7 +1298,7 @@
 
 #define program_start(w1, w2, w3, w4) {
   {repeat(@REG_ZONE_CW,
-    @instr(@i1(@OP_NOP) @i1(0) @i1(0) @i1(0)) // should use only @i1
+    @instr(@i1(@OP_NOP) @i1(0) @i1(0) @i1(0))
   )}
 
   @instr(@i0(w1) @i1(w2) @i1(w3) @i1(w4))
@@ -1314,7 +1319,7 @@
 // MARK: -- Set registers
 @nextword
 @nextword
-#define REG_VALUES {0,1,3,4,5,6,7,8,9,10}
+#define REG_VALUES {0,0}
 @lane(@L_REG,
   {for(v in @REG_VALUES, @set(v) @nextword)}
 )
@@ -1324,14 +1329,34 @@
 
 // MARK: -- Program code
 
-@program_start(@OP_STOR, @R5,  @R0,  @R7 ) //  stor r5, r0, 7
-@cmd(          @OP_LOAD, @R3,  @R0,  @R7 ) //  load r5, r0, r4
-// @cmd(          @OP_SRI,  @R5,  @R6,  1   )
-// @cmd(          @OP_SRI,  @R5,  @R6,  1   )
-// @cmd(          @OP_SRI,  @R5,  @R6,  1   )
-// @cmd(          @OP_SRI,  @R5,  @R6,  1   )
-@program_end
+// @program_start(@OP_LI,      @R3, 5,   0)       // R3 ← 5
+// @cmd(          @OP_LI,      @R4, 5,   0)       // R4 ← 5
+// @cmd(          @OP_BEQ,     @R3, @R4, 2)       // jump +1 if equal → skip HALT
+// @cmd(          @OP_HALT,    0,   0,   0)
+// @cmd(          @OP_LI,      @R5, 42,  0)       // should be executed
+// @program_end
 
+// MARK: -- Program code
+
+@program_start(@OP_LI,     @R3, 5,   0)
+@cmd(          @OP_LI,     @R4, 3,   0)
+@cmd(          @OP_STOR,   @R3, @R0, @R4)
+@cmd(          @OP_LOAD,   @R7, @R0, @R4)
+
+// @program_start(@OP_LI,     @R3, 5,   0)
+// @cmd(          @OP_LI,     @R4, 3,   0)
+// @cmd(          @OP_JALR,   @R4, 0,   @R4)     // call loop
+
+// -------- LOOP BODY START (addr 3) --------
+// @cmd(          @OP_LI,     @R6, 1,   0)       // R4 ← 1
+// @cmd(          @OP_SUB,    @R3, @R3, @R6)     // R1 -= 1
+// @cmd(          @OP_ADD,    @R8, @R8, @R6)     // R1 -= 1
+// @cmd(          @OP_BNE,    @R3, @R0, 1)       // If R1 ≠ 0, jump over next line
+// @cmd(          @OP_HALT,   0,   0,   0)       // If equal, HALT
+// @cmd(          @OP_JALR,   @RA, 0,   @R4)     // call loop again
+// @cmd(          @OP_LI,     @R6, 42,  0)       // Should never be executed
+@program_end
+@nop
 // MARK: -- Program code end
 
 @prevword

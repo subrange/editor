@@ -426,6 +426,11 @@ export class EditorStore {
     public searchStore: SearchStore;
     public quickNavStore: QuickNavStore;
     
+    // Cursor position history for navigation
+    private cursorHistory: Position[] = [];
+    private cursorHistoryIndex: number = -1;
+    private readonly MAX_HISTORY_SIZE = 50;
+    
     // Konami code tracking
     private konamiSequence: string[] = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
     private konamiProgress: number = 0;
@@ -502,6 +507,24 @@ export class EditorStore {
             localStorage.setItem(`editorState_${this.id}`, JSON.stringify(state));
         });
         this.subscriptions.push(saveSubscription);
+
+        // Track cursor position changes for navigation history
+        let lastTrackedPosition: Position | null = null;
+        const historyTrackingSubscription = this.editorState.subscribe(state => {
+            const currentPos = state.selection.focus;
+            
+            if (lastTrackedPosition) {
+                const isSignificantJump = Math.abs(lastTrackedPosition.line - currentPos.line) > 5;
+                
+                if (isSignificantJump) {
+                    console.log('Adding to history:', lastTrackedPosition, '->', currentPos);
+                    this.addToHistory(lastTrackedPosition);
+                }
+            }
+            
+            lastTrackedPosition = {...currentPos};
+        });
+        this.subscriptions.push(historyTrackingSubscription);
 
         const keybindingSubscription = keybindingsService.signal.subscribe(s => {
 
@@ -633,6 +656,16 @@ export class EditorStore {
 
                 case "editor.togglecomment":
                     this.toggleComment();
+                    break;
+
+                case "editor.navigateback":
+                    console.log('Navigate back command triggered');
+                    this.navigateToPreviousCursor();
+                    break;
+
+                case "editor.navigateforward":
+                    console.log('Navigate forward command triggered');
+                    this.navigateToNextCursor();
                     break;
 
                 default:
@@ -882,8 +915,6 @@ export class EditorStore {
 
         this.editorState.next(this.undoRedo.execute(command, currentState));
     }
-
-    // Add these methods to your EditorStore class:
 
     public setCursorPosition(position: Position) {
         const currentState = this.editorState.getValue();
@@ -1946,5 +1977,63 @@ export class EditorStore {
                 });
             }
         }
+    }
+
+    // Cursor position history methods
+    private addToHistory(position: Position) {
+        // Don't add duplicate positions
+        if (this.cursorHistory.length > 0) {
+            const lastPos = this.cursorHistory[this.cursorHistory.length - 1];
+            if (lastPos.line === position.line && lastPos.column === position.column) {
+                return;
+            }
+        }
+
+        // If we're not at the end of history, truncate future history
+        if (this.cursorHistoryIndex < this.cursorHistory.length - 1) {
+            this.cursorHistory = this.cursorHistory.slice(0, this.cursorHistoryIndex + 1);
+        }
+
+        // Add new position
+        this.cursorHistory.push({...position});
+        
+        // Maintain max size
+        if (this.cursorHistory.length > this.MAX_HISTORY_SIZE) {
+            this.cursorHistory.shift();
+        } else {
+            this.cursorHistoryIndex++;
+        }
+    }
+
+    public navigateToPreviousCursor() {
+        console.log(`Navigate back: historyIndex=${this.cursorHistoryIndex}, historyLength=${this.cursorHistory.length}`, this.cursorHistory);
+        
+        if (this.cursorHistoryIndex <= 0) {
+            console.log('No previous position available');
+            return; // No previous position
+        }
+
+        // Add current position to history if we're at the end
+        if (this.cursorHistoryIndex === this.cursorHistory.length - 1) {
+            const currentState = this.editorState.getValue();
+            console.log('Adding current position to history:', currentState.selection.focus);
+            this.addToHistory(currentState.selection.focus);
+            this.cursorHistoryIndex--; // Step back one extra since we just added current
+        }
+
+        this.cursorHistoryIndex--;
+        const targetPosition = this.cursorHistory[this.cursorHistoryIndex];
+        console.log('Navigating to position:', targetPosition);
+        this.setCursorPosition(targetPosition);
+    }
+
+    public navigateToNextCursor() {
+        if (this.cursorHistoryIndex >= this.cursorHistory.length - 1) {
+            return; // No next position
+        }
+
+        this.cursorHistoryIndex++;
+        const targetPosition = this.cursorHistory[this.cursorHistoryIndex];
+        this.setCursorPosition(targetPosition);
     }
 }

@@ -189,6 +189,10 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
 
             // Comment/Uncomment
             keybindingsService.createKeybinding("meta+/", "editor.togglecomment" as AppCommand),
+
+            // Cursor position navigation
+            keybindingsService.createKeybinding("ctrl+alt+arrowleft", "editor.navigateback" as AppCommand),
+            keybindingsService.createKeybinding("ctrl+alt+arrowright", "editor.navigateforward" as AppCommand),
         ])
 
         store.focus();
