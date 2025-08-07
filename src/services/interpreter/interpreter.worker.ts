@@ -87,15 +87,6 @@ interface StateUpdateMessage {
   }>;
 }
 
-interface VMOutputMessage {
-  type: 'vmOutput';
-  pointer: number;
-  // Include sparse tape data for VM output when not using SharedArrayBuffer
-  sparseTapeData?: {
-    values: number[]; // The actual values
-    indices: number[]; // The indices where these values are located
-  };
-}
 
 interface ErrorMessage {
   type: 'error';
@@ -442,8 +433,15 @@ class WorkerInterpreter {
     this.output = '';
     let pc = 0;
     const startTime = performance.now();
-    const UPDATE_INTERVAL = 100_000_000; // Less frequent updates for performance
+    const UPDATE_INTERVAL = 50_000_000; // Match main thread interval
     let opsExecuted = 0;
+    
+    // Cache frequently accessed values as locals for performance
+    let pointer = this.pointer;
+    const tape = this.tape;
+    const tapeSize = this.tapeSize;
+    const cellSize = this.cellSize;
+    let output = this.output;
     
     this.lastVMFlagValue = 0;
 
@@ -451,22 +449,22 @@ class WorkerInterpreter {
       const op = ops[pc];
 
       switch (op.type) {
-        case '>': this.pointer = (this.pointer + 1) % this.tapeSize; break;
-        case '<': this.pointer = (this.pointer - 1 + this.tapeSize) % this.tapeSize; break;
-        case '+': this.tape[this.pointer] = (this.tape[this.pointer] + 1) % this.cellSize; break;
-        case '-': this.tape[this.pointer] = (this.tape[this.pointer] - 1 + this.cellSize) % this.cellSize; break;
+        case '>': pointer = (pointer + 1) % tapeSize; break;
+        case '<': pointer = (pointer - 1 + tapeSize) % tapeSize; break;
+        case '+': tape[pointer] = (tape[pointer] + 1) % cellSize; break;
+        case '-': tape[pointer] = (tape[pointer] - 1 + cellSize) % cellSize; break;
         case '[':
-          if (this.tape[this.pointer] === 0) {
+          if (tape[pointer] === 0) {
             pc = jumpTable.get(pc) || pc;
           }
           break;
         case ']':
-          if (this.tape[this.pointer] !== 0) {
+          if (tape[pointer] !== 0) {
             pc = jumpTable.get(pc) || pc;
           }
           break;
-        case '.': this.output += String.fromCharCode(this.tape[this.pointer]); break;
-        case ',': this.tape[this.pointer] = 0; break;
+        case '.': output += String.fromCharCode(tape[pointer]); break;
+        case ',': tape[pointer] = 0; break;
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
           const nextPc = pc + 1;
@@ -474,6 +472,9 @@ class WorkerInterpreter {
             this.currentChar = ops[nextPc].position;
           }
           this.isPaused = true;
+          // Update instance variables before returning
+          this.pointer = pointer;
+          this.output = output;
           this.sendStateUpdate();
           return;
         }
@@ -499,6 +500,9 @@ class WorkerInterpreter {
           this.currentChar = nextOp.position;
           this.lastPausedBreakpoint = { ...nextOp.position };
           this.isPaused = true;
+          // Update instance variables before returning
+          this.pointer = pointer;
+          this.output = output;
           this.sendStateUpdate();
           return;
         }
@@ -516,6 +520,10 @@ class WorkerInterpreter {
       }
     }
 
+    // Update instance variables with final state
+    this.pointer = pointer;
+    this.output = output;
+    
     this.isRunning = false;
     // Send final state with tape data
     this.sendStateUpdate(true);
@@ -574,7 +582,7 @@ class WorkerInterpreter {
     // Continue execution from current position
     let pc = startPc;
     const startTime = performance.now();
-    const UPDATE_INTERVAL = 50_000_000; // Less frequent updates for performance
+    const UPDATE_INTERVAL = 500_000_000; // Match main thread interval
     let opsExecuted = 0;
     
     while (pc < ops.length && this.isRunning && !this.isPaused) {
@@ -764,13 +772,17 @@ class WorkerInterpreter {
   private sendVMOutput() {
     const isSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' && this.tape.buffer instanceof SharedArrayBuffer;
     
-    const message: VMOutputMessage = {
-      type: 'vmOutput',
-      pointer: this.pointer
-    };
+    // If using SharedArrayBuffer, we can send a minimal message
+    if (isSharedArrayBuffer) {
+      self.postMessage({
+        type: 'vmOutput',
+        pointer: this.pointer
+      });
+      return;
+    }
     
-    // Include sparse tape data if not using SharedArrayBuffer
-    if (!isSharedArrayBuffer && this.vmOutputConfig) {
+    // Only send sparse data if not using SharedArrayBuffer
+    if (this.vmOutputConfig) {
       const values: number[] = [];
       const indices: number[] = [];
       
@@ -791,10 +803,12 @@ class WorkerInterpreter {
         indices.push(index);
       }
       
-      message.sparseTapeData = { values, indices };
+      self.postMessage({
+        type: 'vmOutput',
+        pointer: this.pointer,
+        sparseTapeData: { values, indices }
+      });
     }
-    
-    self.postMessage(message);
   }
 
   private log(message: string) {
