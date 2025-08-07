@@ -7,6 +7,7 @@ export interface MacroUsage {
     column: number;
     text: string;
     lineNumber: string;
+    prefix?: '@' | '#'; // The prefix used in the invocation
 }
 
 interface MacroUsagesModalProps {
@@ -104,7 +105,7 @@ export function MacroUsagesModal({
             {/* Header - matching QuickNav style */}
             <div className="p-3 border-b border-zinc-700">
                 <div className="text-sm text-zinc-400">
-                    Usages of <span className="text-blue-400">@{macroName}</span>
+                    Usages of <span className="text-blue-400">{macroName}</span>
                     <span className="ml-2 text-xs text-zinc-600">({usages.length} found)</span>
                 </div>
             </div>
@@ -131,7 +132,9 @@ export function MacroUsagesModal({
                             onClick={() => handleItemClick(usage, index)}
                             onMouseEnter={() => setSelectedIndex(index)}
                         >
-                            <span className="text-blue-400">@</span>
+                            <span className={usage.prefix === '#' ? "text-green-400" : "text-blue-400"}>
+                                {usage.prefix || '@'}
+                            </span>
                             <span className="flex-1 truncate font-mono">
                                 {usage.text}
                             </span>

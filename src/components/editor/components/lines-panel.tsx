@@ -120,8 +120,8 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
         // Then remove any that are used
         tokenizedLines.forEach((tokens) => {
             tokens.forEach((token) => {
-                if (token.type === 'macro_invocation') {
-                    const macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+                if (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation') {
+                    const macroName = token.value.match(/^[@#]([a-zA-Z_]\w*)/)?.[1];
                     if (macroName) {
                         unused.delete(macroName);
                     }
@@ -139,15 +139,16 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
         // Search through all tokenized lines
         tokenizedLines.forEach((tokens, lineIndex) => {
             tokens.forEach((token) => {
-                if (token.type === 'macro_invocation') {
-                    // Extract the macro name from the token value (remove @ and any parameters)
-                    const tokenMacroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
-                    if (tokenMacroName === macroName) {
+                if (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation') {
+                    // Extract the macro name from the token value (remove @ or # and any parameters)
+                    const match = token.value.match(/^([@#])([a-zA-Z_]\w*)/);
+                    if (match && match[2] === macroName) {
                         usages.push({
                             line: lineIndex,
                             column: token.start,
                             text: lines[lineIndex].text.trim(),
-                            lineNumber: `${lineIndex + 1}`
+                            lineNumber: `${lineIndex + 1}`,
+                            prefix: match[1] as '@' | '#'
                         });
                     }
                 }
@@ -176,15 +177,15 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
             });
         });
         
-        // Find all invocations
+        // Find all invocations (@ or #)
         tokenizedLines.forEach((tokens, lineIndex) => {
             tokens.forEach((token) => {
-                if (token.type === 'macro_invocation') {
-                    const tokenMacroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+                if (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation') {
+                    const tokenMacroName = token.value.match(/^[@#]([a-zA-Z_]\w*)/)?.[1];
                     if (tokenMacroName === oldName) {
-                        // Replace just the name part after @
+                        // Replace just the name part after @ or #
                         replacements.push({
-                            start: {line: lineIndex, column: token.start + 1}, // Skip the @
+                            start: {line: lineIndex, column: token.start + 1}, // Skip the @ or #
                             end: {line: lineIndex, column: token.start + 1 + oldName.length},
                             text: newName
                         });
@@ -225,9 +226,9 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
                 );
                 
                 if (tokenAtCursor) {
-                    if (tokenAtCursor.type === 'macro_invocation') {
-                        // Extract macro name from invocation
-                        const macroName = tokenAtCursor.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+                    if (tokenAtCursor.type === 'macro_invocation' || tokenAtCursor.type === 'hash_macro_invocation') {
+                        // Extract macro name from invocation (@ or #)
+                        const macroName = tokenAtCursor.value.match(/^[@#]([a-zA-Z_]\w*)/)?.[1];
                         if (macroName) {
                             setMacroRenameModal({
                                 macroName,
@@ -376,13 +377,13 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
         }
 
         // Handle Shift+Click for rename
-        if (e.shiftKey && (token.type === 'macro_invocation' || token.type === 'macro_name')) {
+        if (e.shiftKey && (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation' || token.type === 'macro_name')) {
             e.preventDefault();
             e.stopPropagation();
             
             let macroName: string | undefined;
-            if (token.type === 'macro_invocation') {
-                macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+            if (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation') {
+                macroName = token.value.match(/^[@#]([a-zA-Z_]\w*)/)?.[1];
             } else {
                 macroName = token.value;
             }
@@ -404,10 +405,10 @@ export function LinesPanel({store, editorWidth, scrollLeft, editorRef}: LinesPan
         e.preventDefault();
         e.stopPropagation();
 
-        // Check if we're clicking on a macro invocation
-        if (token.type === 'macro_invocation') {
-            // Extract macro name from the token value (remove @ and parameters)
-            const macroName = token.value.match(/^@([a-zA-Z_]\w*)/)?.[1];
+        // Check if we're clicking on a macro invocation (@ or #)
+        if (token.type === 'macro_invocation' || token.type === 'hash_macro_invocation') {
+            // Extract macro name from the token value (remove @ or # and parameters)
+            const macroName = token.value.match(/^[@#]([a-zA-Z_]\w*)/)?.[1];
             if (!macroName) {
                 return;
             }

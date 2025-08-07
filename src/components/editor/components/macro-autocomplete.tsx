@@ -29,6 +29,7 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
     const [filter, setFilter] = useState("");
     const [triggerPosition, setTriggerPosition] = useState<Position | null>(null);
     const [showAbove, setShowAbove] = useState(false);
+    const [prefix, setPrefix] = useState<'@' | '#'>('@');
     const menuRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const previousLineRef = useRef<string>("");
@@ -64,12 +65,13 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
         
         const textBeforeCursor = line.substring(0, cursorPos.column);
         
-        // Check if we have @ followed by optional word characters
-        const match = textBeforeCursor.match(/@(\w*)$/);
+        // Check if we have @ or # followed by optional word characters
+        const match = textBeforeCursor.match(/([@#])(\w*)$/);
         if (match) {
             // Only show if we just typed or if already visible (continuing to type)
             if (justTyped || isVisible) {
-                setFilter(match[1] || "");
+                setPrefix(match[1] as '@' | '#');
+                setFilter(match[2] || "");
                 setTriggerPosition({
                     line: cursorPos.line,
                     column: cursorPos.column - match[0].length
@@ -192,9 +194,10 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
         if (!triggerPosition) return;
         
         const cursorPos = selection.focus;
+        const line = lines[cursorPos.line].text;
         
-        // Build the insertion text (without @ since we're replacing from @ position)
-        let insertText = "@" + macro.name;
+        // Build the insertion text with the stored prefix
+        let insertText = prefix + macro.name;
         if (macro.parameters && macro.parameters.length > 0) {
             insertText += `(${macro.parameters.join(", ")})`;
         }
@@ -256,7 +259,9 @@ export function MacroAutocomplete({ store, macros, charWidth }: MacroAutocomplet
                         }}
                     >
                         <div className="flex items-center gap-2 w-full">
-                            <span className="text-blue-400">@</span>
+                            <span className={prefix === '@' ? "text-blue-400" : "text-green-400"}>
+                                {prefix}
+                            </span>
                             <span className="font-mono flex-shrink-0">
                                 {macro.name}
                                 {macro.parameters && macro.parameters.length > 0 && (

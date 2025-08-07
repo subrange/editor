@@ -6,6 +6,7 @@ export const TokenType = {
   // Macro-specific tokens
   DEFINE: 'DEFINE',           // #define
   AT: 'AT',                   // @
+  HASH: 'HASH',               // # (for #macro invocations)
   
   // Brainfuck commands
   BF_COMMAND: 'BF_COMMAND',   // ><+-.,[]$
@@ -168,7 +169,13 @@ export class MacroLexer {
       return this.createToken(TokenType.AT, '@', start, this.position);
     }
 
-    // Check for identifiers (must come after @ check)
+    // Check for # symbol (not part of #define which was already handled)
+    if (this.peek() === '#') {
+      this.advance();
+      return this.createToken(TokenType.HASH, '#', start, this.position);
+    }
+
+    // Check for identifiers (must come after @ and # check)
     if (this.isAlpha(this.peek())) {
       const value = this.consumeWhile(ch => this.isAlphaNumeric(ch));
       // Check for 'in' keyword

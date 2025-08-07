@@ -408,8 +408,8 @@ export class MacroParser {
   }
 
   private parseContent(): ContentNode | null {
-    // Check for macro invocation
-    if (this.check(TokenType.AT)) {
+    // Check for macro invocation (@ or #)
+    if (this.check(TokenType.AT) || this.check(TokenType.HASH)) {
       return this.parseMacroInvocation();
     }
     
@@ -446,13 +446,19 @@ export class MacroParser {
     const start = this.peek().position.start;
     const startPos = this.peek().position;
     
-    this.consume(TokenType.AT);
+    // Consume either @ or #
+    const prefix = this.peek().value;
+    if (this.check(TokenType.AT)) {
+      this.consume(TokenType.AT);
+    } else if (this.check(TokenType.HASH)) {
+      this.consume(TokenType.HASH);
+    }
     
     if (!this.check(TokenType.IDENTIFIER)) {
       // Not a valid macro invocation, return as text
       return {
         type: 'Text',
-        value: '@',
+        value: prefix,
         position: startPos
       } as any;
     }

@@ -9,7 +9,7 @@ import { type MacroExpanderWorkerClient } from "../../../services/macro-expander
 
 // Token types for macro syntax
 export interface MacroToken {
-    type: 'macro' | 'macro_definition' | 'macro_invocation' | 'builtin_function' | 
+    type: 'macro' | 'macro_definition' | 'macro_invocation' | 'hash_macro_invocation' | 'builtin_function' | 
           'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 
           'whitespace' | 'comment' | 'todo_comment' | 'mark_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name' | 'number' | 'continuation' | 'keyword';
     value: string;
@@ -238,6 +238,22 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                         error: error
                     });
                     position += macroMatch[0].length;
+                    matched = true;
+                }
+            }
+
+            // Check for hash macro invocation (#macroName) - but not #define
+            if (!matched && text[position] === '#' && !text.slice(position).startsWith('#define')) {
+                const hashMacroMatch = text.slice(position).match(/^#[a-zA-Z_]\w*/);
+                if (hashMacroMatch) {
+                    tokens.push({
+                        type: 'hash_macro_invocation',  // New type for #macro
+                        value: hashMacroMatch[0],
+                        start: position,
+                        end: position + hashMacroMatch[0].length,
+                        error: error
+                    });
+                    position += hashMacroMatch[0].length;
                     matched = true;
                 }
             }
@@ -714,7 +730,8 @@ export const progressiveMacroTokenStyles: Record<MacroToken['type'] | 'truncatio
     macro: 'text-red-300/85',                        // Generic macro syntax
     macro_definition: 'text-emerald-500/90',         // Verified macro definitions
     macro_name: 'text-rose-400/85',                  // Macro name in definition
-    macro_invocation: 'text-violet-300/85 italic',   // Verified macro invocations
+    macro_invocation: 'text-violet-300/85 italic',   // Verified macro invocations (@macro)
+    hash_macro_invocation: 'text-green-400/75 italic', // Hash macro invocations (#macro)
     builtin_function: 'text-sky-400/85',             // Built-in functions like repeat, if, for, reverse
     parameter: 'text-pink-300/80 italic',            // Parameter references
     number: 'text-amber-400/80',                     // Numeric literals
