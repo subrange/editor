@@ -178,8 +178,10 @@ export class MacroLexer {
       return this.createToken(TokenType.IDENTIFIER, value, start, this.position);
     }
 
-    // Check for numbers
-    if (this.isDigit(this.peek()) || (this.peek() === '-' && this.isDigit(this.peekAhead(1)))) {
+    // Check for numbers (including hexadecimal)
+    if (this.isDigit(this.peek()) || 
+        (this.peek() === '-' && this.isDigit(this.peekAhead(1))) ||
+        (this.peek() === '0' && (this.peekAhead(1) === 'x' || this.peekAhead(1) === 'X'))) {
       const value = this.consumeNumber();
       return this.createToken(TokenType.NUMBER, value, start, this.position);
     }
@@ -320,8 +322,16 @@ export class MacroLexer {
       result += this.advance();
     }
     
-    // Consume digits
-    result += this.consumeWhile(ch => this.isDigit(ch));
+    // Check for hexadecimal prefix
+    if (this.peek() === '0' && (this.peekAhead(1) === 'x' || this.peekAhead(1) === 'X')) {
+      result += this.advance(); // consume '0'
+      result += this.advance(); // consume 'x' or 'X'
+      // Consume hex digits
+      result += this.consumeWhile(ch => this.isHexDigit(ch));
+    } else {
+      // Consume decimal digits
+      result += this.consumeWhile(ch => this.isDigit(ch));
+    }
     
     return result;
   }
@@ -342,6 +352,10 @@ export class MacroLexer {
 
   private isDigit(ch: string): boolean {
     return /[0-9]/.test(ch);
+  }
+
+  private isHexDigit(ch: string): boolean {
+    return /[0-9a-fA-F]/.test(ch);
   }
 
   private isAlphaNumeric(ch: string): boolean {

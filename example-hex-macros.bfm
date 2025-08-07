@@ -1,0 +1,42 @@
+// Example demonstrating hexadecimal number support in macros
+// Hexadecimal numbers can be used anywhere regular numbers are accepted
+
+// Direct usage in builtin functions
+{repeat(0x41, +)}     // Add 65 (ASCII 'A')
+.                     // Print 'A'
+[-]                   // Clear cell
+
+// Using hex in macro definitions
+#define ASCII_A 0x41
+#define ASCII_Z 0x5A
+#define SPACE 0x20
+
+// Macro that adds a specific hex value
+#define add_value(n) {repeat(n, +)}
+
+// Using hex values with macros
+@add_value(0x48)      // Add 72 (ASCII 'H')
+.                     // Print 'H'
+@add_value(0x08)      // Add 8 more to get 80 (ASCII 'P')  
+.                     // Print 'P'
+[-]                   // Clear cell
+
+// Using hex in if statements
+{if(0xFF, @add_value(0x21), @add_value(0x3F))}  // 0xFF is truthy, so add 33 (!)
+.                     // Print '!'
+[-]
+
+// Using hex in for loops
+{for(i in {0x0A, 0x0D}, @add_value(i))}  // Add 10 then 13 (newline chars)
+
+// Mixed case hex is supported
+{repeat(0xAb, >)}     // Move right 171 times
+{repeat(0XCD, <)}     // Move left 205 times
+
+// Large hex values
+#define BUFFER_SIZE 0x100   // 256
+#define MAX_BYTE 0xFF       // 255
+
+// Hex in complex expressions
+#define print_char(c) {repeat(c, +)}.[-]
+@print_char(0x4D)     // Print 'M' (ASCII 77)

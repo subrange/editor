@@ -474,18 +474,30 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                 }
             }
 
-            // Check for numbers
+            // Check for numbers (including hexadecimal)
             if (!matched) {
-                const numberMatch = text.slice(position).match(/^\d+/);
-                if (numberMatch) {
+                const hexMatch = text.slice(position).match(/^0[xX][0-9a-fA-F]+/);
+                const decimalMatch = text.slice(position).match(/^\d+/);
+                
+                if (hexMatch) {
                     tokens.push({
                         type: 'number',
-                        value: numberMatch[0],
+                        value: hexMatch[0],
                         start: position,
-                        end: position + numberMatch[0].length,
+                        end: position + hexMatch[0].length,
                         error: error
                     });
-                    position += numberMatch[0].length;
+                    position += hexMatch[0].length;
+                    matched = true;
+                } else if (decimalMatch) {
+                    tokens.push({
+                        type: 'number',
+                        value: decimalMatch[0],
+                        start: position,
+                        end: position + decimalMatch[0].length,
+                        error: error
+                    });
+                    position += decimalMatch[0].length;
                     matched = true;
                 }
             }

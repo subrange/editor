@@ -27,6 +27,9 @@ type InterpreterState = {
         macroName: string;
         parameters?: Record<string, string>;
     }>;
+    
+    // Execution mode tracking
+    lastExecutionMode?: 'normal' | 'turbo';
 }
 
 export type TapeSnapshot = {
@@ -662,6 +665,9 @@ class InterpreterStore {
             return;
         }
 
+        // Clear the last paused breakpoint so we don't immediately break again
+        this.lastPausedBreakpoint = null;
+
         this.state.next({
             ...currentState,
             isPaused: false
@@ -669,7 +675,8 @@ class InterpreterStore {
 
         // If there's no active execution loop (e.g., after turbo mode breakpoint), start one
         if (!this.runInterval && !this.runAnimationFrameId) {
-            // Start smooth execution by default
+            // After turbo mode breakpoint, we must continue in normal mode
+            // because turbo mode can't resume from a specific position
             this.runSmooth();
         }
     }
@@ -706,7 +713,8 @@ class InterpreterStore {
             ...this.state.getValue(),
             isRunning: true,
             isPaused: false,
-            isStopped: false
+            isStopped: false,
+            lastExecutionMode: 'normal'
         });
 
         const step = () => {
@@ -936,6 +944,177 @@ class InterpreterStore {
         }
     }
 
+    private async runTurboFromCurrentPosition() {
+        console.log('Resuming turbo execution from current position...');
+        
+        // Compile the program
+        const ops: Array<{type: string, value?: number, position: Position}> = [];
+        const jumpTable: Map<number, number> = new Map();
+        const jumpStack: number[] = [];
+        
+        // Build operations and jump table
+        let opIndex = 0;
+        for (let line = 0; line < this.code.length; line++) {
+            const text = this.code[line].text;
+            for (let col = 0; col < text.length; col++) {
+                const char = text[col];
+                if ('><+-[].,$'.includes(char)) {
+                    if (char === '[') {
+                        jumpStack.push(opIndex);
+                    } else if (char === ']') {
+                        const startIndex = jumpStack.pop();
+                        if (startIndex !== undefined) {
+                            jumpTable.set(startIndex, opIndex);
+                            jumpTable.set(opIndex, startIndex);
+                        }
+                    }
+                    ops.push({ type: char, position: { line, column: col } });
+                    opIndex++;
+                }
+            }
+        }
+        
+        // Find the operation index for current position
+        const currentPos = this.currentChar.getValue();
+        let startPc = 0;
+        for (let i = 0; i < ops.length; i++) {
+            const op = ops[i];
+            if (op.position.line === currentPos.line && op.position.column === currentPos.column) {
+                startPc = i;
+                break;
+            }
+        }
+        
+        console.log(`Starting turbo from operation ${startPc} of ${ops.length}`);
+        
+        // Get current state
+        const currentState = this.state.getValue();
+        const tape = currentState.tape;
+        let pointer = currentState.pointer;
+        let output = '';
+        let pc = startPc;
+        const startTime = performance.now();
+        const UPDATE_INTERVAL = 500_000_000;
+        let opsExecuted = 0;
+        
+        while (pc < ops.length) {
+            const op = ops[pc];
+            
+            switch (op.type) {
+                case '>': pointer = (pointer + 1) % this.tapeSize.getValue(); break;
+                case '<': pointer = (pointer - 1 + this.tapeSize.getValue()) % this.tapeSize.getValue(); break;
+                case '+': tape[pointer] = (tape[pointer] + 1) % this.cellSize.getValue(); break;
+                case '-': tape[pointer] = (tape[pointer] - 1 + this.cellSize.getValue()) % this.cellSize.getValue(); break;
+                case '[':
+                    if (tape[pointer] === 0) {
+                        pc = jumpTable.get(pc) || pc;
+                    }
+                    break;
+                case ']':
+                    if (tape[pointer] !== 0) {
+                        pc = jumpTable.get(pc) || pc;
+                    }
+                    break;
+                case '.': output += String.fromCharCode(tape[pointer]); break;
+                case ',': tape[pointer] = 0; break;
+                case '$': {
+                    // Hit in-code breakpoint
+                    console.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
+                    
+                    // Update position for next resume
+                    const nextPc = pc + 1;
+                    if (nextPc < ops.length) {
+                        this.currentChar.next(ops[nextPc].position);
+                    }
+                    
+                    this.state.next({
+                        ...this.state.getValue(),
+                        tape: tape,
+                        pointer: pointer,
+                        output: this.state.getValue().output + output,
+                        isPaused: true,
+                        isRunning: true
+                    });
+                    
+                    console.log('Pausing turbo mode at breakpoint.');
+                    return;
+                }
+            }
+            
+            pc++;
+            opsExecuted++;
+            
+            // Check for regular breakpoints
+            if (pc < ops.length) {
+                const nextOp = ops[pc];
+                if (this.shouldPauseAtBreakpoint(nextOp.position)) {
+                    console.log(`Turbo: Hit breakpoint at operation ${pc}`);
+                    this.currentChar.next(nextOp.position);
+                    this.lastPausedBreakpoint = { ...nextOp.position };
+                    
+                    this.state.next({
+                        ...this.state.getValue(),
+                        tape: tape,
+                        pointer: pointer,
+                        output: this.state.getValue().output + output,
+                        isPaused: true,
+                        isRunning: true
+                    });
+                    
+                    return;
+                }
+            }
+            
+            // Periodic updates
+            if (opsExecuted % UPDATE_INTERVAL === 0) {
+                const elapsed = (performance.now() - startTime) / 1000;
+                console.log(`Turbo progress: ${opsExecuted} ops in ${elapsed}s`);
+                
+                this.state.next({
+                    ...this.state.getValue(),
+                    tape: tape,
+                    pointer: pointer,
+                    output: this.state.getValue().output + output
+                });
+                output = '';
+                
+                if (!this.state.getValue().isRunning) {
+                    break;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+        
+        // Completed
+        this.state.next({
+            ...this.state.getValue(),
+            tape: tape,
+            pointer: pointer,
+            output: this.state.getValue().output + output,
+            isRunning: false
+        });
+        
+        const totalTime = (performance.now() - startTime) / 1000;
+        console.log(`Turbo execution completed: ${opsExecuted} operations in ${totalTime}s`);
+    }
+
+    public async resumeTurbo() {
+        // Clear the last paused breakpoint first
+        this.lastPausedBreakpoint = null;
+        
+        // Mark as running and unpaused
+        this.state.next({
+            ...this.state.getValue(),
+            isRunning: true,
+            isPaused: false,
+            lastExecutionMode: 'turbo'
+        });
+        
+        // Start turbo from current position
+        await this.runTurboFromCurrentPosition();
+    }
+
     // TODO: Move to webworker or wasm for ultra-fast execution. Later.
     public async runTurbo() {
         console.log('Compiling program for turbo execution...');
@@ -973,7 +1152,8 @@ class InterpreterStore {
             ...this.state.getValue(),
             isRunning: true,
             isPaused: false,
-            isStopped: false
+            isStopped: false,
+            lastExecutionMode: 'turbo'
         });
 
         const tape = sizeToTape(this.cellSize.getValue(), this.tapeSize.getValue());

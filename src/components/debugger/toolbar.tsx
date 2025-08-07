@@ -18,7 +18,7 @@ import { editorManager } from "../../services/editor-manager.service.ts";
 
 export function Toolbar() {
     const interpreterState = useStoreSubscribe(interpreterStore.state);
-    const { isRunning, isPaused, isStopped } = interpreterState;
+    const { isRunning, isPaused, isStopped, lastExecutionMode } = interpreterState;
     const [delay, setDelay] = useState(50);
     const [showDelayInput, setShowDelayInput] = useState(false);
 
@@ -51,12 +51,22 @@ export function Toolbar() {
                 {/* Run modes group */}
                 <div className="flex items-center gap-1 pr-2 border-r border-zinc-700">
                     {isPaused ? (
-                        <IconButton
-                            icon={PlayIcon}
-                            label="Resume"
-                            onClick={() => interpreterStore.resume()}
-                            variant="success"
-                        />
+                        <>
+                            <IconButton
+                                icon={PlayIcon}
+                                label="Resume"
+                                onClick={() => interpreterStore.resume()}
+                                variant="success"
+                            />
+                            {lastExecutionMode === 'turbo' && (
+                                <IconButton
+                                    icon={BoltIcon}
+                                    label="Continue Turbo"
+                                    onClick={() => interpreterStore.resumeTurbo()}
+                                    variant="success"
+                                />
+                            )}
+                        </>
                     ) : (
                         <>
                             <IconButton

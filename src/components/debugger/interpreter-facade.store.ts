@@ -22,6 +22,9 @@ type InterpreterState = {
         macroName: string;
         parameters?: Record<string, string>;
     }>;
+    
+    // Execution mode tracking
+    lastExecutionMode?: 'normal' | 'turbo';
 }
 
 type InterpreterInterface = {
@@ -40,6 +43,7 @@ type InterpreterInterface = {
     stepToPosition(position: Position): void;
     runImmediately(): Promise<void>;
     runTurbo(): Promise<void>;
+    resumeTurbo?(): Promise<void>;
     runUltraFast?(): Promise<void>;
     pause(): void;
     resume(): void;
@@ -132,6 +136,12 @@ class InterpreterFacade implements InterpreterInterface {
 
     async runTurbo() {
         await this.currentInterpreter.runTurbo();
+    }
+
+    async resumeTurbo() {
+        if (this.currentInterpreter.resumeTurbo) {
+            await this.currentInterpreter.resumeTurbo();
+        }
     }
 
     async runUltraFast() {

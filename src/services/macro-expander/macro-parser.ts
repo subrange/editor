@@ -813,9 +813,14 @@ export class MacroParser {
     // For simple text arguments, return as a single text node
     if (isSimpleText && rawText.trim()) {
       const trimmed = rawText.trim();
-      // Try to parse as number
-      const num = parseInt(trimmed, 10);
-      if (!isNaN(num) && trimmed === num.toString()) {
+      // Try to parse as number (including hexadecimal)
+      let num: number;
+      if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+        num = parseInt(trimmed, 16);
+      } else {
+        num = parseInt(trimmed, 10);
+      }
+      if (!isNaN(num) && (trimmed === num.toString() || trimmed.toLowerCase() === '0x' + num.toString(16))) {
         return {
           type: 'Number',
           value: num,
@@ -844,10 +849,15 @@ export class MacroParser {
       // Special handling for single expressions
       const expr = expressions[0];
       if (expr.type === 'Text') {
-        // Try to parse as number
+        // Try to parse as number (including hexadecimal)
         const trimmed = (expr as TextNode).value.trim();
-        const num = parseInt(trimmed, 10);
-        if (!isNaN(num) && trimmed === num.toString()) {
+        let num: number;
+        if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+          num = parseInt(trimmed, 16);
+        } else {
+          num = parseInt(trimmed, 10);
+        }
+        if (!isNaN(num) && (trimmed === num.toString() || trimmed.toLowerCase() === '0x' + num.toString(16))) {
           return {
             type: 'Number',
             value: num,

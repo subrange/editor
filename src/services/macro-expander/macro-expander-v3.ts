@@ -225,7 +225,13 @@ export class MacroExpanderV3 implements MacroExpander {
             const text = (countArg as TextNode).value;
             const mightBeLoopVar = text.length === 1 && /^[a-zA-Z]$/.test(text);
             // Don't validate if it's a valid parameter - it will be substituted later
-            if (!validParams.has(text) && !mightBeLoopVar && isNaN(parseInt(text, 10))) {
+            let isValidNumber = false;
+            if (text.startsWith('0x') || text.startsWith('0X')) {
+              isValidNumber = !isNaN(parseInt(text, 16));
+            } else {
+              isValidNumber = !isNaN(parseInt(text, 10));
+            }
+            if (!validParams.has(text) && !mightBeLoopVar && !isValidNumber) {
               this.errors.push({
                 type: 'syntax_error',
                 message: `Invalid repeat count: ${text}`,
@@ -805,8 +811,15 @@ export class MacroExpanderV3 implements MacroExpander {
         const name = (expr as IdentifierNode).name;
         if (substitutions[name]) {
           const value = substitutions[name];
-          const num = parseInt(value, 10);
-          if (!isNaN(num) && value.trim() === num.toString()) {
+          let num: number;
+          let isHex = false;
+          if (value.trim().startsWith('0x') || value.trim().startsWith('0X')) {
+            num = parseInt(value.trim(), 16);
+            isHex = true;
+          } else {
+            num = parseInt(value, 10);
+          }
+          if (!isNaN(num) && (value.trim() === num.toString() || (isHex && value.trim().toLowerCase() === '0x' + num.toString(16)))) {
             return {
               type: 'Number',
               value: num,
@@ -827,8 +840,15 @@ export class MacroExpanderV3 implements MacroExpander {
         
         if (substitutions[text]) {
           const value = substitutions[text];
-          const num = parseInt(value, 10);
-          if (!isNaN(num) && value.trim() === num.toString()) {
+          let num: number;
+          let isHex = false;
+          if (value.trim().startsWith('0x') || value.trim().startsWith('0X')) {
+            num = parseInt(value.trim(), 16);
+            isHex = true;
+          } else {
+            num = parseInt(value, 10);
+          }
+          if (!isNaN(num) && (value.trim() === num.toString() || (isHex && value.trim().toLowerCase() === '0x' + num.toString(16)))) {
             return {
               type: 'Number',
               value: num,
@@ -928,7 +948,12 @@ export class MacroExpanderV3 implements MacroExpander {
       }
       
       const countExpr = this.expandExpressionToString(node.arguments[0], context);
-      const count = parseInt(countExpr.trim(), 10);
+      let count: number;
+      if (countExpr.trim().startsWith('0x') || countExpr.trim().startsWith('0X')) {
+        count = parseInt(countExpr.trim(), 16);
+      } else {
+        count = parseInt(countExpr.trim(), 10);
+      }
       
       if (isNaN(count) || count < 0) {
         this.errors.push({
@@ -973,7 +998,12 @@ export class MacroExpanderV3 implements MacroExpander {
       }
       
       const conditionExpr = this.expandExpressionToString(node.arguments[0], context);
-      const condition = parseInt(conditionExpr.trim(), 10);
+      let condition: number;
+      if (conditionExpr.trim().startsWith('0x') || conditionExpr.trim().startsWith('0X')) {
+        condition = parseInt(conditionExpr.trim(), 16);
+      } else {
+        condition = parseInt(conditionExpr.trim(), 10);
+      }
       
       if (isNaN(condition)) {
         this.errors.push({
