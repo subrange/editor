@@ -22,6 +22,7 @@ import {WorkerTokenizer} from "./services/tokenizer/worker-tokenizer-adapter.ts"
 import {interpreterStore} from "./components/debugger/interpreter.store.ts";
 import {MacroContextPanel} from "./components/debugger/macro-context-panel.tsx";
 import {DraggableVSep} from "./components/ui/draggable-vsep.tsx";
+import {outputStore} from "./stores/output.store.ts";
 
 function EditorPanel() {
     const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
@@ -315,7 +316,6 @@ function EditorPanel() {
                     store={mainEditor}
                     onFocus={() => editorManager.setActiveEditor('main')}
                 />
-                <Output/>
             </div>
         )}
         {!showMainEditor && !showMacroEditor && (
@@ -385,19 +385,88 @@ function WorkspacePanel() {
     return <div className="v grow-1 bg-zinc-950">
         <DebugPanel/>
         <Toolbar/>
-
         <HSep/>
         <EditorPanel/>
     </div>;
 }
 
 export default function App() {
+    const outputState = useStoreSubscribe(outputStore.state);
+    const { position, collapsed, width } = outputState;
+
+    const handleOutputResize = useCallback((newWidth: number) => {
+        outputStore.setSize('width', newWidth);
+    }, []);
+
+    if (position === 'right' && !collapsed) {
+        // Right layout with output panel beside entire workspace
+        return (
+            <div className="h grow-1 outline-0 app-container" tabIndex={0}
+                 onKeyDownCapture={e => keybindingsService.handleKeyEvent(e.nativeEvent)}>
+                <div className="sidebar">
+                    <Sidebar/>
+                </div>
+                <VSep/>
+                
+                <div className="h grow-1">
+                    <WorkspacePanel/>
+                </div>
+                <DraggableVSep 
+                    onResize={(leftWidth) => {
+                        // Get the app container to calculate total available width
+                        const appContainer = document.querySelector('.app-container');
+                        if (appContainer) {
+                            const totalWidth = appContainer.clientWidth;
+                            const sidebarWidth = document.querySelector('.sidebar')?.clientWidth || 0;
+                            const vsepWidth = 1; // VSep width
+                            const availableWidth = totalWidth - sidebarWidth - vsepWidth;
+                            
+                            // leftWidth is from the draggable separator's parent
+                            // Calculate output width as the remaining space
+                            const newOutputWidth = availableWidth - leftWidth;
+                            handleOutputResize(Math.max(200, Math.min(800, newOutputWidth)));
+                        }
+                    }}
+                    minLeftWidth={400}
+                    minRightWidth={200}
+                />
+                <div className="h" style={{ width: `${width}px`, flexShrink: 0 }}>
+                    <Output position="right" />
+                </div>
+            </div>
+        );
+    }
+
+    // Default layout - output at bottom or collapsed
     return (
-        <div className="h grow-1 outline-0" tabIndex={0}
+        <div className="h grow-1 outline-0 app-container" tabIndex={0}
              onKeyDownCapture={e => keybindingsService.handleKeyEvent(e.nativeEvent)}>
-            <Sidebar/>
+            <div className="sidebar">
+                <Sidebar/>
+            </div>
             <VSep/>
-            <WorkspacePanel/>
+            
+            <div className="v grow-1 relative">
+                <WorkspacePanel/>
+                
+                {/* Output panel - bottom position */}
+                {position === 'bottom' && <Output position="bottom" />}
+                
+                {/* Collapsed right position */}
+                {position === 'right' && collapsed && (
+                    <div className="absolute top-0 right-0 h-full">
+                        <Output position="right" />
+                    </div>
+                )}
+                
+                {/* Floating position */}
+                {position === 'floating' && (
+                    <Output 
+                        position="floating" 
+                        onClose={() => outputStore.setCollapsed(true)} 
+                    />
+                )}
+            </div>
         </div>
-    )
+    );
 }

@@ -9,6 +9,7 @@
 #define next(n) {repeat(n, >)}
 #define prev(n) {repeat(n, <)}
 #define nop +-
+#define print .
 
 #define set_int_max @clear -
 
@@ -45,7 +46,7 @@
 #define STATE_RUNNING 2
 #define STATE_HALT    1
 
-#define BANK_SIZE 16384 // should be 65535, BUT 8*0xffff = A LOT OF CELLS, let's wait for the perf improvement of the tape UI
+#define BANK_SIZE 16 // should be 65535, BUT 8*0xffff = A LOT OF CELLS, let's wait for the perf improvement of the tape UI
 #define CMD_SIZE 4
 
 #define LANES_COUNT 8
@@ -66,6 +67,7 @@
 #define L_SA @L_SCRATCH_A
 #define L_SB @L_SCRATCH_B
 #define L_PTR @L_POINTER
+#define L_MEM @L_RAM
 
 // FASTLANE is always the last lane, marking the range between start and instruction pointer
 
@@ -78,35 +80,35 @@
 #define OP_HALT 0
 #define OP_NOP  0
 
-#define OP_ADD  1
-#define OP_SUB  2
-#define OP_AND  3
-#define OP_OR   4
-#define OP_XOR  5
-#define OP_SL   6 // Bit Shift Left
-#define OP_SR   7 // Bit Shift Right
-#define OP_SLT  8 // Set Less Than signed
-#define OP_SLTU 9 // Set Less Than unsigned
+#define OP_ADD  0x1
+#define OP_SUB  0x2
+#define OP_AND  0x3
+#define OP_OR   0x4
+#define OP_XOR  0x5
+#define OP_SL   0x6 // Bit Shift Left
+#define OP_SR   0x7 // Bit Shift Right
+#define OP_SLT  0x8 // Set Less Than signed
+#define OP_SLTU 0x9 // Set Less Than unsigned
 
-#define OP_ADDI 10
-#define OP_ANDI 11
-#define OP_ORI  12
-#define OP_XORI 13
-#define OP_LI   14
-#define OP_SLI  15
-#define OP_SRI  16
+#define OP_ADDI 0xA
+#define OP_ANDI 0xB
+#define OP_ORI  0xC
+#define OP_XORI 0xD
+#define OP_LI   0xE
+#define OP_SLI  0xF
+#define OP_SRI  0x10
 
-#define OP_LOAD 17
+#define OP_LOAD 0x11
 
-#define OP_STOR 18
+#define OP_STOR 0x12
 
-#define OP_JAL  19
-#define OP_JALR 20
+#define OP_JAL  0x13
+#define OP_JALR 0x14
 
-#define OP_BEQ  21
-#define OP_BNE  22
-#define OP_BLT  23
-#define OP_BGE  24
+#define OP_BEQ  0x15
+#define OP_BNE  0x16
+#define OP_BLT  0x17
+#define OP_BGE  0x18
 
 // MARK: ----- Register Constants
 #define REG_ZONE_W  20
@@ -133,6 +135,10 @@
 #define R13  15
 #define R14  16
 #define R15  17
+
+// MARK: -- Memory mapping
+#define OUT      0
+#define OUT_FLAG 1
 
 // MARK: -- Lane Operations
 
@@ -980,6 +986,35 @@
 
   @prevwords(2)
 
+  // Before all this shit we want to possibly mo mmapped shit
+  // If we are writing to @OUT, then we want to twinkle twinkle
+
+  @lane(@L_SA,
+    // copy via sB prevword
+    [->+@prevword+@nextword<] >@prevword [-@nextword<+>@prevword] @nextword <
+  )
+
+  // if @L_SB is not zero, then poop
+  // if zero, then check addr
+
+  // memory mapped io subroutine
+  @prevword
+    @lane(@L_SA,
+      [->+@prevword+@nextword<] >@prevword [-@nextword<+>@prevword] @nextword <
+    )
+
+    @lane(@L_SB,
+      @eq(@nextword, @prevword)
+      [-@prevword+@prevword+@nextword @nextword] @prevword @prevword [-@nextword @nextword+ @prevword @prevword] @nextword @nextword
+
+      @if
+        @nextwords(2) <
+          @print
+        > @prevwords(2)
+      @endif
+    )
+  @nextword
+
   @mem_ptr_fill_banks(@prevwords(2))
 
   // Filling ptr lane up to the needed cell
@@ -991,7 +1026,6 @@
   @prevword
   @goto_start
   @goto_ptr_end
-  @prevword
     @lane(@L_RAM, @clear)
   @goto_ptr_start
   @nextword
@@ -1015,6 +1049,21 @@
       @lane_start(@L_SA)
     )
   )
+
+
+  @prevwords(3)
+  @lane(@L_SB,
+    @if
+      @lane_end(@L_SB)
+      @goto_start
+        @lane(@L_RAM, @nextword @clear @inc(1) @prevword)
+      @nextword
+      @goto_ip_word
+      @prevwords(3)
+      @lane_start(@L_SB)
+    @endif
+  )
+  @nextwords(2)
 
   @goto_start
   @ptr_cleanup
@@ -1149,16 +1198,16 @@
 #define set_and_nextword(v) @set(v) @nextword
 
 #define b2d_add_dec {
-  @lane(@L_SB,
+  @lane(#L_SB,
     @times(
-      @lane_end(@L_SB)
+      @lane_end(#L_SB)
       @set(1)
       @goto_zero_left_lane
-      @lane(@L_SA, @inc(1))
+      @lane(#L_SA, @inc(1))
       @nextword
       @goto_zero_right_lane
       @prevword
-      @lane_start(@L_SB)
+      @lane_start(#L_SB)
     )
   )
 }
@@ -1240,7 +1289,7 @@
 
 #define _cmp_unsigned_lt { // TODO: Replace with @lt
 // Requires [0, 0, 0, b, a, 0, 0]
-  @lane(@L_SA,
+  @lane(#L_SA,
 
     // If one of them is zero, then the other one is zero too.
     // So we can just gtfo.
@@ -1263,7 +1312,7 @@
 
 // MARK: ------ Opcode Handlers ---------
 
-#define ophandler(handler) @lane_end(@L_SB) handler @lane_start(@L_SB)
+#define ophandler(handler) @lane_end(#L_SB) handler @lane_start(#L_SB)
 
 #define add  @ophandler(@two_registers_op(@alu_add))
 #define sub  @ophandler(@two_registers_op(@alu_sub))
@@ -1289,16 +1338,16 @@
 #define jal  @ophandler(@no_register_imm2_op(@ins_jal))
 #define jalr @ophandler(@two_registers_op_no_set(@ins_jal))
 
-#define beq  @ophandler(@two_registers_branch_op(@ins_beq(@FALSE))) // beq rs rt imm, jumps to current pcb+pc+imm
-#define bne  @ophandler(@two_registers_branch_op(@ins_beq(@TRUE)))
-#define blt  @ophandler(@two_registers_branch_op(@ins_blt(@FALSE)))
-#define bge  @ophandler(@two_registers_branch_op(@ins_blt(@TRUE)))
+#define beq  @ophandler(@two_registers_branch_op(@ins_beq(#FALSE))) // beq rs rt imm, jumps to current pcb+pc+imm
+#define bne  @ophandler(@two_registers_branch_op(@ins_beq(#TRUE)))
+#define blt  @ophandler(@two_registers_branch_op(@ins_blt(#FALSE)))
+#define bge  @ophandler(@two_registers_branch_op(@ins_blt(#TRUE)))
 
 #define opcase(op, han) @case(op,  han, >, <)
 
 #define program_start(w1, w2, w3, w4) {
   {repeat(@REG_ZONE_CW,
-    @instr(@i1(@OP_NOP) @i1(0) @i1(0) @i1(0))
+    @instr(@i1(#OP_NOP) @i1(0) @i1(0) @i1(0))
   )}
 
   @instr(@i0(w1) @i1(w2) @i1(w3) @i1(w4))
@@ -1309,19 +1358,19 @@
 }
 
 #define program_end {
-  @cmd(  @OP_HALT, @OP_NOP, @OP_NOP, @OP_NOP)
+  @cmd(  #OP_HALT, #OP_NOP, #OP_NOP, #OP_NOP)
 }
 
 // MARK: ------------ MAIN ---------------
 // Set START marker
-@set(@STATE_SETUP)
+@set(#STATE_SETUP)
 
 // MARK: -- Set registers
 @nextword
 @nextword
 #define REG_VALUES {0,0}
-@lane(@L_REG,
-  {for(v in @REG_VALUES, @set(v) @nextword)}
+@lane(#L_REG,
+  {for(v in #REG_VALUES, @set(v) @nextword)}
 )
 
 @goto_start_slow
@@ -1338,10 +1387,35 @@
 
 // MARK: -- Program code
 
-@program_start(@OP_LI,     @R3, 5,   0)
-@cmd(          @OP_LI,     @R4, 3,   0)
-@cmd(          @OP_STOR,   @R3, @R0, @R4)
-@cmd(          @OP_LOAD,   @R7, @R0, @R4)
+#define HELLO {'H', 'e', 'l', 'l', 'o', ',', ' ', 'R', 'i', 'p', 'p', 'l', 'e'}
+
+@nextword
+@lane(#L_MEM,
+  {for(s in #HELLO, @set(s) @nextword)}
+)
+
+@goto_start_slow
+@nextword
+
+@program_start(@OP_LI,     #R3, 0,   0)     // R3 is loader
+@cmd(          @OP_LI,     #R4, 4,   0)     // jump address, stable
+@cmd(          @OP_LI,     #R5, 2,   0)     // memory pointer
+
+@cmd(          @OP_JALR,   #R4, 0,   #R4)   // unnecessary, but let it be
+
+@cmd(          @OP_LOAD,   #R3, 0,   #R5)   // load letter
+@cmd(          @OP_BNE,    #R3, 0,   1)     // if 0 - halt
+
+@cmd(          @OP_HALT,   0,   0,   0)
+
+@cmd(          @OP_ADDI,   #R5, #R5, 1)     // inc r5
+
+@cmd(          @OP_STOR,   #R3, 0,   0)     // send letter to i/o output
+
+@cmd(          @OP_JALR,   #R4, 0, #R4)     // loop
+
+
+
 
 // @program_start(@OP_LI,     @R3, 5,   0)
 // @cmd(          @OP_LI,     @R4, 3,   0)
@@ -1362,15 +1436,15 @@
 @prevword
 @clear_to_zero_left_lane
 @nextword
-@set(@STATE_RUNNING)
+@set(#STATE_RUNNING)
 
 // MARK: -- Main loop
 @while(
   [->+>+<<]>>[-<<+>>]<< // Copy start flag to >, so switch does not fuck up our start marker
   >
   @switch(2, @default, >, <)
-  @case(@STATE_RUNNING, <<@execute>>, >, <)
-  @case(@STATE_HALT, @clear <<@clear>>, >, <)
+  @case(#STATE_RUNNING, <<@execute>>, >, <)
+  @case(#STATE_HALT, @clear <<@clear>>, >, <)
   <
 )
 
@@ -1386,34 +1460,34 @@
     // MARK: ------- Opcode Switch
     @switch(25, @default, >, <)
 
-      @opcase(@OP_BGE,   @bge)
-      @opcase(@OP_BLT,   @blt)
-      @opcase(@OP_BNE,   @bne)
-      @opcase(@OP_BEQ,   @beq)
+      @opcase(#OP_BGE,   @bge)
+      @opcase(#OP_BLT,   @blt)
+      @opcase(#OP_BNE,   @bne)
+      @opcase(#OP_BEQ,   @beq)
 
-      @opcase(@OP_JALR,  @jalr)
-      @opcase(@OP_JAL,   @jal)
+      @opcase(#OP_JALR,  @jalr)
+      @opcase(#OP_JAL,   @jal)
 
-      @opcase(@OP_STOR,  @stor)
-      @opcase(@OP_LOAD,  @load)
+      @opcase(#OP_STOR,  @stor)
+      @opcase(#OP_LOAD,  @load)
 
-      @opcase(@OP_SRI,   @sri)
-      @opcase(@OP_SLI,   @sli)
-      @opcase(@OP_LI,    @li)
-      @opcase(@OP_XORI,  @xori)
-      @opcase(@OP_ORI,   @ori)
-      @opcase(@OP_ANDI,  @andi)
-      @opcase(@OP_ADDI,  @addi)
-      @opcase(@OP_SLTU,  @sltu)
-      @opcase(@OP_SLT,   @slt)
-      @opcase(@OP_SR,    @sr)
-      @opcase(@OP_SL,    @sl)
-      @opcase(@OP_XOR,   @xor)
-      @opcase(@OP_OR,    @or)
-      @opcase(@OP_AND,   @and)
-      @opcase(@OP_SUB,   @sub)
-      @opcase(@OP_ADD,   @add)
-      @opcase(@OP_HALT,  @lane_end(@L_SB) @prevword @goto_start @set(@STATE_HALT) @goto_ip_word @lane_start(@L_SB))
+      @opcase(#OP_SRI,   @sri)
+      @opcase(#OP_SLI,   @sli)
+      @opcase(#OP_LI,    @li)
+      @opcase(#OP_XORI,  @xori)
+      @opcase(#OP_ORI,   @ori)
+      @opcase(#OP_ANDI,  @andi)
+      @opcase(#OP_ADDI,  @addi)
+      @opcase(#OP_SLTU,  @sltu)
+      @opcase(#OP_SLT,   @slt)
+      @opcase(#OP_SR,    @sr)
+      @opcase(#OP_SL,    @sl)
+      @opcase(#OP_XOR,   @xor)
+      @opcase(#OP_OR,    @or)
+      @opcase(#OP_AND,   @and)
+      @opcase(#OP_SUB,   @sub)
+      @opcase(#OP_ADD,   @add)
+      @opcase(#OP_HALT,  @lane_end(#L_SB) @prevword @goto_start @set(#STATE_HALT) @goto_ip_word @lane_start(#L_SB))
   )
 
   @move_ip_next_command

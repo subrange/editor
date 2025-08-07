@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import {interpreterStore} from "../debugger/interpreter-facade.store.ts";
 import {settingsStore} from "../../stores/settings.store.ts";
+import {outputStore} from "../../stores/output.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
 import { TapeLabelsEditor } from "./tape-labels-editor";
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
@@ -59,6 +60,7 @@ export function Settings() {
     const cellSize = useStoreSubscribe(interpreterStore.cellSize);
     const laneCount = useStoreSubscribe(interpreterStore.laneCount);
     const settings = useStoreSubscribe(settingsStore.settings);
+    const outputState = useStoreSubscribe(outputStore.state);
 
     const handleTapeSizeChange = (value: string) => {
         const size = parseInt(value) || 30000;
@@ -273,6 +275,58 @@ export function Settings() {
                         <p className="text-xs text-zinc-500 -mt-2">
                             Remove lines that contain no Brainfuck commands
                         </p>
+                    </div>
+                </SettingSection>
+
+                {/* Output Settings */}
+                <SettingSection title="Output Panel">
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-zinc-300">
+                                Position
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { value: 'bottom' as const, label: 'Bottom', desc: 'Below editor' },
+                                    { value: 'right' as const, label: 'Right', desc: 'Side panel' }
+                                ].map(option => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => outputStore.setPosition(option.value)}
+                                        className={clsx(
+                                            "p-3 rounded border transition-all text-center",
+                                            outputState.position === option.value
+                                                ? "bg-blue-500/20 border-blue-500 text-blue-400"
+                                                : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:border-zinc-600"
+                                        )}
+                                    >
+                                        <div className="font-medium text-sm">{option.label}</div>
+                                        <div className="text-[10px] text-zinc-500 mt-1">{option.desc}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Max Lines Setting */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-zinc-300">
+                                Max Lines
+                            </label>
+                            <input
+                                type="number"
+                                value={outputState.maxLines || ''}
+                                onChange={(e) => {
+                                    const value = e.target.value ? parseInt(e.target.value) : undefined;
+                                    outputStore.setMaxLines(value);
+                                }}
+                                className="w-full px-3 py-2 bg-zinc-800 text-zinc-200 text-sm rounded border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="No limit"
+                                min="100"
+                            />
+                            <p className="text-xs text-zinc-500">
+                                Keep only the last N lines (empty for no limit)
+                            </p>
+                        </div>
                     </div>
                 </SettingSection>
 
