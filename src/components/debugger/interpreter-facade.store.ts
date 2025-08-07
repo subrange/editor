@@ -302,7 +302,7 @@ class InterpreterFacade implements InterpreterInterface {
         // Otherwise, the callback will be set when we switch to worker for execution
     }
     
-    async setVMOutputConfig(config: { outCellIndex: number; outFlagCellIndex: number; sparseCellPattern?: any }) {
+    async setVMOutputConfig(config: { outCellIndex: number; outFlagCellIndex: number; clearOnRead?: boolean; sparseCellPattern?: any }) {
         // Store the config to be set when we switch to worker
         this.pendingVMOutputConfig = config;
         

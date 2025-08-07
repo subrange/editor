@@ -121,6 +121,7 @@ class WorkerInterpreter {
   private vmOutputConfig: { 
     outCellIndex: number; 
     outFlagCellIndex: number;
+    clearOnRead?: boolean;
     sparseCellPattern?: {
       start: number;
       step: number;
@@ -380,10 +381,11 @@ class WorkerInterpreter {
     // Check VM output flag
     if (this.vmOutputConfig) {
       const flagValue = this.tape[this.vmOutputConfig.outFlagCellIndex];
-      if (flagValue === 1 && this.lastVMFlagValue === 0) {
+      if (flagValue === 1) {
         this.sendVMOutput();
+        // Don't clear the flag here - let the callback do it to avoid race condition
+        // The callback will clear it after reading the output character
       }
-      this.lastVMFlagValue = flagValue;
     }
 
     this.sendStateUpdate();
@@ -451,8 +453,6 @@ class WorkerInterpreter {
     const cellSize = this.cellSize;
     let output = this.output;
     const vmOutputConfig = this.vmOutputConfig;
-    
-    this.lastVMFlagValue = 0;
 
     while (pc < ops.length && this.isRunning && !this.isPaused) {
       const op = ops[pc];
@@ -472,7 +472,7 @@ class WorkerInterpreter {
             pc = jumpTable.get(pc) || pc;
           }
           break;
-        case '.': 
+        case '.': {
           output += String.fromCharCode(tape[pointer]);
           // Check if we should send an output update (but not if VM output is active)
           const now = performance.now();
@@ -486,6 +486,7 @@ class WorkerInterpreter {
             this.sendStateUpdate(false); // Don't send tape data for output updates
           }
           break;
+        }
         case ',': tape[pointer] = 0; break;
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
@@ -502,20 +503,21 @@ class WorkerInterpreter {
         }
       }
 
-      // Check VM output flag in turbo mode
-      if (this.vmOutputConfig) {
-        const flagValue = tape[this.vmOutputConfig.outFlagCellIndex];
-        if (flagValue === 1 && this.lastVMFlagValue === 0) {
+      pc++;
+      opsExecuted++;
+
+      // Check VM output flag in turbo mode AFTER executing the instruction
+      if (vmOutputConfig) {
+        const flagValue = tape[vmOutputConfig.outFlagCellIndex];
+        if (flagValue === 1) {
           // Update instance variables before sending VM output
           this.pointer = pointer;
           this.output = output;
           this.sendVMOutput();
+          // Don't clear the flag here - let the callback do it to avoid race condition
+          // The callback will clear it after reading the output character
         }
-        this.lastVMFlagValue = flagValue;
       }
-
-      pc++;
-      opsExecuted++;
 
       // Check for regular breakpoints
       if (pc < ops.length) {
@@ -550,6 +552,7 @@ class WorkerInterpreter {
     this.output = output;
     
     this.isRunning = false;
+    this.isStopped = true;  // Mark as finished/stopped
     // Send final state with tape data
     this.sendStateUpdate(true);
     
@@ -561,6 +564,7 @@ class WorkerInterpreter {
     this.lastPausedBreakpoint = null;
     this.isPaused = false;
     this.isRunning = true;
+    this.isStopped = false;  // Clear stopped state when resuming
     
     this.log('Resuming turbo execution from current position...');
     
@@ -632,7 +636,7 @@ class WorkerInterpreter {
             pc = jumpTable.get(pc) || pc;
           }
           break;
-        case '.': 
+        case '.': {
           this.output += String.fromCharCode(this.tape[this.pointer]);
           // Check if we should send an output update (but not if VM output is active)
           const now = performance.now();
@@ -645,6 +649,7 @@ class WorkerInterpreter {
             this.sendStateUpdate(false); // Don't send tape data for output updates
           }
           break;
+        }
         case ',': this.tape[this.pointer] = 0; break;
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
@@ -660,14 +665,12 @@ class WorkerInterpreter {
 
       // Check VM output flag in turbo mode
       if (this.vmOutputConfig) {
-        const flagValue = tape[this.vmOutputConfig.outFlagCellIndex];
-        if (flagValue === 1 && this.lastVMFlagValue === 0) {
-          // Update instance variables before sending VM output
-          this.pointer = pointer;
-          this.output = output;
+        const flagValue = this.tape[this.vmOutputConfig.outFlagCellIndex];
+        if (flagValue === 1) {
           this.sendVMOutput();
+          // Don't clear the flag here - let the callback do it to avoid race condition
+          // The callback will clear it after reading the output character
         }
-        this.lastVMFlagValue = flagValue;
       }
 
       pc++;
@@ -700,6 +703,7 @@ class WorkerInterpreter {
     }
 
     this.isRunning = false;
+    this.isStopped = true;  // Mark as finished/stopped
     // Send final state with tape data
     this.sendStateUpdate(true);
     
@@ -737,6 +741,7 @@ class WorkerInterpreter {
   setVMOutputConfig(config: { 
     outCellIndex: number; 
     outFlagCellIndex: number;
+    clearOnRead?: boolean;
     sparseCellPattern?: {
       start: number;
       step: number;

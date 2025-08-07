@@ -303,10 +303,34 @@ export class InterpreterWorkerStore {
   }
 
   public reset() {
+    // Update local state immediately
+    const currentState = this.state.getValue();
+    this.state.next({
+      ...currentState,
+      isRunning: false,
+      isPaused: false,
+      isStopped: false,
+      pointer: 0,
+      output: ''
+    });
+    
+    // Clear the tape
+    if (this.sharedTape) {
+      this.sharedTape.fill(0);
+    }
+    
     this.worker.postMessage({ type: 'reset' });
   }
 
   public step(): boolean {
+    // Briefly show running state for step operation
+    const currentState = this.state.getValue();
+    this.state.next({
+      ...currentState,
+      isRunning: true,
+      isPaused: false
+    });
+    
     this.worker.postMessage({ type: 'step' });
     return true; // Worker will handle completion
   }
@@ -324,12 +348,24 @@ export class InterpreterWorkerStore {
   }
 
   public runFromPosition(position: Position) {
+    // Set position first
     this.worker.postMessage({ type: 'setPosition', position });
+    
+    // Update character position locally
+    this.currentChar.next(position);
+    
+    // Then run turbo
     this.runTurbo();
   }
 
   public stepToPosition(position: Position) {
+    // Set position first
     this.worker.postMessage({ type: 'setPosition', position });
+    
+    // Update character position locally
+    this.currentChar.next(position);
+    
+    // Then step
     this.step();
   }
 
@@ -338,14 +374,40 @@ export class InterpreterWorkerStore {
   }
 
   public async runTurbo() {
+    // Update local state immediately to show running indicator
+    const currentState = this.state.getValue();
+    this.state.next({
+      ...currentState,
+      isRunning: true,
+      isPaused: false,
+      isStopped: false,
+      lastExecutionMode: 'turbo'
+    });
+    
     this.worker.postMessage({ type: 'runTurbo' });
   }
 
   public async resumeTurbo() {
+    // Update local state immediately to show running indicator
+    const currentState = this.state.getValue();
+    this.state.next({
+      ...currentState,
+      isRunning: true,
+      isPaused: false,
+      lastExecutionMode: 'turbo'
+    });
+    
     this.worker.postMessage({ type: 'resumeTurbo' });
   }
 
   public pause() {
+    // Update local state immediately for responsive UI
+    const currentState = this.state.getValue();
+    this.state.next({
+      ...currentState,
+      isPaused: true
+    });
+    
     this.worker.postMessage({ type: 'pause' });
   }
 
@@ -355,6 +417,15 @@ export class InterpreterWorkerStore {
   }
 
   public stop() {
+    // Update local state immediately for responsive UI
+    const currentState = this.state.getValue();
+    this.state.next({
+      ...currentState,
+      isRunning: false,
+      isPaused: false,
+      isStopped: true
+    });
+    
     this.worker.postMessage({ type: 'stop' });
   }
 
@@ -496,6 +567,7 @@ export class InterpreterWorkerStore {
   public setVMOutputConfig(config: { 
     outCellIndex: number; 
     outFlagCellIndex: number;
+    clearOnRead?: boolean;
     sparseCellPattern?: {
       start: number;
       step: number;

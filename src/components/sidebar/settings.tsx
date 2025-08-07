@@ -5,7 +5,8 @@ import {outputStore} from "../../stores/output.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
 import { TapeLabelsEditor } from "./tape-labels-editor";
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { settingsManager } from '../../services/settings-manager.service';
 
 function SettingSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
     const storageKey = `settings-section-${title.toLowerCase().replace(/\s+/g, '-')}`;
@@ -375,6 +376,57 @@ export function Settings() {
                 {/*        </label>*/}
                 {/*    </div>*/}
                 {/*</SettingSection>*/}
+
+                {/* Settings Management */}
+                <SettingSection title="Settings Management">
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <p className="text-xs text-zinc-500">
+                                Export or import all IDE settings including files, snapshots, and preferences.
+                            </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <button
+                                onClick={() => settingsManager.downloadSettingsAsFile()}
+                                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors"
+                            >
+                                Export Settings to File
+                            </button>
+                            
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept=".json"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            settingsManager.importSettingsFromFile(file)
+                                                .then(() => {
+                                                    alert('Settings imported successfully!');
+                                                    window.location.reload();
+                                                })
+                                                .catch((error) => {
+                                                    alert(`Failed to import settings: ${error.message}`);
+                                                });
+                                        }
+                                        e.target.value = '';
+                                    }}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <button className="w-full px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 text-sm font-medium rounded transition-colors">
+                                    Import Settings from File
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="pt-2 border-t border-zinc-800">
+                            <p className="text-xs text-yellow-600">
+                                ⚠️ Importing settings will overwrite all current settings and reload the page.
+                            </p>
+                        </div>
+                    </div>
+                </SettingSection>
             </div>
         </div>
     );

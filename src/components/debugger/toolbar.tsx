@@ -211,8 +211,8 @@ export function Toolbar() {
                     {
                         isStopped && (
                             <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-full bg-red-500" />
-                                <span className="text-red-500">Finished</span>
+                                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span className="text-blue-500">Finished</span>
                             </div>
                         )
                     }

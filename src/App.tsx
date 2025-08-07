@@ -23,6 +23,10 @@ import {interpreterStore} from "./components/debugger/interpreter.store.ts";
 import {MacroContextPanel} from "./components/debugger/macro-context-panel.tsx";
 import {DraggableVSep} from "./components/ui/draggable-vsep.tsx";
 import {outputStore} from "./stores/output.store.ts";
+import {vmOutputService} from "./services/vm-output.service.ts";
+
+// Initialize VM output service
+vmOutputService.initialize();
 
 function EditorPanel() {
     const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
