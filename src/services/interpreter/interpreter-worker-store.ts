@@ -254,29 +254,24 @@ export class InterpreterWorkerStore {
 
   private handleVMOutput(message: any) {
     if (this.vmOutputCallback) {
-      let tape = this.state.getValue().tape;
+      const currentState = this.state.getValue();
+      const tape = currentState.tape;
       
-      // If tape data is included, use it
-      if (message.tapeData) {
-        const cellSize = this.cellSize.getValue();
-        if (cellSize === 256) {
-          tape = new Uint8Array(message.tapeData);
-        } else if (cellSize === 65536) {
-          tape = new Uint16Array(message.tapeData);
-        } else {
-          tape = new Uint32Array(message.tapeData);
+      // If sparse tape data is included, update only those cells
+      if (message.sparseTapeData && !this.sharedTapeBuffer) {
+        // Update the specific cells directly in the existing tape
+        // No need to clone the entire tape
+        const { values, indices } = message.sparseTapeData;
+        for (let i = 0; i < indices.length; i++) {
+          tape[indices[i]] = values[i];
         }
         
-        // Update our local tape reference
-        if (!this.sharedTapeBuffer) {
-          this.sharedTape = tape;
-          // Also update state so the tape is current
-          const currentState = this.state.getValue();
-          this.state.next({
-            ...currentState,
-            tape: tape
-          });
-        }
+        // Trigger a state update to notify observers
+        // We're passing the same tape reference, but React/RxJS will still update
+        this.state.next({
+          ...currentState,
+          tape: tape
+        });
       }
       
       this.vmOutputCallback(tape, message.pointer);
@@ -498,7 +493,15 @@ export class InterpreterWorkerStore {
     this.vmOutputCallback = callback;
   }
 
-  public setVMOutputConfig(config: { outCellIndex: number; outFlagCellIndex: number }) {
+  public setVMOutputConfig(config: { 
+    outCellIndex: number; 
+    outFlagCellIndex: number;
+    sparseCellPattern?: {
+      start: number;
+      step: number;
+      count?: number;
+    };
+  }) {
     this.worker.postMessage({
       type: 'setVMOutputConfig',
       config

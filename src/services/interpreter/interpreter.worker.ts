@@ -54,7 +54,15 @@ interface SetPositionMessage {
 
 interface SetVMOutputConfigMessage {
   type: 'setVMOutputConfig';
-  config: { outCellIndex: number; outFlagCellIndex: number };
+  config: { 
+    outCellIndex: number; 
+    outFlagCellIndex: number;
+    sparseCellPattern?: {
+      start: number;  // Starting index (e.g., 4)
+      step: number;   // Step between indices (e.g., 8)
+      count?: number; // Max number of cells to send (default 1024)
+    };
+  };
 }
 
 type WorkerMessage = InitMessage | ResetMessage | StepMessage | RunTurboMessage | 
@@ -82,8 +90,11 @@ interface StateUpdateMessage {
 interface VMOutputMessage {
   type: 'vmOutput';
   pointer: number;
-  // Include tape data for VM output when not using SharedArrayBuffer
-  tapeData?: ArrayBuffer;
+  // Include sparse tape data for VM output when not using SharedArrayBuffer
+  sparseTapeData?: {
+    values: number[]; // The actual values
+    indices: number[]; // The indices where these values are located
+  };
 }
 
 interface ErrorMessage {
@@ -116,7 +127,15 @@ class WorkerInterpreter {
   private sourceMapLookup: SourceMapLookup | null = null;
   private currentSourcePosition?: Position;
   private macroContext?: Array<{ macroName: string; parameters?: Record<string, string> }>;
-  private vmOutputConfig: { outCellIndex: number; outFlagCellIndex: number } | null = null;
+  private vmOutputConfig: { 
+    outCellIndex: number; 
+    outFlagCellIndex: number;
+    sparseCellPattern?: {
+      start: number;
+      step: number;
+      count?: number;
+    };
+  } | null = null;
   private lastVMFlagValue = 0;
 
   constructor() {
@@ -663,7 +682,15 @@ class WorkerInterpreter {
     this.sendStateUpdate();
   }
 
-  setVMOutputConfig(config: { outCellIndex: number; outFlagCellIndex: number }) {
+  setVMOutputConfig(config: { 
+    outCellIndex: number; 
+    outFlagCellIndex: number;
+    sparseCellPattern?: {
+      start: number;
+      step: number;
+      count?: number;
+    };
+  }) {
     this.vmOutputConfig = config;
     this.lastVMFlagValue = 0;
   }
@@ -742,14 +769,32 @@ class WorkerInterpreter {
       pointer: this.pointer
     };
     
-    // Include tape data if not using SharedArrayBuffer
-    if (!isSharedArrayBuffer) {
-      const bufferCopy = this.tape.buffer.slice(0);
-      message.tapeData = bufferCopy;
-      self.postMessage(message, [bufferCopy]);
-    } else {
-      self.postMessage(message);
+    // Include sparse tape data if not using SharedArrayBuffer
+    if (!isSharedArrayBuffer && this.vmOutputConfig) {
+      const values: number[] = [];
+      const indices: number[] = [];
+      
+      // Use configured pattern or default to 4, 12, 20, 28...
+      const pattern = this.vmOutputConfig.sparseCellPattern || {
+        start: 4,
+        step: 8,
+        count: 1024
+      };
+      
+      const maxCells = pattern.count || 1024;
+      
+      for (let i = 0; i < maxCells; i++) {
+        const index = pattern.start + (i * pattern.step);
+        if (index >= this.tape.length) break;
+        
+        values.push(this.tape[index]);
+        indices.push(index);
+      }
+      
+      message.sparseTapeData = { values, indices };
     }
+    
+    self.postMessage(message);
   }
 
   private log(message: string) {
