@@ -12,6 +12,7 @@ export function Debugger() {
   const containerRef = useRef<HTMLDivElement>(null);
   const interpreterState = useStoreSubscribe(interpreterStore.state);
   const settings = useStoreSubscribe(settingsStore.settings);
+  const [showGoToCell, setShowGoToCell] = useState(false);
   
   const tape = interpreterState.tape;
   const pointer = interpreterState.pointer;
@@ -128,6 +129,12 @@ export function Debugger() {
           >
             Go to End
           </button>
+          <button
+            onClick={() => setShowGoToCell(true)}
+            className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+          >
+            Go to Cell
+          </button>
         </div>
       </div>
       
@@ -152,6 +159,79 @@ export function Debugger() {
         </div>
         <span>Scroll with mouse wheel or trackpad</span>
       </div>
+      
+      {/* Go to Cell Modal */}
+      {showGoToCell && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-40" 
+            onClick={() => setShowGoToCell(false)}
+          />
+          
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 bg-zinc-800 border-b border-zinc-700">
+              <h3 className="text-sm font-medium text-zinc-300">Go to Cell</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Enter a cell number or math expression (0-{tape.length - 1})
+              </p>
+            </div>
+            
+            {/* Input section */}
+            <div className="p-4">
+              <input
+                type="text"
+                placeholder="Cell number or expression (e.g., 16 * 4, 256 + 4)..."
+                className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded focus:border-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = (e.target as HTMLInputElement).value.trim();
+                    let value: number;
+                    
+                    try {
+                      // Try to evaluate as a math expression
+                      // Only allow numbers and basic math operators for safety
+                      if (/^[\d\s+\-*/().]+$/.test(input)) {
+                        value = Math.floor(eval(input));
+                      } else {
+                        // If not a valid expression, try parsing as number
+                        value = parseInt(input, 10);
+                      }
+                      
+                      if (!isNaN(value) && value >= 0 && value < tape.length) {
+                        const renderer = containerRef.current?.querySelector('canvas');
+                        if (renderer) {
+                          renderer.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index: value } }));
+                        }
+                        setShowGoToCell(false);
+                      } else {
+                        // Show error in input
+                        (e.target as HTMLInputElement).classList.add('border-red-500');
+                        setTimeout(() => {
+                          (e.target as HTMLInputElement).classList.remove('border-red-500');
+                        }, 1000);
+                      }
+                    } catch (error) {
+                      // Invalid expression - show error
+                      (e.target as HTMLInputElement).classList.add('border-red-500');
+                      setTimeout(() => {
+                        (e.target as HTMLInputElement).classList.remove('border-red-500');
+                      }, 1000);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setShowGoToCell(false);
+                  }
+                }}
+              />
+              <p className="text-xs text-zinc-500 mt-2">
+                Examples: 42, 16*4, 256+4, (128*2)-1 • Press Enter to go, Escape to cancel
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

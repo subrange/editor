@@ -631,6 +631,10 @@ export class EditorStore {
                     this.selectToLineEnd();
                     break;
 
+                case "editor.togglecomment":
+                    this.toggleComment();
+                    break;
+
                 default:
                     console.warn(`Unknown command: ${s}`);
             }
@@ -1360,6 +1364,98 @@ export class EditorStore {
         }).catch(err => {
             console.error("Failed to read clipboard:", err);
         });
+    }
+
+    public toggleComment() {
+        const currentState = this.editorState.getValue();
+        const selection = currentState.selection;
+        const range = selectionToRange(selection);
+        
+        // Get all lines that are part of the selection
+        const startLine = range.start.line;
+        const endLine = range.end.line;
+        
+        // Check if all selected lines are already commented
+        let allLinesCommented = true;
+        for (let i = startLine; i <= endLine; i++) {
+            const line = currentState.lines[i];
+            if (!line) continue;
+            
+            const trimmedLine = line.text.trim();
+            if (trimmedLine.length > 0 && !trimmedLine.startsWith('//')) {
+                allLinesCommented = false;
+                break;
+            }
+        }
+        
+        const commands: CommandData[] = [];
+        
+        for (let lineIdx = startLine; lineIdx <= endLine; lineIdx++) {
+            const line = currentState.lines[lineIdx];
+            if (!line) continue;
+            
+            if (allLinesCommented) {
+                // Remove comment from line
+                const commentIndex = line.text.indexOf('//');
+                if (commentIndex !== -1) {
+                    // Remove '//' and one space after it if present
+                    const deleteEnd = line.text[commentIndex + 2] === ' ' ? commentIndex + 3 : commentIndex + 2;
+                    commands.push({
+                        type: "delete",
+                        range: {
+                            start: { line: lineIdx, column: commentIndex },
+                            end: { line: lineIdx, column: deleteEnd }
+                        },
+                        deletedText: line.text.slice(commentIndex, deleteEnd)
+                    });
+                }
+            } else {
+                // Add comment to line (skip empty lines)
+                if (line.text.trim().length > 0) {
+                    // Find the first non-whitespace character
+                    let insertColumn = 0;
+                    while (insertColumn < line.text.length && /\s/.test(line.text[insertColumn])) {
+                        insertColumn++;
+                    }
+                    
+                    commands.push({
+                        type: "insert",
+                        position: { line: lineIdx, column: insertColumn },
+                        text: "// "
+                    });
+                }
+            }
+        }
+        
+        if (commands.length > 0) {
+            const compositeCommand: CommandData = {
+                type: "composite",
+                commands
+            };
+            
+            // Execute the composite command
+            const newState = this.undoRedo.execute(compositeCommand, currentState);
+            
+            // Check if we're commenting/uncommenting a single line (collapsed selection)
+            const isSingleLine = isSelectionCollapsed(selection) || startLine === endLine;
+            
+            if (isSingleLine && newState.selection.focus.line < newState.lines.length - 1) {
+                // Move cursor to the beginning of the next line
+                this.editorState.next({
+                    ...newState,
+                    selection: {
+                        anchor: { line: newState.selection.focus.line + 1, column: 0 },
+                        focus: { line: newState.selection.focus.line + 1, column: 0 }
+                    }
+                });
+            } else {
+                // Maintain selection for multi-line operations
+                this.editorState.next({
+                    ...newState,
+                    selection: currentState.selection
+                });
+            }
+        }
     }
 
     public getText(): string {

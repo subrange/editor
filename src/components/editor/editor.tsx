@@ -186,6 +186,9 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
 
             // Quick Navigation
             keybindingsService.createKeybinding("meta+p", "editor.quicknav" as AppCommand),
+
+            // Comment/Uncomment
+            keybindingsService.createKeybinding("meta+/", "editor.togglecomment" as AppCommand),
         ])
 
         store.focus();

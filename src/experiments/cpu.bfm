@@ -1,5 +1,8 @@
 // MARK: ------------- START -------------
 
+#define FALSE 0
+#define TRUE  1
+
 #define clear [-]
 #define inc(n) {repeat(n, +)}
 #define dec(n) {repeat(n, -)}
@@ -9,46 +12,38 @@
 
 #define set_int_max @clear -
 
+
 // Aliases for readability
 #define right(n) @next(n)
 #define left(n) @prev(n)
 
 #define set(n) @clear @inc(n)
 
-// If current cell is non-zero, execute then clear
-#define if [
-#define endif @clear]
+// If current cell is non-zero, clear then execute
+#define if [ @clear
+#define endif ]
 
 // While current cell is non-zero
-#define while [
-#define endwhile ]
-
-#define times [-
-#define endtimes ]
+#define while(code) [code]
+#define times(code) [- code]
 
 // Basic loop n times
-#define loop(n) @clear @inc(n)[@dec(1)
-#define endloop ]
 
 #define default [@clear]
-#define switch(n_branches, default, flag, x) flag [-]+ x {repeat(n_branches, [-)} default
+#define switch(n_branches, default, flag, x) flag @clear+ x {repeat(n_branches, [-)} default
 #define case(n, code, flag, x) flag [@clear code] x ]
-
-// ===== ADVANCED PATTERNS =====
-
-// Find next zero cell to the right
-#define find_zero [>]
 
 // ===== DEBUG HELPERS =====
 
 // Create a "breakpoint" (infinite loop)
-#define break @clear @inc(1) []
+#define break @clear @inc(1) [$]
 #define halt @break
 
 // MARK: ----- Lane Constants
 
+#define STATE_SETUP   3
 #define STATE_RUNNING 2
-#define STATE_HALT 1
+#define STATE_HALT    1
 
 #define BANK_SIZE 128 // should be 65535, BUT 8*0xffff = A LOT OF CELLS, let's wait for the perf improvement of the tape UI
 #define CMD_SIZE 4
@@ -102,13 +97,20 @@
 #define OP_SRI  16
 
 #define OP_LOAD 17
+
 #define OP_STOR 18
 
-#define OP_JAL   19
-#define OP_JALR  20
+#define OP_JAL  19
+#define OP_JALR 20
+
+#define OP_BEQ  21
+#define OP_BNE  22
+#define OP_BLT  23
+#define OP_BGE  24
 
 // MARK: ----- Register Constants
-#define REG_ZONE 20
+#define REG_ZONE_W  20
+#define REG_ZONE_CW 5
 
 #define R0   0
 
@@ -149,6 +151,7 @@
 
 #define fastlane @nextword <
 #define fastlane_end > @prevword
+
 #define fl(code) @fastlane code @fastlane_end
 
 #define gtnzll(n) +[@left(n)[@right(n)-]@right(n)[-@left(n)+@right(n)]@left(n)]@left(n)
@@ -169,9 +172,11 @@
 
 #define set_lane(lane, v) @lane(lane, @set(v))
 
-#define instr(value, ftl) + @lane(@L_CODE, @set(value)) @fastlane @set(ftl) @fastlane_end @nextword
-#define instr1(value) @instr(value, 1)
-#define instr0(value) @instr(value, 0)
+#define instr(instrs) @nextwords(3) instrs @nextwords(5)
+
+#define _instr(value, ftl) + @lane(@L_CODE, @set(value)) @fl(@set(ftl)) @prevword
+#define i1(value) @_instr(value, 1)
+#define i0(value) @_instr(value, 0)
 
 #define move_to(dest, source) [-dest+source]dest
 
@@ -182,17 +187,21 @@
 #define move_r_n(n) @move_to(@nextwords(n), @prevwords(n))
 
 #define goto_start_slow @goto_nonzero_left_lane
-#define goto_start @fastlane @goto_zero_left_lane @fastlane_end
+#define goto_start @fl(@goto_zero_left_lane)
 
 // To make sure it always works: go to start, and then go to IP from the left
-#define goto_ip_word @goto_start @nextword @fastlane @goto_zero_right_lane @fastlane_end
-#define goto_ip_left @fastlane @goto_nonzero_left_lane @nextword @fastlane_end
+#define goto_ip_word @goto_start @nextword @fl(@goto_zero_right_lane)
+#define goto_ip_left @fl(@goto_nonzero_left_lane @nextword)
 
 // MARK: -- IP movement
 
 // Requires to be on IP
 #define move_ip_next_command {
-  @fastlane {repeat(@CMD_SIZE, +@nextword)} @fastlane_end @prevword
+  @fl( {repeat(@CMD_SIZE, +@nextword)} ) @prevword
+  @goto_PC @inc(1) @lane_end(@L_REG)
+  // TODO: IF INCREMENT WRAPPED PC, NEED TO INC PCB!!!
+  @goto_ip_word
+  @prevword
 }
 
 // MARK: -- PTR ops
@@ -210,10 +219,10 @@
 
 // MARK: -- Registers Movement
 // TODO: Make these conform to "all goto ops go to word n lane L_START"
-#define goto_PC @goto_start @lane_reg {repeat(@PC, @nextword)}
-#define goto_PCB @goto_start @lane_reg {repeat(@PCB, @nextword)}
+#define goto_PC @goto_start @lane_reg {repeat(@PC, @nextword)} @nextword
+#define goto_PCB @goto_start @lane_reg {repeat(@PCB, @nextword)} @nextword
 
-#define copy_pc_ra {
+#define _copy_pc_ra {
   @copy_reg_to_A_via_B
 
   @nextwords(2)
@@ -221,7 +230,7 @@
   @prevwords(2)
 
   @lane(@L_SA,
-    @while -
+    @times(
       @lane_end(@L_SA)
       @nextwords(2)
       @lane_reg
@@ -229,7 +238,7 @@
       @lane_reg_end
       @prevwords(2)
       @lane_start(@L_SA)
-    @endwhile
+    )
   )
 }
 
@@ -238,13 +247,14 @@
 #define copy_to_B [->>+>+<<<] >> [-<<+>>] <<
 
 #define copy_value_to_A @lane(@L_CODE, @copy_to_A)
+#define copy_value_to_B @lane(@L_CODE, @copy_to_B)
 
 #define copy_reg_to_A_via_B @lane(@L_REG, [->>>>+>+<<<<<] >>>>> [-<<<<<+>>>>>] <<<<<)
 
 // MARK: -- Registers fetch
 #define mark_register(offs) {
   @lane(@L_SA, // MARK: do lane times
-    [-
+    @times(
       @lane_end(@L_SA)
       @goto_start
 
@@ -258,7 +268,7 @@
       @goto_ip_word
       offs
       @lane_start(@L_SA)
-    ]
+    )
   )
 }
 
@@ -274,7 +284,7 @@
   )
 
   @lane(@L_SA,
-    [-
+    @times(
       @lane_end(@L_SA)
       @goto_start
       @nextword
@@ -284,7 +294,7 @@
       @lane(@L_SA, +)
       @lane(@L_SB, @goto_nonzero_left_lane)
       @lane_start(@L_SA)
-    ]
+    )
   )
 }
 
@@ -318,15 +328,14 @@
 
 #define move_result_to_destination_register {
   @lane(@L_SB,
-    @while
-      -
+    @times(
       @lane_end(@L_SB)
       @prevword
       @goto_marked_register
       @lane(@L_REG, +)
       @goto_ip_word
       @lane_start(@L_SB)
-    @endwhile
+    )
   )
 }
 
@@ -341,6 +350,31 @@
     @goto_ip_word
 }
 
+// MARK: -- math and logic
+
+#define eq(tox, toy) [-toy-tox]+toy[tox-toy[-]] tox
+#define not(totemp, tox) - [totemp-tox-] totemp[tox+totemp-] tox
+#define neq(tox, toy) @eq(tox, toy) @not(tox, toy)
+
+// Ok. This abomination works ONLY in sA, required layout words: [0, y, >x, [0, 1]]
+#define lt {
+  @nextword > + < @prevword
+  +@prevword+@nextword
+
+  [-@prevword-[@prevword]@nextword @nextword]
+
+  >[-
+       // BLOCK (a>=b)
+      < @prevword @set(0) @nextword >
+  ]
+
+  @nextword[-
+       // BLOCK(a<b)
+    < @prevwords(2) - @nextword @set(1) @nextwords(2) >
+  ]
+
+  < @prevword @prevword
+}
 
 // MARK: -- simple_register_op
 
@@ -357,6 +391,12 @@
     @fetch_from_register(@prevword @prevword)
     @fetch_from_register(@prevword @prevword @prevword)
     op
+}
+
+#define two_registers_branch_op(op) {
+  @fetch_from_register(@prevword)
+  @fetch_from_register(@prevword @prevword)
+  op
 }
 
 #define one_register_op(op) {
@@ -402,10 +442,9 @@
 #define alu_add {
   @prevword @prevword @prevword
   @lane(@L_SA,
-    @move_r_n(2)
-    [->+<]
-    >
-    @move_r
+    [-@nextword+@prevword]
+    @nextword
+    @move_to(@nextword @nextword>, < @prevword @prevword)
     <
   )
 }
@@ -469,13 +508,13 @@
   @setup_alu_shift
 
   @lane(@L_SA,
-    [-
+    @times(
       @lane_end(@L_SA)
       @nextwords(9)
       @prefill_fastlane(16) // Yes, 16 to capture the LSB
 
       @nextword
-      [-
+      @times(
 
         @lane(@L_SA,
           @move_l
@@ -483,11 +522,11 @@
         )
 
         @nextword
-      ]
+      )
 
       @goto_ip_left
       @lane_start(@L_SA)
-    ]
+    )
   )
 
   @lane(@L_SA,
@@ -505,7 +544,7 @@
   @setup_alu_shift
 
   @lane(@L_SA,
-    [-
+    @times(
       @lane_end(@L_SA)
       @nextwords(9)
       @prefill_fastlane(16) // Yes, 16 to capture the LSB
@@ -513,20 +552,19 @@
       @goto_zero_right_lane
 
       @prevword
-      [
-        -
 
+      @times(
         @lane(@L_SA,
           @move_r
           @prevword
         )
 
         @prevword
-      ]
+      )
 
       @goto_ip_left
       @lane_start(@L_SA)
-    ]
+    )
   )
 
   @lane(@L_SA,
@@ -576,7 +614,6 @@
 }
 
 #define alu_slt {
-
   @prevwords(2)
   @lane_start(@L_SA) // MARK: Bad Pavlo, starts at sA, ends at sB
   [-@nextword+@nextword+@prevwords(2)]@nextwords(2)
@@ -642,103 +679,27 @@
 
 // MARK: ---------- Instructions ---------
 
-#define ins_jal {
-  @prevword
-  @goto_PCB
-  @lane_reg_end
-
-  //@lane_sA
-  // pcb is two words after, move to it
-  // MARK: Copy PCB to RAB
-  @copy_pc_ra
-
-  @nextword
-
-  // MARK: Copy PC to RA
-  @copy_pc_ra
-
-  // So this works like two register op.
-  // ACTUALLY it needs to also fetch PC and PCB.
-  // These two should be initialized to bank 1 and pc 0
-  // THEN put PC and PCB into RA and RAB.
-  // Both can be just done in place by copy — we know where they are
-  // THEN put fetched register values into PC and PCB
-  @goto_ip_word
-  @prevwords(2)
-  @lane(@L_SA, // First op param is BANK
-    [->+@nextwords(2)+@prevwords(2)<]@nextwords(2)
-  )
-
-  // MARK: Candidate for "set pcb"
-  @prevword
-  @goto_start
-  @goto_PCB @clear
-  @lane_reg_end
-  @goto_ip_word
-  @lane(@L_SB,
-    [-
-      @lane_end(@L_SB)
-      @prevword
-      @goto_start
-      @goto_PCB
-      +
-      @lane_reg_end
-      @goto_ip_word
-      @lane_start(@L_SB)
-    ]
-  )
-
-  @prevwords(3)
-  @lane(@L_SA, // Second op param is ADDR
-    [->+@nextwords(3)+@prevwords(3)<]@nextwords(3)
-  )
-
-  // MARK: Candidate for "set pc"
-  @prevword
-  @goto_start
-  @nextword
-
-  @goto_PC @clear
-  @lane_reg_end
-
-  @goto_ip_word
-  @lane(@L_SB,
-    [-
-      @lane_end(@L_SB)
-      @prevword
-      @goto_start
-      @nextword @goto_PC
-      +
-      @lane_reg_end
-      @goto_ip_word
-      @lane_start(@L_SB)
-    ]
-  )
-  // THEN update fastlane
-
+#define _jump_to_bank_addr {
+  // MARK: START JTADDR, addr is word[-2] for BANK, word[-3] for ADDR
   // 1. Copy fastlane to PTR. Now fastlane can be freely changed
   @prevword
-  @fastlane
-  [
-    @fastlane_end
-    @lane(@L_PTR, +)
-    @fastlane
-    @prevword
-  ]
-  @fastlane_end
+  @fl(
+    [
+      @fastlane_end
+      @lane(@L_PTR, +)
+      @fastlane
+      @prevword
+    ]
+  )
 
   @nextword
   @goto_ptr_end
 
   // Now we want to fill fastlane with REG_ZONE + new PCB * BANK_SIZE * CMD_SIZE + PC
   @prevword
-  @fastlane
-  [-@prevword]
-  @fastlane_end
+  @fl([-@prevword])
 
-  @fastlane
-  @prefill_fastlane(@REG_ZONE)
-  @fastlane_end
+  @fl(@prefill_fastlane(@REG_ZONE_W))
 
   @nextword
   @goto_ptr_end
@@ -762,7 +723,7 @@
 
     // So now, @CMD_SIZE * PC times we need to :
     @nextwords(2)
-    @times // @CMD_SIZE times
+    @times( // @CMD_SIZE times
       // Copy PC to sA
       @prevwords(2)
       [-<+@nextword+@prevword>]
@@ -770,7 +731,7 @@
       [->@prevword+@nextword<]
       @prevword>
 
-      @times // PC times
+      @times( // PC times
         @lane_end(@L_SB)
         @goto_ptr_start
 
@@ -780,18 +741,16 @@
         @goto_ptr_end
         @prevwords(3)
         @lane_start(@L_SB)
-      @endtimes
+      )
 
       <[->+<]>
       @nextwords(2)
-    @endtimes
+    )
 
     @prevwords(2)
     @clear
     @nextwords(2)
   )
-
-
 
   @goto_ptr_start
   @nextword
@@ -801,6 +760,302 @@
 
   @prevword
   @fl(@clear) // We need 0 in the last fastlane pos
+}
+
+#define ins_jal {
+  @prevword
+  @goto_PCB
+  @lane_reg_end
+
+  @_copy_pc_ra
+
+  @nextword
+
+  // Copy PC to RA
+  @_copy_pc_ra
+
+  @goto_ip_word
+  @prevwords(2)
+  @lane(@L_SA, // First op param is BANK
+    [->+@nextwords(2)+@prevwords(2)<]@nextwords(2)
+  )
+
+  // MARK: Candidate for "set pcb"
+  @prevword
+  @goto_start
+  @goto_PCB @clear
+  @lane_reg_end
+  @goto_ip_word
+  @lane(@L_SB,
+    @times(
+      @lane_end(@L_SB)
+      @prevword
+      @goto_start
+      @goto_PCB
+      +
+      @lane_reg_end
+      @goto_ip_word
+      @lane_start(@L_SB)
+    )
+  )
+
+  @prevwords(3)
+  @lane(@L_SA, // Second op param is ADDR
+    [->+@nextwords(3)+@prevwords(3)<]@nextwords(3)
+  )
+
+  // MARK: Candidate for "set pc"
+  @prevword
+  @goto_start
+  @nextword
+
+  @goto_PC @clear
+  @lane_reg_end
+
+  @goto_ip_word
+  @lane(@L_SB,
+    @times(
+      @lane_end(@L_SB)
+      @prevword
+      @goto_start
+      @nextword @goto_PC
+      +
+      @lane_reg_end
+      @goto_ip_word
+      @lane_start(@L_SB)
+    )
+  )
+
+  // Now bank and addr are in word[-2] and word[-3]
+
+  @_jump_to_bank_addr
+}
+
+#define ins_beq(should_inverse) @ins_branch(@eq(@nextword, @prevword), should_inverse)
+#define ins_blt(should_inverse) @ins_branch(@lt, should_inverse)
+
+#define ins_branch(cmp, should_inverse) {
+  @prevword
+
+  @lane(@L_SA,
+    cmp
+    {if(should_inverse, @not(>, <), @nop)}
+  )
+  @lane_start(@L_SA)
+
+  // Early exit
+  // Copy comparison result to here[-2]
+  [-@prevword+@prevword+@nextwords(2)] @prevwords(2) @move_to(@nextwords(2), @prevwords(2))
+
+  @eq(<, >)  // if zero
+  @if
+    @lane_end(@L_SA)
+    @nextword
+  @endif
+
+  @prevword [-@nextword+@prevword] @nextword
+
+  @if
+    @lane_end(@L_SA)
+
+    // Copy from PCB to word[-1][sA], extract and reuse for other branch commands
+    @goto_PCB
+    @lane_reg_end
+    @copy_reg_to_A_via_B
+
+    @lane(@L_SA,
+      @times(
+        @lane_end(@L_SA)
+        @goto_ip_word
+        @prevword
+        @lane(@L_SA, +)
+        @goto_PCB
+        @lane_reg_end
+        @lane_start(@L_SA)
+      )
+    )
+    @goto_ip_word // word[-1][sA] LOADED from PCB
+
+    // move it to word[-2]
+    @prevword
+
+    @lane(@L_SA,
+      @move_to(@prevword >, < @nextword) <
+    )
+
+    @nextwords(2)
+
+    @prevword
+    @goto_PC
+    @lane_reg_end
+    @copy_reg_to_A_via_B
+
+    @lane(@L_SA,
+      @times(
+        @lane_end(@L_SA)
+        @goto_ip_word
+        @prevword
+        @lane(@L_SA, +)
+        @goto_PC
+        @lane_reg_end
+        @lane_start(@L_SA)
+      )
+    )
+    @goto_ip_word
+
+    @prevwords(3)
+    @copy_value_to_B
+
+    @nextwords(2)
+    @lane(@L_SA,
+      @move_to(@prevwords(2) >, < @nextwords(2)) < // Very important! calculating addr by PC + imm
+    )
+
+    // Now we need to copy new calculated addr to PC
+    @lane(@L_SB,
+      [-@prevword+@prevword+@nextwords(2)] @prevwords(2) @move_to(@nextwords(2), @prevwords(2))
+    )
+
+    @goto_PC @clear @lane_reg_end
+    @goto_ip_word
+    @prevwords(4)
+
+    @lane(@L_SB,
+      @times(
+        @lane_end(@L_SB)
+        @goto_PC + @lane_reg_end
+        @goto_ip_word
+        @prevwords(4)
+        @lane_start(@L_SB)
+      )
+    )
+    @nextwords(4)
+    // Copied. Safe to jump!
+
+    @_jump_to_bank_addr
+
+  @endif
+}
+
+#define mem_ptr_fill_banks(offs_from_ip) {
+  @lane(@L_SB,
+    @set_int_max
+  )
+  @lane(@L_SA,
+    @times(
+      >
+      @times(
+        @lane_end(@L_SB)
+        @goto_start
+        @lane(@L_PTR, @goto_zero_right_lane @inc(1))
+
+        @goto_ptr_start @nextword
+        @nextword @goto_ip_word
+        offs_from_ip
+        @lane_start(@L_SB)
+      )
+      <
+    )
+  )
+  @lane(@L_SB, @clear)
+}
+
+#define mem_ptr_fill(offs_from_ip) {
+  @lane(@L_SA,
+    @times(
+      @lane_end(@L_SA)
+      @goto_start
+
+      @lane(@L_PTR, @goto_zero_right_lane @inc(1))
+
+      @nextword @goto_ip_word
+      offs_from_ip
+      @lane_start(@L_SA)
+    )
+  )
+}
+
+#define ins_stor {
+  @fetch_from_register(@prevword)
+
+  @prevwords(2)
+
+  @mem_ptr_fill_banks(@prevwords(2))
+
+  // Filling ptr lane up to the needed cell
+  @prevword
+  @mem_ptr_fill(@prevwords(3))
+  @nextwords(3)
+
+  // clear mem
+  @prevword
+  @goto_start
+  @goto_ptr_end
+  @prevword
+    @lane(@L_RAM, @clear)
+  @goto_start
+  @nextword
+  @goto_ip_word
+
+  // memset
+  @prevword
+  @lane(@L_SA,
+    @times(
+      @lane_end(@L_SA)
+
+      @goto_start
+      @goto_ptr_end
+        @lane(@L_RAM, @inc(1))
+      @goto_start
+      @nextword
+      @goto_ip_word
+
+      @prevword
+      @lane_start(@L_SA)
+    )
+  )
+
+  @goto_start
+  @ptr_cleanup
+  @nextword
+  @goto_ip_word
+}
+
+#define ins_load {
+  @prevwords(2)
+  @mem_ptr_fill_banks(@prevwords(2))
+
+  // Filling ptr lane up to the needed cell
+  @prevword
+  @mem_ptr_fill(@prevwords(3))
+  @nextwords(3)
+
+  // memget
+  @prevword
+  @goto_start
+  @goto_ptr_end
+
+  @lane(@L_RAM,
+    @times(
+      @lane_end(@L_RAM)
+
+      @prevword @goto_ptr_start
+
+      @nextword @nextword
+      @goto_ip_word
+      @lane(@L_SB, @inc(1))
+      @prevword
+      @goto_start
+
+      @goto_ptr_end
+      @lane_start(@L_RAM)
+    )
+  )
+
+  @goto_start
+  @ptr_cleanup
+  @nextword
+  @goto_ip_word
 }
 
 // MARK: --------Instructions end --------
@@ -890,7 +1145,7 @@
 
 #define b2d_add_dec {
   @lane(@L_SB,
-    [-
+    @times(
       @lane_end(@L_SB)
       @set(1)
       @goto_zero_left_lane
@@ -899,7 +1154,7 @@
       @goto_zero_right_lane
       @prevword
       @lane_start(@L_SB)
-    ]
+    )
   )
 }
 
@@ -947,7 +1202,7 @@
 #define bin2dec {
   @b2d_setup
   @scratch_lane(@sB)
-  @while
+  @while(
     @prev(1)
     @inc(1)
     @switch(2, @default, @scratch_lane_end(@sA), @scratch_lane(@sA))
@@ -955,7 +1210,7 @@
       @case(1, @b2d_skip_bit, @scratch_lane_end(@sA), @scratch_lane(@sA))
     @prevword
     @next(1)
-  @endwhile
+  )
   @scratch_lane_end(@sB)
   @b2d_cleanup
 }
@@ -1003,80 +1258,96 @@
 
 // MARK: ------ Opcode Handlers ---------
 
-#define add  @lane_end(@L_SB) @two_registers_op(@alu_add ) @lane_start(@L_SB)
-#define sub  @lane_end(@L_SB) @two_registers_op(@alu_sub ) @lane_start(@L_SB)
-#define and  @lane_end(@L_SB) @two_registers_op(@alu_and ) @lane_start(@L_SB)
-#define or   @lane_end(@L_SB) @two_registers_op(@alu_or  ) @lane_start(@L_SB)
-#define xor  @lane_end(@L_SB) @two_registers_op(@alu_xor ) @lane_start(@L_SB)
-#define sl   @lane_end(@L_SB) @two_registers_op(@alu_sl  ) @lane_start(@L_SB)
-#define sr   @lane_end(@L_SB) @two_registers_op(@alu_sr  ) @lane_start(@L_SB)
-#define slt  @lane_end(@L_SB) @two_registers_op(@alu_slt ) @lane_start(@L_SB)
-#define sltu @lane_end(@L_SB) @two_registers_op(@alu_sltu) @lane_start(@L_SB)
+#define ophandler(handler) @lane_end(@L_SB) handler @lane_start(@L_SB)
 
-#define addi @lane_end(@L_SB) @one_register_op(@alu_add  ) @lane_start(@L_SB)
-#define andi @lane_end(@L_SB) @one_register_op(@alu_and  ) @lane_start(@L_SB)
-#define ori  @lane_end(@L_SB) @one_register_op(@alu_or   ) @lane_start(@L_SB)
-#define xori @lane_end(@L_SB) @one_register_op(@alu_xor  ) @lane_start(@L_SB)
-#define li   @lane_end(@L_SB) @no_register_imm1_op( @alu_or   ) @lane_start(@L_SB)
-#define sli  @lane_end(@L_SB) @one_register_op(@alu_sl   ) @lane_start(@L_SB)
-#define sri  @lane_end(@L_SB) @one_register_op(@alu_sr   ) @lane_start(@L_SB)
+#define add  @ophandler(@two_registers_op(@alu_add))
+#define sub  @ophandler(@two_registers_op(@alu_sub))
+#define and  @ophandler(@two_registers_op(@alu_and))
+#define or   @ophandler(@two_registers_op(@alu_or))
+#define xor  @ophandler(@two_registers_op(@alu_xor))
+#define sl   @ophandler(@two_registers_op(@alu_sl))
+#define sr   @ophandler(@two_registers_op(@alu_sr))
+#define slt  @ophandler(@two_registers_op(@alu_slt))
+#define sltu @ophandler(@two_registers_op(@alu_sltu))
 
-#define load @lane_end(@L_SB) @one_register_op(@nop  ) @lane_start(@L_SB)
-#define stor @lane_end(@L_SB) @one_register_op(@nop   ) @lane_start(@L_SB)
+#define addi @ophandler(@one_register_op(@alu_add))
+#define andi @ophandler(@one_register_op(@alu_and))
+#define ori  @ophandler(@one_register_op(@alu_or))
+#define xori @ophandler(@one_register_op(@alu_xor))
+#define li   @ophandler(@no_register_imm1_op(@alu_or))
+#define sli  @ophandler(@one_register_op(@alu_sl))
+#define sri  @ophandler(@one_register_op(@alu_sr))
 
-#define jal   @lane_end(@L_SB) @no_register_imm2_op(@ins_jal   ) @lane_start(@L_SB)
-#define jalr  @lane_end(@L_SB) @two_registers_op_no_set(@ins_jal ) @lane_start(@L_SB)
+#define load @ophandler(@two_registers_op(@ins_load))
+#define stor @ophandler(@two_registers_op_no_set(@ins_stor))
+
+#define jal   @ophandler(@no_register_imm2_op(@ins_jal))
+#define jalr  @ophandler(@two_registers_op_no_set(@ins_jal))
+
+#define beq  @ophandler(@two_registers_branch_op(@ins_beq(@FALSE))) // beq rs rt imm, jumps to current pcb+pc+imm
+#define bne  @ophandler(@two_registers_branch_op(@ins_beq(@TRUE)))
+#define blt  @ophandler(@two_registers_branch_op(@ins_blt(@FALSE)))
+#define bge  @ophandler(@two_registers_branch_op(@ins_blt(@TRUE)))
+
+#define opcase(op, han) @case(op,  han, >, <)
+
+#define program_start(w1, w2, w3, w4) {
+  {repeat(@REG_ZONE_CW,
+    @instr(@i1(@OP_NOP) @i1(0) @i1(0) @i1(0)) // should use only @i1
+  )}
+
+  @instr(@i0(w1) @i1(w2) @i1(w3) @i1(w4))
+}
+
+#define cmd(w1, w2, w3, w4) {
+  @instr(@i0(w1) @i0(w2) @i0(w3) @i0(w4))
+}
+
+#define program_end {
+  @cmd(  @OP_HALT, @OP_NOP, @OP_NOP, @OP_NOP)
+}
 
 // MARK: ------------ MAIN ---------------
 // Set START marker
-@set(@STATE_RUNNING)
+@set(@STATE_SETUP)
 
 // MARK: -- Set registers
 @nextword
 @nextword
-#define REG_VALUES {1,0,3,4,5,6,0,2,9,10}
+#define REG_VALUES {0,1,3,4,5,6,7,8,9,10}
 @lane(@L_REG,
   {for(v in @REG_VALUES, @set(v) @nextword)}
 )
 
 @goto_start_slow
+@nextword
 
 // MARK: -- Program code
-@instr(@OP_HALT, 0) // First op should always be halt
 
-// ALWAYS go past the registers.
-{repeat(@REG_ZONE, @instr1(@OP_NOP))}
-
-@instr1(2) // rt
-@instr1(1) // rs
-@instr1(@R0) // rd
-@instr0(@OP_JAL)
-
-@instr0(1) // rt
-@instr0(@R6) // rs
-@instr0(@R5) // rd
-@instr0(@OP_SRI)
-
-@instr0(@OP_NOP)
-@instr0(@OP_NOP)
-@instr0(@OP_NOP)
-@instr0(@OP_HALT)
+@program_start(@OP_STOR, @R5,  @R0,  @R7 ) //  stor r5, r0, 7
+@cmd(          @OP_LOAD, @R3,  @R0,  @R7 ) //  load r5, r0, r4
+// @cmd(          @OP_SRI,  @R5,  @R6,  1   )
+// @cmd(          @OP_SRI,  @R5,  @R6,  1   )
+// @cmd(          @OP_SRI,  @R5,  @R6,  1   )
+// @cmd(          @OP_SRI,  @R5,  @R6,  1   )
+@program_end
 
 // MARK: -- Program code end
 
 @prevword
 @clear_to_zero_left_lane
 @nextword
+@set(@STATE_RUNNING)
 
 // MARK: -- Main loop
-@while
-[->+>+<<]>>[-<<+>>]<< // Copy start flag to >, so switch does not fuck up our start marker
+@while(
+  [->+>+<<]>>[-<<+>>]<< // Copy start flag to >, so switch does not fuck up our start marker
   >
   @switch(2, @default, >, <)
   @case(@STATE_RUNNING, <<@execute>>, >, <)
   @case(@STATE_HALT, @clear <<@clear>>, >, <)
   <
-@endwhile
+)
 
 // MARK: ---- Executor
 #define execute {
@@ -1088,34 +1359,39 @@
     @inc(1) // To properly work with switch statement
 
     // MARK: ------- Opcode Switch
-    @switch(21, @default, >, <)
-      @case(@OP_JALR,  @jalr, >, <)
-      @case(@OP_JAL,   @jal, >, <)
+    @switch(25, @default, >, <)
 
-      @case(@OP_STOR,  @stor, >, <)
-      @case(@OP_LOAD,  @load, >, <)
+      @opcase(@OP_BGE,   @bge)
+      @opcase(@OP_BLT,   @blt)
+      @opcase(@OP_BNE,   @bne)
+      @opcase(@OP_BEQ,   @beq)
 
-      @case(@OP_SRI,   @sri, >, <)
-      @case(@OP_SLI,   @sli, >, <)
-      @case(@OP_LI,    @li, >, <)
-      @case(@OP_XORI,  @xori, >, <)
-      @case(@OP_ORI,   @ori, >, <)
-      @case(@OP_ANDI,  @andi, >, <)
-      @case(@OP_ADDI,  @addi, >, <)
-      @case(@OP_SLTU,  @sltu, >, <)
-      @case(@OP_SLT,   @slt, >, <)
-      @case(@OP_SR,    @sr, >, <)
-      @case(@OP_SL,    @sl, >, <)
-      @case(@OP_XOR,   @xor, >, <)
-      @case(@OP_OR,    @or, >, <)
-      @case(@OP_AND,   @and, >, <)
-      @case(@OP_SUB,   @sub, >, <)
-      @case(@OP_ADD,   @add, >, <)
-      @case(@OP_HALT,  @lane_end(@L_SB) @prevword @goto_start @set(@STATE_HALT) @goto_ip_word @lane_start(@L_SB), >, <)
+      @opcase(@OP_JALR,  @jalr)
+      @opcase(@OP_JAL,   @jal)
+
+      @opcase(@OP_STOR,  @stor)
+      @opcase(@OP_LOAD,  @load)
+
+      @opcase(@OP_SRI,   @sri)
+      @opcase(@OP_SLI,   @sli)
+      @opcase(@OP_LI,    @li)
+      @opcase(@OP_XORI,  @xori)
+      @opcase(@OP_ORI,   @ori)
+      @opcase(@OP_ANDI,  @andi)
+      @opcase(@OP_ADDI,  @addi)
+      @opcase(@OP_SLTU,  @sltu)
+      @opcase(@OP_SLT,   @slt)
+      @opcase(@OP_SR,    @sr)
+      @opcase(@OP_SL,    @sl)
+      @opcase(@OP_XOR,   @xor)
+      @opcase(@OP_OR,    @or)
+      @opcase(@OP_AND,   @and)
+      @opcase(@OP_SUB,   @sub)
+      @opcase(@OP_ADD,   @add)
+      @opcase(@OP_HALT,  @lane_end(@L_SB) @prevword @goto_start @set(@STATE_HALT) @goto_ip_word @lane_start(@L_SB))
   )
 
   @move_ip_next_command
 
   @goto_start
 }
-

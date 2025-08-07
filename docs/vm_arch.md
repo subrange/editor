@@ -25,8 +25,8 @@
 
 | **0x17** | GETPC rd  | I | rd = PC |
 | |                 | | |
-| **0x20** | LOAD rd,rs,imm  | I | rd = mem[rs + imm] |
-| **0x21** | STORE rd,rs,imm | I | mem[rs + imm] = rd |
+| **0x20** | LOAD rd,rs,rt  | I | rd = mem[rsbank][rt] |
+| **0x21** | STORE rd,rs,rt | I | mem[rs + imm] = rd |
 
 | **0x30** | BEQ rs,rt,imm | I | if(rs==rt) PC += imm |
 | **0x31** | BNE rs,rt,imm | I | if(rs!=rt) PC += imm |

@@ -92,8 +92,7 @@ export function VirtualizedLine({
                             key={tokenIndex}
                             className={clsx(styles[token.type as keyof typeof styles] || '', {
                                 'cursor-pointer hover:underline': isMetaKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
-                                    'cursor-pointer hover:bg-zinc-800 hover:px-1 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro,
-                                'cursor-pointer hover:bg-zinc-800 hover:px-1 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
+                                'cursor-pointer hover:bg-zinc-800 hover:rounded': isShiftKeyHeld && (token.type === 'macro_invocation' || token.type === 'macro_name') && isProgressiveMacro
                             })}
                             onClick={(e) => onTokenClick?.(e, token)}
                         >
