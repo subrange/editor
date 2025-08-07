@@ -1,10 +1,11 @@
 import {useStoreSubscribeToField, useStoreSubscribe} from "../../../hooks/use-store-subscribe.tsx";
 import {interpreterStore} from "../../debugger/interpreter-facade.store.ts";
-import {useLayoutEffect, useRef, useMemo} from "react";
+import {useLayoutEffect, useRef, useMemo, useState} from "react";
 import clsx from "clsx";
 import {ChevronDownIcon, ChevronUpIcon, XMarkIcon} from "@heroicons/react/16/solid";
 import {CommandLineIcon} from "@heroicons/react/24/outline";
 import {outputStore} from "../../../stores/output.store.ts";
+import {VMOutput} from "./vm-output.tsx";
 
 interface OutputProps {
     position?: 'bottom' | 'right' | 'floating';
@@ -13,6 +14,7 @@ interface OutputProps {
 }
 
 export function Output({ position = 'bottom', showHeader = true, onClose }: OutputProps) {
+    const [activeTab, setActiveTab] = useState<'output' | 'vm'>('output');
     const outputState = useStoreSubscribe(outputStore.state);
     const output = useStoreSubscribeToField(interpreterStore.state, "output");
     const outputContainer = useRef<HTMLDivElement>(null);
@@ -56,8 +58,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
     );
 
     const headerClasses = clsx(
-        "bg-zinc-900 text-zinc-500 text-xs font-bold p-2 h-8 min-h-8 gap-2",
-        "hover:bg-zinc-800 hover:text-zinc-400 transition-colors",
+        "bg-zinc-900 text-zinc-500 text-xs font-bold h-8 min-h-8",
         {
             "h": !collapsed || position !== 'right',
             "v items-center justify-center": collapsed && position === 'right',
@@ -66,9 +67,17 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
             "rounded-t-lg": position === 'floating',
         }
     );
+    
+    const tabButtonClasses = (isActive: boolean) => clsx(
+        "px-3 py-2 text-xs font-bold transition-colors",
+        {
+            "text-zinc-400 bg-zinc-800": isActive,
+            "text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50": !isActive,
+        }
+    );
 
     const contentClasses = clsx(
-        "flex flex-col p-2 bg-zinc-950 grow-1 overflow-auto",
+        "flex flex-col p-2 bg-zinc-950 grow-1",
         {
             "rounded-b-lg": position === 'floating',
         }
@@ -79,63 +88,89 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
             height: position === 'bottom' && !collapsed ? height : undefined
         }}>
             {showHeader && (
-                <button 
-                    className={headerClasses}
-                    onClick={() => outputStore.setCollapsed(!collapsed)}
-                >
+                <div className={headerClasses}>
                     {collapsed ? (
-                        position === 'right' ? (
-                            <CommandLineIcon className="w-4 h-4" />
-                        ) : (
-                            <ChevronUpIcon />
-                        )
+                        // When collapsed, show a simple button
+                        <button 
+                            className="w-full h-full flex items-center justify-center gap-2 hover:bg-zinc-800 transition-colors"
+                            onClick={() => outputStore.setCollapsed(false)}
+                        >
+                            {position === 'right' ? (
+                                <CommandLineIcon className="w-4 h-4" />
+                            ) : (
+                                <>
+                                    <ChevronUpIcon className="w-4 h-4" />
+                                    <span>Output</span>
+                                </>
+                            )}
+                        </button>
                     ) : (
-                        position === 'right' ? <ChevronUpIcon className="rotate-90" /> : <ChevronDownIcon />
-                    )}
-                    {(!collapsed || position !== 'right') && <span>Output</span>}
-                    {processedOutput && (!collapsed || position !== 'right') && (
-                        <span className="text-zinc-600">
-                            ({processedOutput.split('\n').length} lines)
-                        </span>
-                    )}
-                    
-                    {/* Additional controls when expanded */}
-                    {!collapsed && (
-                        <div className="ml-auto h gap-2">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (outputContainer.current) {
-                                        outputContainer.current.scrollTop = outputContainer.current.scrollHeight;
-                                    }
-                                }}
-                                className="text-zinc-600 hover:text-zinc-400"
-                                title="Scroll to bottom"
+                        // When expanded, show full header with tabs
+                        <>
+                            {/* Collapse button */}
+                            <button 
+                                className="p-2 hover:bg-zinc-800 transition-colors"
+                                onClick={() => outputStore.setCollapsed(true)}
+                                title="Collapse panel"
                             >
-                                ↓
+                                {position === 'right' ? <ChevronUpIcon className="w-4 h-4 rotate-90" /> : <ChevronDownIcon className="w-4 h-4" />}
                             </button>
                             
-                            {position === 'floating' && (
+                            {/* Tabs */}
+                            <div className="h gap-0">
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onClose?.();
-                                    }}
-                                    className="text-zinc-600 hover:text-zinc-400"
+                                    className={tabButtonClasses(activeTab === 'output')}
+                                    onClick={() => setActiveTab('output')}
                                 >
-                                    <XMarkIcon className="w-4 h-4" />
+                                    Output
                                 </button>
-                            )}
-                        </div>
+                                <button
+                                    className={tabButtonClasses(activeTab === 'vm')}
+                                    onClick={() => setActiveTab('vm')}
+                                >
+                                    VM Output
+                                </button>
+                            </div>
+                            
+                            {/* Additional controls */}
+                            <div className="ml-auto h gap-2 p-2">
+                                {activeTab === 'output' && (
+                                    <button
+                                        onClick={() => {
+                                            if (outputContainer.current) {
+                                                outputContainer.current.scrollTop = outputContainer.current.scrollHeight;
+                                            }
+                                        }}
+                                        className="text-zinc-600 hover:text-zinc-400"
+                                        title="Scroll to bottom"
+                                    >
+                                        ↓
+                                    </button>
+                                )}
+                                
+                                {position === 'floating' && (
+                                    <button
+                                        onClick={() => onClose?.()}
+                                        className="text-zinc-600 hover:text-zinc-400"
+                                    >
+                                        <XMarkIcon className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                        </>
                     )}
-                </button>
+                </div>
             )}
             
             {!collapsed && (
-                <div className={contentClasses} ref={outputContainer}>
-                    <pre className="text-xs text-white overflow-x-auto whitespace-pre-wrap font-mono">
-                        {processedOutput}
-                    </pre>
+                <div className={clsx(contentClasses, "overflow-auto")} ref={activeTab === 'output' ? outputContainer : undefined}>
+                    {activeTab === 'output' ? (
+                        <pre className="text-xs text-white whitespace-pre font-mono">
+                            {processedOutput}
+                        </pre>
+                    ) : (
+                        <VMOutput outputRef={outputContainer} />
+                    )}
                 </div>
             )}
         </div>

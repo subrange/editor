@@ -58,16 +58,19 @@ export function DraggableVSep({
         <div 
             ref={separatorRef}
             className={clsx(
-                "vsep bg-zinc-800 relative cursor-col-resize hover:bg-zinc-700 transition-colors",
+                "vsep bg-zinc-800 relative hover:bg-zinc-700 transition-colors",
                 {
                     "bg-zinc-700": isDragging,
                     [className]: className.length > 0
                 }
             )}
-            onMouseDown={handleMouseDown}
         >
             {/* Invisible wider hit area for easier grabbing */}
-            <div className="absolute inset-y-0 -left-1 -right-1 z-10" />
+            <div 
+                className="absolute inset-y-0 -left-[8px] -right-[8px] cursor-col-resize" 
+                onMouseDown={handleMouseDown}
+                style={{ zIndex: 10 }}
+            />
         </div>
     );
 }

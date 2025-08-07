@@ -413,17 +413,14 @@ export default function App() {
                 </div>
                 <DraggableVSep 
                     onResize={(leftWidth) => {
-                        // Get the app container to calculate total available width
+                        // leftWidth is the distance from parent's left edge to separator
+                        // Since parent is app-container, leftWidth includes sidebar + workspace
+                        // We need to calculate the output panel width
                         const appContainer = document.querySelector('.app-container');
                         if (appContainer) {
                             const totalWidth = appContainer.clientWidth;
-                            const sidebarWidth = document.querySelector('.sidebar')?.clientWidth || 0;
-                            const vsepWidth = 1; // VSep width
-                            const availableWidth = totalWidth - sidebarWidth - vsepWidth;
-                            
-                            // leftWidth is from the draggable separator's parent
-                            // Calculate output width as the remaining space
-                            const newOutputWidth = availableWidth - leftWidth;
+                            // Output width is simply the remaining space after leftWidth
+                            const newOutputWidth = totalWidth - leftWidth;
                             handleOutputResize(Math.max(200, Math.min(800, newOutputWidth)));
                         }
                     }}
@@ -446,27 +443,34 @@ export default function App() {
             </div>
             <VSep/>
             
-            <div className="v grow-1 relative">
-                <WorkspacePanel/>
-                
-                {/* Output panel - bottom position */}
-                {position === 'bottom' && <Output position="bottom" />}
-                
-                {/* Collapsed right position */}
-                {position === 'right' && collapsed && (
-                    <div className="absolute top-0 right-0 h-full">
+            {position === 'right' && collapsed ? (
+                // Collapsed right layout - proper flex structure
+                <>
+                    <div className="v grow-1">
+                        <WorkspacePanel/>
+                    </div>
+                    <VSep/>
+                    <div className="h" style={{ width: '32px', flexShrink: 0 }}>
                         <Output position="right" />
                     </div>
-                )}
-                
-                {/* Floating position */}
-                {position === 'floating' && (
-                    <Output 
-                        position="floating" 
-                        onClose={() => outputStore.setCollapsed(true)} 
-                    />
-                )}
-            </div>
+                </>
+            ) : (
+                // Bottom layout or floating
+                <div className="v grow-1 relative">
+                    <WorkspacePanel/>
+                    
+                    {/* Output panel - bottom position */}
+                    {position === 'bottom' && <Output position="bottom" />}
+                    
+                    {/* Floating position */}
+                    {position === 'floating' && (
+                        <Output 
+                            position="floating" 
+                            onClose={() => outputStore.setCollapsed(true)} 
+                        />
+                    )}
+                </div>
+            )}
         </div>
     );
 }
