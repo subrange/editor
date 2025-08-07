@@ -26,8 +26,16 @@ export function VMOutput({ outputRef }: VMOutputProps) {
     
     // Set up the VM output callback
     useEffect(() => {
-        // Set the config first
-        interpreterStore.setVMOutputConfig({ outCellIndex, outFlagCellIndex });
+        // Set the config with sparse cell pattern
+        interpreterStore.setVMOutputConfig({ 
+            outCellIndex, 
+            outFlagCellIndex,
+            sparseCellPattern: {
+                start: 4,
+                step: 8,
+                count: 1024
+            }
+        });
         
         const callback = (tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => {
             // Check if indices are valid
@@ -129,19 +137,32 @@ export function VMOutput({ outputRef }: VMOutputProps) {
                                 Clear flag after reading (BF program should handle this)
                             </label>
                         </div>
-                        <div className="flex justify-end gap-2 mt-3">
+                        <div className="flex justify-between items-center mt-3">
                             <button
-                                onClick={() => setShowConfig(false)}
-                                className="text-xs px-2 py-1 text-zinc-500 hover:text-zinc-400"
+                                onClick={() => {
+                                    vmTerminalStore.resetConfig();
+                                    setTempOutCell("");
+                                    setTempFlagCell("");
+                                }}
+                                className="text-xs px-2 py-1 text-zinc-500 hover:text-zinc-400 border border-zinc-700 rounded hover:border-zinc-600"
+                                title="Reset to defaults (OUT: 4, FLAG: 12)"
                             >
-                                Cancel
+                                Reset
                             </button>
-                            <button
-                                onClick={handleConfigSubmit}
-                                className="text-xs px-3 py-1 bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-300"
-                            >
-                                Apply
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowConfig(false)}
+                                    className="text-xs px-2 py-1 text-zinc-500 hover:text-zinc-400"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfigSubmit}
+                                    className="text-xs px-3 py-1 bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-300"
+                                >
+                                    Apply
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

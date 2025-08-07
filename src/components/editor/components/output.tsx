@@ -1,11 +1,12 @@
 import {useStoreSubscribeToField, useStoreSubscribe} from "../../../hooks/use-store-subscribe.tsx";
 import {interpreterStore} from "../../debugger/interpreter-facade.store.ts";
-import {useLayoutEffect, useRef, useMemo, useState} from "react";
+import {useLayoutEffect, useRef, useMemo} from "react";
 import clsx from "clsx";
 import {ChevronDownIcon, ChevronUpIcon, XMarkIcon} from "@heroicons/react/16/solid";
 import {CommandLineIcon} from "@heroicons/react/24/outline";
 import {outputStore} from "../../../stores/output.store.ts";
 import {VMOutput} from "./vm-output.tsx";
+import {useLocalStorageState} from "../../../hooks/use-local-storage-state.tsx";
 
 interface OutputProps {
     position?: 'bottom' | 'right' | 'floating';
@@ -14,7 +15,7 @@ interface OutputProps {
 }
 
 export function Output({ position = 'bottom', showHeader = true, onClose }: OutputProps) {
-    const [activeTab, setActiveTab] = useState<'output' | 'vm'>('output');
+    const [activeTab, setActiveTab] = useLocalStorageState<'output' | 'vm'>('output-panel-active-tab', 'output');
     const outputState = useStoreSubscribe(outputStore.state);
     const output = useStoreSubscribeToField(interpreterStore.state, "output");
     const outputContainer = useRef<HTMLDivElement>(null);
