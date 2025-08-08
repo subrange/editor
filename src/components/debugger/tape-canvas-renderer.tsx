@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStoreSubscribe } from '../../hooks/use-store-subscribe';
 import { interpreterStore } from './interpreter-facade.store';
-import { settingsStore } from '../../stores/settings.store';
 import { tapeLabelsStore } from '../../stores/tape-labels.store';
 import { XMarkIcon } from '@heroicons/react/24/solid';
 import { disassembler } from '../../services/ripple-assembler';

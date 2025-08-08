@@ -6,7 +6,9 @@ import {ChevronDownIcon, ChevronUpIcon, XMarkIcon} from "@heroicons/react/16/sol
 import {CommandLineIcon} from "@heroicons/react/24/outline";
 import {outputStore} from "../../../stores/output.store.ts";
 import {VMOutput} from "./vm-output.tsx";
+import {Disassembly} from "./disassembly.tsx";
 import {useLocalStorageState} from "../../../hooks/use-local-storage-state.tsx";
+import {settingsStore} from "../../../stores/settings.store.ts";
 
 interface OutputProps {
     position?: 'bottom' | 'right' | 'floating';
@@ -15,10 +17,13 @@ interface OutputProps {
 }
 
 export function Output({ position = 'bottom', showHeader = true, onClose }: OutputProps) {
-    const [activeTab, setActiveTab] = useLocalStorageState<'output' | 'vm'>('output-panel-active-tab', 'output');
+    const [activeTab, setActiveTab] = useLocalStorageState<'output' | 'vm' | 'disassembly'>('output-panel-active-tab', 'output');
     const outputState = useStoreSubscribe(outputStore.state);
     const output = useStoreSubscribeToField(interpreterStore.state, "output");
+    const settings = useStoreSubscribe(settingsStore.settings);
     const outputContainer = useRef<HTMLDivElement>(null);
+    
+    const showDisassembly = settings?.debugger.showDisassembly ?? false;
     
     const { collapsed, height, maxLines } = outputState;
 
@@ -36,11 +41,11 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
     // Scroll to the bottom when output changes
     useLayoutEffect(() => {
         setTimeout(() => {
-            if (outputContainer.current && !collapsed) {
+            if (outputContainer.current && !collapsed && activeTab === 'output') {
                 outputContainer.current.scrollTop = outputContainer.current.scrollHeight;
             }
         }, 10);
-    }, [processedOutput, collapsed]);
+    }, [processedOutput, collapsed, activeTab]);
 
     const containerClasses = clsx(
         "v bg-zinc-900 transition-all",
@@ -131,6 +136,14 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                                 >
                                     VM Output
                                 </button>
+                                {showDisassembly && (
+                                    <button
+                                        className={tabButtonClasses(activeTab === 'disassembly')}
+                                        onClick={() => setActiveTab('disassembly')}
+                                    >
+                                        Disassembly
+                                    </button>
+                                )}
                             </div>
                             
                             {/* Additional controls */}
@@ -164,13 +177,15 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
             )}
             
             {!collapsed && (
-                <div className={clsx(contentClasses, "overflow-auto")} ref={activeTab === 'output' ? outputContainer : undefined}>
+                <div className={clsx(contentClasses, "overflow-auto")} ref={outputContainer}>
                     {activeTab === 'output' ? (
                         <pre className="text-xs text-white whitespace-pre font-mono">
                             {processedOutput}
                         </pre>
-                    ) : (
+                    ) : activeTab === 'vm' ? (
                         <VMOutput outputRef={outputContainer} isActive={activeTab === 'vm'} />
+                    ) : (
+                        <Disassembly outputRef={outputContainer} isActive={activeTab === 'disassembly'} />
                     )}
                 </div>
             )}
