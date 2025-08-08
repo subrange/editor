@@ -173,8 +173,8 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   
   return (
     <div className="text-xs font-mono">
-      {/* Register display section */}
-      <div className="border-b border-zinc-800 mb-2 pb-2">
+      {/* Register display section - sticky at top */}
+      <div className="sticky top-[-8px] bg-zinc-950 border-b border-zinc-800 pb-2 pt-2 -mx-2 px-2 z-10">
         <div className="text-zinc-400 font-bold mb-1">Registers:</div>
         
         {/* R0 */}
@@ -249,8 +249,9 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
       </div>
       
       {/* Instructions section */}
-      <div className="text-zinc-400 font-bold mb-1">Instructions:</div>
-      {tokenizedLines.map((tokens, lineIndex) => {
+      <div>
+        <div className="text-zinc-400 font-bold mb-1">Instructions:</div>
+        {tokenizedLines.map((tokens, lineIndex) => {
         const lineText = disassembledCode.split('\n')[lineIndex];
         
         // Check if this is the ellipsis line
@@ -307,6 +308,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
