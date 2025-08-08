@@ -1,0 +1,146 @@
+262463e 2025-08-09 01:18:51 +0200 Add optimiz moo boo brain fart
+cd3e63a 2025-08-09 00:21:48 +0200 Rust interpreter
+f7edb48 2025-08-08 23:22:09 +0200 Assembly auto-compilation
+21cc739 2025-08-08 20:15:45 +0200 Watch cells
+d3df86b 2025-08-08 19:58:18 +0200 Something was improved
+e952c39 2025-08-08 19:09:54 +0200 Bedder right panel
+c725c2b 2025-08-08 18:51:41 +0200 Improve cpu debugger panel
+da3a9c9 2025-08-08 18:49:16 +0200 mbaaa
+6f6535d 2025-08-08 18:19:09 +0200 Improvements
+8b0fc8b 2025-08-08 17:24:43 +0200 Disassembly panel
+866f9b1 2025-08-08 17:13:54 +0200 disassembly
+1f42bd6 2025-08-08 02:32:15 +0200 Fix bugs
+903126f 2025-08-08 01:40:29 +0200 rnd + fix microcode jump pc calculation
+9cb34a3 2025-08-07 21:40:41 +0200 Add assembly editor
+f0c0774 2025-08-07 19:48:49 +0200 Throw away some garbage, bad code
+6dd62d3 2025-08-07 19:42:13 +0200 Improvements
+820933f 2025-08-07 19:24:14 +0200 Asm programs
+2348a8f 2025-08-07 19:18:29 +0200 Fucking ASM
+47fc391 2025-08-07 17:14:24 +0200 Once a loner had a boner
+bec484f 2025-08-07 15:59:03 +0200 Poo poo pee pee
+4f75337 2025-08-07 15:52:10 +0200 SAB is working somehow
+5f17bfc 2025-08-07 15:18:17 +0200 meh
+f592815 2025-08-07 15:05:39 +0200 Feature-chan works ^_^
+c265d75 2025-08-07 14:54:36 +0200 if you are persistent enough issues are not issues but opportunities
+96573cf 2025-08-07 14:44:52 +0200 Feature-chan is nearly done
+81abc25 2025-08-07 14:34:11 +0200 Fixed issues
+a927408 2025-08-07 14:28:34 +0200 Webworker interpreter
+4327bc1 2025-08-07 14:21:49 +0200 Move interpreter to webworker
+7ad7e21 2025-08-07 13:27:05 +0200 VM output
+76938b3 2025-08-07 12:55:59 +0200 Mooo
+14f6047 2025-08-07 12:19:52 +0200 Good fixes
+8d690a2 2025-08-07 12:01:27 +0200 More things
+1293ddd 2025-08-07 10:53:26 +0200 Hash macro invocation and friends
+06d5dc1 2025-08-07 10:29:02 +0200 Thingies
+8f7f921 2025-08-07 08:53:58 +0200 cpu achieves turing-completeness
+f617886 2025-08-07 03:13:45 +0200 Stuff and cpu
+57f7891 2025-08-06 20:38:47 +0200 thingies
+87ef070 2025-08-06 17:33:26 +0200 Much better
+9863270 2025-08-06 16:40:57 +0200 More thingies
+b2fbb12 2025-08-06 16:29:56 +0200 Rename refactor
+765bcf6 2025-08-06 16:16:35 +0200 Features mimi
+8db7b3b 2025-08-06 15:32:21 +0200 Jump to error
+f77f7b6 2025-08-06 01:46:32 +0200 ee
+a3fbce3 2025-08-06 01:29:18 +0200 Unfuck minimap
+bf583ad 2025-08-06 01:27:48 +0200 mimimi
+f9d0e0f 2025-08-06 01:19:44 +0200 Unfuck minimap
+d1b4adc 2025-08-06 01:09:42 +0200 Unfuck editor
+033747f 2025-08-06 00:11:42 +0200 Minimap attempt
+75d5be9 2025-08-05 23:42:59 +0200 Refactor editor
+a938ff3 2025-08-05 23:38:21 +0200 Refactor editor
+f2bf994 2025-08-05 23:29:17 +0200 cut line
+738b54c 2025-08-05 23:28:16 +0200 thingies
+09280a6 2025-08-05 23:21:29 +0200 Resizeable editors
+85f2843 2025-08-05 23:16:58 +0200 stuff
+bffadc5 2025-08-05 23:09:34 +0200 More improvements
+e4b59f3 2025-08-05 22:24:50 +0200 akhdfbgsdlifgb
+f7dac13 2025-08-05 22:20:53 +0200 remove dom debugger renderer
+9ab0070 2025-08-05 22:13:54 +0200 Much more improved canvas
+70dfbe6 2025-08-05 22:03:42 +0200 Better canvas
+cbb9cc6 2025-08-05 21:50:50 +0200 Tape view smooth as butter
+e990c14 2025-08-05 21:25:54 +0200 better
+fa107dd 2025-08-05 21:21:21 +0200 Better tape view
+210ff3c 2025-08-05 21:17:00 +0200 Crosshair highlight
+6a237d9 2025-08-05 21:13:31 +0200 Canvas tabe
+76d6b85 2025-08-05 20:39:02 +0200 Fixed large tapes
+870608b 2025-08-05 20:33:39 +0200 Custom virtual scroll
+9d49727 2025-08-05 19:05:09 +0200 UI
+0b6204c 2025-08-05 18:37:34 +0200 Macro expander v3
+66e2629 2025-08-04 23:05:52 +0200 Beautify
+9333f6b 2025-08-04 22:51:00 +0200 moved macro panel
+5a09424 2025-08-04 22:37:39 +0200 Somehow works
+37bc608 2025-08-04 19:22:44 +0200 sourcemaps prd
+fa43496 2025-08-04 18:57:29 +0200 upd
+d7b89bf 2025-08-04 18:26:36 +0200 Quicknav fixes
+d278417 2025-08-04 18:20:18 +0200 Quick nav
+2ef380f 2025-08-04 18:10:22 +0200 Quick nav
+b90dbdb 2025-08-04 17:47:17 +0200 Search fix
+9f82b43 2025-08-04 17:37:07 +0200 Search fix
+b80f933 2025-08-04 17:31:30 +0200 scroll to search result
+608b067 2025-08-04 17:27:24 +0200 search
+43bb5c3 2025-08-04 16:59:35 +0200 Virtualize editor lines
+93945d2 2025-08-04 16:23:23 +0200 Performance stuff
+e4f3caf 2025-08-04 03:17:05 +0200 cpu alu done
+4f9f580 2025-08-04 01:38:31 +0200 Improve tokenizer performance
+d51b38a 2025-08-04 01:26:51 +0200 SLT, SLTU
+25bf370 2025-08-03 18:18:40 +0200 SL opcode
+a27bcad 2025-08-03 17:03:35 +0200 Make marks view compact
+e66e64c 2025-08-03 17:01:50 +0200 Add marks tab
+971ddad 2025-08-03 16:57:37 +0200 Improve multiline macro highlighting
+bf65070 2025-08-03 16:51:21 +0200 Update cpu
+50b76d3 2025-08-03 16:34:16 +0200 Improve macro expansion
+25bf7af 2025-08-03 13:55:29 +0200 thingies
+a7a5a97 2025-08-03 02:14:10 +0200 Move macro expander to web worker
+e9f3a4d 2025-08-03 01:54:51 +0200 More stuff
+f33697b 2025-08-03 00:26:58 +0200 Add more builtins
+c4c3c02 2025-08-02 23:51:22 +0200 Fiiingeeeers
+55a9992 2025-08-02 23:47:29 +0200 Macro system v2
+e4f8d2e 2025-08-02 23:45:40 +0200 Macro system v2
+7ea5da8 2025-08-02 22:39:19 +0200 Fix macro expander issues
+c7c3d32 2025-08-02 03:01:23 +0200 Saving files
+13f75a7 2025-08-02 02:50:10 +0200 Add files tab
+693081b 2025-08-02 02:44:41 +0200 Fix paste
+8454e5c 2025-08-02 01:06:50 +0200 Fixes
+536db81 2025-08-01 23:11:17 +0200 Stuff
+ba15858 2025-07-26 22:54:44 +0200 Remove rust experiment. Add tape save/load, add run from cursor
+6807112 2025-07-26 22:21:02 +0200 multilane macro
+91676f5 2025-07-26 12:20:18 +0200 Add automatic macroexpand
+44b2f0b 2025-07-26 12:08:52 +0200 more architecture
+0dea8d1 2025-07-26 03:25:44 +0200 Tokenizer colors
+fb9fd18 2025-07-26 03:21:36 +0200 Fix macro tokenization
+15511dd 2025-07-26 03:02:05 +0200 command-click
+74ae7e6 2025-07-26 02:50:32 +0200 Colorize todo comments
+2f9b284 2025-07-26 02:48:35 +0200 More stuff
+acc2d98 2025-07-26 02:11:47 +0200 Stuff
+5b3472f 2025-07-26 01:57:01 +0200 Cleanup
+ef8f430 2025-07-26 01:54:45 +0200 Add debugger lane view
+077741c 2025-07-26 01:31:23 +0200 Debugger visuals
+c266cd6 2025-07-25 06:51:42 +0200 More stuff
+5bc49a4 2025-07-25 06:32:35 +0200 Fix breakpoints
+9c99559 2025-07-25 06:14:08 +0200 more opts
+b4312e3 2025-07-25 05:40:51 +0200 Optimizations
+d01780d 2025-07-25 05:19:42 +0200 Optimized rust interpreter
+3cc4238 2025-07-25 05:01:58 +0200 Batched turbo execution
+1e4472c 2025-07-25 04:57:58 +0200 Worker-based interpreter
+0853ba9 2025-07-25 04:34:28 +0200 Rust interpreter
+80e03c2 2025-07-25 04:06:13 +0200 Stuff
+b6f3f35 2025-07-25 01:40:28 +0200 Make max tape length 150k because reasons
+29acf91 2025-07-25 01:23:25 +0200 Remove tape size limit in UI
+995a943 2025-07-25 01:21:51 +0200 Make compact debugger view
+088a607 2025-07-25 01:13:53 +0200 Fix macro strip comments
+5100991 2025-07-25 00:56:50 +0200 Macro expander settings
+920ef39 2025-07-25 00:41:11 +0200 Add tooltips
+7522115 2025-07-25 00:26:34 +0200 Fix bugs
+3b435a3 2025-07-25 00:22:43 +0200 Autocomplete bugfix
+7ff4a11 2025-07-25 00:14:13 +0200 Macro autocomplete
+e8dae67 2025-07-25 00:00:00 +0200 Macro decorations
+5b4b6e0 2025-07-24 23:35:53 +0200 Macro expander
+ea67f18 2025-07-24 22:38:28 +0200 Multiple editors
+0f09437 2025-07-24 22:01:35 +0200 Lanes coloring
+50e64da 2025-07-24 21:42:15 +0200 bf experiments
+03fa812 2025-07-24 16:37:16 +0200 More stuff
+3216881 2025-07-24 06:28:56 +0200 Turbo speed
+706c0ed 2025-07-24 05:10:12 +0200 A lot of stuff
+268756f 2025-07-23 23:43:21 +0200 Interpreter works
+cf81ba0 2025-07-23 21:29:02 +0200 Editor works
+9506bc4 2025-07-23 19:25:44 +0200 basic stuff

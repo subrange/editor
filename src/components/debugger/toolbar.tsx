@@ -5,22 +5,38 @@ import {
     BoltIcon,
     ClockIcon, XMarkIcon,
     CursorArrowRaysIcon,
+    RocketLaunchIcon,
 } from '@heroicons/react/24/solid';
 import { interpreterStore } from "./interpreter-facade.store.ts";
 import {useStoreSubscribe} from "../../hooks/use-store-subscribe.tsx";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     ForwardIcon,
     PauseIcon
 } from '@heroicons/react/24/solid';
 import {IconButton} from "../ui/icon-button.tsx";
 import { editorManager } from "../../services/editor-manager.service.ts";
+import { rustWasmInterpreter } from "../../services/rust-wasm-interpreter.service.ts";
+import { outputStore } from "../../stores/output.store.ts";
+import { settingsStore } from "../../stores/settings.store.ts";
 
 export function Toolbar() {
     const interpreterState = useStoreSubscribe(interpreterStore.state);
     const { isRunning, isPaused, isStopped, lastExecutionMode, lastExecutionTime, lastOperationCount } = interpreterState;
     const [delay, setDelay] = useState(50);
     const [showDelayInput, setShowDelayInput] = useState(false);
+    const [wasmStatus, setWasmStatus] = useState<'initializing' | 'ready' | 'error'>('initializing');
+    const [wasmRunning, setWasmRunning] = useState(false);
+    
+    useEffect(() => {
+        const statusSub = rustWasmInterpreter.status$.subscribe(setWasmStatus);
+        const runningSub = rustWasmInterpreter.isRunning$.subscribe(setWasmRunning);
+        
+        return () => {
+            statusSub.unsubscribe();
+            runningSub.unsubscribe();
+        };
+    }, []);
     
     // Debug logging
     if (isStopped) {
@@ -49,10 +65,102 @@ export function Toolbar() {
             interpreterStore.stepToPosition(cursorPosition);
         }
     };
+    
+    const handleRunWithRustWasm = async () => {
+        try {
+            // Get code from main editor
+            const mainEditor = editorManager.getEditor('main');
+            if (!mainEditor) {
+                console.error('Main editor not found');
+                return;
+            }
+            
+            const code = mainEditor.getText();
+            
+            // Reset interpreter to clear output
+            interpreterStore.reset();
+            outputStore.setCollapsed(false);
+            
+            let accumulatedOutput = '';
+            
+            // Get current settings
+            const tapeSize = interpreterStore.tapeSize.getValue();
+            const cellSize = interpreterStore.cellSize.getValue();
+            const settings = settingsStore.settings.getValue();
+            
+            // Map cell size from the store format (256, 65536, 4294967296) to bits (8, 16, 32)
+            let cellBits: 8 | 16 | 32 = 8;
+            if (cellSize === 256) cellBits = 8;
+            else if (cellSize === 65536) cellBits = 16;
+            else if (cellSize === 4294967296) cellBits = 32;
+            
+            // Run with real-time output callback
+            const result = await rustWasmInterpreter.runProgram(
+                code,
+                '', // No input for now
+                {
+                    tapeSize: tapeSize,
+                    cellSize: cellBits,
+                    wrap: settings.interpreter?.wrapCells ?? true,
+                    wrapTape: settings.interpreter?.wrapTape ?? true,
+                    optimize: true
+                },
+                (char, charCode) => {
+                    // Accumulate output and update state
+                    accumulatedOutput += char;
+                    const currentState = interpreterStore.state.getValue();
+                    interpreterStore.state.next({
+                        ...currentState,
+                        output: accumulatedOutput
+                    });
+                }
+            );
+            
+            // Final update with complete output
+            const finalState = interpreterStore.state.getValue();
+            interpreterStore.state.next({
+                ...finalState,
+                output: result.output,
+                isStopped: true
+            });
+            
+        } catch (error) {
+            console.error('Failed to run with Rust WASM:', error);
+            const currentState = interpreterStore.state.getValue();
+            interpreterStore.state.next({
+                ...currentState,
+                output: currentState.output + `\n[Error: ${error.message}]`
+            });
+        }
+    };
+    
+    const handleStopRustWasm = () => {
+        rustWasmInterpreter.stop();
+    };
 
     return (
         <div className="h-10 min-h-10 border-t border-zinc-800 bg-zinc-900 text-zinc-400">
             <div className="flex items-center px-2 h-full gap-1">
+                {/* Rust WASM Run button */}
+                <div className="flex items-center gap-1 pr-2 border-r border-zinc-700">
+                    {wasmRunning ? (
+                        <IconButton
+                            icon={StopIcon}
+                            label="Stop Rust WASM Interpreter"
+                            onClick={handleStopRustWasm}
+                            variant="danger"
+                        />
+                    ) : (
+                        <IconButton
+                            icon={RocketLaunchIcon}
+                            label="Run with Rust WASM (Optimized, No Debug)"
+                            onClick={handleRunWithRustWasm}
+                            disabled={wasmStatus !== 'ready' || isRunning}
+                            variant="success"
+                        />
+                    )}
+                </div>
+                
                 {/* Run modes group */}
                 <div className="flex items-center gap-1 pr-2 border-r border-zinc-700">
                     {isPaused ? (

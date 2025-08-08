@@ -21,10 +21,16 @@ export interface AssemblySettings {
     maxImmediate: number;
 }
 
+export interface InterpreterSettings {
+    wrapCells: boolean;
+    wrapTape: boolean;
+}
+
 export interface Settings {
     macro: MacroSettings;
     debugger: DebuggerSettings;
     assembly: AssemblySettings;
+    interpreter?: InterpreterSettings;
 }
 
 class SettingsStore {
@@ -44,6 +50,10 @@ class SettingsStore {
             autoOpenOutput: this.loadFromStorage('assemblyAutoOpenOutput', true),
             bankSize: this.loadFromStorage('assemblyBankSize', 16),
             maxImmediate: this.loadFromStorage('assemblyMaxImmediate', 65535)
+        },
+        interpreter: {
+            wrapCells: this.loadFromStorage('interpreterWrapCells', true),
+            wrapTape: this.loadFromStorage('interpreterWrapTape', true)
         }
     });
 
@@ -170,6 +180,29 @@ class SettingsStore {
         this.saveToStorage('assemblyMaxImmediate', value);
     }
 
+    setInterpreterWrapCells(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            interpreter: {
+                ...current.interpreter!,
+                wrapCells: value
+            }
+        });
+        this.saveToStorage('interpreterWrapCells', value);
+    }
+
+    setInterpreterWrapTape(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            interpreter: {
+                ...current.interpreter!,
+                wrapTape: value
+            }
+        });
+        this.saveToStorage('interpreterWrapTape', value);
+    }
 
     private loadFromStorage<T>(key: string, defaultValue: T): T {
         const stored = localStorage.getItem(key);

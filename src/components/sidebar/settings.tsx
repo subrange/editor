@@ -188,6 +188,54 @@ export function Settings() {
 
                 </SettingSection>
 
+                {/* Rust WASM Interpreter Settings */}
+                <SettingSection title="Rust WASM Interpreter" defaultOpen={false}>
+                    <div className="space-y-4">
+                        <div className="p-2 bg-zinc-800/50 rounded text-xs text-zinc-400 mb-4">
+                            <span className="text-yellow-500">⚡</span> These settings only apply to the Rust WASM interpreter
+                            (Rocket button in toolbar)
+                        </div>
+                        
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                Cell Value Wrapping
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={settings?.interpreter?.wrapCells ?? true}
+                                onChange={(e) => settingsStore.setInterpreterWrapCells(e.target.checked)}
+                                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                            />
+                        </label>
+                        <p className="text-xs text-zinc-500 -mt-2">
+                            Wrap cell values on overflow (255+1→0)
+                        </p>
+
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                Tape Pointer Wrapping
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={settings?.interpreter?.wrapTape ?? true}
+                                onChange={(e) => settingsStore.setInterpreterWrapTape(e.target.checked)}
+                                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                            />
+                        </label>
+                        <p className="text-xs text-zinc-500 -mt-2">
+                            Wrap tape pointer at boundaries
+                        </p>
+                        
+                        <div className="mt-4 pt-4 border-t border-zinc-700">
+                            <p className="text-xs text-zinc-500">
+                                <span className="text-zinc-400">Note:</span> The Rust WASM interpreter always runs with 
+                                optimizations enabled and uses the tape size and cell size from the main interpreter settings above.
+                            </p>
+                        </div>
+                    </div>
+
+                </SettingSection>
+
                 {/* Debugger Settings */}
                 <SettingSection title="Debugger">
                     <div className="space-y-4">
