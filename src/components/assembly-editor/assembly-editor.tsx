@@ -11,7 +11,7 @@ import { AssemblyOutput } from "./assembly-output.tsx";
 import { DraggableVSep } from "../ui/draggable-vsep.tsx";
 import { useLocalStorageState } from "../../hooks/use-local-storage-state.tsx";
 import { EditorStore } from "../editor/stores/editor.store.ts";
-import { ripplerAssembler } from "../../services/ripple-assembler/index.ts";
+import { createAssembler } from "../../services/ripple-assembler/index.ts";
 import { AssemblyQuickNavStore, type AssemblyNavigationItem } from "./stores/assembly-quick-nav.store.ts";
 import { AssemblyQuickNav } from "./components/assembly-quick-nav.tsx";
 
@@ -142,8 +142,14 @@ done:
         const code = assemblyEditor.getText();
         
         try {
-            // Use the ripple assembler service
-            const result = ripplerAssembler.assemble(code);
+            // Create assembler with current settings
+            const assembler = createAssembler({
+                bankSize: settings?.assembly?.bankSize,
+                maxImmediate: settings?.assembly?.maxImmediate
+            });
+            
+            // Use the configured assembler
+            const result = assembler.assemble(code);
             
             if (result.errors.length > 0) {
                 // Report errors
@@ -169,7 +175,7 @@ done:
             assemblyOutputStore.setError(`Assembly failed: ${error}`);
             console.error('Assembly error:', error);
         }
-    }, [assemblyEditor, autoOpenOutput, showOutput, setShowOutput]);
+    }, [assemblyEditor, autoOpenOutput, showOutput, setShowOutput, settings?.assembly?.bankSize, settings?.assembly?.maxImmediate]);
 
     // Auto-compile effect
     useEffect(() => {

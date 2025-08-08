@@ -7,9 +7,14 @@ export * from './types.ts';
 // Create a singleton instance for the IDE
 import { RippleAssembler } from './assembler.ts';
 import { MacroFormatter } from './macro-formatter.ts';
-import type { Instruction } from './types.ts';
+import type { Instruction, AssemblerOptions } from './types.ts';
 
 export const ripplerAssembler = new RippleAssembler();
+
+// Create assembler with custom options
+export function createAssembler(options?: AssemblerOptions): RippleAssembler {
+    return new RippleAssembler(options);
+}
 
 // Export formatMacro function
 const formatter = new MacroFormatter();

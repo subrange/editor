@@ -100,7 +100,7 @@ export class MacroFormatter {
       word2Str = formatOperand(instruction.word2, false);
       word3Str = formatOperand(instruction.word3, false);
     } else if (instruction.opcode === Opcode.JAL) {
-      // JAL uses address in word1
+      // JAL uses address in word3
       word1Str = formatOperand(instruction.word1, false);
       word2Str = formatOperand(instruction.word2, false);
       word3Str = formatOperand(instruction.word3, false);

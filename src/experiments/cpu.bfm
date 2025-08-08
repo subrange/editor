@@ -1,14 +1,15 @@
 // MARK: ------------- START -------------
 
 #define PROGRAM {
+
 @prg(
   // Memory
   @lane(#L_MEM,
-    {for(s in {0,0,'H','e','l','l','o',',',' ','R','i','p','p','l','e','!',10,0}, @set(s) @nextword)}
+    {for(s in {'H','e','l','l','o',',',' ','R','i','p','p','l','e','!',10,0}, @set(s) @nextword)}
   ),
 
   // Program
-  @program_start(@OP_LI    , @R3 , 0   , 0) // probably should always nop?
+  @program_start(@OP_LI    , @R3 , 0   , 0)
   @cmd(@OP_LI    , @R4 , 3   , 0)
   @cmd(@OP_LI    , @R5 , 2   , 0)
   @cmd(@OP_LOAD  , @R3 , @R0 , @R5)
@@ -16,9 +17,10 @@
   @cmd(@OP_HALT  , 0   , 0   , 0)
   @cmd(@OP_ADDI  , @R5 , @R5 , 1)
   @cmd(@OP_STOR  , @R3 , @R0 , 0)
-  @cmd(@OP_JALR  , @R0 , @R0 , @R4)
+  @cmd(@OP_JAL   , 0   , 0   , 3)
   @program_end
 )
+
 }
 
 // MARK: ----------- CODE END ----------
@@ -236,7 +238,9 @@
 #define goto_ip_word @goto_start @nextword @fl(@goto_zero_right_lane)
 #define goto_ip_left @fl(@goto_nonzero_left_lane @nextword)
 
-// MARK: -- IP movement
+// MARK: -- IP movement and prg flow
+
+#define skip_mmapped @lane(#L_MEM, @nextwords(2))
 
 #define set_noinc_pc_flag {
   @prevword
@@ -1453,6 +1457,8 @@
 )
 
 @goto_start_slow
+
+@skip_mmapped
 
 #define prg(data, code) data @goto_start_slow @nextword code
 @PROGRAM

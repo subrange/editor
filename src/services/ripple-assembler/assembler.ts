@@ -1,7 +1,7 @@
 import type {
   AssemblerOptions,
   AssemblerResult,
-  AssemblerState,
+  AssemblerState, Instruction,
   ParsedLine
 } from './types.ts';
 import {
@@ -350,24 +350,6 @@ export class RippleAssembler {
 
     const opcode = this.getOpcodeFromMnemonic(mnemonic);
     
-    // Handle JAL special case
-    if (opcode === Opcode.JAL && line.operands.length === 1) {
-      const labelName = line.operands[0];
-      if (this.isLabel(labelName)) {
-        const instructionIndex = state.instructions.length;
-        state.pendingReferences.set(instructionIndex, {
-          label: labelName,
-          type: 'absolute'
-        });
-        // JAL format: opcode, addr, 0, 0
-        return { opcode, word0: opcode, word1: 0, word2: 0, word3: 0 }; // Placeholder
-      } else {
-        const addr = this.parseImmediate(line.operands[0]);
-        // JAL format: opcode, addr, 0, 0
-        return { opcode, word0: opcode, word1: addr, word2: 0, word3: 0 };
-      }
-    }
-
     const operands = this.parseOperands(line.operands, opcode, state);
 
     const isBranch = [Opcode.BEQ, Opcode.BNE, Opcode.BLT, Opcode.BGE].includes(opcode);
@@ -396,7 +378,7 @@ export class RippleAssembler {
       const operand = operands[i];
       const isLastOperand = i === operands.length - 1;
       const isBranchTarget = isBranch && isLastOperand;
-      const isJumpTarget = opcode === Opcode.JAL && i === 0;
+      const isJumpTarget = opcode === Opcode.JAL && i === 2;
 
       if (this.isRegister(operand)) {
         parsed.push(this.parseRegister(operand));
@@ -404,6 +386,13 @@ export class RippleAssembler {
         if (isBranchTarget || isJumpTarget) {
           // Code label - will be resolved later
           parsed.push(0);
+          // Mark for resolution
+          const instructionIndex = state.instructions.length;
+          state.pendingReferences.set(instructionIndex, {
+            label: operand,
+            type: isBranchTarget ? 'branch' : 'jump',
+            operandIndex: i
+          });
         } else {
           // Could be a data label - check if it exists
           if (state.dataLabels.has(operand)) {
@@ -470,7 +459,8 @@ export class RippleAssembler {
         }
         
         instruction.word3 = relativeOffset & 0xFFFF;
-      } else {
+      } else if (ref.type === 'jump') {
+        // JAL instruction - absolute address goes in word3
         if (label.bank !== Math.floor(index / this.options.bankSize)) {
           const farJumpIndex = index;
           const loadPCBInstruction = this.encoder.encodeI1(Opcode.LI, Register.PCB, label.bank);
@@ -480,8 +470,12 @@ export class RippleAssembler {
           state.instructions.splice(farJumpIndex, 1, loadPCBInstruction, jalInstruction);
           state.errors.push(`Far jump to '${ref.label}' requires manual bank management`);
         } else {
-          instruction.word1 = label.offset;
+          // For JAL, the address goes in word3 (third operand)
+          instruction.word3 = label.offset;
         }
+      } else {
+        // Default handling for other types
+        instruction.word1 = label.offset;
       }
     }
   }

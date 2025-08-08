@@ -18,6 +18,7 @@ export class InstructionEncoder {
   }
 
   encodeI(opcode: Opcode, rd: number, rs: number, imm: number): Instruction {
+    console.log(`Encoding I instruction: ${opcode}, rd: ${rd}, rs: ${rs}, imm: ${imm}`);
     if (imm > this.maxImmediate || imm < 0) {
       throw new Error(`Immediate value ${imm} out of range (0-${this.maxImmediate})`);
     }

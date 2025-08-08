@@ -135,7 +135,7 @@ export const opcodeInfo: Record<Opcode, { format: InstructionFormat; mnemonic: s
   [Opcode.SRLI]: { format: InstructionFormat.I, mnemonic: 'SRLI' },
   [Opcode.LOAD]: { format: InstructionFormat.I, mnemonic: 'LOAD' },
   [Opcode.STORE]: { format: InstructionFormat.I, mnemonic: 'STORE' },
-  [Opcode.JAL]: { format: InstructionFormat.I2, mnemonic: 'JAL' },
+  [Opcode.JAL]: { format: InstructionFormat.I, mnemonic: 'JAL' },
   [Opcode.JALR]: { format: InstructionFormat.R, mnemonic: 'JALR' },
   [Opcode.BEQ]: { format: InstructionFormat.I, mnemonic: 'BEQ' },
   [Opcode.BNE]: { format: InstructionFormat.I, mnemonic: 'BNE' },

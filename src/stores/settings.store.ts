@@ -16,6 +16,8 @@ export interface DebuggerSettings {
 export interface AssemblySettings {
     autoCompile: boolean;
     autoOpenOutput: boolean;
+    bankSize: number;
+    maxImmediate: number;
 }
 
 export interface Settings {
@@ -37,7 +39,9 @@ class SettingsStore {
         },
         assembly: {
             autoCompile: this.loadFromStorage('assemblyAutoCompile', false),
-            autoOpenOutput: this.loadFromStorage('assemblyAutoOpenOutput', true)
+            autoOpenOutput: this.loadFromStorage('assemblyAutoOpenOutput', true),
+            bankSize: this.loadFromStorage('assemblyBankSize', 16),
+            maxImmediate: this.loadFromStorage('assemblyMaxImmediate', 65535)
         }
     });
 
@@ -126,6 +130,30 @@ class SettingsStore {
             }
         });
         this.saveToStorage('assemblyAutoOpenOutput', value);
+    }
+    
+    setAssemblyBankSize(value: number) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            assembly: {
+                ...current.assembly,
+                bankSize: value
+            }
+        });
+        this.saveToStorage('assemblyBankSize', value);
+    }
+    
+    setAssemblyMaxImmediate(value: number) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            assembly: {
+                ...current.assembly,
+                maxImmediate: value
+            }
+        });
+        this.saveToStorage('assemblyMaxImmediate', value);
     }
 
 

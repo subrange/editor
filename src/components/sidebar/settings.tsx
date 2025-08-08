@@ -409,6 +409,73 @@ export function Settings() {
                         <p className="text-xs text-zinc-500 -mt-2">
                             Automatically open output panel when compiling
                         </p>
+
+                        {/* Bank Size */}
+                        <div className="space-y-2 mt-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-zinc-300">
+                                    Bank Size
+                                </label>
+                                <span className="text-xs text-zinc-500">
+                                    {settings?.assembly?.bankSize ?? 16} instructions
+                                </span>
+                            </div>
+                            <input
+                                type="range"
+                                min="4"
+                                max="64"
+                                step="4"
+                                value={settings?.assembly?.bankSize ?? 16}
+                                onChange={(e) => settingsStore.setAssemblyBankSize(parseInt(e.target.value))}
+                                className="w-full h-2 bg-zinc-700 rounded appearance-none cursor-pointer slider"
+                            />
+                            <input
+                                type="number"
+                                min="4"
+                                max="64"
+                                value={settings?.assembly?.bankSize ?? 16}
+                                onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 16;
+                                    settingsStore.setAssemblyBankSize(Math.max(4, Math.min(64, value)));
+                                }}
+                                className="w-full px-3 py-2 bg-zinc-800 text-zinc-200 text-sm rounded border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="Bank size"
+                            />
+                            <p className="text-xs text-zinc-500">
+                                Instructions per memory bank (4-64)
+                            </p>
+                        </div>
+
+                        {/* Max Immediate */}
+                        <div className="space-y-2 mt-4">
+                            <label className="text-sm font-medium text-zinc-300">
+                                Max Immediate Value
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { value: 255, label: "8-bit", desc: "0-255" },
+                                    { value: 65535, label: "16-bit", desc: "0-65,535" },
+                                    { value: 16777215, label: "24-bit", desc: "0-16.7M" }
+                                ].map((option) => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => settingsStore.setAssemblyMaxImmediate(option.value)}
+                                        className={clsx(
+                                            "p-3 rounded border transition-all text-center",
+                                            settings?.assembly?.maxImmediate === option.value
+                                                ? "bg-blue-500/20 border-blue-500 text-blue-400"
+                                                : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:border-zinc-600"
+                                        )}
+                                    >
+                                        <div className="font-medium text-sm">{option.label}</div>
+                                        <div className="text-[10px] text-zinc-500 mt-1">{option.desc}</div>
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-zinc-500 mt-2">
+                                Maximum value for immediate operands in LI instruction
+                            </p>
+                        </div>
                     </div>
                 </SettingSection>
 
