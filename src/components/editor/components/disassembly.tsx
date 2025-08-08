@@ -20,6 +20,20 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   const INSTRUCTION_START = 168;
   const INSTRUCTION_SIZE = 32; // Each instruction spans 32 cells
   
+  // Force update when interpreter state changes by using a key that changes
+  // This ensures we re-render when the tape is modified
+  const updateKey = useMemo(() => {
+    // Create a simple hash of key instruction positions
+    let hash = 0;
+    for (let i = 0; i < 10; i++) {
+      const opcodeIndex = INSTRUCTION_START + 27 + (i * 32);
+      if (opcodeIndex < tape.length) {
+        hash = (hash * 31 + tape[opcodeIndex]) >>> 0;
+      }
+    }
+    return hash;
+  }, [interpreterState, tape]);
+  
   // Generate disassembled code
   const disassembledCode = useMemo(() => {
     const lines: string[] = [];
@@ -53,9 +67,12 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
       
       // Format the instruction line with instruction number on the left
       const validOperands = operands.filter(op => op !== null);
+      
+      // Align mnemonic to 5 characters (longest is 5 letters)
+      const alignedMnemonic = mnemonic.padEnd(5, ' ');
       const instructionText = validOperands.length > 0 
-        ? `${mnemonic} ${validOperands.join(', ')}`
-        : mnemonic;
+        ? `${alignedMnemonic} ${validOperands.join(', ')}`
+        : alignedMnemonic;
       
       // Format with instruction number padded to 3 digits
       const formattedLine = `${i.toString().padStart(3, ' ')}:    ${instructionText}`;
@@ -89,7 +106,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
     }
     
     return lines.join('\n');
-  }, [tape]);
+  }, [tape, updateKey]);
   
   // Calculate current instruction index based on pointer position
   useEffect(() => {
@@ -123,8 +140,116 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
     }
   }, [currentInstructionIndex, isActive, outputRef]);
   
+  // Extract register values from tape
+  const registerValues = useMemo(() => {
+    const REGISTER_START = 9; // 8 + 1
+    const REGISTER_SPACING = 8;
+    const registerNames = ['R0', 'PC', 'PCB', 'RA', 'RAB', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15'];
+    const registers: Array<{ name: string; value: number; index: number }> = [];
+    
+    for (let i = 0; i < registerNames.length; i++) {
+      const tapeIndex = REGISTER_START + (i * REGISTER_SPACING);
+      if (tapeIndex < tape.length) {
+        registers.push({
+          name: registerNames[i],
+          value: tape[tapeIndex],
+          index: tapeIndex
+        });
+      }
+    }
+    
+    return registers;
+  }, [tape, interpreterState]); // Depend on interpreterState to catch all updates
+  
+  // Function to scroll tape to a specific index
+  const scrollToTapeIndex = (index: number) => {
+    // Find the canvas element in the debugger
+    const canvas = document.querySelector('.tape-canvas-renderer canvas') || 
+                   document.querySelector('canvas');
+    if (canvas) {
+      canvas.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index } }));
+    }
+  };
+  
   return (
     <div className="text-xs font-mono">
+      {/* Register display section */}
+      <div className="border-b border-zinc-800 mb-2 pb-2">
+        <div className="text-zinc-400 font-bold mb-1">Registers:</div>
+        
+        {/* R0 */}
+        <div className="flex items-baseline gap-1 mb-1">
+          <span 
+            className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
+            onClick={() => scrollToTapeIndex(registerValues[0]?.index || 9)}
+          >
+            R0:
+          </span>
+          <span className={assemblyTokenStyles.number}>{registerValues[0]?.value || 0}</span>
+        </div>
+        
+        {/* PC and PCB */}
+        <div className="flex gap-4 mb-1">
+          <div className="flex items-baseline gap-1">
+            <span 
+              className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
+              onClick={() => scrollToTapeIndex(registerValues[1]?.index || 17)}
+            >
+              PC:
+            </span>
+            <span className={assemblyTokenStyles.number}>{registerValues[1]?.value || 0}</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span 
+              className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
+              onClick={() => scrollToTapeIndex(registerValues[2]?.index || 25)}
+            >
+              PCB:
+            </span>
+            <span className={assemblyTokenStyles.number}>{registerValues[2]?.value || 0}</span>
+          </div>
+        </div>
+        
+        {/* RA and RAB */}
+        <div className="flex gap-4 mb-1">
+          <div className="flex items-baseline gap-1">
+            <span 
+              className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
+              onClick={() => scrollToTapeIndex(registerValues[3]?.index || 33)}
+            >
+              RA:
+            </span>
+            <span className={assemblyTokenStyles.number}>{registerValues[3]?.value || 0}</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span 
+              className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
+              onClick={() => scrollToTapeIndex(registerValues[4]?.index || 41)}
+            >
+              RAB:
+            </span>
+            <span className={assemblyTokenStyles.number}>{registerValues[4]?.value || 0}</span>
+          </div>
+        </div>
+        
+        {/* General purpose registers R3-R15 */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {registerValues.slice(5).map(reg => (
+            <div key={reg.name} className="flex items-baseline gap-1">
+              <span 
+                className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
+                onClick={() => scrollToTapeIndex(reg.index)}
+              >
+                {reg.name}:
+              </span>
+              <span className={assemblyTokenStyles.number}>{reg.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Instructions section */}
+      <div className="text-zinc-400 font-bold mb-1">Instructions:</div>
       {tokenizedLines.map((tokens, lineIndex) => {
         const lineText = disassembledCode.split('\n')[lineIndex];
         
@@ -144,6 +269,11 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
         const isCurrentInstruction = currentInstructionIndex !== null && 
                                    instructionNumber === currentInstructionIndex;
         
+        // Calculate the tape index for this instruction
+        const instructionTapeIndex = instructionNumber !== null 
+          ? INSTRUCTION_START + 3 + (instructionNumber * 32) // Start of instruction (op3)
+          : null;
+        
         return (
           <div
             key={lineIndex}
@@ -151,8 +281,14 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
             data-instruction-index={instructionNumber}
             className={clsx(
               "px-2 py-0.5",
-              isCurrentInstruction && "bg-yellow-500/20 border-l-2 border-yellow-500"
+              isCurrentInstruction && "bg-yellow-500/20 border-l-2 border-yellow-500",
+              instructionTapeIndex !== null && "cursor-pointer hover:bg-zinc-800/50"
             )}
+            onClick={() => {
+              if (instructionTapeIndex !== null) {
+                scrollToTapeIndex(instructionTapeIndex);
+              }
+            }}
           >
             {isEllipsis ? (
               <span className="text-zinc-500 pl-8">...</span>
