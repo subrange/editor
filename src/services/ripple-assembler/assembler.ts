@@ -28,7 +28,8 @@ export class RippleAssembler {
       caseInsensitive: options.caseInsensitive ?? true,
       startBank: options.startBank ?? 0,
       bankSize: options.bankSize ?? DEFAULT_BANK_SIZE,
-      maxImmediate: options.maxImmediate ?? DEFAULT_MAX_IMMEDIATE
+      maxImmediate: options.maxImmediate ?? DEFAULT_MAX_IMMEDIATE,
+      dataOffset: options.dataOffset ?? 2  // Default offset of 2 for memory-mapped regions
     };
     this.encoder = new InstructionEncoder(this.options.maxImmediate);
     this.parser = new Parser(this.options.caseInsensitive);
@@ -76,7 +77,7 @@ export class RippleAssembler {
   private processSections(lines: ParsedLine[], state: AssemblerState): ParsedLine[] {
     let currentSection: Section = Section.Code;
     const codeLines: ParsedLine[] = [];
-    let currentDataOffset = 0;
+    let currentDataOffset = this.options.dataOffset;  // Start with the data offset
     
     for (const line of lines) {
       if (line.directive) {
