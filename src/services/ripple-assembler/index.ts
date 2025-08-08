@@ -2,6 +2,8 @@ export { RippleAssembler } from './assembler.ts';
 export { InstructionEncoder } from './encoder.ts';
 export { Parser } from './parser.ts';
 export { MacroFormatter } from './macro-formatter.ts';
+export { Disassembler, disassembler } from './disassembler.ts';
+export type { DisassembledInstruction } from './disassembler.ts';
 export * from './types.ts';
 
 // Create a singleton instance for the IDE

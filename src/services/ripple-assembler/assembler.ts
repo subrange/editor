@@ -453,7 +453,8 @@ export class RippleAssembler {
         }
         
         const relativeOffset = label.offset - currentOffset - 1;
-        if (relativeOffset < -8 || relativeOffset > 7) {
+        // For 16-bit signed immediate, the range should be -32768 to 32767
+        if (relativeOffset < -32768 || relativeOffset > 32767) {
           state.errors.push(`Branch offset to '${ref.label}' out of range: ${relativeOffset}`);
           continue;
         }

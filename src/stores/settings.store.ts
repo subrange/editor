@@ -11,6 +11,7 @@ export type DebuggerViewMode = 'normal' | 'compact' | 'lane';
 export interface DebuggerSettings {
     compactView: boolean; // Keep for backwards compatibility
     viewMode: DebuggerViewMode;
+    showDisassembly: boolean;
 }
 
 export interface AssemblySettings {
@@ -35,7 +36,8 @@ class SettingsStore {
         },
         debugger: {
             compactView: this.loadFromStorage('debuggerCompactView', false),
-            viewMode: this.loadFromStorage('debuggerViewMode', 'normal') as DebuggerViewMode
+            viewMode: this.loadFromStorage('debuggerViewMode', 'normal') as DebuggerViewMode,
+            showDisassembly: this.loadFromStorage('debuggerShowDisassembly', false)
         },
         assembly: {
             autoCompile: this.loadFromStorage('assemblyAutoCompile', false),
@@ -106,6 +108,18 @@ class SettingsStore {
         });
         this.saveToStorage('debuggerViewMode', value);
         this.saveToStorage('debuggerCompactView', value === 'compact');
+    }
+    
+    setDebuggerShowDisassembly(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            debugger: {
+                ...current.debugger,
+                showDisassembly: value
+            }
+        });
+        this.saveToStorage('debuggerShowDisassembly', value);
     }
     
     setAssemblyAutoCompile(value: boolean) {

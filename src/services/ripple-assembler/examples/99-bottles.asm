@@ -20,7 +20,7 @@ main_loop:
     BEQ R3, R0, finish
     
     ; Print number
-    JALR RA, R3, print_number
+    JAL R0, R0, print_number
     
     ; Check if singular
     LI R4, 1
@@ -28,46 +28,46 @@ main_loop:
     
     ; Print plural form
     LI R5, bottle_str
-    JALR RA, R5, print_string
+    JAL R0, R0, print_string
     
     ; Print number again
-    JALR RA, R3, print_number
+    JAL R0, R0, print_number
     
     LI R5, bottle_str2
-    JALR RA, R5, print_string
+    JAL R0, R0, print_string
     
-    JAL after_bottle_print
+    JAL R0 R0 after_bottle_print
     
 print_one_bottle:
     ; Print singular form
     LI R5, one_bottle
-    JALR RA, R5, print_string
+    JAL R0, R0, print_string
     
     ; Print number again
-    JALR RA, R3, print_number
+    JAL R0, R0, print_number
     
     LI R5, one_bottle2
-    JALR RA, R5, print_string
+    JAL R0, R0, print_string
     
 after_bottle_print:
     ; Print "Take one down..."
     LI R5, take_str
-    JALR RA, R5, print_string
+    JAL R0, R0, print_string
     
     ; Decrement counter
     ADDI R3, R3, 65535  ; R3 = R3 - 1 (using 65535 to represent -1 in 16-bit signed)
     
     ; Print newline
     LI R5, newline
-    JALR RA, R5, print_string
+    JAL R0, R0, print_string
     
     ; Continue loop
-    JAL main_loop
+    JAL R0 R0 main_loop
     
 finish:
     ; Print final message
     LI R5, no_more
-    JALR RA, R5, print_string
+    JAL R0, R0, print_string
     HALT
 
 ; Subroutine: print_string
@@ -82,15 +82,15 @@ ps_loop:
     BEQ R6, R0, ps_done
     
     ; Output character
-    LI R7, 0xFFFF
+    LI R7, 0x00
     STORE R6, R7, 0
     
     ADDI R5, R5, 1
-    JAL ps_loop
+    JAL R0 R0 ps_loop
     
 ps_done:
     ; Restore return address and return
-    JALR R0, R12, 0
+    JALR R0, R0, R12
 
 ; Subroutine: print_number
 ; Input: R3 = number to print (0-99)
@@ -114,26 +114,26 @@ div_loop:
     BNE R9, R0, div_done
     SUB R11, R11, R8
     ADDI R10, R10, 1
-    JAL div_loop
+    JAL R0 R0 div_loop
     
 div_done:
     ; Print tens digit
     ADDI R10, R10, 48  ; Convert to ASCII
-    LI R7, 0xFFFF
+    LI R7, 0x00
     STORE R10, R7, 0
     
     ; Print ones digit
     ADDI R11, R11, 48  ; Convert to ASCII
     STORE R11, R7, 0
     
-    JAL pn_done
+    JAL R0 R0 pn_done
     
 print_single_digit:
     ; Single digit
     ADDI R10, R3, 48  ; Convert to ASCII
-    LI R7, 0xFFFF
+    LI R7, 0x00
     STORE R10, R7, 0
     
 pn_done:
     ; Restore return address and return
-    JALR R0, R13, 0
+    JALR R0, R0, R13

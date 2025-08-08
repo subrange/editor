@@ -12,7 +12,7 @@ fib_array:  .space 20  ; Storage for 20 Fibonacci numbers
 start:
     ; Print header message
     LI R3, fib_msg
-    JALR RA, R3, print_string
+    JAL R0, R0, print_string
     
     ; Calculate Fibonacci sequence iteratively
     ; R3 = n-2 (starts at 0)
@@ -53,7 +53,7 @@ fib_loop:
     ; Increment counter
     ADDI R6, R6, 1
     
-    JAL fib_loop
+    JAL R0 R0 fib_loop
 
 print_sequence:
     ; Print all numbers in the array
@@ -68,11 +68,11 @@ print_loop:
     LOAD R3, R7, 0
     
     ; Print the number
-    JALR RA, R3, print_number
+    JAL R0, R0, print_number
     
     ; Print space
     LI R3, space
-    JALR RA, R3, print_string
+    JAL R0, R0, print_string
     
     ; Every 5 numbers, print newline
     LI R8, 5
@@ -83,23 +83,23 @@ rem_loop:
     SLT R11, R10, R8
     BNE R11, R0, rem_done
     SUB R10, R10, R8
-    JAL rem_loop
+    JAL R0 R0 rem_loop
 rem_done:
     BNE R10, R0, skip_newline
     LI R3, newline
-    JALR RA, R3, print_string
+    JAL R0, R0, print_string
     
 skip_newline:
     ; Move to next array element
     ADDI R7, R7, 1
     ADDI R6, R6, 1
     
-    JAL print_loop
+    JAL R0 R0 print_loop
 
 done:
     ; Final newline if needed
     LI R3, newline
-    JALR RA, R3, print_string
+    JAL R0, R0, print_string
     HALT
 
 ; Subroutine: print_string (same as in 99-bottles)
@@ -108,12 +108,12 @@ print_string:
 ps_loop:
     LOAD R13, R3, 0
     BEQ R13, R0, ps_done
-    LI R14, 0xFFFF
+    LI R14, 0x00
     STORE R13, R14, 0
     ADDI R3, R3, 1
-    JAL ps_loop
+    JAL R0 R0 ps_loop
 ps_done:
-    JALR R0, R12, 0
+    JALR R0, R0, R12
 
 ; Subroutine: print_number
 ; Enhanced to handle larger numbers (up to 9999)
@@ -123,9 +123,9 @@ print_number:
     ; Handle 0 specially
     BNE R3, R0, pn_not_zero
     LI R13, 48       ; ASCII '0'
-    LI R14, 0xFFFF
+    LI R14, 0x00
     STORE R13, R14, 0
-    JALR R0, R12, 0
+    JALR R0, R0, R12
     
 pn_not_zero:
     ; Convert number to digits using division
@@ -143,7 +143,7 @@ div1_loop:
     SLT R9, R8, R15
     BNE R9, R0, div1_done
     SUB R8, R8, R15
-    JAL div1_loop
+    JAL R0 R0 div1_loop
 div1_done:
     
     ; Calculate quotient for tens
@@ -156,19 +156,19 @@ count_tens:
     BEQ R10, R0, tens_done
     SUB R10, R10, R15
     ADDI R9, R9, 1
-    JAL count_tens
+    JAL R0 R0 count_tens
 tens_done:
     
     ; Now R8 = ones, R9 = tens
     ; Print tens if non-zero
     BEQ R9, R0, print_ones
     ADDI R9, R9, 48  ; Convert to ASCII
-    LI R14, 0xFFFF
+    LI R14, 0x00
     STORE R9, R14, 0
     
 print_ones:
     ADDI R8, R8, 48  ; Convert to ASCII
-    LI R14, 0xFFFF
+    LI R14, 0x00
     STORE R8, R14, 0
     
-    JALR R0, R12, 0
+    JALR R0, R0, R12

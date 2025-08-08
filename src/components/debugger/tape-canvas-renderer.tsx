@@ -4,12 +4,14 @@ import { interpreterStore } from './interpreter-facade.store';
 import { settingsStore } from '../../stores/settings.store';
 import { tapeLabelsStore } from '../../stores/tape-labels.store';
 import { XMarkIcon } from '@heroicons/react/24/solid';
+import { disassembler } from '../../services/ripple-assembler';
 
 interface TapeCanvasRendererProps {
   width: number;
   height: number;
   viewMode: 'normal' | 'compact' | 'lane';
   laneCount?: number;
+  showDisassembly?: boolean;
 }
 
 // Lane colors from the DOM renderer
@@ -26,11 +28,10 @@ const LANE_COLORS = [
   { stroke: '#6366f1', fill: 'rgba(99, 102, 241, 0.1)' }, // indigo
 ];
 
-export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: TapeCanvasRendererProps) {
+export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, showDisassembly = false }: TapeCanvasRendererProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const interpreterState = useStoreSubscribe(interpreterStore.state);
-  const settings = useStoreSubscribe(settingsStore.settings);
   const labels = useStoreSubscribe(tapeLabelsStore.labels);
   
   const tape = interpreterState.tape;
@@ -375,11 +376,85 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         
         // Cell background with animated opacity
         const hasLabel = labels.cells[index] !== undefined;
+        
+        // Check if we should apply special styling for disassembly mode
+        let isInstructionComponent = false;
+        let isEvenInstruction = false;
+        
+        if (showDisassembly && viewMode === 'lane' && laneCount > 1) {
+          const INSTRUCTION_START = 168;
+          const offset = index - INSTRUCTION_START;
+          
+          // Check if this cell is an instruction component (not padding)
+          // Components are at offsets: 3, 11, 19, 27, 35, 43, 51, 59, ...
+          if (offset >= 3 && (offset - 3) % 8 === 0) {
+            isInstructionComponent = true;
+            
+            // Determine which instruction this component belongs to
+            // Each instruction spans 32 cells
+            const instructionNumber = Math.floor(offset / 32);
+            isEvenInstruction = instructionNumber % 2 === 0;
+          }
+        }
+        
         if (isPointer) {
           ctx.fillStyle = `rgba(234, 179, 8, ${0.2 * opacity})`;
           ctx.strokeStyle = `rgba(234, 179, 8, ${0.5 * opacity})`;
           ctx.lineWidth = 2;
+        } else if (isInstructionComponent) {
+          // Highlight instruction components with zebra striping
+          const rgbaMatch = laneColor.fill.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/);
+          const strokeMatch = laneColor.stroke.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+          
+          if (isEvenInstruction) {
+            // Even instructions: brighter components (first instruction is 0, so it's even)
+            if (rgbaMatch) {
+              const [, r, g, b] = rgbaMatch;
+              // Higher opacity for even instructions
+              const opacityFactor = hasLabel ? 0.3 : 0.2;
+              ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacityFactor * opacity})`;
+            } else {
+              ctx.fillStyle = laneColor.fill;
+            }
+            
+            if (strokeMatch) {
+              const [, r, g, b] = strokeMatch;
+              const rDec = parseInt(r, 16);
+              const gDec = parseInt(g, 16);
+              const bDec = parseInt(b, 16);
+              // Stronger border for even instructions
+              const strokeOpacity = hasLabel ? 1.0 : 0.6;
+              ctx.strokeStyle = `rgba(${rDec}, ${gDec}, ${bDec}, ${strokeOpacity * opacity})`;
+            } else {
+              ctx.strokeStyle = laneColor.stroke;
+            }
+            ctx.lineWidth = 1.5;
+          } else {
+            // Odd instructions: darker/muted components
+            if (rgbaMatch) {
+              const [, r, g, b] = rgbaMatch;
+              // Lower opacity for odd instructions
+              const opacityFactor = hasLabel ? 0.15 : 0.1;
+              ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacityFactor * opacity})`;
+            } else {
+              ctx.fillStyle = laneColor.fill;
+            }
+            
+            if (strokeMatch) {
+              const [, r, g, b] = strokeMatch;
+              const rDec = parseInt(r, 16);
+              const gDec = parseInt(g, 16);
+              const bDec = parseInt(b, 16);
+              // Normal border for odd instructions
+              const strokeOpacity = hasLabel ? 0.5 : 0.3;
+              ctx.strokeStyle = `rgba(${rDec}, ${gDec}, ${bDec}, ${strokeOpacity * opacity})`;
+            } else {
+              ctx.strokeStyle = laneColor.stroke;
+            }
+            ctx.lineWidth = 1;
+          }
         } else {
+          // Normal lane coloring (no disassembly mode)
           // Parse the lane color and apply opacity
           const rgbaMatch = laneColor.fill.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/);
           if (rgbaMatch) {
@@ -427,13 +502,76 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         const cellLabel = labels.cells[index] || index.toString();
         ctx.fillText(cellLabel, x + 3, y + CELL_HEIGHT / 2 - 2);
         
+        // Display value or disassembly
+        let displayText = value.toString();
+        
+        // Check if we should show disassembly
+        if (showDisassembly && viewMode === 'lane' && laneCount > 1) {
+          // Calculate if this is an instruction cell
+          const INSTRUCTION_START = 168;
+          const offset = index - INSTRUCTION_START;
+          
+          // Check if this cell is part of an instruction
+          // Pattern: components at positions 3, 11, 19, 27, 35, 43, 51, 59, ...
+          // Which is: (offset - 3) % 8 === 0 && offset >= 3
+          if (offset >= 3 && (offset - 3) % 8 === 0) {
+            const componentIndex = Math.floor((offset - 3) / 8);
+            const instructionNumber = Math.floor(componentIndex / 4);
+            const componentType = componentIndex % 4;
+            
+            if (componentType === 3) {
+              // This is an opcode position
+              // Get the other components of this instruction
+              const op3Index = INSTRUCTION_START + 3 + (instructionNumber * 32);
+              const op2Index = op3Index + 8;
+              const op1Index = op2Index + 8;
+              const opcodeIndex = op1Index + 8;
+              
+              if (opcodeIndex === index && op3Index >= INSTRUCTION_START) {
+                const opcode = tape[opcodeIndex];
+                const op1 = tape[op1Index];
+                const op2 = tape[op2Index];
+                const op3 = tape[op3Index];
+                
+                // Disassemble and get mnemonic
+                const [mnemonic] = disassembler.disassemble(opcode, op1, op2, op3);
+                displayText = mnemonic;
+              }
+            } else {
+              // This is an operand position - show the actual disassembled operand
+              const op3Index = INSTRUCTION_START + 3 + (instructionNumber * 32);
+              const op2Index = op3Index + 8;
+              const op1Index = op2Index + 8;
+              const opcodeIndex = op1Index + 8;
+              
+              if (opcodeIndex < tape.length && op3Index >= INSTRUCTION_START) {
+                const opcode = tape[opcodeIndex];
+                const op1 = tape[op1Index];
+                const op2 = tape[op2Index];
+                const op3 = tape[op3Index];
+                
+                // Disassemble to get all operands
+                const [, disOp1, disOp2, disOp3] = disassembler.disassemble(opcode, op1, op2, op3);
+                
+                // Select the appropriate operand based on component type
+                const operands = [disOp3, disOp2, disOp1];
+                const operandValue = operands[componentType];
+                
+                if (operandValue !== null) {
+                  displayText = operandValue;
+                }
+              }
+            }
+          }
+        }
+        
         ctx.fillStyle = isPointer ? 
           `rgba(253, 224, 71, ${opacity})` : 
           value !== 0 ? `rgba(147, 197, 253, ${opacity})` : 
           `rgba(161, 161, 170, ${0.5 * opacity})`;
         ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'right';
-        ctx.fillText(value.toString(), x + CELL_WIDTH - 3, y + CELL_HEIGHT / 2 + 4);
+        ctx.fillText(displayText, x + CELL_WIDTH - 3, y + CELL_HEIGHT / 2 + 4);
       }
     }
     
@@ -563,7 +701,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1 }: T
         (canvasRef.current as any)._verticalScrollBarBounds = null;
       }
     }
-  }, [tape, pointer, laneCount, scrollX, scrollY, width, height, PADDING, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, hoveredIndex, hoveredColumn, hoveredLane, getAnimatedOpacity, isDraggingScrollBar, isScrollBarHovered, isCanvasHovered, isDraggingVerticalScrollBar, isVerticalScrollBarHovered, labels]);
+  }, [tape, pointer, laneCount, scrollX, scrollY, width, height, PADDING, CELL_WIDTH, CELL_HEIGHT, CELL_GAP, hoveredIndex, hoveredColumn, hoveredLane, getAnimatedOpacity, isDraggingScrollBar, isScrollBarHovered, isCanvasHovered, isDraggingVerticalScrollBar, isVerticalScrollBarHovered, labels, showDisassembly]);
   
   // Animation loop
   useEffect(() => {

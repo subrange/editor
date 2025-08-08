@@ -3,9 +3,8 @@ import { interpreterStore } from "./interpreter-facade.store.ts";
 import { useStoreSubscribe } from "../../hooks/use-store-subscribe.tsx";
 import { settingsStore } from "../../stores/settings.store.ts";
 import { IconButton } from "../ui/icon-button.tsx";
-import { Bars3Icon, Bars2Icon, ViewColumnsIcon, Square2StackIcon, Squares2X2Icon } from '@heroicons/react/24/solid';
+import { Bars3Icon, Bars2Icon, ViewColumnsIcon, CommandLineIcon } from '@heroicons/react/24/solid';
 import { TapeCanvasRenderer } from './tape-canvas-renderer';
-import clsx from "clsx";
 
 export function Debugger() {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -18,6 +17,7 @@ export function Debugger() {
   const pointer = interpreterState.pointer;
   const laneCount = interpreterState.laneCount;
   const viewMode = settings?.debugger.viewMode ?? 'normal';
+  const showDisassembly = settings?.debugger.showDisassembly ?? false;
   
   // Determine cell info
   const cellInfo = tape instanceof Uint8Array
@@ -95,6 +95,15 @@ export function Debugger() {
               variant={viewMode === 'lane' ? 'info' : 'default'}
             />
           </div>
+          {/* Disassembly toggle (only in lane view) */}
+          {viewMode === 'lane' && laneCount > 1 && (
+            <IconButton
+              icon={CommandLineIcon}
+              label={showDisassembly ? "Hide Disassembly" : "Show Disassembly"}
+              onClick={() => settingsStore.setDebuggerShowDisassembly(!showDisassembly)}
+              variant={showDisassembly ? 'info' : 'default'}
+            />
+          )}
           {/* Navigation buttons */}
           <button
             onClick={() => {
@@ -146,6 +155,7 @@ export function Debugger() {
             height={containerSize.height}
             viewMode={viewMode}
             laneCount={laneCount}
+            showDisassembly={showDisassembly}
           />
         )}
       </div>
@@ -213,7 +223,7 @@ export function Debugger() {
                           (e.target as HTMLInputElement).classList.remove('border-red-500');
                         }, 1000);
                       }
-                    } catch (error) {
+                    } catch {
                       // Invalid expression - show error
                       (e.target as HTMLInputElement).classList.add('border-red-500');
                       setTimeout(() => {

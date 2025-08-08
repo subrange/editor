@@ -29,47 +29,47 @@ start:
     
     ; Build a sample list: 10 -> 20 -> 30 -> 40
     LI R3, 10
-    JALR RA, R3, list_push
+    JAL R0, R0, list_push
     
     LI R3, 20
-    JALR RA, R3, list_push
+    JAL R0, R0, list_push
     
     LI R3, 30
-    JALR RA, R3, list_push
+    JAL R0, R0, list_push
     
     LI R3, 40
-    JALR RA, R3, list_push
+    JAL R0, R0, list_push
     
     ; Print the list
-    JALR RA, R0, list_print
+    JAL R0, R0, list_print
     
     ; Get list length
-    JALR RA, R0, list_length
+    JAL R0, R0, list_length
     ; R3 now contains length
     LI R4, msg_length
-    JALR RA, R4, print_string
-    JALR RA, R3, print_number
+    JAL R0, R0, print_string
+    JAL R0, R0, print_number
     LI R4, newline
-    JALR RA, R4, print_string
+    JAL R0, R0, print_string
     
     ; Remove first element
-    JALR RA, R0, list_pop
+    JAL R0, R0, list_pop
     ; R3 contains popped value (or -1 if empty)
     LI R4, msg_removed
-    JALR RA, R4, print_string
-    JALR RA, R3, print_number
+    JAL R0, R0, print_string
+    JAL R0, R0, print_number
     LI R4, newline
-    JALR RA, R4, print_string
+    JAL R0, R0, print_string
     
     ; Print list again
-    JALR RA, R0, list_print
+    JAL R0, R0, list_print
     
     ; Add 50 to the end
     LI R3, 50
-    JALR RA, R3, list_append
+    JAL R0, R0, list_append
     
     ; Print final list
-    JALR RA, R0, list_print
+    JAL R0, R0, list_print
     
     HALT
 
@@ -99,11 +99,11 @@ allocate_node:
     
     ; Return address of allocated node
     ADD R3, R5, R0
-    JALR R0, R6, 0
+    JALR R0, R0, R6
     
 alloc_fail:
     LI R3, 0         ; Return NULL
-    JALR R0, R6, 0
+    JALR R0, R0, R6
 
 ; Subroutine: list_push (add to beginning)
 ; Input: R3 = value to add
@@ -113,7 +113,7 @@ list_push:
     ADD R8, R3, R0   ; Save value
     
     ; Allocate new node
-    JALR RA, R0, allocate_node
+    JAL R0, R0, allocate_node
     BEQ R3, R0, push_done  ; Allocation failed
     
     ; Store value in node
@@ -131,13 +131,13 @@ list_push:
     
     ; Print confirmation
     LI R4, msg_added
-    JALR RA, R4, print_string
-    JALR RA, R8, print_number
+    JAL R0, R0, print_string
+    JAL R0, R0, print_number
     LI R4, newline
-    JALR RA, R4, print_string
+    JAL R0, R0, print_string
     
 push_done:
-    JALR R0, R7, 0
+    JALR R0, R0, R7
 
 ; Subroutine: list_pop (remove from beginning)
 ; Output: R3 = value removed (or -1 if empty)
@@ -161,11 +161,11 @@ list_pop:
     ; Update head to next
     STORE R5, R4, 0
     
-    JALR R0, R6, 0
+    JALR R0, R0, R6
     
 pop_empty:
     LI R3, -1        ; Return -1 for empty
-    JALR R0, R6, 0
+    JALR R0, R0, R6
 
 ; Subroutine: list_append (add to end)
 ; Input: R3 = value to add
@@ -175,7 +175,7 @@ list_append:
     ADD R8, R3, R0   ; Save value
     
     ; Allocate new node
-    JALR RA, R0, allocate_node
+    JAL R0, R0, allocate_node
     BEQ R3, R0, append_done  ; Allocation failed
     
     ; Store value and NULL next pointer
@@ -197,7 +197,7 @@ find_end:
     LOAD R4, R5, 1   ; Load next pointer
     BEQ R4, R0, found_end
     ADD R5, R4, R0   ; Move to next node
-    JAL find_end
+    JAL R0 R0 find_end
     
 found_end:
     ; R5 points to last node
@@ -205,12 +205,12 @@ found_end:
     
     ; Print confirmation
     LI R4, msg_added
-    JALR RA, R4, print_string
-    JALR RA, R8, print_number
+    JAL R0, R0, print_string
+    JAL R0, R0, print_number
     LI R4, newline
-    JALR RA, R4, print_string
+    JAL R0, R0, print_string
     
-    JALR R0, R7, 0
+    JALR R0, R0, R7
     
 append_as_head:
     LI R4, list_head
@@ -218,13 +218,13 @@ append_as_head:
     
     ; Print confirmation
     LI R4, msg_added
-    JALR RA, R4, print_string
-    JALR RA, R8, print_number
+    JAL R0, R0, print_string
+    JAL R0, R0, print_number
     LI R4, newline
-    JALR RA, R4, print_string
+    JAL R0, R0, print_string
     
 append_done:
-    JALR R0, R7, 0
+    JALR R0, R0, R7
 
 ; Subroutine: list_length
 ; Output: R3 = length of list
@@ -240,10 +240,10 @@ len_loop:
     BEQ R5, R0, len_done
     ADDI R3, R3, 1
     LOAD R5, R5, 1   ; Next node
-    JAL len_loop
+    JAL R0 R0 len_loop
     
 len_done:
-    JALR R0, R6, 0
+    JALR R0, R0, R6
 
 ; Subroutine: list_print
 ; Uses: R4, R5, R6
@@ -252,7 +252,7 @@ list_print:
     
     ; Print header
     LI R4, msg_contents
-    JALR RA, R4, print_string
+    JAL R0, R0, print_string
     
     ; Load head
     LI R4, list_head
@@ -261,13 +261,13 @@ list_print:
     ; Check if empty
     BNE R5, R0, print_loop
     LI R4, msg_empty
-    JALR RA, R4, print_string
-    JALR R0, R6, 0
+    JAL R0, R0, print_string
+    JALR R0, R0, R6
     
 print_loop:
     ; Print value
     LOAD R3, R5, 0
-    JALR RA, R3, print_number
+    JAL R0, R0, print_number
     
     ; Load next
     LOAD R5, R5, 1
@@ -277,16 +277,16 @@ print_loop:
     
     ; Print arrow
     LI R4, arrow
-    JALR RA, R4, print_string
-    JAL print_loop
+    JAL R0, R0, print_string
+    JAL R0 R0 print_loop
     
 print_null:
     ; Print NULL
     LI R4, arrow
-    JALR RA, R4, print_string
+    JAL R0, R0, print_string
     LI R4, null_str
-    JALR RA, R4, print_string
-    JALR R0, R6, 0
+    JAL R0, R0, print_string
+    JALR R0, R0, R6
 
 ; Utility subroutines (same as other examples)
 print_string:
@@ -297,9 +297,9 @@ ps3_loop:
     LI R12, 0xFFFF
     STORE R11, R12, 0
     ADDI R4, R4, 1
-    JAL ps3_loop
+    JAL R0 R0 ps3_loop
 ps3_done:
-    JALR R0, R10, 0
+    JALR R0, R0, R10
 
 print_number:
     ADD R10, RA, R0
@@ -317,7 +317,7 @@ pn2_div:
     BNE R12, R0, pn2_print_tens
     SUB R13, R13, R11
     ADDI R14, R14, 1
-    JAL pn2_div
+    JAL R0 R0 pn2_div
     
 pn2_print_tens:
     ADDI R14, R14, 48
@@ -325,10 +325,10 @@ pn2_print_tens:
     STORE R14, R12, 0
     ADDI R13, R13, 48
     STORE R13, R12, 0
-    JALR R0, R10, 0
+    JALR R0, R0, R10
     
 pn2_single:
     ADDI R11, R3, 48
     LI R12, 0xFFFF
     STORE R11, R12, 0
-    JALR R0, R10, 0
+    JALR R0, R0, R10
