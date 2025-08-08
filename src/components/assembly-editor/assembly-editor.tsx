@@ -14,6 +14,7 @@ import { EditorStore } from "../editor/stores/editor.store.ts";
 import { createAssembler } from "../../services/ripple-assembler/index.ts";
 import { AssemblyQuickNavStore, type AssemblyNavigationItem } from "./stores/assembly-quick-nav.store.ts";
 import { AssemblyQuickNav } from "./components/assembly-quick-nav.tsx";
+import {HSep} from "../helper-components.tsx";
 
 export function AssemblyEditor() {
     const [assemblyEditor, setAssemblyEditor] = useState<EditorStore | null>(null);
@@ -249,6 +250,7 @@ done:
 
     return (
         <div className="v grow-1 bg-zinc-950">
+            <HSep/>
             <div className="h grow-1 relative assembly-editor-container">
                 <div 
                     className="v grow-0 shrink-0 bg-zinc-950"

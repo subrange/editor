@@ -6,7 +6,7 @@ import { AssemblyTokenizer, assemblyTokenStyles } from '../services/assembly-tok
 import clsx from 'clsx';
 
 interface DisassemblyProps {
-  outputRef?: React.RefObject<HTMLDivElement>;
+  outputRef?: React.RefObject<HTMLDivElement | null>;
   isActive: boolean;
 }
 
@@ -135,7 +135,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
       const lineElement = outputRef.current.querySelector(`[data-instruction-index="${currentInstructionIndex}"]`);
       
       if (lineElement) {
-        lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        lineElement.scrollIntoView({ block: 'center' });
       }
     }
   }, [currentInstructionIndex, isActive, outputRef]);

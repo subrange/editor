@@ -18,12 +18,16 @@ interface OutputProps {
 
 export function Output({ position = 'bottom', showHeader = true, onClose }: OutputProps) {
     const [activeTab, setActiveTab] = useLocalStorageState<'output' | 'vm' | 'disassembly'>('output-panel-active-tab', 'output');
+    const [splitView, setSplitView] = useLocalStorageState<boolean>('output-panel-split-view', false);
     const outputState = useStoreSubscribe(outputStore.state);
     const output = useStoreSubscribeToField(interpreterStore.state, "output");
+    const interpreterState = useStoreSubscribe(interpreterStore.state);
     const settings = useStoreSubscribe(settingsStore.settings);
     const outputContainer = useRef<HTMLDivElement>(null);
+    const vmOutputContainer = useRef<HTMLDivElement>(null);
     
     const showDisassembly = settings?.debugger.showDisassembly ?? false;
+    const isDebugging = interpreterState.isRunning || interpreterState.isPaused;
     
     const { collapsed, height, maxLines } = outputState;
 
@@ -41,14 +45,23 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
     // Scroll to the bottom when output changes
     useLayoutEffect(() => {
         setTimeout(() => {
-            if (outputContainer.current && !collapsed && activeTab === 'output') {
+            if (outputContainer.current && !collapsed && (activeTab === 'output' || splitView)) {
                 outputContainer.current.scrollTop = outputContainer.current.scrollHeight;
             }
         }, 10);
-    }, [processedOutput, collapsed, activeTab]);
+    }, [processedOutput, collapsed, activeTab, splitView]);
+    
+    // Auto-enable split view when debugging starts (optional feature)
+    useLayoutEffect(() => {
+        if (isDebugging && showDisassembly && !splitView) {
+            // Optionally auto-enable split view when debugging starts
+            // Uncomment the line below to enable this feature:
+            // setSplitView(true);
+        }
+    }, [isDebugging, showDisassembly]);
 
     const containerClasses = clsx(
-        "v bg-zinc-900 transition-all",
+        "v bg-zinc-900 transition-all overflow-hidden",
         {
             // Bottom position styles
             "h-96 min-h-96": position === 'bottom' && !collapsed,
@@ -64,7 +77,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
     );
 
     const headerClasses = clsx(
-        "bg-zinc-900 text-zinc-500 text-xs font-bold h-8 min-h-8",
+        "bg-zinc-900 text-zinc-500 text-xs font-bold h-8 min-h-8 flex-shrink-0",
         {
             "h": !collapsed || position !== 'right',
             "v items-center justify-center": collapsed && position === 'right',
@@ -83,9 +96,10 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
     );
 
     const contentClasses = clsx(
-        "flex flex-col p-2 bg-zinc-950 grow-1",
+        "p-2 bg-zinc-950 grow-1 min-h-0",
         {
             "rounded-b-lg": position === 'floating',
+            "flex flex-col": !splitView || !showDisassembly,
         }
     );
 
@@ -124,31 +138,57 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                             
                             {/* Tabs */}
                             <div className="h gap-0">
-                                <button
-                                    className={tabButtonClasses(activeTab === 'output')}
-                                    onClick={() => setActiveTab('output')}
-                                >
-                                    Output
-                                </button>
-                                <button
-                                    className={tabButtonClasses(activeTab === 'vm')}
-                                    onClick={() => setActiveTab('vm')}
-                                >
-                                    VM Output
-                                </button>
-                                {showDisassembly && (
-                                    <button
-                                        className={tabButtonClasses(activeTab === 'disassembly')}
-                                        onClick={() => setActiveTab('disassembly')}
-                                    >
-                                        Disassembly
-                                    </button>
+                                {!splitView ? (
+                                    // Normal tab mode
+                                    <>
+                                        <button
+                                            className={tabButtonClasses(activeTab === 'output')}
+                                            onClick={() => setActiveTab('output')}
+                                        >
+                                            Output
+                                        </button>
+                                        <button
+                                            className={tabButtonClasses(activeTab === 'vm')}
+                                            onClick={() => setActiveTab('vm')}
+                                        >
+                                            VM Output
+                                        </button>
+                                        {showDisassembly && (
+                                            <button
+                                                className={tabButtonClasses(activeTab === 'disassembly')}
+                                                onClick={() => setActiveTab('disassembly')}
+                                            >
+                                                Disassembly
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    // Split view mode - fixed layout
+                                    <>
+                                        <span className="px-3 py-2 text-xs text-zinc-500">Debug View: Disassembly + VM Output</span>
+                                    </>
                                 )}
                             </div>
                             
                             {/* Additional controls */}
                             <div className="ml-auto h gap-2 p-2">
-                                {activeTab === 'output' && (
+                                {/* Split view toggle */}
+                                {showDisassembly && (
+                                    <button
+                                        onClick={() => setSplitView(!splitView)}
+                                        className={clsx(
+                                            "px-1.5 text-xs transition-colors",
+                                            splitView 
+                                                ? "text-blue-500 hover:text-blue-400" 
+                                                : "text-zinc-600 hover:text-zinc-400"
+                                        )}
+                                        title={splitView ? "Switch to tabs" : "Debug view (Disassembly + VM)"}
+                                    >
+                                        {splitView ? "◫" : "◱"}
+                                    </button>
+                                )}
+                                
+                                {activeTab === 'output' && !splitView && (
                                     <button
                                         onClick={() => {
                                             if (outputContainer.current) {
@@ -177,17 +217,39 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
             )}
             
             {!collapsed && (
-                <div className={clsx(contentClasses, "overflow-auto")} ref={outputContainer}>
-                    {activeTab === 'output' ? (
-                        <pre className="text-xs text-white whitespace-pre font-mono">
-                            {processedOutput}
-                        </pre>
-                    ) : activeTab === 'vm' ? (
-                        <VMOutput outputRef={outputContainer} isActive={activeTab === 'vm'} />
-                    ) : (
-                        <Disassembly outputRef={outputContainer} isActive={activeTab === 'disassembly'} />
-                    )}
-                </div>
+                splitView && showDisassembly ? (
+                    // Split view mode - show Disassembly on top, VM Output on bottom
+                    <div className={clsx("flex flex-col gap-2 h-full overflow-hidden p-2 bg-zinc-950", position === 'floating' && "rounded-b-lg")}>
+                        {/* Top panel - Disassembly */}
+                        <div className="flex-1 flex flex-col min-h-0 border-b border-zinc-800 pb-2">
+                            <div className="text-zinc-400 text-xs font-bold mb-2 flex-shrink-0">Disassembly</div>
+                            <div className="flex-1 overflow-auto min-h-0" ref={outputContainer}>
+                                <Disassembly outputRef={outputContainer} isActive={true} />
+                            </div>
+                        </div>
+                        
+                        {/* Bottom panel - VM Output */}
+                        <div className="flex-1 flex flex-col min-h-0">
+                            <div className="text-zinc-400 text-xs font-bold mb-2 flex-shrink-0">VM Output</div>
+                            <div className="flex-1 overflow-auto min-h-0" ref={vmOutputContainer}>
+                                <VMOutput outputRef={vmOutputContainer} isActive={true} />
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    // Tab view mode - show single panel
+                    <div className={clsx(contentClasses, "overflow-auto")} ref={outputContainer}>
+                        {activeTab === 'output' ? (
+                            <pre className="text-xs text-white whitespace-pre font-mono">
+                                {processedOutput}
+                            </pre>
+                        ) : activeTab === 'vm' ? (
+                            <VMOutput outputRef={outputContainer} isActive={activeTab === 'vm'} />
+                        ) : (
+                            <Disassembly outputRef={outputContainer} isActive={activeTab === 'disassembly'} />
+                        )}
+                    </div>
+                )
             )}
         </div>
     );

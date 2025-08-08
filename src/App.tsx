@@ -378,7 +378,6 @@ function DebugPanel() {
                     <div className="v h-full grow">
                         <Debugger/>
                     </div>
-                    {/* <MacroContextPanel/> */}
                 </div></>
             )
         }
@@ -429,7 +428,10 @@ function WorkspacePanel() {
                 <EditorPanel/>
             </>
         ) : (
-            <AssemblyEditor />
+            <>
+                <Toolbar/>
+                <AssemblyEditor />
+            </>
         )}
     </div>;
 }
