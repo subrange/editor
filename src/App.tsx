@@ -137,8 +137,8 @@ done:
 initializeEditors();
 
 function EditorPanel() {
-    const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
-    const [macroEditor, setMacroEditor] = useState<EditorStore | null>(null);
+    const [mainEditor, setMainEditor] = useState<EditorStore | null>(() => editorManager.getEditor('main') || null);
+    const [macroEditor, setMacroEditor] = useState<EditorStore | null>(() => editorManager.getEditor('macro') || null);
     const [showMacroEditor, setShowMacroEditor] = useLocalStorageState("showMacroEditor", false);
     const [showMainEditor, setShowMainEditor] = useLocalStorageState("showMainEditor", true);
     const [leftPanelWidth, setLeftPanelWidth] = useLocalStorageState("editorLeftPanelWidth", 50); // percentage
@@ -165,13 +165,6 @@ function EditorPanel() {
     }, [macroEditor]);
 
     useEffect(() => {
-        // Get existing editors (they're guaranteed to exist now)
-        const editor = editorManager.getEditor('main');
-        const macro = editorManager.getEditor('macro');
-        
-        setMainEditor(editor);
-        setMacroEditor(macro);
-
         // Cleanup on unmount
         return () => {
             macroExpander.destroy();
@@ -456,15 +449,7 @@ export default function App() {
     const outputState = useStoreSubscribe(outputStore.state);
     const { position, collapsed, width } = outputState;
     
-    // Cleanup editors on app unmount
-    useEffect(() => {
-        return () => {
-            // Destroy all editors when app unmounts
-            editorManager.destroyEditor('main');
-            editorManager.destroyEditor('macro');
-            editorManager.destroyEditor('assembly');
-        };
-    }, []);
+    // No cleanup needed - editors persist for the lifetime of the app
 
     const handleOutputResize = useCallback((newWidth: number) => {
         outputStore.setSize('width', newWidth);

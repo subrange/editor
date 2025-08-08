@@ -18,7 +18,7 @@ import {HSep} from "../helper-components.tsx";
 import { assemblyToMacroService } from "../../services/assembly-to-macro.service.ts";
 
 export function AssemblyEditor() {
-    const [assemblyEditor, setAssemblyEditor] = useState<EditorStore | null>(null);
+    const [assemblyEditor, setAssemblyEditor] = useState<EditorStore | null>(() => editorManager.getEditor('assembly') || null);
     const [showOutput, setShowOutput] = useLocalStorageState("assemblyShowOutput", false);
     const [leftPanelWidth, setLeftPanelWidth] = useLocalStorageState("assemblyLeftPanelWidth", 60);
     const settings = useStoreSubscribe(settingsStore.settings);
@@ -101,14 +101,11 @@ export function AssemblyEditor() {
     }, [assemblyEditor, quickNavStore, extractNavigationItems]);
 
     useEffect(() => {
-        // Get existing assembly editor (created at app level)
-        const editor = editorManager.getEditor('assembly');
-        if (editor) {
-            setAssemblyEditor(editor);
-            // Update minimap setting
-            editor.showMinimap.next(minimapEnabled);
+        // Update minimap setting when it changes
+        if (assemblyEditor) {
+            assemblyEditor.showMinimap.next(minimapEnabled);
         }
-    }, [minimapEnabled]);
+    }, [minimapEnabled, assemblyEditor]);
 
     // Function to assemble code
     const assembleCode = useCallback(async () => {
