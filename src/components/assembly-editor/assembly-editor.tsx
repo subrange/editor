@@ -22,7 +22,7 @@ export function AssemblyEditor() {
     const [leftPanelWidth, setLeftPanelWidth] = useLocalStorageState("assemblyLeftPanelWidth", 60);
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoCompile = settings?.assembly?.autoCompile ?? false;
-    const autoOpenOutput = settings?.assembly?.autoOpenOutput ?? true;
+    const autoOpenOutput = settings?.assembly?.autoOpenOutput ?? false;
     
     // Subscribe to minimap state
     const [minimapEnabled, setMinimapEnabled] = useLocalStorageState("assemblyMinimap", false);

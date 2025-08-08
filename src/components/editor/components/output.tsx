@@ -229,7 +229,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                         </div>
                         
                         {/* Bottom panel - VM Output */}
-                        <div className="flex-1 flex flex-col min-h-0">
+                        <div className="flex-1 flex flex-col min-h-0 max-h-[200px]">
                             <div className="text-zinc-400 text-xs font-bold mb-2 flex-shrink-0">VM Output</div>
                             <div className="flex-1 overflow-auto min-h-0" ref={vmOutputContainer}>
                                 <VMOutput outputRef={vmOutputContainer} isActive={true} />

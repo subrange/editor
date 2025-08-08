@@ -174,7 +174,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   return (
     <div className="text-xs font-mono">
       {/* Register display section - sticky at top */}
-      <div className="sticky top-[-8px] bg-zinc-950 border-b border-zinc-800 pb-2 pt-2 -mx-2 px-2 z-10">
+      <div className="sticky top-0 bg-zinc-950 border-b border-zinc-800 pb-2 pt-2 -mx-2 px-2 z-10">
         <div className="text-zinc-400 font-bold mb-1">Registers:</div>
         
         {/* R0 */}

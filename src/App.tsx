@@ -58,20 +58,26 @@ function EditorPanel() {
     }, [macroEditor]);
 
     useEffect(() => {
-        // Create main editor on mount
-        const editor = editorManager.createEditor({
-            id: 'main',
-            tokenizer: new WorkerTokenizer(() => {
-                console.log("retokenized")
-                editor.editorState.next({...editor.editorState.value});
-            }),
-            // tokenizer: new DummyTokenizer(),
-            mode: 'insert',
-            settings: {
-                showDebug: true,
-                showMinimap: false  // Main editor: minimap off by default
-            },
-        });
+        // Get or create main editor
+        let editor = editorManager.getEditor('main');
+        if (!editor) {
+            editor = editorManager.createEditor({
+                id: 'main',
+                tokenizer: new WorkerTokenizer(() => {
+                    console.log("retokenized")
+                    const ed = editorManager.getEditor('main');
+                    if (ed) {
+                        ed.editorState.next({...ed.editorState.value});
+                    }
+                }),
+                // tokenizer: new DummyTokenizer(),
+                mode: 'insert',
+                settings: {
+                    showDebug: true,
+                    showMinimap: false  // Main editor: minimap off by default
+                },
+            });
+        }
         setMainEditor(editor);
 
         // Create macro editor if needed
@@ -91,7 +97,7 @@ function EditorPanel() {
 
         // Cleanup on unmount
         return () => {
-            editorManager.destroyEditor('main');
+            // Don't destroy main editor here since it's managed at app level now
             if (showMacroEditor) {
                 editorManager.destroyEditor('macro');
             }
@@ -439,6 +445,35 @@ function WorkspacePanel() {
 export default function App() {
     const outputState = useStoreSubscribe(outputStore.state);
     const { position, collapsed, width } = outputState;
+    
+    // Initialize main editor immediately on app mount, regardless of active tab
+    // This ensures the interpreter always has access to the code
+    useEffect(() => {
+        // Check if main editor already exists
+        if (!editorManager.getEditor('main')) {
+            const mainEditor = editorManager.createEditor({
+                id: 'main',
+                tokenizer: new WorkerTokenizer(() => {
+                    console.log("retokenized")
+                    const editor = editorManager.getEditor('main');
+                    if (editor) {
+                        editor.editorState.next({...editor.editorState.value});
+                    }
+                }),
+                mode: 'insert',
+                settings: {
+                    showDebug: true,
+                    showMinimap: false
+                },
+            });
+            
+            // Return cleanup function
+            return () => {
+                // Destroy main editor on app unmount
+                editorManager.destroyEditor('main');
+            };
+        }
+    }, []); // Run only once on mount
 
     const handleOutputResize = useCallback((newWidth: number) => {
         outputStore.setSize('width', newWidth);

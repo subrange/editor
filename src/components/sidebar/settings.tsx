@@ -423,7 +423,7 @@ export function Settings() {
                             <input
                                 type="range"
                                 min="4"
-                                max="64"
+                                max="65536"
                                 step="4"
                                 value={settings?.assembly?.bankSize ?? 16}
                                 onChange={(e) => settingsStore.setAssemblyBankSize(parseInt(e.target.value))}
