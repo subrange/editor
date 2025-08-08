@@ -3,6 +3,7 @@ import { CPU_HEADER, CPU_FOOTER } from '../cpu/template';
 import { formatMacro } from './ripple-assembler';
 import { type Instruction } from './ripple-assembler/types';
 import { editorManager } from './editor-manager.service';
+import { ProgressiveMacroTokenizer } from '../components/editor/services/macro-tokenizer-progressive';
 
 interface AssemblyToMacroState {
     isProcessing: boolean;
@@ -39,8 +40,14 @@ class AssemblyToMacroService {
             // Update macro editor content
             macroEditor.setContent(fullContent);
 
-            // The ProgressiveMacroTokenizer will automatically trigger expansion
-            // and update the main editor through its onStateChange callback
+            // Trigger tokenization and expansion of the new content
+            // This is needed because the editor component's tokenization happens
+            // in a React effect which may not run immediately
+            const tokenizer = macroEditor.getTokenizer();
+            if (tokenizer instanceof ProgressiveMacroTokenizer) {
+                const lines = fullContent.split('\n');
+                tokenizer.tokenizeAllLines(lines);
+            }
             
             this.state$.next({ 
                 ...this.state$.value, 

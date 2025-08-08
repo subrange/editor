@@ -86,7 +86,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
         // Force re-expansion by clearing the last processed text
         this.lastProcessedText = '';
         if (this.fullText) {
-            this.triggerAsyncExpansion();
+            this.scheduleAsyncExpansion();
         }
     }
 
