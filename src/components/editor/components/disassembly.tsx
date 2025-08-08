@@ -14,7 +14,12 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   const interpreterState = useStoreSubscribe(interpreterStore.state);
   const { tape, pointer } = interpreterState;
   const [currentInstructionIndex, setCurrentInstructionIndex] = useState<number | null>(null);
-  const tokenizer = useMemo(() => new AssemblyTokenizer(), []);
+  const [watchCells, setWatchCells] = useState<number[]>(() => {
+    const saved = localStorage.getItem('disassembly-watch-cells');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [newWatchCell, setNewWatchCell] = useState('');
+  const tokenizer = useMemo(() => new AssemblyTokenizer(), [])
   
   // Constants for instruction layout
   const INSTRUCTION_START = 168;
@@ -161,6 +166,25 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
     return registers;
   }, [tape, interpreterState]); // Depend on interpreterState to catch all updates
   
+  // Save watch cells to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('disassembly-watch-cells', JSON.stringify(watchCells));
+  }, [watchCells]);
+  
+  // Add a new watch cell
+  const addWatchCell = () => {
+    const cellNumber = parseInt(newWatchCell, 10);
+    if (!isNaN(cellNumber) && cellNumber >= 0 && cellNumber < tape.length && !watchCells.includes(cellNumber)) {
+      setWatchCells([...watchCells, cellNumber].sort((a, b) => a - b));
+      setNewWatchCell('');
+    }
+  };
+  
+  // Remove a watch cell
+  const removeWatchCell = (cellNumber: number) => {
+    setWatchCells(watchCells.filter(c => c !== cellNumber));
+  };
+  
   // Function to scroll tape to a specific index
   const scrollToTapeIndex = (index: number) => {
     // Find the canvas element in the debugger
@@ -245,6 +269,61 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
               <span className={assemblyTokenStyles.number}>{reg.value}</span>
             </div>
           ))}
+        </div>
+        
+        {/* Watch cells section */}
+        <div className="mt-2 pt-2 border-t border-zinc-800">
+          <div className="text-zinc-400 font-bold mb-1">Watch Cells:</div>
+          
+          {/* Add new watch cell input */}
+          <div className="flex gap-2 mb-2">
+            <input
+              type="number"
+              value={newWatchCell}
+              onChange={(e) => setNewWatchCell(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  addWatchCell();
+                }
+              }}
+              placeholder="Cell #"
+              className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs w-20 text-zinc-300"
+            />
+            <button
+              onClick={addWatchCell}
+              className="bg-zinc-800 hover:bg-zinc-700 rounded px-2 py-1 text-xs text-zinc-300"
+            >
+              Add
+            </button>
+          </div>
+          
+          {/* Display watched cells */}
+          {watchCells.length > 0 ? (
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {watchCells.map(cellIndex => (
+                <div key={cellIndex} className="flex items-baseline gap-1">
+                  <span 
+                    className="text-blue-400 cursor-pointer hover:underline"
+                    onClick={() => scrollToTapeIndex(cellIndex)}
+                  >
+                    [{cellIndex}]:
+                  </span>
+                  <span className={assemblyTokenStyles.number}>
+                    {cellIndex < tape.length ? tape[cellIndex] : 0}
+                  </span>
+                  <button
+                    onClick={() => removeWatchCell(cellIndex)}
+                    className="text-zinc-500 hover:text-red-400 ml-1"
+                    title="Remove watch"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-zinc-500 italic">No cells being watched</div>
+          )}
         </div>
       </div>
       
