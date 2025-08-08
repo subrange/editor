@@ -31,7 +31,8 @@ export enum Opcode {
   BEQ = 0x15,
   BNE = 0x16,
   BLT = 0x17,
-  BGE = 0x18
+  BGE = 0x18,
+  BRK = 0x19
 }
 
 export enum Register {
@@ -141,5 +142,6 @@ export const opcodeInfo: Record<Opcode, { format: InstructionFormat; mnemonic: s
   [Opcode.BEQ]: { format: InstructionFormat.I, mnemonic: 'BEQ' },
   [Opcode.BNE]: { format: InstructionFormat.I, mnemonic: 'BNE' },
   [Opcode.BLT]: { format: InstructionFormat.I, mnemonic: 'BLT' },
-  [Opcode.BGE]: { format: InstructionFormat.I, mnemonic: 'BGE' }
+  [Opcode.BGE]: { format: InstructionFormat.I, mnemonic: 'BGE' },
+  [Opcode.BRK]: { format: InstructionFormat.R, mnemonic: 'BRK' }
 };

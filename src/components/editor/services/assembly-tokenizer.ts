@@ -14,7 +14,7 @@ export interface AssemblyToken {
 const INSTRUCTIONS = new Set([
     'NOP', 'ADD', 'SUB', 'AND', 'OR', 'XOR', 'SLL', 'SRL', 'SLT', 'SLTU',
     'ADDI', 'ANDI', 'ORI', 'XORI', 'LI', 'SLLI', 'SRLI', 'LOAD', 'STORE',
-    'JAL', 'JALR', 'BEQ', 'BNE', 'BLT', 'BGE', 'HALT'
+    'JAL', 'JALR', 'BEQ', 'BNE', 'BLT', 'BGE', 'HALT', 'BRK'
 ]);
 
 // Register names

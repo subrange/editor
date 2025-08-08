@@ -171,6 +171,20 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
     localStorage.setItem('disassembly-watch-cells', JSON.stringify(watchCells));
   }, [watchCells]);
   
+  // Listen for watch cells updates from the tape canvas
+  useEffect(() => {
+    const handleWatchCellsUpdated = (event: CustomEvent) => {
+      const updatedWatchCells = event.detail.watchCells;
+      setWatchCells(updatedWatchCells);
+    };
+    
+    window.addEventListener('watchCellsUpdated', handleWatchCellsUpdated as EventListener);
+    
+    return () => {
+      window.removeEventListener('watchCellsUpdated', handleWatchCellsUpdated as EventListener);
+    };
+  }, []);
+  
   // Add a new watch cell
   const addWatchCell = () => {
     const cellNumber = parseInt(newWatchCell, 10);

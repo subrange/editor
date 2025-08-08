@@ -55,6 +55,8 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, sho
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'lane' | 'column' | 'cell'; index: number } | null>(null);
+  const [labelInput, setLabelInput] = useState('');
+  const [showLabelInput, setShowLabelInput] = useState(false);
   
   // Animation state for smooth transitions
   const animationStateRef = useRef<Map<number, { 
@@ -1132,6 +1134,22 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, sho
     };
   }, [viewMode, laneCount, tape.length, width, totalWidth, CELL_WIDTH, CELL_GAP, PADDING]);
   
+  // Handle adding cell to watch list
+  const handleAddToWatch = useCallback((cellIndex: number) => {
+    // Get existing watch cells from localStorage
+    const saved = localStorage.getItem('disassembly-watch-cells');
+    const watchCells: number[] = saved ? JSON.parse(saved) : [];
+    
+    // Add cell if not already watching
+    if (!watchCells.includes(cellIndex)) {
+      const updatedWatchCells = [...watchCells, cellIndex].sort((a, b) => a - b);
+      localStorage.setItem('disassembly-watch-cells', JSON.stringify(updatedWatchCells));
+      
+      // Dispatch a custom event to notify the disassembly component
+      window.dispatchEvent(new CustomEvent('watchCellsUpdated', { detail: { watchCells: updatedWatchCells } }));
+    }
+  }, []);
+  
   // Context menu component
   const renderContextMenu = () => {
     if (!contextMenu) return null;
@@ -1142,6 +1160,108 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, sho
       ? labels.columns[contextMenu.index]
       : labels.cells[contextMenu.index];
     
+    // If showing label input, render the input dialog
+    if (showLabelInput) {
+      return (
+        <>
+          {/* Backdrop to close menu when clicking outside */}
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => {
+              setContextMenu(null);
+              setShowLabelInput(false);
+              setLabelInput('');
+            }}
+          />
+          
+          <div
+            className="fixed z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            {/* Header */}
+            <div className="px-3 py-2 bg-zinc-800 border-b border-zinc-700">
+              <h3 className="text-xs font-medium text-zinc-300">
+                Edit {contextMenu.type === 'lane' ? 'Lane' : contextMenu.type === 'column' ? 'Column' : 'Cell'} Label
+              </h3>
+              <p className="text-[10px] text-zinc-500 mt-0.5">
+                {contextMenu.type === 'lane' ? 'Lane' : contextMenu.type === 'column' ? 'Column' : 'Cell'} #{contextMenu.index}
+                {currentLabel && <span className="text-zinc-400"> • Current: "{currentLabel}"</span>}
+              </p>
+            </div>
+            
+            {/* Input section */}
+            <div className="p-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder={`Enter ${contextMenu.type} label...`}
+                  defaultValue={currentLabel || ''}
+                  value={labelInput}
+                  onChange={(e) => setLabelInput(e.target.value)}
+                  className="flex-1 px-2 py-1.5 text-sm bg-zinc-800 border border-zinc-700 rounded focus:border-zinc-600 focus:outline-none"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const value = labelInput.trim();
+                      if (value) {
+                        if (contextMenu.type === 'lane') {
+                          tapeLabelsStore.setLaneLabel(contextMenu.index, value);
+                        } else if (contextMenu.type === 'column') {
+                          tapeLabelsStore.setColumnLabel(contextMenu.index, value);
+                        } else {
+                          tapeLabelsStore.setCellLabel(contextMenu.index, value);
+                        }
+                      } else if (currentLabel) {
+                        // Only remove if there was a label before
+                        if (contextMenu.type === 'lane') {
+                          tapeLabelsStore.removeLaneLabel(contextMenu.index);
+                        } else if (contextMenu.type === 'column') {
+                          tapeLabelsStore.removeColumnLabel(contextMenu.index);
+                        } else {
+                          tapeLabelsStore.removeCellLabel(contextMenu.index);
+                        }
+                      }
+                      setContextMenu(null);
+                      setShowLabelInput(false);
+                      setLabelInput('');
+                    } else if (e.key === 'Escape') {
+                      setContextMenu(null);
+                      setShowLabelInput(false);
+                      setLabelInput('');
+                    }
+                  }}
+                />
+                {currentLabel && (
+                  <button
+                    className="p-1.5 rounded hover:bg-zinc-800 transition-colors group"
+                    onClick={() => {
+                      if (contextMenu.type === 'lane') {
+                        tapeLabelsStore.removeLaneLabel(contextMenu.index);
+                      } else if (contextMenu.type === 'column') {
+                        tapeLabelsStore.removeColumnLabel(contextMenu.index);
+                      } else {
+                        tapeLabelsStore.removeCellLabel(contextMenu.index);
+                      }
+                      setContextMenu(null);
+                      setShowLabelInput(false);
+                      setLabelInput('');
+                    }}
+                    title="Remove label"
+                  >
+                    <XMarkIcon className="w-4 h-4 text-zinc-500 group-hover:text-red-400" />
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-2">
+                Press Enter to save, Escape to cancel
+              </p>
+            </div>
+          </div>
+        </>
+      );
+    }
+    
+    // Main context menu
     return (
       <>
         {/* Backdrop to close menu when clicking outside */}
@@ -1151,78 +1271,56 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, sho
         />
         
         <div
-          className="fixed z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden"
+          className="fixed z-50 bg-zinc-900 border border-zinc-700 rounded-md shadow-xl overflow-hidden min-w-[160px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
-          {/* Header */}
-          <div className="px-3 py-2 bg-zinc-800 border-b border-zinc-700">
-            <h3 className="text-xs font-medium text-zinc-300">
-              Edit {contextMenu.type === 'lane' ? 'Lane' : contextMenu.type === 'column' ? 'Column' : 'Cell'} Label
-            </h3>
-            <p className="text-[10px] text-zinc-500 mt-0.5">
-              {contextMenu.type === 'lane' ? 'Lane' : contextMenu.type === 'column' ? 'Column' : 'Cell'} #{contextMenu.index}
-              {currentLabel && <span className="text-zinc-400"> • Current: "{currentLabel}"</span>}
-            </p>
-          </div>
-          
-          {/* Input section */}
-          <div className="p-3">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder={`Enter ${contextMenu.type} label...`}
-                defaultValue={currentLabel || ''}
-                className="flex-1 px-2 py-1.5 text-sm bg-zinc-800 border border-zinc-700 rounded focus:border-zinc-600 focus:outline-none"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const value = (e.target as HTMLInputElement).value.trim();
-                    if (value) {
-                      if (contextMenu.type === 'lane') {
-                        tapeLabelsStore.setLaneLabel(contextMenu.index, value);
-                      } else if (contextMenu.type === 'column') {
-                        tapeLabelsStore.setColumnLabel(contextMenu.index, value);
-                      } else {
-                        tapeLabelsStore.setCellLabel(contextMenu.index, value);
-                      }
-                    } else if (currentLabel) {
-                      // Only remove if there was a label before
-                      if (contextMenu.type === 'lane') {
-                        tapeLabelsStore.removeLaneLabel(contextMenu.index);
-                      } else if (contextMenu.type === 'column') {
-                        tapeLabelsStore.removeColumnLabel(contextMenu.index);
-                      } else {
-                        tapeLabelsStore.removeCellLabel(contextMenu.index);
-                      }
-                    }
-                    setContextMenu(null);
-                  } else if (e.key === 'Escape') {
-                    setContextMenu(null);
-                  }
+          {/* Menu items */}
+          <div className="py-1">
+            {/* Change Label option */}
+            <button
+              className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 flex items-center gap-2"
+              onClick={() => {
+                setShowLabelInput(true);
+                setLabelInput(currentLabel || '');
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              Change Label
+              {currentLabel && <span className="text-zinc-500 text-xs ml-auto">{currentLabel}</span>}
+            </button>
+            
+            {/* Watch option - only for cells */}
+            {contextMenu.type === 'cell' && (
+              <button
+                className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 flex items-center gap-2"
+                onClick={() => {
+                  handleAddToWatch(contextMenu.index);
+                  setContextMenu(null);
                 }}
-              />
-              {currentLabel && (
-                <button
-                  className="p-1.5 rounded hover:bg-zinc-800 transition-colors group"
-                  onClick={() => {
-                    if (contextMenu.type === 'lane') {
-                      tapeLabelsStore.removeLaneLabel(contextMenu.index);
-                    } else if (contextMenu.type === 'column') {
-                      tapeLabelsStore.removeColumnLabel(contextMenu.index);
-                    } else {
-                      tapeLabelsStore.removeCellLabel(contextMenu.index);
-                    }
-                    setContextMenu(null);
-                  }}
-                  title="Remove label"
-                >
-                  <XMarkIcon className="w-4 h-4 text-zinc-500 group-hover:text-red-400" />
-                </button>
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Watch Cell
+                <span className="text-zinc-500 text-xs ml-auto">#{contextMenu.index}</span>
+              </button>
+            )}
+            
+            {/* Divider if cell */}
+            {contextMenu.type === 'cell' && (
+              <div className="my-1 border-t border-zinc-800"></div>
+            )}
+            
+            {/* Cell info */}
+            <div className="px-3 py-2 text-xs text-zinc-500">
+              {contextMenu.type === 'lane' ? 'Lane' : contextMenu.type === 'column' ? 'Column' : 'Cell'} #{contextMenu.index}
+              {contextMenu.type === 'cell' && tape[contextMenu.index] !== undefined && (
+                <span className="ml-2">Value: {tape[contextMenu.index]}</span>
               )}
             </div>
-            <p className="text-[10px] text-zinc-500 mt-2">
-              Press Enter to save, Escape to cancel
-            </p>
           </div>
         </div>
       </>

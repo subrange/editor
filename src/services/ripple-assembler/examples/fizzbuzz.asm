@@ -67,7 +67,7 @@ continue_loop:
     ; Print space
     LI R8, space
     JAL R0, R0, print_string
-    JAL  r0 r0  increment_counter
+    JAL  R0 R0  increment_counter
 
 print_newline_cont:
     LI R8, newline
@@ -88,13 +88,15 @@ done:
 check_divisible:
     ADD R9, RA, R0   ; Save return address
     ADD R7, R5, R0   ; Start with dividend as remainder
-    
+
 cd_loop:
-    SLT R10, R7, R6  ; Check if remainder < divisor
-    BNE R10, R0, cd_done
+// MARK: Here
+    // SLT R10, R7, R6  ; Check if remainder < divisor
+    // BNE R10, R0, cd_done
+    BLT R7, R6, cd_done
     SUB R7, R7, R6   ; Subtract divisor
     JAL R0 R0 cd_loop
-    
+
 cd_done:
     JALR R0, R0, R9   ; Return
 
@@ -102,15 +104,14 @@ cd_done:
 ; Input: R8 = string address
 print_string:
     ADD R9, RA, R0   ; Save return address
-    
+
 ps2_loop:
     LOAD R10, R8, 0
     BEQ R10, R0, ps2_done
-    LI R11, 0x00
-    STORE R10, R11, 0
+    STORE R10, 0, 0
     ADDI R8, R8, 1
     JAL R0 R0 ps2_loop
-    
+
 ps2_done:
     JALR R0, R0, R9
 
@@ -118,50 +119,46 @@ ps2_done:
 ; Input: R3 = number to print (1-100)
 print_number:
     ADD R9, RA, R0   ; Save return address
-    
+
     ; Handle 100 specially
     LI R10, 100
     BNE R3, R10, pn_not_100
-    
+
     ; Print "100"
     LI R10, 49      ; '1'
-    LI R11, 0x00
-    STORE R10, R11, 0
+    STORE R10, 0, 0
     LI R10, 48      ; '0'
-    STORE R10, R11, 0
-    STORE R10, R11, 0
+    STORE R10, 0, 0
+    STORE R10, 0, 0
     JALR R0, R0, R9
-    
+
 pn_not_100:
     ; Check if >= 10
     LI R10, 10
-    SLT R11, R3, R10
-    BNE R11, R0, pn_single_digit
-    
+    BLT R3, R10, pn_single_digit
+
     ; Two digits - divide by 10
     ADD R12, R3, R0  ; Copy number
     LI R13, 0        ; Tens counter
-    
+
 pn_div_loop:
     SLT R11, R12, R10
     BNE R11, R0, pn_div_done
     SUB R12, R12, R10
     ADDI R13, R13, 1
     JAL R0 R0 pn_div_loop
-    
+
 pn_div_done:
     ; Print tens digit
     ADDI R13, R13, 48  ; Convert to ASCII
-    LI R11, 0x00
-    STORE R13, R11, 0
-    
+    STORE R13, 0, 0
+
     ; Print ones digit
     ADDI R12, R12, 48  ; Convert to ASCII
-    STORE R12, R11, 0
+    STORE R12, 0, 0
     JALR R0, R0, R9
-    
+
 pn_single_digit:
     ADDI R10, R3, 48   ; Convert to ASCII
-    LI R11, 0x00
-    STORE R10, R11, 0
+    STORE R10, 0, 0
     JALR R0, R0, R9

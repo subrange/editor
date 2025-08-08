@@ -1,3 +1,5 @@
+export const CPU_HEADER = `//Pefectly Engineered Nonstandard Instruction Set v1.0
+
 // MARK: ------------- START -------------
 
 #define DEBUG 0
@@ -5,92 +7,9 @@
 #define BRK_IF_DEBUG {if(#DEBUG, $, @nop)}
 
 #define PROGRAM {
-@prg(
-  // Memory
-  @lane(#L_MEM,
-    {for(s in {'F','i','z','z',0,'B','u','z','z',0,'F','i','z','z','B','u','z','z',0,10,0,' ',0}, @set(s) @nextword)}
-  ),
+`
 
-  // Program
-  @program_start(@OP_LI    , @R3 , 1   , 0)
-  @cmd(@OP_LI    , @R4 , 101 , 0)
-  @cmd(@OP_BEQ   , @R3 , @R4 , 35)
-  @cmd(@OP_ADD   , @R5 , @R3 , @R0)
-  @cmd(@OP_LI    , @R6 , 15  , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 38)
-  @cmd(@OP_BEQ   , @R7 , @R0 , 11)
-  @cmd(@OP_ADD   , @R5 , @R3 , @R0)
-  @cmd(@OP_LI    , @R6 , 3   , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 38)
-  @cmd(@OP_BEQ   , @R7 , @R0 , 10)
-  @cmd(@OP_ADD   , @R5 , @R3 , @R0)
-  @cmd(@OP_LI    , @R6 , 5   , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 38)
-  @cmd(@OP_BEQ   , @R7 , @R0 , 9)
-  @cmd(@OP_JAL   , 0   , 0   , 51)
-  @cmd(@OP_JAL   , 0   , 0   , 26)
-  @cmd(@OP_LI    , @R8 , 12  , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 44)
-  @cmd(@OP_JAL   , 0   , 0   , 26)
-  @cmd(@OP_LI    , @R8 , 2   , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 44)
-  @cmd(@OP_JAL   , 0   , 0   , 26)
-  @cmd(@OP_LI    , @R8 , 7   , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 44)
-  @cmd(@OP_JAL   , 0   , 0   , 26)
-  @cmd(@OP_ADD   , @R5 , @R3 , @R0)
-  @cmd(@OP_LI    , @R6 , 10  , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 38)
-  @cmd(@OP_BEQ   , @R7 , @R0 , 4)
-  @cmd(@OP_LI    , @R8 , 23  , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 44)
-  @cmd(@OP_JAL   , 0   , 0   , 35)
-  @cmd(@OP_LI    , @R8 , 21  , 0)
-  @cmd(@OP_JAL   , 0   , 0   , 44)
-  @cmd(@OP_ADDI  , @R3 , @R3 , 1)
-  @cmd(@OP_JAL   , 0   , 0   , 1)
-  @cmd(@OP_HALT  , 0   , 0   , 0)
-  @cmd(@OP_ADD   , @R9 , @RA , @R0)
-  @cmd(@OP_ADD   , @R7 , @R5 , @R0)
-  @cmd(@OP_BLT   , @R7 , @R6 , 3)
-  @cmd(@OP_SUB   , @R7 , @R7 , @R6)
-  @cmd(@OP_JAL   , 0   , 0   , 40)
-  @cmd(@OP_JALR  , @R0 , @R0 , @R9)
-  @cmd(@OP_ADD   , @R9 , @RA , @R0)
-  @cmd(@OP_LOAD  , @R10, @R0 , @R8)
-  @cmd(@OP_BEQ   , @R10, @R0 , 4)
-  @cmd(@OP_STOR  , @R10, @R0 , 0)
-  @cmd(@OP_ADDI  , @R8 , @R8 , 1)
-  @cmd(@OP_JAL   , 0   , 0   , 45)
-  @cmd(@OP_JALR  , @R0 , @R0 , @R9)
-  @cmd(@OP_ADD   , @R9 , @RA , @R0)
-  @cmd(@OP_LI    , @R10, 100 , 0)
-  @cmd(@OP_BNE   , @R3 , @R10, 7)
-  @cmd(@OP_LI    , @R10, 49  , 0)
-  @cmd(@OP_STOR  , @R10, @R0 , 0)
-  @cmd(@OP_LI    , @R10, 48  , 0)
-  @cmd(@OP_STOR  , @R10, @R0 , 0)
-  @cmd(@OP_STOR  , @R10, @R0 , 0)
-  @cmd(@OP_JALR  , @R0 , @R0 , @R9)
-  @cmd(@OP_LI    , @R10, 10  , 0)
-  @cmd(@OP_BLT   , @R3 , @R10, 13)
-  @cmd(@OP_ADD   , @R12, @R3 , @R0)
-  @cmd(@OP_LI    , @R13, 0   , 0)
-  @cmd(@OP_SLT   , @R11, @R12, @R10)
-  @cmd(@OP_BNE   , @R11, @R0 , 4)
-  @cmd(@OP_SUB   , @R12, @R12, @R10)
-  @cmd(@OP_ADDI  , @R13, @R13, 1)
-  @cmd(@OP_JAL   , 0   , 0   , 64)
-  @cmd(@OP_ADDI  , @R13, @R13, 48)
-  @cmd(@OP_STOR  , @R13, @R0 , 0)
-  @cmd(@OP_ADDI  , @R12, @R12, 48)
-  @cmd(@OP_STOR  , @R12, @R0 , 0)
-  @cmd(@OP_JALR  , @R0 , @R0 , @R9)
-  @cmd(@OP_ADDI  , @R10, @R3 , 48)
-  @cmd(@OP_STOR  , @R10, @R0 , 0)
-  @cmd(@OP_JALR  , @R0 , @R0 , @R9)
-  @program_end
-)
+export const CPU_FOOTER = `
 }
 
 // MARK: ----------- CODE END ----------
@@ -332,7 +251,7 @@
       @lane(@L_REG,
           @nextwords(2) @dec(1) @prevwords(2) // PC
       )
-
+      
       @nextword
       @goto_ip_word
       @fl(@prevword
@@ -817,7 +736,7 @@
     @prevwords(8)
   )
 
-
+  
 }
 
 #define alu_sltu {
@@ -837,7 +756,7 @@
 
 // MARK: ---------- Instructions ---------
 
-#define _jump_to_bank_addr {
+#define _jump_to_bank_addr { 
   // MARK: START JTADDR, addr is word[-2] for BANK, word[-3] for ADDR
   // 1. Copy fastlane to PTR. Now fastlane can be freely changed
   @prevword
@@ -880,7 +799,7 @@
     @prevwords(2)
 
     // So now, @CMD_SIZE * PC + 1 times we need to :
-    @nextwords(2)
+    @nextwords(2) 
     @times( // @CMD_SIZE times
       // Copy PC to sA
       @prevwords(2)
@@ -917,7 +836,7 @@
   @goto_ip_word
 
   @fl({repeat(4, @set(1) @nextword)})
-  @prevword
+  @prevword 
   @fl(@clear) // We need 0 in the last fastlane pos
 }
 
@@ -1073,7 +992,7 @@
 
     @nextwords(2)
 
-
+    
     @lane(@L_SA,
       @move_to(@prevwords(2) >, < @nextwords(2)) < // Very important! calculating addr by PC + imm
     )
@@ -1561,7 +1480,7 @@
 
 // MARK: ---- Executor
 #define execute {
-  @nextword
+  @nextword 
 
   @goto_ip_word #BRK_IF_DEBUG
   @lane(@L_CODE, @copy_to_A)
@@ -1603,7 +1522,8 @@
       @opcase(#OP_HALT,  @lane_end(#L_SB) @prevword @goto_start @set(#STATE_HALT) @goto_ip_word @lane_start(#L_SB))
   )
 
-  @move_ip_next_command
+  @move_ip_next_command 
 
   @goto_start
 }
+`

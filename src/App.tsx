@@ -25,9 +25,116 @@ import {DraggableVSep} from "./components/ui/draggable-vsep.tsx";
 import {outputStore} from "./stores/output.store.ts";
 import {vmOutputService} from "./services/vm-output.service.ts";
 import {AssemblyEditor} from "./components/assembly-editor/assembly-editor.tsx";
+import {AssemblyTokenizer} from "./components/editor/services/assembly-tokenizer.ts";
 
 // Initialize VM output service
 vmOutputService.initialize();
+
+// Initialize all editors immediately (before React renders)
+// This ensures they're available when components mount
+function initializeEditors() {
+    // Create main editor if it doesn't exist
+    if (!editorManager.getEditor('main')) {
+        editorManager.createEditor({
+            id: 'main',
+            tokenizer: new WorkerTokenizer(() => {
+                console.log("retokenized")
+                const editor = editorManager.getEditor('main');
+                if (editor) {
+                    editor.editorState.next({...editor.editorState.value});
+                }
+            }),
+            mode: 'insert',
+            settings: {
+                showDebug: true,
+                showMinimap: false
+            },
+        });
+    }
+    
+    // Create macro editor if it doesn't exist
+    if (!editorManager.getEditor('macro')) {
+        const macroEditor = editorManager.createEditor({
+            id: 'macro',
+            tokenizer: new ProgressiveMacroTokenizer(),
+            mode: 'insert',
+            settings: {
+                showDebug: false,
+                showMinimap: true
+            },
+            initialContent: '#define clear [-]\n#define inc(n) {repeat(n, +)}\n#define dec(n) {repeat(n, -)}\n\n// Example usage:\n// @inc(5) @clear\n'
+        });
+        
+        // Set up auto-expansion pipeline
+        const tokenizer = macroEditor.getTokenizer();
+        if (tokenizer instanceof ProgressiveMacroTokenizer) {
+            tokenizer.onStateChange((state) => {
+                if (!state) return;
+                
+                const mainEditor = editorManager.getEditor('main');
+                if (!mainEditor) return;
+                
+                if (state.expanderErrors.length > 0) {
+                    console.error('Macro expansion errors:', state.expanderErrors);
+                } else {
+                    mainEditor.setContent(state.expanded);
+                    
+                    if (state.sourceMap) {
+                        interpreterStore.setSourceMap(state.sourceMap);
+                        console.log(`Source map updated with ${state.sourceMap.entries.length} entries`);
+                    } else {
+                        interpreterStore.setSourceMap(undefined);
+                    }
+                }
+            });
+        }
+    }
+    
+    // Create assembly editor if it doesn't exist
+    if (!editorManager.getEditor('assembly')) {
+        editorManager.createEditor({
+            id: 'assembly',
+            tokenizer: new AssemblyTokenizer(),
+            mode: 'insert',
+            settings: {
+                showDebug: false,
+                showMinimap: false
+            },
+            initialContent: `; RippleVM Assembly Editor
+; Use the Assemble button to compile your code
+
+.data
+    ; Define your data section here
+    message: .asciiz "Hello, RippleVM!\\n"
+
+.code
+start:
+    ; Your code starts here
+    LI R3, 0        ; Initialize counter
+    
+main_loop:
+    ; Load and print message character
+    LOAD R4, R3, message
+    BEQ R4, R0, done    ; Exit if null terminator
+    
+    ; Output character
+    STORE R4, R0, 0     ; Store to I/O address
+    
+    ; Increment counter
+    ADDI R3, R3, 1
+    
+    ; Continue loop
+    JAL R0, main_loop
+    
+done:
+    HALT
+`
+        });
+    }
+}
+
+// Initialize editors before React renders
+initializeEditors();
 
 function EditorPanel() {
     const [mainEditor, setMainEditor] = useState<EditorStore | null>(null);
@@ -58,52 +165,18 @@ function EditorPanel() {
     }, [macroEditor]);
 
     useEffect(() => {
-        // Get or create main editor
-        let editor = editorManager.getEditor('main');
-        if (!editor) {
-            editor = editorManager.createEditor({
-                id: 'main',
-                tokenizer: new WorkerTokenizer(() => {
-                    console.log("retokenized")
-                    const ed = editorManager.getEditor('main');
-                    if (ed) {
-                        ed.editorState.next({...ed.editorState.value});
-                    }
-                }),
-                // tokenizer: new DummyTokenizer(),
-                mode: 'insert',
-                settings: {
-                    showDebug: true,
-                    showMinimap: false  // Main editor: minimap off by default
-                },
-            });
-        }
+        // Get existing editors (they're guaranteed to exist now)
+        const editor = editorManager.getEditor('main');
+        const macro = editorManager.getEditor('macro');
+        
         setMainEditor(editor);
-
-        // Create macro editor if needed
-        if (showMacroEditor) {
-            const macro = editorManager.createEditor({
-                id: 'macro',
-                tokenizer: new ProgressiveMacroTokenizer(),
-                mode: 'insert',
-                settings: {
-                    showDebug: false,
-                    showMinimap: true  // Macro editor: minimap on by default
-                },
-                initialContent: '#define clear [-]\n#define inc(n) {repeat(n, +)}\n#define dec(n) {repeat(n, -)}\n\n// Example usage:\n// @inc(5) @clear\n'
-            });
-            setMacroEditor(macro);
-        }
+        setMacroEditor(macro);
 
         // Cleanup on unmount
         return () => {
-            // Don't destroy main editor here since it's managed at app level now
-            if (showMacroEditor) {
-                editorManager.destroyEditor('macro');
-            }
             macroExpander.destroy();
         };
-    }, [showMacroEditor, macroExpander]);
+    }, [macroExpander]);
 
     // Function to expand macros
     const expandMacros = useCallback(async () => {
@@ -140,70 +213,7 @@ function EditorPanel() {
         }
     }, [macroEditor, mainEditor, settings, autoExpand, macroExpander]);
 
-    // Auto-expand effect
-    useEffect(() => {
-        // if (!autoExpand || !macroEditor || !mainEditor) return;
-        //
-        // let timeoutId: number;
-        //
-        // // Subscribe to macro editor changes
-        // const subscription = macroEditor.editorState.subscribe(() => {
-        //     // Clear previous timeout
-        //     clearTimeout(timeoutId);
-        //
-        //     // Debounce the expansion to avoid too frequent updates
-        //     timeoutId = setTimeout(() => {
-        //         //expandMacros();
-        //     }, 500); // 500ms delay
-        // });
-        //
-        // // Initial expansion
-        // expandMacros();
-        //
-        // return () => {
-        //     clearTimeout(timeoutId);
-        //     subscription.unsubscribe();
-        // };
-        if (!autoExpand || !macroEditor || !mainEditor) return;
-        const tokenizer = macroEditor.getTokenizer();
-
-        // Subscribe to tokenizer state changes if it's an enhanced macro tokenizer
-        // useEffect(() => {
-        if (tokenizer instanceof ProgressiveMacroTokenizer) {
-            // console.log('Subscribing to tokenizer state changes');
-            const unsubscribe = tokenizer.onStateChange((state) => {
-                // console.log('Tokenizer state changed, forcing re-render');
-                // // Force re-render by updating version
-                // setMacroExpansionVersion(v => v + 1);
-
-                if (!state) return;
-
-                if (state.expanderErrors.length > 0) {
-                    // In auto mode, don't show alerts, just log
-                    if (!autoExpand) {
-                        console.error('Macro expansion errors:', state.expanderErrors);
-                    }
-                } else {
-                    // Set expanded code to main editor
-                    mainEditor.setContent(state.expanded);
-
-                    // Set source map in interpreter if available
-                    if (state.sourceMap) {
-                        interpreterStore.setSourceMap(state.sourceMap);
-                        console.log(`Source map updated with ${state.sourceMap.entries.length} entries`);
-                    } else {
-                        interpreterStore.setSourceMap(undefined);
-                    }
-
-                    if (!autoExpand) {
-                        console.log('Macros expanded successfully');
-                    }
-                }
-            });
-            return unsubscribe;
-        }
-        // }, [tokenizer]);
-    }, [autoExpand, macroEditor, mainEditor, settings]);
+    // Note: Auto-expansion is set up at the App level when the macro editor is created
 
     const handleResize = useCallback((leftWidth: number) => {
         const container = document.querySelector('.editor-panel-container');
@@ -446,34 +456,15 @@ export default function App() {
     const outputState = useStoreSubscribe(outputStore.state);
     const { position, collapsed, width } = outputState;
     
-    // Initialize main editor immediately on app mount, regardless of active tab
-    // This ensures the interpreter always has access to the code
+    // Cleanup editors on app unmount
     useEffect(() => {
-        // Check if main editor already exists
-        if (!editorManager.getEditor('main')) {
-            const mainEditor = editorManager.createEditor({
-                id: 'main',
-                tokenizer: new WorkerTokenizer(() => {
-                    console.log("retokenized")
-                    const editor = editorManager.getEditor('main');
-                    if (editor) {
-                        editor.editorState.next({...editor.editorState.value});
-                    }
-                }),
-                mode: 'insert',
-                settings: {
-                    showDebug: true,
-                    showMinimap: false
-                },
-            });
-            
-            // Return cleanup function
-            return () => {
-                // Destroy main editor on app unmount
-                editorManager.destroyEditor('main');
-            };
-        }
-    }, []); // Run only once on mount
+        return () => {
+            // Destroy all editors when app unmounts
+            editorManager.destroyEditor('main');
+            editorManager.destroyEditor('macro');
+            editorManager.destroyEditor('assembly');
+        };
+    }, []);
 
     const handleOutputResize = useCallback((newWidth: number) => {
         outputStore.setSize('width', newWidth);

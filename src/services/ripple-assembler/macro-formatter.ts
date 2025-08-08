@@ -28,6 +28,7 @@ export class MacroFormatter {
     [Opcode.BNE, '@OP_BNE'],
     [Opcode.BLT, '@OP_BLT'],
     [Opcode.BGE, '@OP_BGE'],
+    [Opcode.BRK, '@OP_BRK'],
   ]);
 
   private registerToMacro(reg: number): string {
@@ -54,6 +55,14 @@ export class MacroFormatter {
         instruction.word2 === 0 && 
         instruction.word3 === 0) {
       opcodeMacro = '@OP_HALT';
+    }
+    
+    // Special case for BRK (encoded as BRK 0,0,0)
+    if (instruction.opcode === Opcode.BRK && 
+        instruction.word1 === 0 && 
+        instruction.word2 === 0 && 
+        instruction.word3 === 0) {
+      opcodeMacro = '@OP_BRK';
     }
 
     const formatOperand = (value: number, isRegister: boolean = false): string => {

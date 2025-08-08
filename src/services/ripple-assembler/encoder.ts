@@ -120,6 +120,10 @@ export class InstructionEncoder {
     if (upperMnemonic === 'HALT') {
       return this.encodeR(Opcode.NOP, 0, 0, 0);
     }
+    
+    if (upperMnemonic === 'BRK') {
+      return this.encodeR(Opcode.BRK, 0, 0, 0);
+    }
 
     if (upperMnemonic === 'JALR' && operands.length === 2) {
       return this.encodeR(Opcode.JALR, operands[0], 0, operands[1]);

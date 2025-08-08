@@ -325,6 +325,10 @@ export class RippleAssembler {
     if (mnemonic === 'NOP' || mnemonic === 'HALT') {
       return this.encoder.encodeR(Opcode.NOP, 0, 0, 0);
     }
+    
+    if (mnemonic === 'BRK') {
+      return this.encoder.encodeR(Opcode.BRK, 0, 0, 0);
+    }
 
     if (mnemonic === 'JALR' && line.operands.length === 2) {
       const operands = this.parseOperands(line.operands, Opcode.JALR, state);

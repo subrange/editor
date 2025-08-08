@@ -15,6 +15,7 @@ import { createAssembler } from "../../services/ripple-assembler/index.ts";
 import { AssemblyQuickNavStore, type AssemblyNavigationItem } from "./stores/assembly-quick-nav.store.ts";
 import { AssemblyQuickNav } from "./components/assembly-quick-nav.tsx";
 import {HSep} from "../helper-components.tsx";
+import { assemblyToMacroService } from "../../services/assembly-to-macro.service.ts";
 
 export function AssemblyEditor() {
     const [assemblyEditor, setAssemblyEditor] = useState<EditorStore | null>(null);
@@ -30,12 +31,23 @@ export function AssemblyEditor() {
     // Create quick nav store
     const quickNavStore = useMemo(() => new AssemblyQuickNavStore(), []);
     
+    // Subscribe to assembly output and automatically send to macro editor
+    const outputState = useStoreSubscribe(assemblyOutputStore.state);
+    useEffect(() => {
+        if (outputState.output && !outputState.error) {
+            assemblyToMacroService.processAssemblyOutput(
+                outputState.output.instructions, 
+                outputState.output.memoryData
+            );
+        }
+    }, [outputState.output, outputState.error]);
+    
     useEffect(() => {
         if (assemblyEditor) {
             const sub = assemblyEditor.showMinimap.subscribe(setMinimapEnabled);
             return () => sub.unsubscribe();
         }
-    }, [assemblyEditor]);
+    }, [assemblyEditor, setMinimapEnabled]);
     
     // Extract navigation items (labels and marks) from the code
     const extractNavigationItems = useCallback((): AssemblyNavigationItem[] => {
@@ -89,51 +101,13 @@ export function AssemblyEditor() {
     }, [assemblyEditor, quickNavStore, extractNavigationItems]);
 
     useEffect(() => {
-        // Create assembly editor on mount
-        const editor = editorManager.createEditor({
-            id: 'assembly',
-            tokenizer: new AssemblyTokenizer(),
-            mode: 'insert',
-            settings: {
-                showDebug: false,
-                showMinimap: minimapEnabled
-            },
-            initialContent: `; RippleVM Assembly Editor
-; Use the Assemble button to compile your code
-
-.data
-    ; Define your data section here
-    message: .asciiz "Hello, RippleVM!\\n"
-
-.code
-start:
-    ; Your code starts here
-    LI R3, 0        ; Initialize counter
-    
-main_loop:
-    ; Load and print message character
-    LOAD R4, R3, message
-    BEQ R4, R0, done    ; Exit if null terminator
-    
-    ; Output character
-    STORE R4, R0, 0     ; Store to I/O address
-    
-    ; Increment counter
-    ADDI R3, R3, 1
-    
-    ; Continue loop
-    JAL R0, main_loop
-    
-done:
-    HALT
-`
-        });
-        setAssemblyEditor(editor);
-
-        // Cleanup on unmount
-        return () => {
-            editorManager.destroyEditor('assembly');
-        };
+        // Get existing assembly editor (created at app level)
+        const editor = editorManager.getEditor('assembly');
+        if (editor) {
+            setAssemblyEditor(editor);
+            // Update minimap setting
+            editor.showMinimap.next(minimapEnabled);
+        }
     }, [minimapEnabled]);
 
     // Function to assemble code

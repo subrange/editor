@@ -44,6 +44,10 @@ export class Disassembler {
         if (opcode === Opcode.NOP && word1 === 0 && word2 === 0 && word3 === 0) {
           return ['HALT', null, null, null];
         }
+        // Special case for BRK (BRK with all zeros)
+        if (opcode === Opcode.BRK && word1 === 0 && word2 === 0 && word3 === 0) {
+          return ['BRK', null, null, null];
+        }
         // R-type: rd, rs, rt
         return [
           mnemonic,
