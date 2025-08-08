@@ -1,63 +1,21 @@
-use clap::{Parser, ArgAction};
-use std::fs;
-use std::io::{self, Read, Write};
-use std::time::Instant;
-
-#[derive(Parser, Debug)]
-#[command(name = "bf")]
-#[command(about = "Optimizing Brainfuck interpreter", long_about = None)]
-struct Args {
-    /// Input Brainfuck file
-    file: String,
-
-    /// Cell size in bits (8, 16, or 32)
-    #[arg(long, value_name = "BITS", default_value = "8")]
-    cell_size: u8,
-
-    /// Disable cell wrapping behavior
-    #[arg(long = "no-wrap", action = ArgAction::SetFalse, default_value_t = true)]
-    wrap: bool,
-
-    /// Disable tape pointer wrapping behavior  
-    #[arg(long = "no-wrap-tape", action = ArgAction::SetFalse, default_value_t = true)]
-    wrap_tape: bool,
-
-    /// Tape size (number of cells)
-    #[arg(long, value_name = "SIZE", default_value = "30000")]
-    tape_size: usize,
-
-    /// Show execution statistics
-    #[arg(long)]
-    stat: bool,
-
-    /// Show verbose output during optimization and execution
-    #[arg(long)]
-    verbose: bool,
-
-    /// Output optimized code instead of executing
-    #[arg(long)]
-    emit_optimized: bool,
-
-    /// Skip optimization phase
-    #[arg(long)]
-    no_optimize: bool,
-}
+use wasm_bindgen::prelude::*;
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone)]
-enum Op {
+pub enum Op {
     Add(i32),
     Move(i32),
     Loop(Vec<Op>),
     Input,
     Output,
     Clear,
-    Set(i32),         // Set cell to constant value
-    MulAdd(i32, i32), // [>+++<-] becomes MulAdd(1, 3)
+    Set(i32),
+    MulAdd(i32, i32),
     ScanLeft(i32),
     ScanRight(i32),
 }
 
-trait Cell: Copy + Default + PartialEq {
+pub trait Cell: Copy + Default + PartialEq {
     fn from_u8(v: u8) -> Self;
     fn to_u8(self) -> u8;
     fn wrapping_add(self, n: i32) -> Self;
@@ -142,30 +100,52 @@ impl Cell for u32 {
     }
 }
 
-struct Interpreter<T: Cell> {
-    tape: Vec<T>,
-    ptr: usize,
-    wrap: bool,
-    wrap_tape: bool,
+pub struct Interpreter<T: Cell> {
+    pub tape: Vec<T>,
+    pub ptr: usize,
+    pub wrap: bool,
+    pub wrap_tape: bool,
+    pub output: Vec<u8>,
+    pub input: Vec<u8>,
+    pub input_ptr: usize,
+}
+
+pub struct InterpreterWithCallback<'a, T: Cell> {
+    pub tape: Vec<T>,
+    pub ptr: usize,
+    pub wrap: bool,
+    pub wrap_tape: bool,
+    pub output: Vec<u8>,
+    pub input: Vec<u8>,
+    pub input_ptr: usize,
+    pub output_callback: &'a js_sys::Function,
 }
 
 impl<T: Cell> Interpreter<T> {
-    fn new(tape_size: usize, wrap: bool, wrap_tape: bool) -> Self {
+    pub fn new(tape_size: usize, wrap: bool, wrap_tape: bool) -> Self {
         Self {
             tape: vec![T::default(); tape_size],
             ptr: 0,
             wrap,
             wrap_tape,
+            output: Vec::new(),
+            input: Vec::new(),
+            input_ptr: 0,
         }
     }
 
-    fn run(&mut self, ops: &[Op]) {
+    pub fn set_input(&mut self, input: Vec<u8>) {
+        self.input = input;
+        self.input_ptr = 0;
+    }
+
+    pub fn run(&mut self, ops: &[Op]) {
         for op in ops {
             self.execute(op);
         }
     }
 
-    fn execute(&mut self, op: &Op) {
+    pub fn execute(&mut self, op: &Op) {
         match op {
             Op::Add(n) => {
                 if self.wrap {
@@ -177,14 +157,12 @@ impl<T: Cell> Interpreter<T> {
             Op::Move(n) => {
                 let new_ptr = (self.ptr as i64) + (*n as i64);
                 if self.wrap_tape {
-                    // Wrap around the tape
                     if new_ptr < 0 {
                         self.ptr = ((new_ptr % self.tape.len() as i64 + self.tape.len() as i64) % self.tape.len() as i64) as usize;
                     } else {
                         self.ptr = (new_ptr as usize) % self.tape.len();
                     }
                 } else {
-                    // Clamp to tape bounds (no wrapping)
                     if new_ptr < 0 {
                         self.ptr = 0;
                     } else if new_ptr >= self.tape.len() as i64 {
@@ -200,19 +178,20 @@ impl<T: Cell> Interpreter<T> {
                 }
             }
             Op::Input => {
-                let mut buf = [0];
-                io::stdin().read_exact(&mut buf).unwrap_or(());
-                self.tape[self.ptr] = T::from_u8(buf[0]);
+                if self.input_ptr < self.input.len() {
+                    self.tape[self.ptr] = T::from_u8(self.input[self.input_ptr]);
+                    self.input_ptr += 1;
+                } else {
+                    self.tape[self.ptr] = T::default();
+                }
             }
             Op::Output => {
-                print!("{}", self.tape[self.ptr].to_u8() as char);
-                io::stdout().flush().unwrap();
+                self.output.push(self.tape[self.ptr].to_u8());
             }
             Op::Clear => {
                 self.tape[self.ptr] = T::default();
             }
             Op::Set(value) => {
-                // Set cell to a specific value
                 self.tape[self.ptr] = match std::mem::size_of::<T>() {
                     1 => T::from_u8((*value & 0xFF) as u8),
                     2 => unsafe { std::mem::transmute_copy(&((*value & 0xFFFF) as u16)) },
@@ -240,16 +219,14 @@ impl<T: Cell> Interpreter<T> {
                         }
                     };
                     
-                    // MulAdd needs to work with the actual cell value, not just u8
                     let result = match std::mem::size_of::<T>() {
-                        1 => (val.to_u8() as i32 * factor),
+                        1 => val.to_u8() as i32 * factor,
                         2 => {
                             let v = unsafe { std::mem::transmute_copy::<T, u16>(&val) };
-                            (v as i32 * factor)
+                            v as i32 * factor
                         },
                         4 => {
                             let v = unsafe { std::mem::transmute_copy::<T, u32>(&val) };
-                            // Need to handle potential overflow for 32-bit multiplication
                             ((v as i64 * *factor as i64) & 0xFFFFFFFF) as i32
                         },
                         _ => unreachable!()
@@ -275,13 +252,13 @@ impl<T: Cell> Interpreter<T> {
                     } else {
                         if new_ptr < 0 {
                             self.ptr = 0;
-                            break; // Stop at boundary
+                            break;
                         } else {
                             self.ptr = new_ptr as usize;
                         }
                     }
                     if self.ptr == 0 && !self.wrap_tape {
-                        break; // Stop at the beginning if not wrapping
+                        break;
                     }
                 }
             }
@@ -293,7 +270,7 @@ impl<T: Cell> Interpreter<T> {
                     } else {
                         if new_ptr >= self.tape.len() as i64 {
                             self.ptr = self.tape.len() - 1;
-                            break; // Stop at boundary
+                            break;
                         } else {
                             self.ptr = new_ptr as usize;
                         }
@@ -304,14 +281,181 @@ impl<T: Cell> Interpreter<T> {
     }
 }
 
-fn preprocess_collapse(code: &str) -> String {
+impl<'a, T: Cell> InterpreterWithCallback<'a, T> {
+    pub fn new(tape_size: usize, wrap: bool, wrap_tape: bool, output_callback: &'a js_sys::Function) -> Self {
+        Self {
+            tape: vec![T::default(); tape_size],
+            ptr: 0,
+            wrap,
+            wrap_tape,
+            output: Vec::new(),
+            input: Vec::new(),
+            input_ptr: 0,
+            output_callback,
+        }
+    }
+
+    pub fn set_input(&mut self, input: Vec<u8>) {
+        self.input = input;
+        self.input_ptr = 0;
+    }
+
+    pub fn run(&mut self, ops: &[Op]) {
+        for op in ops {
+            self.execute(op);
+        }
+    }
+
+    pub fn execute(&mut self, op: &Op) {
+        match op {
+            Op::Add(n) => {
+                if self.wrap {
+                    self.tape[self.ptr] = self.tape[self.ptr].wrapping_add(*n);
+                } else {
+                    self.tape[self.ptr] = self.tape[self.ptr].saturating_add(*n);
+                }
+            }
+            Op::Move(n) => {
+                let new_ptr = (self.ptr as i64) + (*n as i64);
+                if self.wrap_tape {
+                    if new_ptr < 0 {
+                        self.ptr = ((new_ptr % self.tape.len() as i64 + self.tape.len() as i64) % self.tape.len() as i64) as usize;
+                    } else {
+                        self.ptr = (new_ptr as usize) % self.tape.len();
+                    }
+                } else {
+                    if new_ptr < 0 {
+                        self.ptr = 0;
+                    } else if new_ptr >= self.tape.len() as i64 {
+                        self.ptr = self.tape.len() - 1;
+                    } else {
+                        self.ptr = new_ptr as usize;
+                    }
+                }
+            }
+            Op::Loop(ops) => {
+                while self.tape[self.ptr] != T::default() {
+                    self.run(ops);
+                }
+            }
+            Op::Input => {
+                if self.input_ptr < self.input.len() {
+                    self.tape[self.ptr] = T::from_u8(self.input[self.input_ptr]);
+                    self.input_ptr += 1;
+                } else {
+                    self.tape[self.ptr] = T::default();
+                }
+            }
+            Op::Output => {
+                let byte = self.tape[self.ptr].to_u8();
+                self.output.push(byte);
+                
+                // Call the JavaScript callback with the character
+                let this = JsValue::null();
+                let char_str = JsValue::from_str(&(byte as char).to_string());
+                let char_code = JsValue::from_f64(byte as f64);
+                let _ = self.output_callback.call2(&this, &char_str, &char_code);
+            }
+            Op::Clear => {
+                self.tape[self.ptr] = T::default();
+            }
+            Op::Set(value) => {
+                self.tape[self.ptr] = match std::mem::size_of::<T>() {
+                    1 => T::from_u8((*value & 0xFF) as u8),
+                    2 => unsafe { std::mem::transmute_copy(&((*value & 0xFFFF) as u16)) },
+                    4 => unsafe { std::mem::transmute_copy(&(*value as u32)) },
+                    _ => unreachable!()
+                };
+            }
+            Op::MulAdd(offset, factor) => {
+                let val = self.tape[self.ptr];
+                if val != T::default() {
+                    let target = (self.ptr as i64) + (*offset as i64);
+                    let target_ptr = if self.wrap_tape {
+                        if target < 0 {
+                            ((target % self.tape.len() as i64 + self.tape.len() as i64) % self.tape.len() as i64) as usize
+                        } else {
+                            (target as usize) % self.tape.len()
+                        }
+                    } else {
+                        if target < 0 {
+                            0
+                        } else if target >= self.tape.len() as i64 {
+                            self.tape.len() - 1
+                        } else {
+                            target as usize
+                        }
+                    };
+                    
+                    let result = match std::mem::size_of::<T>() {
+                        1 => val.to_u8() as i32 * factor,
+                        2 => {
+                            let v = unsafe { std::mem::transmute_copy::<T, u16>(&val) };
+                            v as i32 * factor
+                        },
+                        4 => {
+                            let v = unsafe { std::mem::transmute_copy::<T, u32>(&val) };
+                            ((v as i64 * *factor as i64) & 0xFFFFFFFF) as i32
+                        },
+                        _ => unreachable!()
+                    };
+                    
+                    if self.wrap {
+                        self.tape[target_ptr] = self.tape[target_ptr].wrapping_add(result);
+                    } else {
+                        self.tape[target_ptr] = self.tape[target_ptr].saturating_add(result);
+                    }
+                    self.tape[self.ptr] = T::default();
+                }
+            }
+            Op::ScanLeft(step) => {
+                while self.tape[self.ptr] != T::default() {
+                    let new_ptr = (self.ptr as i64) - (step.abs() as i64);
+                    if self.wrap_tape {
+                        if new_ptr < 0 {
+                            self.ptr = ((new_ptr % self.tape.len() as i64 + self.tape.len() as i64) % self.tape.len() as i64) as usize;
+                        } else {
+                            self.ptr = new_ptr as usize;
+                        }
+                    } else {
+                        if new_ptr < 0 {
+                            self.ptr = 0;
+                            break;
+                        } else {
+                            self.ptr = new_ptr as usize;
+                        }
+                    }
+                    if self.ptr == 0 && !self.wrap_tape {
+                        break;
+                    }
+                }
+            }
+            Op::ScanRight(step) => {
+                while self.tape[self.ptr] != T::default() {
+                    let new_ptr = (self.ptr as i64) + (*step as i64);
+                    if self.wrap_tape {
+                        self.ptr = (new_ptr as usize) % self.tape.len();
+                    } else {
+                        if new_ptr >= self.tape.len() as i64 {
+                            self.ptr = self.tape.len() - 1;
+                            break;
+                        } else {
+                            self.ptr = new_ptr as usize;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn preprocess_collapse(code: &str) -> String {
     let mut result = String::new();
     let mut chars = code.chars().peekable();
     
     while let Some(ch) = chars.next() {
         match ch {
             '+' | '-' => {
-                // Count consecutive + and - operations
                 let mut count = if ch == '+' { 1i32 } else { -1i32 };
                 while let Some(&next_ch) = chars.peek() {
                     match next_ch {
@@ -326,7 +470,6 @@ fn preprocess_collapse(code: &str) -> String {
                         _ => break,
                     }
                 }
-                // Emit the net result
                 if count > 0 {
                     for _ in 0..count {
                         result.push('+');
@@ -338,7 +481,6 @@ fn preprocess_collapse(code: &str) -> String {
                 }
             }
             '>' | '<' => {
-                // Count consecutive > and < operations
                 let mut count = if ch == '>' { 1i32 } else { -1i32 };
                 while let Some(&next_ch) = chars.peek() {
                     match next_ch {
@@ -353,7 +495,6 @@ fn preprocess_collapse(code: &str) -> String {
                         _ => break,
                     }
                 }
-                // Emit the net result
                 if count > 0 {
                     for _ in 0..count {
                         result.push('>');
@@ -364,16 +505,15 @@ fn preprocess_collapse(code: &str) -> String {
                     }
                 }
             }
-            // Pass through other characters unchanged
             c if "[].,".contains(c) => result.push(c),
-            _ => {} // Skip non-BF characters
+            _ => {}
         }
     }
     
     result
 }
 
-fn parse(code: &str) -> Vec<Op> {
+pub fn parse(code: &str) -> Vec<Op> {
     let mut ops = Vec::new();
     let mut chars = code.chars().peekable();
     
@@ -444,23 +584,19 @@ fn parse(code: &str) -> Vec<Op> {
     ops
 }
 
-fn optimize(ops: Vec<Op>) -> Vec<Op> {
-    // Pattern-based optimizations and Clear+Add->Set
-    // (consecutive ops are already collapsed during parsing)
+pub fn optimize(ops: Vec<Op>) -> Vec<Op> {
     optimize_patterns(ops)
 }
 
-fn optimize_patterns(ops: Vec<Op>) -> Vec<Op> {
+pub fn optimize_patterns(ops: Vec<Op>) -> Vec<Op> {
     let mut result = Vec::new();
     let mut i = 0;
     
     while i < ops.len() {
         match &ops[i] {
             Op::Clear => {
-                // Look ahead for Add operation
                 if i + 1 < ops.len() {
                     if let Op::Add(n) = &ops[i + 1] {
-                        // Replace Clear + Add with Set
                         result.push(Op::Set(*n));
                         i += 2;
                         continue;
@@ -470,10 +606,8 @@ fn optimize_patterns(ops: Vec<Op>) -> Vec<Op> {
                 i += 1;
             }
             Op::Loop(loop_ops) => {
-                // First optimize the contents
                 let optimized_loop = optimize_patterns(loop_ops.clone());
                 
-                // Pattern: [-] or [+] -> Clear
                 if optimized_loop.len() == 1 {
                     if let Op::Add(n) = optimized_loop[0] {
                         if n == -1 || n == 1 {
@@ -484,7 +618,6 @@ fn optimize_patterns(ops: Vec<Op>) -> Vec<Op> {
                     }
                 }
                 
-                // Pattern: [>] or [>>...] -> ScanRight/ScanLeft
                 if optimized_loop.len() == 1 {
                     if let Op::Move(n) = optimized_loop[0] {
                         if n > 0 {
@@ -499,7 +632,6 @@ fn optimize_patterns(ops: Vec<Op>) -> Vec<Op> {
                     }
                 }
                 
-                // Pattern: [->+<] or [->+++<] etc. -> MulAdd
                 if optimized_loop.len() == 4 {
                     if let (Op::Add(-1), Op::Move(m1), Op::Add(factor), Op::Move(m2)) = 
                         (&optimized_loop[0], &optimized_loop[1], &optimized_loop[2], &optimized_loop[3]) {
@@ -522,6 +654,178 @@ fn optimize_patterns(ops: Vec<Op>) -> Vec<Op> {
     }
     
     result
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RunResult {
+    pub tape: Vec<u32>,
+    pub pointer: usize,
+    pub output: String,
+}
+
+#[wasm_bindgen]
+pub struct BrainfuckInterpreter {
+    tape_size: usize,
+    cell_size: u8,
+    wrap: bool,
+    wrap_tape: bool,
+    optimize_code: bool,
+}
+
+#[wasm_bindgen]
+impl BrainfuckInterpreter {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            tape_size: 30000,
+            cell_size: 8,
+            wrap: true,
+            wrap_tape: true,
+            optimize_code: true,
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn with_options(tape_size: usize, cell_size: u8, wrap: bool, wrap_tape: bool, optimize: bool) -> Self {
+        Self {
+            tape_size,
+            cell_size,
+            wrap,
+            wrap_tape,
+            optimize_code: optimize,
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn run_program(&self, code: &str, input: &[u8]) -> JsValue {
+        let preprocessed = preprocess_collapse(code);
+        let ops = parse(&preprocessed);
+        let optimized = if self.optimize_code {
+            optimize(ops)
+        } else {
+            ops
+        };
+
+        match self.cell_size {
+            8 => {
+                let mut interpreter = Interpreter::<u8>::new(self.tape_size, self.wrap, self.wrap_tape);
+                interpreter.set_input(input.to_vec());
+                interpreter.run(&optimized);
+                
+                let result = RunResult {
+                    tape: interpreter.tape.iter().map(|&v| v as u32).collect(),
+                    pointer: interpreter.ptr,
+                    output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                };
+                
+                serde_wasm_bindgen::to_value(&result).unwrap()
+            }
+            16 => {
+                let mut interpreter = Interpreter::<u16>::new(self.tape_size, self.wrap, self.wrap_tape);
+                interpreter.set_input(input.to_vec());
+                interpreter.run(&optimized);
+                
+                let result = RunResult {
+                    tape: interpreter.tape.iter().map(|&v| v as u32).collect(),
+                    pointer: interpreter.ptr,
+                    output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                };
+                
+                serde_wasm_bindgen::to_value(&result).unwrap()
+            }
+            32 => {
+                let mut interpreter = Interpreter::<u32>::new(self.tape_size, self.wrap, self.wrap_tape);
+                interpreter.set_input(input.to_vec());
+                interpreter.run(&optimized);
+                
+                let result = RunResult {
+                    tape: interpreter.tape.clone(),
+                    pointer: interpreter.ptr,
+                    output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                };
+                
+                serde_wasm_bindgen::to_value(&result).unwrap()
+            }
+            _ => panic!("Invalid cell size")
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn run_program_with_callback(&self, code: &str, input: &[u8], output_callback: &js_sys::Function) -> JsValue {
+        let preprocessed = preprocess_collapse(code);
+        let ops = parse(&preprocessed);
+        let optimized = if self.optimize_code {
+            optimize(ops)
+        } else {
+            ops
+        };
+
+        match self.cell_size {
+            8 => {
+                let mut interpreter = InterpreterWithCallback::<u8>::new(
+                    self.tape_size, 
+                    self.wrap, 
+                    self.wrap_tape,
+                    output_callback
+                );
+                interpreter.set_input(input.to_vec());
+                interpreter.run(&optimized);
+                
+                let result = RunResult {
+                    tape: interpreter.tape.iter().map(|&v| v as u32).collect(),
+                    pointer: interpreter.ptr,
+                    output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                };
+                
+                serde_wasm_bindgen::to_value(&result).unwrap()
+            }
+            16 => {
+                let mut interpreter = InterpreterWithCallback::<u16>::new(
+                    self.tape_size, 
+                    self.wrap, 
+                    self.wrap_tape,
+                    output_callback
+                );
+                interpreter.set_input(input.to_vec());
+                interpreter.run(&optimized);
+                
+                let result = RunResult {
+                    tape: interpreter.tape.iter().map(|&v| v as u32).collect(),
+                    pointer: interpreter.ptr,
+                    output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                };
+                
+                serde_wasm_bindgen::to_value(&result).unwrap()
+            }
+            32 => {
+                let mut interpreter = InterpreterWithCallback::<u32>::new(
+                    self.tape_size, 
+                    self.wrap, 
+                    self.wrap_tape,
+                    output_callback
+                );
+                interpreter.set_input(input.to_vec());
+                interpreter.run(&optimized);
+                
+                let result = RunResult {
+                    tape: interpreter.tape.clone(),
+                    pointer: interpreter.ptr,
+                    output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                };
+                
+                serde_wasm_bindgen::to_value(&result).unwrap()
+            }
+            _ => panic!("Invalid cell size")
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn optimize_brainfuck(&self, code: &str) -> String {
+        let preprocessed = preprocess_collapse(code);
+        let ops = parse(&preprocessed);
+        let optimized = optimize(ops);
+        ops_to_brainfuck(&optimized)
+    }
 }
 
 fn ops_to_brainfuck(ops: &[Op]) -> String {
@@ -572,7 +876,6 @@ fn ops_to_brainfuck(ops: &[Op]) -> String {
                 }
             }
             Op::MulAdd(offset, factor) => {
-                // Emit as a loop pattern [->+++<] or similar
                 result.push('[');
                 result.push('-');
                 if *offset > 0 {
@@ -622,106 +925,4 @@ fn ops_to_brainfuck(ops: &[Op]) -> String {
     }
     
     result
-}
-
-fn run_interpreter<T: Cell>(tape_size: usize, wrap: bool, wrap_tape: bool, optimized: &[Op]) {
-    let mut interpreter = Interpreter::<T>::new(tape_size, wrap, wrap_tape);
-    interpreter.run(optimized);
-}
-
-fn main() {
-    let args = Args::parse();
-    
-    // Validate cell size
-    match args.cell_size {
-        8 | 16 | 32 => {}
-        _ => {
-            eprintln!("Error: cell-size must be 8, 16, or 32");
-            std::process::exit(1);
-        }
-    }
-    
-    let code = match fs::read_to_string(&args.file) {
-        Ok(content) => content,
-        Err(e) => {
-            eprintln!("Error reading file '{}': {}", args.file, e);
-            std::process::exit(1);
-        }
-    };
-    
-    let start = if args.stat || args.verbose {
-        Some(Instant::now())
-    } else {
-        None
-    };
-    
-    if args.verbose {
-        eprintln!("Preprocessing {} bytes of code...", code.len());
-    }
-    
-    let preprocess_start = if args.verbose { Some(Instant::now()) } else { None };
-    let collapsed_code = preprocess_collapse(&code);
-    if let Some(ps) = preprocess_start {
-        eprintln!("Preprocessed to {} bytes in {:.3}s", collapsed_code.len(), ps.elapsed().as_secs_f64());
-    }
-    
-    // Don't emit here - we'll emit after full optimization
-    
-    if args.verbose {
-        eprintln!("Parsing preprocessed code...");
-    }
-    
-    let parse_start = if args.verbose { Some(Instant::now()) } else { None };
-    let ops = parse(&collapsed_code);
-    if let Some(ps) = parse_start {
-        eprintln!("Parsed {} operations in {:.3}s", ops.len(), ps.elapsed().as_secs_f64());
-    }
-    
-    let optimized = if args.no_optimize {
-        if args.verbose {
-            eprintln!("Skipping optimization phase (--no-optimize flag)");
-        }
-        ops
-    } else {
-        if args.verbose {
-            eprintln!("Starting optimization...");
-        }
-        
-        let opt_start = if args.verbose { Some(Instant::now()) } else { None };
-        let result = if ops.len() > 100000 && args.verbose {
-            eprintln!("WARNING: Large program ({} ops), optimization may take time...", ops.len());
-            // For very large programs, skip the expensive optimizations
-            ops
-        } else {
-            optimize(ops)
-        };
-        if let Some(os) = opt_start {
-            eprintln!("Optimization complete: {} operations in {:.3}s", 
-                     result.len(), os.elapsed().as_secs_f64());
-        }
-        result
-    };
-    
-    // If requested, emit the fully optimized code
-    if args.emit_optimized {
-        let optimized_code = ops_to_brainfuck(&optimized);
-        if args.verbose {
-            eprintln!("Emitting {} bytes of optimized code", optimized_code.len());
-        }
-        println!("{}", optimized_code);
-        return;
-    }
-    
-    // Run with appropriate cell size
-    match args.cell_size {
-        8 => run_interpreter::<u8>(args.tape_size, args.wrap, args.wrap_tape, &optimized),
-        16 => run_interpreter::<u16>(args.tape_size, args.wrap, args.wrap_tape, &optimized),
-        32 => run_interpreter::<u32>(args.tape_size, args.wrap, args.wrap_tape, &optimized),
-        _ => unreachable!(),
-    }
-    
-    if let Some(start_time) = start {
-        let duration = start_time.elapsed();
-        eprintln!("\nExecution time: {:.6} seconds", duration.as_secs_f64());
-    }
 }
