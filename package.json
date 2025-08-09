@@ -19,8 +19,9 @@
     "build:rust-assembler": "cd src/ripple-asm && cargo build --release  || true && cd ../..",
     "build:rust-interpreter": "cd src/rust-bf && cargo build --release  || true && cd ../..",
     "build:rust-macro-expander": "cd src/bf-macro-expander && cargo build --release  || true && cd ../..",
+    "build:rbt": "cd rbt && cargo build --release  || true && cd ..",
 
-    "build:native": "npm run build:rust-assembler && npm run build:rust-interpreter && npm run build:rust-macro-expander"
+    "build:native": "npm run build:rust-assembler && npm run build:rust-interpreter && npm run build:rust-macro-expander && npm run build:rbt"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

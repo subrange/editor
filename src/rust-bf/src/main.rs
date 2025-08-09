@@ -7,8 +7,12 @@ use std::time::Instant;
 #[command(name = "bf")]
 #[command(about = "Optimizing Brainfuck interpreter", long_about = None)]
 struct Args {
-    /// Input Brainfuck file
-    file: String,
+    /// Input Brainfuck file (or read from stdin if not provided)
+    file: Option<String>,
+
+    /// Execute inline Brainfuck code
+    #[arg(short = 'e', long, value_name = "CODE")]
+    execute: Option<String>,
 
     /// Cell size in bits (8, 16, or 32)
     #[arg(long, value_name = "BITS", default_value = "8")]
@@ -641,11 +645,27 @@ fn main() {
         }
     }
     
-    let code = match fs::read_to_string(&args.file) {
-        Ok(content) => content,
-        Err(e) => {
-            eprintln!("Error reading file '{}': {}", args.file, e);
-            std::process::exit(1);
+    let code = if let Some(inline_code) = args.execute {
+        // Use -e flag code
+        inline_code
+    } else if let Some(file) = args.file {
+        // Read from file
+        match fs::read_to_string(&file) {
+            Ok(content) => content,
+            Err(e) => {
+                eprintln!("Error reading file '{}': {}", file, e);
+                std::process::exit(1);
+            }
+        }
+    } else {
+        // Read from stdin
+        let mut buffer = String::new();
+        match io::stdin().read_to_string(&mut buffer) {
+            Ok(_) => buffer,
+            Err(e) => {
+                eprintln!("Error reading from stdin: {}", e);
+                std::process::exit(1);
+            }
         }
     };
     

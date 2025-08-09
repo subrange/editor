@@ -90,9 +90,9 @@ check_divisible:
     ADD R7, R5, R0   ; Start with dividend as remainder
 
 cd_loop:
-// MARK: Here
-    // SLT R10, R7, R6  ; Check if remainder < divisor
-    // BNE R10, R0, cd_done
+;MARK: Here
+;    SLT R10, R7, R6  ; Check if remainder < divisor
+;    BNE R10, R0, cd_done
     BLT R7, R6, cd_done
     SUB R7, R7, R6   ; Subtract divisor
     JAL R0 R0 cd_loop
@@ -106,7 +106,7 @@ print_string:
     ADD R9, RA, R0   ; Save return address
 
 ps2_loop:
-    LOAD R10, R8, 0
+    LOAD R10, 0, R8
     BEQ R10, R0, ps2_done
     STORE R10, 0, 0
     ADDI R8, R8, 1

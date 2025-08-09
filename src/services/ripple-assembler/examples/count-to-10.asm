@@ -69,7 +69,7 @@ print_string:
     ADD R5, RA, R0  ; Save return address
     
 str_loop:
-    LOAD R6, R4, 0
+    LOAD R6, R0, R4
     BEQ R6, R0, str_done
     
     STORE R6, R0, 0
