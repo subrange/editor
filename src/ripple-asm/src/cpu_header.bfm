@@ -1,0 +1,9 @@
+//Pefectly Engineered Nonstandard Instruction Set v1.0
+
+// MARK: ------------- START -------------
+
+#define DEBUG 0
+
+#define BRK_IF_DEBUG {if(#DEBUG, $, @nop)}
+
+#define PROGRAM {

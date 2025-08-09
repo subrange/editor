@@ -1,3 +1,6 @@
+.data
+hello_msg:  .asciiz "Hello, Ripple!\n"
+
 start:
-    CALL func
+    CALL hello // defined in hello.asm
     HALT

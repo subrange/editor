@@ -2,6 +2,9 @@ use crate::types::{Instruction, Opcode, Register};
 use crate::linker::LinkedProgram;
 use std::collections::HashMap;
 
+const CPU_HEADER: &str = include_str!("cpu_header.bfm");
+const CPU_FOOTER: &str = include_str!("cpu_footer.bfm");
+
 pub struct MacroFormatter {
     opcode_to_macro: HashMap<u8, &'static str>,
 }
@@ -276,6 +279,40 @@ impl MacroFormatter {
             Some(&comments),
             Some(&format!("Linked program with entry point at 0x{:08X}", program.entry_point)),
         )
+    }
+
+    pub fn format_linked_program_standalone(&self, program: &LinkedProgram, debug: bool) -> String {
+        let mut output = String::new();
+        
+        // Add CPU header with modified DEBUG value
+        let header = if debug {
+            CPU_HEADER.replace("#define DEBUG 0", "#define DEBUG 1")
+        } else {
+            CPU_HEADER.to_string()
+        };
+        output.push_str(&header);
+        output.push('\n');
+        
+        // Add the program content (without @prg wrapper since it's in the template)
+        let comments = HashMap::new();
+        let program_content = self.format_full_program(
+            &program.instructions,
+            Some(&program.data),
+            Some(&comments),
+            Some(&format!("Linked program with entry point at 0x{:08X}", program.entry_point)),
+        );
+        
+        // Add indentation to match the template structure
+        for line in program_content.lines() {
+            output.push_str("  ");
+            output.push_str(line);
+            output.push('\n');
+        }
+        
+        // Add CPU footer
+        output.push_str(CPU_FOOTER);
+        
+        output
     }
 }
 

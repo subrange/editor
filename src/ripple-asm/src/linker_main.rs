@@ -22,6 +22,14 @@ struct Cli {
     /// Bank size
     #[arg(short, long, default_value = "16")]
     bank_size: u16,
+    
+    /// Generate standalone macro file with CPU template (for macro format only)
+    #[arg(short = 's', long = "standalone")]
+    standalone: bool,
+    
+    /// Enable debug mode in standalone macro output (sets DEBUG to 1)
+    #[arg(short = 'd', long = "debug")]
+    debug: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -73,9 +81,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "macro" => {
                     let formatter = MacroFormatter::new();
-                    let macro_output = formatter.format_linked_program(&program);
+                    let macro_output = if cli.standalone {
+                        formatter.format_linked_program_standalone(&program, cli.debug)
+                    } else {
+                        formatter.format_linked_program(&program)
+                    };
                     fs::write(&output_path, macro_output)?;
                     println!("✓ Linked to macro file {}", output_path.display());
+                    if cli.standalone {
+                        let debug_msg = if cli.debug { " with DEBUG=1" } else { "" };
+                        println!("  (Standalone mode - includes CPU template{})", debug_msg);
+                    }
                 }
                 _ => {
                     eprintln!("Unknown format: {}", cli.format);
