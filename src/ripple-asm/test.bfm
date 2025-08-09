@@ -1,0 +1,37 @@
+// Assembled from test.asm
+
+@prg(
+  // Memory
+  @lane(#L_MEM,
+    {for(s in {'H','e','l','l','o',',',' ','W','o','r','l','d','!',10,0}, @set(s) @nextword)}
+  ),
+  
+  // Program
+  @program_start(@OP_LI    , @R3 , 0   , 0)
+  @cmd(@OP_LI    , @R5 , 2   , 0)
+  @cmd(@OP_LOAD  , @R4 , @R5 , @R0)
+  @cmd(@OP_BEQ   , @R4 , @R0 , 0)
+  @cmd(@OP_STOR  , @R4 , @R0 , 0)
+  @cmd(@OP_ADDI  , @R5 , @R5 , 1)
+  @cmd(@OP_JAL   , 0   , 0   , 0)
+  @cmd(@OP_HALT  , 0   , 0   , 0)
+  @program_end
+)
+
+@prg(
+  // Memory
+  @lane(#L_MEM,
+    {for(s in {'H','e','l','l','o',',',' ','W','o','r','l','d','!',10,0}, @set(s) @nextword)}
+  ),
+
+  // Program
+  @program_start(@OP_LI    , @R3 , 0   , 0)
+  @cmd(@OP_LI    , @R5 , 2   , 0)
+  @cmd(@OP_LOAD  , @R4 , @R0 , @R5)
+  @cmd(@OP_BEQ   , @R4 , @R0 , 4)
+  @cmd(@OP_STOR  , @R4 , @R0 , 0)
+  @cmd(@OP_ADDI  , @R5 , @R5 , 1)
+  @cmd(@OP_JAL   , 0   , 0   , 2)
+  @cmd(@OP_HALT  , 0   , 0   , 0)
+  @program_end
+)

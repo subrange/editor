@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "instructions": [
+    {
+      "opcode": 14,
+      "word0": 14,
+      "word1": 5,
+      "word2": 0,
+      "word3": 0
+    },
+    {
+      "opcode": 14,
+      "word0": 14,
+      "word1": 7,
+      "word2": 2,
+      "word3": 0
+    },
+    {
+      "opcode": 17,
+      "word0": 17,
+      "word1": 6,
+      "word2": 7,
+      "word3": 0
+    },
+    {
+      "opcode": 21,
+      "word0": 21,
+      "word1": 6,
+      "word2": 0,
+      "word3": 0
+    },
+    {
+      "opcode": 18,
+      "word0": 18,
+      "word1": 6,
+      "word2": 0,
+      "word3": 0
+    },
+    {
+      "opcode": 10,
+      "word0": 10,
+      "word1": 7,
+      "word2": 7,
+      "word3": 1
+    },
+    {
+      "opcode": 19,
+      "word0": 19,
+      "word1": 0,
+      "word2": 0,
+      "word3": 0
+    },
+    {
+      "opcode": 0,
+      "word0": 0,
+      "word1": 0,
+      "word2": 0,
+      "word3": 0
+    }
+  ],
+  "data": [
+    72,
+    101,
+    108,
+    108,
+    111,
+    44,
+    32,
+    87,
+    111,
+    114,
+    108,
+    100,
+    33,
+    110,
+    0
+  ],
+  "labels": {
+    "_start": {
+      "name": "_start",
+      "bank": 0,
+      "offset": 0,
+      "absolute_address": 0
+    },
+    "print_loop": {
+      "name": "print_loop",
+      "bank": 0,
+      "offset": 8,
+      "absolute_address": 8
+    },
+    "done": {
+      "name": "done",
+      "bank": 1,
+      "offset": 12,
+      "absolute_address": 28
+    }
+  },
+  "data_labels": {
+    "hello": 2
+  },
+  "unresolved_references": {
+    "6": {
+      "label": "print_loop",
+      "ref_type": "absolute"
+    },
+    "3": {
+      "label": "done",
+      "ref_type": "absolute"
+    }
+  },
+  "entry_point": "_start"
+}
