@@ -135,7 +135,7 @@ fn compile_c99_file(
     // Parse the source
     let ast = match Frontend::parse_source(&source) {
         Ok(ast) => {
-            println!("Successfully parsed C99 source!");
+            println!("Successfully parsed C99 source...");
             println!("Found {} top-level items", ast.items.len());
             
             for item in &ast.items {
@@ -163,7 +163,7 @@ fn compile_c99_file(
     println!("\nAttempting full compilation pipeline...");
     match Frontend::compile_to_ir(&source, input_path.file_stem().unwrap().to_str().unwrap()) {
         Ok(ir_module) => {
-            println!("Successfully generated IR!");
+            println!("Successfully generated IR...");
             println!("Module contains {} functions", ir_module.functions.len());
             
             // Lower Module to assembly

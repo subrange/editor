@@ -19,9 +19,12 @@ pub struct ModuleLowerer {
     /// Mapping from IR values to registers
     value_regs: HashMap<String, Reg>,
     
-    /// Simple memory simulation: maps pointer temps to value temps
-    /// This is a hack for M2 - real memory will be implemented in M3
-    memory_map: HashMap<String, String>,
+    
+    /// Global variable addresses
+    global_addresses: HashMap<String, u16>,
+    
+    /// Next available global memory address
+    next_global_addr: u16,
     
     /// Current function being lowered
     current_function: Option<String>,
@@ -31,6 +34,12 @@ pub struct ModuleLowerer {
     
     /// Label counter for generating unique labels
     label_counter: u32,
+    
+    /// Stack offset for local allocations (relative to frame pointer)
+    local_stack_offset: i16,
+    
+    /// Map from temp IDs to stack offsets (for local variables)
+    local_offsets: HashMap<u32, i16>,
 }
 
 impl ModuleLowerer {
@@ -39,18 +48,31 @@ impl ModuleLowerer {
             instructions: Vec::new(),
             next_reg: 3, // Start with R3 (R0-R2 reserved)
             value_regs: HashMap::new(),
-            memory_map: HashMap::new(),
+            global_addresses: HashMap::new(),
+            next_global_addr: 100, // Start globals at address 100
             current_function: None,
             has_prologue: false,
             label_counter: 0,
+            local_stack_offset: 0,
+            local_offsets: HashMap::new(),
         }
     }
     
     /// Lower a module to assembly
     pub fn lower(&mut self, module: Module) -> Result<Vec<AsmInst>, CompilerError> {
-        // Generate globals (for now, skip - would need .data section support)
+        // Generate global initialization function
+        if !module.globals.is_empty() {
+            self.instructions.push(AsmInst::Label("_init_globals".to_string()));
+        }
+        
+        // Generate globals and their initialization
         for global in &module.globals {
             self.lower_global(global)?;
+        }
+        
+        // Return from _init_globals if we have globals
+        if !module.globals.is_empty() {
+            self.instructions.push(AsmInst::Ret);
         }
         
         // Generate functions
@@ -63,9 +85,88 @@ impl ModuleLowerer {
     
     /// Lower a global variable
     fn lower_global(&mut self, global: &GlobalVariable) -> Result<(), CompilerError> {
-        // For now, globals are not fully supported
-        // They would need section support (.data, .bss, .rodata)
-        self.instructions.push(AsmInst::Comment(format!("Global variable: {}", global.name)));
+        // Check if this is a string literal (name starts with __str_)
+        let is_string = global.name.starts_with("__str_");
+        
+        // Allocate address for global
+        let address = self.next_global_addr;
+        self.global_addresses.insert(global.name.clone(), address);
+        
+        // Calculate size in words (16-bit)
+        let size = match &global.var_type {
+            IrType::I8 | IrType::I16 => 1,
+            IrType::I32 => 2, // 32-bit takes 2 words
+            IrType::Ptr(_) => 1, // Pointers are 16-bit
+            IrType::Array { size, .. } if is_string => {
+                // For strings, allocate space for all characters
+                (*size as u16 + 1) / 2 // Round up for 16-bit words
+            }
+            _ => 1, // Default to 1 word
+        };
+        
+        self.next_global_addr += size;
+        
+        // For string literals, decode the string from the name
+        if is_string {
+            // Parse the hex-encoded string from the name
+            // Format: __str_ID_HEXDATA
+            if let Some(hex_part) = global.name.split('_').last() {
+                let mut addr = address;
+                let mut chars = Vec::new();
+                
+                // Decode hex string
+                for i in (0..hex_part.len()).step_by(2) {
+                    if let Ok(byte) = u8::from_str_radix(&hex_part[i..i+2], 16) {
+                        chars.push(byte);
+                    }
+                }
+                chars.push(0); // Add null terminator
+                
+                // Create a safe string representation for the comment
+                let safe_str: String = chars[..chars.len()-1].iter()
+                    .map(|&c| match c {
+                        b'\n' => "\\n".to_string(),
+                        b'\t' => "\\t".to_string(),
+                        b'\r' => "\\r".to_string(),
+                        b'\\' => "\\\\".to_string(),
+                        c if c.is_ascii_graphic() || c == b' ' => (c as char).to_string(),
+                        c => format!("\\x{:02x}", c),
+                    })
+                    .collect();
+                
+                self.instructions.push(AsmInst::Comment(format!("String literal {} at address {}", 
+                    safe_str, address)));
+                
+                // Store each character
+                for byte in chars {
+                    self.instructions.push(AsmInst::LI(Reg::R3, byte as i16));
+                    self.instructions.push(AsmInst::LI(Reg::R4, addr as i16));
+                    self.instructions.push(AsmInst::Store(Reg::R3, Reg::R0, Reg::R4));
+                    addr += 1;
+                }
+            }
+        } else {
+            self.instructions.push(AsmInst::Comment(format!("Global variable: {} at address {}", 
+                global.name, address)));
+            
+            // Generate initialization code if there's an initializer
+            if let Some(init_value) = &global.initializer {
+                match init_value {
+                    Value::Constant(val) => {
+                        // Load value into register and store at address
+                        self.instructions.push(AsmInst::LI(Reg::R3, *val as i16));
+                        self.instructions.push(AsmInst::LI(Reg::R4, address as i16));
+                        self.instructions.push(AsmInst::Store(Reg::R3, Reg::R0, Reg::R4));
+                    }
+                    _ => {
+                        // Other initializer types not yet supported
+                        self.instructions.push(AsmInst::Comment(
+                            format!("Unsupported initializer for {}", global.name)));
+                    }
+                }
+            }
+        }
+        
         Ok(())
     }
     
@@ -73,9 +174,10 @@ impl ModuleLowerer {
     fn lower_function(&mut self, function: &Function) -> Result<(), CompilerError> {
         self.current_function = Some(function.name.clone());
         self.value_regs.clear();
-        self.memory_map.clear();
         self.has_prologue = false;
         self.next_reg = 3; // Reset register allocation for each function
+        self.local_stack_offset = 0; // Reset local stack offset
+        self.local_offsets.clear(); // Clear local variable offsets
         
         // Function label
         self.instructions.push(AsmInst::Comment(format!("Function: {}", function.name)));
@@ -160,57 +262,106 @@ impl ModuleLowerer {
     fn lower_instruction(&mut self, instruction: &Instruction) -> Result<(), CompilerError> {
         match instruction {
             Instruction::Alloca { result, alloc_type, .. } => {
-                // Stack allocation - for now, just track the temporary
-                let reg = self.allocate_register();
-                self.value_regs.insert(format!("t{}", result), reg);
-                self.instructions.push(AsmInst::Comment(format!("Alloca for t{}", result)));
+                // Stack allocation - allocate space and compute address
+                let size = self.get_type_size_in_words(alloc_type);
+                
+                // Allocate space on stack by incrementing offset
+                self.local_stack_offset += size as i16;
+                let offset = self.local_stack_offset;
+                
+                // Store the offset for this temp
+                self.local_offsets.insert(*result, offset);
+                
+                // Compute address: FP + offset into a register
+                let addr_reg = self.allocate_register();
+                self.value_regs.insert(format!("t{}", result), addr_reg);
+                
+                self.instructions.push(AsmInst::Comment(format!("Alloca for t{} at FP+{}", result, offset)));
+                // Address = R15 (FP) + offset
+                if offset > 0 {
+                    self.instructions.push(AsmInst::AddI(addr_reg, Reg::R15, offset));
+                } else {
+                    self.instructions.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
+                }
             }
             
             Instruction::Store { value, ptr } => {
                 let value_reg = self.get_value_register(value)?;
-                // For M2, we'll use a simple memory simulation
-                // Track which register holds the value stored at this pointer
-                let ptr_key = self.value_to_string(ptr);
                 
-                // Store the register that holds this value
-                // We need to create a unique key for this stored value
-                let stored_temp_key = format!("stored_at_{}", ptr_key);
-                self.value_regs.insert(stored_temp_key.clone(), value_reg);
-                self.memory_map.insert(ptr_key.clone(), stored_temp_key);
-                
-                self.instructions.push(AsmInst::Comment(format!("Store {} to {}", 
-                    self.value_to_string(value), self.value_to_string(ptr))));
-                
-                // Keep the value in its register for now
-                // Real memory implementation will come in M3
+                // Check if ptr is a global address
+                if let Value::Global(name) = ptr {
+                    if let Some(&addr) = self.global_addresses.get(name) {
+                        // Store to global address
+                        self.instructions.push(AsmInst::Comment(format!("Store {} to @{}", 
+                            self.value_to_string(value), name)));
+                        self.instructions.push(AsmInst::LI(Reg::R9, addr as i16));
+                        self.instructions.push(AsmInst::Store(value_reg, Reg::R0, Reg::R9));
+                    } else {
+                        self.instructions.push(AsmInst::Comment(format!("Store to undefined global @{}", name)));
+                    }
+                } else {
+                    // For local variables, ptr should be a temp holding the address
+                    let ptr_reg = self.get_value_register(ptr)?;
+                    
+                    self.instructions.push(AsmInst::Comment(format!("Store {} to [{}]", 
+                        self.value_to_string(value), self.value_to_string(ptr))));
+                    
+                    // Check if this is a stack-allocated temp (from Alloca)
+                    // Stack addresses are FP-relative, globals are absolute < 1000
+                    if let Value::Temp(tid) = ptr {
+                        if self.local_offsets.contains_key(tid) {
+                            // This is a stack-allocated variable
+                            self.instructions.push(AsmInst::Store(value_reg, Reg::R13, ptr_reg));
+                        } else {
+                            // This is a pointer to global memory
+                            self.instructions.push(AsmInst::Store(value_reg, Reg::R0, ptr_reg));
+                        }
+                    } else {
+                        // Default to global memory bank
+                        self.instructions.push(AsmInst::Store(value_reg, Reg::R0, ptr_reg));
+                    }
+                }
             }
             
             Instruction::Load { result, ptr, .. } => {
                 let dest_reg = self.allocate_register();
                 self.value_regs.insert(format!("t{}", result), dest_reg);
                 
-                // Check if we have a stored value for this pointer
-                let ptr_key = self.value_to_string(ptr);
-                if let Some(stored_value_key) = self.memory_map.get(&ptr_key) {
-                    // We have a stored value, get its register
-                    if let Some(&stored_reg) = self.value_regs.get(stored_value_key) {
-                        // Copy the stored value to the destination
-                        self.instructions.push(AsmInst::Comment(format!("Load {} from {} to t{}", 
-                            stored_value_key, ptr_key, result)));
-                        self.instructions.push(AsmInst::Add(dest_reg, stored_reg, Reg::R0));
+                // Check if ptr is a global address
+                if let Value::Global(name) = ptr {
+                    if let Some(&addr) = self.global_addresses.get(name) {
+                        // Load from global address
+                        self.instructions.push(AsmInst::Comment(format!("Load from @{} to t{}", 
+                            name, result)));
+                        self.instructions.push(AsmInst::LI(Reg::R9, addr as i16));
+                        self.instructions.push(AsmInst::Load(dest_reg, Reg::R0, Reg::R9));
                     } else {
-                        // The stored value might be a constant or temp we haven't seen
-                        // Try to parse it as a temp ID to get its register
-                        self.instructions.push(AsmInst::Comment(format!("Load from {} to t{}", 
-                            ptr_key, result)));
-                        // For now, just allocate a zero
+                        // Uninitialized global
+                        self.instructions.push(AsmInst::Comment(format!("Load from @{} to t{} (uninitialized)", 
+                            name, result)));
                         self.instructions.push(AsmInst::LI(dest_reg, 0));
                     }
                 } else {
-                    // No stored value found, load zero
-                    self.instructions.push(AsmInst::Comment(format!("Load from {} to t{} (uninitialized)", 
-                        ptr_key, result)));
-                    self.instructions.push(AsmInst::LI(dest_reg, 0));
+                    // For local variables, ptr should be a temp holding the address
+                    let ptr_reg = self.get_value_register(ptr)?;
+                    
+                    self.instructions.push(AsmInst::Comment(format!("Load from [{}] to t{}", 
+                        self.value_to_string(ptr), result)));
+                    
+                    // Check if this is a stack-allocated temp (from Alloca)
+                    // Stack addresses are FP-relative, globals are absolute < 1000
+                    if let Value::Temp(tid) = ptr {
+                        if self.local_offsets.contains_key(tid) {
+                            // This is a stack-allocated variable
+                            self.instructions.push(AsmInst::Load(dest_reg, Reg::R13, ptr_reg));
+                        } else {
+                            // This is a pointer to global memory
+                            self.instructions.push(AsmInst::Load(dest_reg, Reg::R0, ptr_reg));
+                        }
+                    } else {
+                        // Default to global memory bank
+                        self.instructions.push(AsmInst::Load(dest_reg, Reg::R0, ptr_reg));
+                    }
                 }
             }
             
@@ -229,6 +380,52 @@ impl ModuleLowerer {
                     }
                     IrBinaryOp::Mul => {
                         self.instructions.push(AsmInst::Mul(dest_reg, left_reg, right_reg));
+                    }
+                    IrBinaryOp::Eq => {
+                        // Set dest_reg to 1 if equal, 0 otherwise
+                        // Strategy: result = !(left != right)
+                        // First check if left < right or right < left
+                        let temp1 = Reg::R9;
+                        let temp2 = Reg::R10;
+                        self.instructions.push(AsmInst::Slt(temp1, left_reg, right_reg)); // 1 if left < right
+                        self.instructions.push(AsmInst::Slt(temp2, right_reg, left_reg)); // 1 if right < left
+                        self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
+                        // Now invert the result: dest = 1 - dest
+                        self.instructions.push(AsmInst::LI(temp1, 1));
+                        self.instructions.push(AsmInst::Sub(dest_reg, temp1, dest_reg));
+                    }
+                    IrBinaryOp::Ne => {
+                        // Set dest_reg to 1 if not equal, 0 otherwise
+                        let temp1 = Reg::R9;
+                        let temp2 = Reg::R10;
+                        self.instructions.push(AsmInst::Slt(temp1, left_reg, right_reg)); // 1 if left < right
+                        self.instructions.push(AsmInst::Slt(temp2, right_reg, left_reg)); // 1 if right < left
+                        self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
+                    }
+                    IrBinaryOp::Slt => {
+                        self.instructions.push(AsmInst::Slt(dest_reg, left_reg, right_reg));
+                    }
+                    IrBinaryOp::Sle => {
+                        // a <= b is !(b < a)
+                        let temp = Reg::R9;
+                        self.instructions.push(AsmInst::Slt(dest_reg, right_reg, left_reg));
+                        self.instructions.push(AsmInst::LI(temp, 1));
+                        self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
+                    }
+                    IrBinaryOp::Sgt => {
+                        self.instructions.push(AsmInst::Slt(dest_reg, right_reg, left_reg));
+                    }
+                    IrBinaryOp::Sge => {
+                        // a >= b is !(a < b)
+                        let temp = Reg::R9;
+                        self.instructions.push(AsmInst::Slt(dest_reg, left_reg, right_reg));
+                        self.instructions.push(AsmInst::LI(temp, 1));
+                        self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
+                    }
+                    IrBinaryOp::Ult | IrBinaryOp::Ule | IrBinaryOp::Ugt | IrBinaryOp::Uge => {
+                        // TODO: Implement unsigned comparisons
+                        self.instructions.push(AsmInst::Comment(format!("TODO: Unsigned comparison {:?}", op)));
+                        self.instructions.push(AsmInst::LI(dest_reg, 0));
                     }
                     _ => {
                         self.instructions.push(AsmInst::Comment(format!("Unsupported binary op: {:?}", op)));
@@ -389,14 +586,27 @@ impl ModuleLowerer {
                 Ok(reg)
             }
             Value::Temp(id) => {
-                let key = format!("t{}", id);
-                if let Some(reg) = self.value_regs.get(&key) {
-                    Ok(*reg)
-                } else {
-                    // Allocate new register for this temp
+                // Check if this is a stack-allocated variable
+                if let Some(&offset) = self.local_offsets.get(id) {
+                    // This is a stack variable - recalculate its address
                     let reg = self.allocate_register();
-                    self.value_regs.insert(key, reg);
+                    if offset > 0 {
+                        self.instructions.push(AsmInst::AddI(reg, Reg::R15, offset));
+                    } else {
+                        self.instructions.push(AsmInst::Add(reg, Reg::R15, Reg::R0));
+                    }
                     Ok(reg)
+                } else {
+                    // Regular temp in register
+                    let key = format!("t{}", id);
+                    if let Some(reg) = self.value_regs.get(&key) {
+                        Ok(*reg)
+                    } else {
+                        // Allocate new register for this temp
+                        let reg = self.allocate_register();
+                        self.value_regs.insert(key, reg);
+                        Ok(reg)
+                    }
                 }
             }
             Value::Function(name) => {
@@ -407,11 +617,17 @@ impl ModuleLowerer {
                 ))
             }
             Value::Global(name) => {
-                // For now, globals not fully supported
-                Err(CompilerError::codegen_error(
-                    format!("Global variable '{}' access not yet implemented", name),
-                    rcc_common::SourceLocation::new_simple(0, 0),
-                ))
+                // Load global address into a register
+                if let Some(&addr) = self.global_addresses.get(name) {
+                    let reg = self.allocate_register();
+                    self.instructions.push(AsmInst::LI(reg, addr as i16));
+                    Ok(reg)
+                } else {
+                    Err(CompilerError::codegen_error(
+                        format!("Undefined global variable '{}'", name),
+                        rcc_common::SourceLocation::new_simple(0, 0),
+                    ))
+                }
             }
             _ => {
                 Err(CompilerError::codegen_error(
@@ -446,6 +662,24 @@ impl ModuleLowerer {
         let label = format!("{}_{}", prefix, self.label_counter);
         self.label_counter += 1;
         label
+    }
+    
+    /// Get the size of a type in 16-bit words
+    fn get_type_size_in_words(&self, ir_type: &IrType) -> u64 {
+        match ir_type {
+            IrType::Void => 0,
+            IrType::I1 => 1, // Boolean takes 1 word
+            IrType::I8 | IrType::I16 => 1,
+            IrType::I32 | IrType::I64 => 2,
+            IrType::Ptr(_) => 1, // 16-bit pointers
+            IrType::Array { element_type, size } => {
+                let elem_size = self.get_type_size_in_words(element_type);
+                elem_size * size
+            }
+            IrType::Function { .. } => 0,
+            IrType::Struct { .. } => 0, // TODO: Calculate struct size
+            IrType::Label => 0, // Labels don't have size
+        }
     }
     
     /// Convert a value to string for debug output

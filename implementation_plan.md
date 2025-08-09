@@ -252,14 +252,14 @@ pub enum IrInst {
 - [ ] Alignment rules
 
 ### 3.2 Memory Layout
-- [ ] Global variable allocation
-- [ ] String literal storage
+- [x] Global variable allocation
+- [x] String literal storage  
 - [ ] Section management (.data, .rodata, .bss)
 
 ### 3.3 Address Operations
-- [ ] Address-of (&) operator
-- [ ] Dereference (*) operator
-- [ ] Array indexing
+- [x] Address-of (&) operator
+- [x] Dereference (*) operator
+- [x] Array indexing
 - [ ] Struct member access
 
 ### 3.4 Data Emission

@@ -11,6 +11,7 @@ pub mod parser;
 pub mod ast;
 pub mod semantic;
 pub mod codegen;
+mod codegen_tests;
 
 pub use lexer::{Lexer, Token, TokenType};
 pub use parser::{Parser, ParseError};

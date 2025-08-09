@@ -56,12 +56,35 @@ export class MacroExpanderWasm implements MacroExpander {
         // console.warn('Source map from WASM expander not yet supported');
       }
       
+      // Convert snake_case fields from WASM to camelCase for TypeScript
+      const macros = (result.macros || []).map((macro: any) => ({
+        name: macro.name,
+        parameters: macro.parameters,
+        body: macro.body,
+        sourceLocation: macro.source_location ? {
+          line: macro.source_location.line,
+          column: macro.source_location.column,
+          length: macro.source_location.length,
+        } : undefined,
+      }));
+      
+      // Fix error type format - WASM returns {type: {type: 'error_type'}} due to serde tagging
+      const errors = (result.errors || []).map((error: any) => ({
+        type: error.type?.type || error.type || 'syntax_error',
+        message: error.message,
+        location: error.location ? {
+          line: error.location.line,
+          column: error.location.column,
+          length: error.location.length,
+        } : undefined,
+      }));
+      
       // Map the result from WASM format to our format
       return {
         expanded: result.expanded || '',
-        errors: result.errors || [],
+        errors,
         tokens: result.tokens || [],
-        macros: result.macros || [],
+        macros,
         sourceMap: sourceMap,
       };
     } catch (error) {

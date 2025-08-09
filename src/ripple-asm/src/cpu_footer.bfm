@@ -3,6 +3,17 @@
 // MARK: ----------- CODE END ----------
 
 
+
+
+
+
+
+
+
+
+
+
+
 #define FALSE 0
 #define TRUE  1
 
@@ -116,6 +127,14 @@
 #define OP_BGE  0x18
 
 #define OP_BRK  0x19
+
+#define OP_MUL  0x1A
+#define OP_DIV  0x1B
+#define OP_MOD  0x1C
+
+#define OP_MULI  0x1D
+#define OP_DIVI  0x1E
+#define OP_MODI  0x1F
 
 // MARK: ----- Register Constants
 #define REG_ZONE_W  20
@@ -1007,6 +1026,7 @@
   @lane(@L_SB,
     @set(@BANK_SIZE)
   )
+
   @lane(@L_SA,
     @times(
       >
@@ -1033,6 +1053,8 @@
       @goto_start
 
       @lane(@L_PTR, @goto_zero_right_lane @inc(1))
+
+      @goto_ptr_start @nextword
 
       @nextword @goto_ip_word
       offs_from_ip
@@ -1075,6 +1097,7 @@
     )
   @nextword
 
+
   @mem_ptr_fill_banks(@prevwords(2))
 
   // Filling ptr lane up to the needed cell
@@ -1087,6 +1110,7 @@
   @goto_start
   @goto_ptr_end
     @lane(@L_RAM, @clear)
+  @prevword
   @goto_ptr_start
   @nextword
   @goto_ip_word
@@ -1465,7 +1489,14 @@
     @inc(1) // To properly work with switch statement
 
     // MARK: ------- Opcode Switch
-    @switch(26, @default, >, <)
+    @switch(32, @default, >, <)
+      @opcase(#OP_MODI,   $ )
+      @opcase(#OP_DIVI,   $ )
+      @opcase(#OP_MULI,   $ )
+
+      @opcase(#OP_MOD,   $ )
+      @opcase(#OP_DIV,   $ )
+      @opcase(#OP_MUL,   $ )
 
       @opcase(#OP_BRK,   $ )
 

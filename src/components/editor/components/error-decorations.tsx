@@ -20,8 +20,6 @@ export function ErrorDecorations({ store, errors }: ErrorDecorationsProps) {
     if (locatedErrors.length === 0) {
         return null;
     }
-
-    console.log("ERRORZ", locatedErrors)
     
     return (
         <div 
@@ -84,7 +82,7 @@ export function ErrorDecorations({ store, errors }: ErrorDecorationsProps) {
                             >
                                 <div className="bg-zinc-900 border border-red-500 rounded p-2 text-xs text-red-400">
                                     <div className="font-bold mb-1 capitalize">
-                                        {error.type.replace(/_/g, ' ')}
+                                        {(typeof error.type === 'string' ? error.type : 'syntax error').replace(/_/g, ' ')}
                                     </div>
                                     <div>{error.message}</div>
                                 </div>

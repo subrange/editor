@@ -79,6 +79,10 @@ pub struct CodeGenerator {
     variables: HashMap<String, (Value, IrType)>, // Variable name -> (IR value, IR type)
     functions: HashMap<String, Value>, // Function name -> IR function value
     
+    // String literals
+    string_literals: HashMap<String, String>, // String ID -> string content
+    next_string_id: u32,
+    
     // Current function context
     current_function: Option<String>,
     current_return_type: Option<IrType>,
@@ -96,6 +100,8 @@ impl CodeGenerator {
             builder: IrBuilder::new(),
             variables: HashMap::new(),
             functions: HashMap::new(),
+            string_literals: HashMap::new(),
+            next_string_id: 0,
             current_function: None,
             current_return_type: None,
             break_labels: Vec::new(),
@@ -368,12 +374,38 @@ impl CodeGenerator {
                 Ok(Value::Constant(*value as i64))
             }
             
-            ExpressionKind::StringLiteral(_) => {
-                // TODO: Handle string literals (create global constant)
-                Err(CodegenError::UnsupportedConstruct {
-                    construct: "string literals".to_string(),
-                    location: expr.span.start.clone(),
-                }.into())
+            ExpressionKind::StringLiteral(s) => {
+                // Create a unique name for this string literal
+                let string_id = self.next_string_id;
+                self.next_string_id += 1;
+                let name = format!("__str_{}", string_id);
+                
+                // Add string as a global with the string data
+                // Encode the string bytes in the variable name since we don't have
+                // a proper .data section yet - the lowering phase will decode and emit it
+                let encoded_name = format!("__str_{}_{}", string_id, 
+                    s.bytes().map(|b| format!("{:02x}", b)).collect::<String>());
+                
+                let global = GlobalVariable {
+                    name: encoded_name.clone(),
+                    var_type: IrType::Array {
+                        element_type: Box::new(IrType::I8),
+                        size: (s.len() + 1) as u64, // +1 for null terminator
+                    },
+                    is_constant: true,
+                    initializer: None, // String data is encoded in the name
+                    linkage: Linkage::Internal,
+                    symbol_id: None,
+                };
+                
+                // Add to module
+                self.module.add_global(global);
+                
+                // Store the string data for later
+                self.string_literals.insert(encoded_name.clone(), s.clone());
+                
+                // Return a pointer to the string
+                Ok(Value::Global(encoded_name))
             }
             
             ExpressionKind::Identifier { name, .. } => {
@@ -428,6 +460,26 @@ impl CodeGenerator {
                 
                 self.builder.build_store(rvalue.clone(), lvalue_ptr)?;
                 Ok(rvalue)
+            }
+            
+            BinaryOp::Index => {
+                // Array indexing: arr[idx] = *(arr + idx)
+                // First, get the base pointer
+                let base_ptr = self.generate_expression(left)?;
+                let index = self.generate_expression(right)?;
+                
+                // Calculate the address: ptr + index
+                // For now, assume char arrays (1 byte per element)
+                let addr = self.builder.build_binary(
+                    IrBinaryOp::Add,
+                    base_ptr,
+                    index,
+                    IrType::Ptr(Box::new(IrType::I8))
+                )?;
+                
+                // Load from the computed address
+                let result = self.builder.build_load(Value::Temp(addr), IrType::I8)?;
+                Ok(Value::Temp(result))
             }
             
             _ => {
@@ -565,6 +617,22 @@ impl CodeGenerator {
             ExpressionKind::Unary { op: UnaryOp::Dereference, operand } => {
                 // *ptr - the pointer itself is the address
                 self.generate_expression(operand)
+            }
+            
+            ExpressionKind::Binary { op: BinaryOp::Index, left, right } => {
+                // arr[idx] as lvalue - compute the address
+                let base_ptr = self.generate_expression(left)?;
+                let index = self.generate_expression(right)?;
+                
+                // Calculate the address: ptr + index
+                let addr = self.builder.build_binary(
+                    IrBinaryOp::Add,
+                    base_ptr,
+                    index,
+                    IrType::Ptr(Box::new(IrType::I8))
+                )?;
+                
+                Ok(Value::Temp(addr))
             }
             
             _ => Err(CodegenError::UnsupportedConstruct {

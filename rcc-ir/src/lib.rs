@@ -10,6 +10,7 @@ pub mod simple;
 pub mod lowering;
 pub mod ir;
 pub mod module_lowering;
+mod module_lowering_tests;
 
 pub use simple::{SimpleIR, SimpleProgram};
 pub use lowering::{lower_to_assembly, LoweringError};
