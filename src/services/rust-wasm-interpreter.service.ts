@@ -12,6 +12,8 @@ export interface RustWasmResult {
   tape: number[];
   pointer: number;
   output: string;
+  tapeTruncated?: boolean;
+  originalTapeSize?: number;
 }
 
 interface RunRequest {

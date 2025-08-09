@@ -661,6 +661,8 @@ pub struct RunResult {
     pub tape: Vec<u32>,
     pub pointer: usize,
     pub output: String,
+    pub tape_truncated: bool,
+    pub original_tape_size: usize,
 }
 
 #[wasm_bindgen]
@@ -705,6 +707,8 @@ impl BrainfuckInterpreter {
         } else {
             ops
         };
+        
+        const MAX_TAPE_SIZE: usize = 10000;  // Maximum tape size to send back to JS
 
         match self.cell_size {
             8 => {
@@ -712,10 +716,14 @@ impl BrainfuckInterpreter {
                 interpreter.set_input(input.to_vec());
                 interpreter.run(&optimized);
                 
+                let (tape, truncated, original_size) = truncate_tape_u8(&interpreter.tape, interpreter.ptr, MAX_TAPE_SIZE);
+                
                 let result = RunResult {
-                    tape: interpreter.tape.iter().map(|&v| v as u32).collect(),
+                    tape,
                     pointer: interpreter.ptr,
                     output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                    tape_truncated: truncated,
+                    original_tape_size: original_size,
                 };
                 
                 serde_wasm_bindgen::to_value(&result).unwrap()
@@ -725,10 +733,14 @@ impl BrainfuckInterpreter {
                 interpreter.set_input(input.to_vec());
                 interpreter.run(&optimized);
                 
+                let (tape, truncated, original_size) = truncate_tape_u16(&interpreter.tape, interpreter.ptr, MAX_TAPE_SIZE);
+                
                 let result = RunResult {
-                    tape: interpreter.tape.iter().map(|&v| v as u32).collect(),
+                    tape,
                     pointer: interpreter.ptr,
                     output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                    tape_truncated: truncated,
+                    original_tape_size: original_size,
                 };
                 
                 serde_wasm_bindgen::to_value(&result).unwrap()
@@ -738,10 +750,14 @@ impl BrainfuckInterpreter {
                 interpreter.set_input(input.to_vec());
                 interpreter.run(&optimized);
                 
+                let (tape, truncated, original_size) = truncate_tape_u32(&interpreter.tape, interpreter.ptr, MAX_TAPE_SIZE);
+                
                 let result = RunResult {
-                    tape: interpreter.tape.clone(),
+                    tape,
                     pointer: interpreter.ptr,
                     output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                    tape_truncated: truncated,
+                    original_tape_size: original_size,
                 };
                 
                 serde_wasm_bindgen::to_value(&result).unwrap()
@@ -759,6 +775,8 @@ impl BrainfuckInterpreter {
         } else {
             ops
         };
+        
+        const MAX_TAPE_SIZE: usize = 10000;  // Maximum tape size to send back to JS
 
         match self.cell_size {
             8 => {
@@ -771,10 +789,14 @@ impl BrainfuckInterpreter {
                 interpreter.set_input(input.to_vec());
                 interpreter.run(&optimized);
                 
+                let (tape, truncated, original_size) = truncate_tape_u8(&interpreter.tape, interpreter.ptr, MAX_TAPE_SIZE);
+                
                 let result = RunResult {
-                    tape: interpreter.tape.iter().map(|&v| v as u32).collect(),
+                    tape,
                     pointer: interpreter.ptr,
                     output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                    tape_truncated: truncated,
+                    original_tape_size: original_size,
                 };
                 
                 serde_wasm_bindgen::to_value(&result).unwrap()
@@ -789,10 +811,14 @@ impl BrainfuckInterpreter {
                 interpreter.set_input(input.to_vec());
                 interpreter.run(&optimized);
                 
+                let (tape, truncated, original_size) = truncate_tape_u16(&interpreter.tape, interpreter.ptr, MAX_TAPE_SIZE);
+                
                 let result = RunResult {
-                    tape: interpreter.tape.iter().map(|&v| v as u32).collect(),
+                    tape,
                     pointer: interpreter.ptr,
                     output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                    tape_truncated: truncated,
+                    original_tape_size: original_size,
                 };
                 
                 serde_wasm_bindgen::to_value(&result).unwrap()
@@ -807,10 +833,14 @@ impl BrainfuckInterpreter {
                 interpreter.set_input(input.to_vec());
                 interpreter.run(&optimized);
                 
+                let (tape, truncated, original_size) = truncate_tape_u32(&interpreter.tape, interpreter.ptr, MAX_TAPE_SIZE);
+                
                 let result = RunResult {
-                    tape: interpreter.tape.clone(),
+                    tape,
                     pointer: interpreter.ptr,
                     output: String::from_utf8_lossy(&interpreter.output).to_string(),
+                    tape_truncated: truncated,
+                    original_tape_size: original_size,
                 };
                 
                 serde_wasm_bindgen::to_value(&result).unwrap()
@@ -826,6 +856,66 @@ impl BrainfuckInterpreter {
         let optimized = optimize(ops);
         ops_to_brainfuck(&optimized)
     }
+}
+
+fn truncate_tape_u8(tape: &[u8], pointer: usize, max_size: usize) -> (Vec<u32>, bool, usize) {
+    let tape_len = tape.len();
+    
+    if tape_len <= max_size {
+        // Return the entire tape if it's small enough
+        return (tape.iter().map(|&v| v as u32).collect(), false, tape_len);
+    }
+    
+    // For large tapes, return a window around the pointer
+    let window_size = max_size / 2;
+    let start = pointer.saturating_sub(window_size);
+    let end = (pointer + window_size).min(tape_len);
+    
+    let truncated_tape: Vec<u32> = tape[start..end]
+        .iter()
+        .map(|&v| v as u32)
+        .collect();
+    
+    (truncated_tape, true, tape_len)
+}
+
+fn truncate_tape_u16(tape: &[u16], pointer: usize, max_size: usize) -> (Vec<u32>, bool, usize) {
+    let tape_len = tape.len();
+    
+    if tape_len <= max_size {
+        // Return the entire tape if it's small enough
+        return (tape.iter().map(|&v| v as u32).collect(), false, tape_len);
+    }
+    
+    // For large tapes, return a window around the pointer
+    let window_size = max_size / 2;
+    let start = pointer.saturating_sub(window_size);
+    let end = (pointer + window_size).min(tape_len);
+    
+    let truncated_tape: Vec<u32> = tape[start..end]
+        .iter()
+        .map(|&v| v as u32)
+        .collect();
+    
+    (truncated_tape, true, tape_len)
+}
+
+fn truncate_tape_u32(tape: &[u32], pointer: usize, max_size: usize) -> (Vec<u32>, bool, usize) {
+    let tape_len = tape.len();
+    
+    if tape_len <= max_size {
+        // Return the entire tape if it's small enough
+        return (tape.clone().to_vec(), false, tape_len);
+    }
+    
+    // For large tapes, return a window around the pointer
+    let window_size = max_size / 2;
+    let start = pointer.saturating_sub(window_size);
+    let end = (pointer + window_size).min(tape_len);
+    
+    let truncated_tape: Vec<u32> = tape[start..end].to_vec();
+    
+    (truncated_tape, true, tape_len)
 }
 
 fn ops_to_brainfuck(ops: &[Op]) -> String {

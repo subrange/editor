@@ -305,6 +305,7 @@ export function Toolbar() {
 
                 {/* Status indicator */}
                 <div className="ml-auto flex items-center gap-2 text-xs">
+                    {/* Regular debugger running status */}
                     {isRunning && (
                         <div className="flex items-center gap-1">
                             <div className={`w-2 h-2 rounded-full ${
@@ -321,8 +322,16 @@ export function Toolbar() {
                             </span>
                         </div>
                     )}
+                    {/* WASM interpreter running status */}
+                    {wasmRunning && (
+                        <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                            <span className="text-purple-500">Running (WASM)</span>
+                        </div>
+                    )}
+                    {/* Finished status */}
                     {
-                        isStopped && (
+                        !isRunning && !wasmRunning && isStopped && (
                             <div className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-blue-500" />
                                 <span className="text-blue-500">Finished</span>

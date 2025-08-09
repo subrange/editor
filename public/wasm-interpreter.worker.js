@@ -77,13 +77,16 @@ self.onmessage = async function(e) {
             );
             
             // Send completion message with final state
+            // The tape is already truncated by the Rust code if needed
             self.postMessage({
                 type: 'complete',
                 id,
                 result: {
                     tape: result.tape,
                     pointer: result.pointer,
-                    output: result.output
+                    output: result.output,
+                    tapeTruncated: result.tape_truncated || false,
+                    originalTapeSize: result.original_tape_size || result.tape.length
                 }
             });
             
