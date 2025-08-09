@@ -14,7 +14,22 @@ use std::collections::HashMap;
 enum PtrRegion {
     Stack,   // Points to stack memory (bank R13)
     Global,  // Points to global memory (bank R0)
-    Unknown, // Unknown provenance
+    Unknown, // Unknown provenance (e.g., parameters)
+    Mixed,   // Can be Stack on some paths and Global on others (from PHI/Select)
+}
+
+impl PtrRegion {
+    /// Join two regions for PHI/Select nodes
+    fn join(self, other: PtrRegion) -> PtrRegion {
+        use PtrRegion::*;
+        match (self, other) {
+            (Unknown, x) | (x, Unknown) => x,
+            (Stack, Stack) => Stack,
+            (Global, Global) => Global,
+            (Mixed, _) | (_, Mixed) => Mixed,
+            _ => Mixed, // Stack + Global = Mixed
+        }
+    }
 }
 
 /// Module to assembly lowering context
@@ -241,11 +256,12 @@ impl ModuleLowerer {
                 // Also mark it as containing the parameter
                 self.reg_contents.insert(param_reg, format!("t{}", param_id));
                 
-                // If this parameter is a pointer, mark its region
-                // For now, assume pointer parameters point to global memory
-                // (In a real system, we'd need calling convention info)
+                // If this parameter is a pointer, mark its region as Unknown
+                // We can't know at compile time whether it points to stack or global memory
+                // This is a fundamental limitation that would require runtime tagging or
+                // a more sophisticated type system to resolve
                 if matches!(param_type, IrType::Ptr(_)) {
-                    self.ptr_region.insert(*param_id, PtrRegion::Global);
+                    self.ptr_region.insert(*param_id, PtrRegion::Unknown);
                 }
             } else {
                 // Parameters beyond the 6th would need to be passed on the stack
@@ -412,8 +428,23 @@ impl ModuleLowerer {
                                 if self.local_offsets.contains_key(tid) {
                                     Reg::R13
                                 } else {
-                                    Reg::R0 // Default to global for unknown
+                                    // For M3, we assume Unknown pointer parameters point to global memory
+                                    // This is a pragmatic choice that works for string literals and global arrays
+                                    // but will fail for stack arrays passed to functions
+                                    self.instructions.push(AsmInst::Comment(
+                                        "WARNING: Assuming unknown pointer points to global memory".to_string()
+                                    ));
+                                    Reg::R0
                                 }
+                            }
+                            PtrRegion::Mixed => {
+                                // Mixed provenance is an error - we can't handle pointers that might
+                                // point to different memory banks on different paths
+                                return Err(CompilerError::codegen_error(
+                                    "Cannot handle pointer with mixed provenance (points to stack on some paths, global on others). \
+                                     This typically happens with PHI nodes or conditional assignments.".to_string(),
+                                    rcc_common::SourceLocation::new_simple(0, 0),
+                                ));
                             }
                         }
                     } else {
@@ -462,8 +493,23 @@ impl ModuleLowerer {
                                 if self.local_offsets.contains_key(tid) {
                                     Reg::R13
                                 } else {
-                                    Reg::R0 // Default to global for unknown
+                                    // For M3, we assume Unknown pointer parameters point to global memory
+                                    // This is a pragmatic choice that works for string literals and global arrays
+                                    // but will fail for stack arrays passed to functions
+                                    self.instructions.push(AsmInst::Comment(
+                                        "WARNING: Assuming unknown pointer points to global memory".to_string()
+                                    ));
+                                    Reg::R0
                                 }
+                            }
+                            PtrRegion::Mixed => {
+                                // Mixed provenance is an error - we can't handle pointers that might
+                                // point to different memory banks on different paths
+                                return Err(CompilerError::codegen_error(
+                                    "Cannot handle pointer with mixed provenance (points to stack on some paths, global on others). \
+                                     This typically happens with PHI nodes or conditional assignments.".to_string(),
+                                    rcc_common::SourceLocation::new_simple(0, 0),
+                                ));
                             }
                         }
                     } else {

@@ -79,6 +79,7 @@ Good!""",
     "test_struct_simple.c": "12345\n",  # Tests standalone struct type definitions
     "test_puts_debug.c": "ABC\n",  # Tests consecutive array indexing with global strings
     "test_puts_string_literal.c": "XYZ\n",  # Tests puts with string literals
+    # Note: test_puts.c partially works but has issues with stack arrays due to pointer provenance
 }
 
 # Tests that should compile but may not run correctly yet
@@ -133,6 +134,14 @@ def run_test(test_file, expected_output=None):
         failed += 1
         return
     
+    # Check for provenance warnings in the generated assembly
+    has_provenance_warning = False
+    if asm_path.exists():
+        with open(asm_path, 'r') as f:
+            asm_content = f.read()
+            if "WARNING: Assuming unknown pointer points to global memory" in asm_content:
+                has_provenance_warning = True
+    
     # Run the test if we have expected output
     if expected_output:
         success, actual_output = run_command(f"{RBT} {asm_path} --run")
@@ -141,10 +150,17 @@ def run_test(test_file, expected_output=None):
         # Compare output (strip trailing whitespace for comparison)
         expected_stripped = expected_output.strip()
         if actual_output == expected_stripped:
-            print(f"{GREEN}PASSED{NC}")
-            passed += 1
+            if has_provenance_warning:
+                print(f"{YELLOW}PASSED WITH WARNINGS{NC} (pointer provenance unknown)")
+                passed += 1  # Still count as passed but with warning
+            else:
+                print(f"{GREEN}PASSED{NC}")
+                passed += 1
         else:
-            print(f"{RED}FAILED{NC}")
+            if has_provenance_warning:
+                print(f"{RED}FAILED{NC} (likely due to pointer provenance issue)")
+            else:
+                print(f"{RED}FAILED{NC}")
             expected_first = expected_stripped.split('\n')[0] if expected_stripped else ""
             actual_first = actual_output.split('\n')[0] if actual_output else ""
             print(f"  Expected: {repr(expected_first)}...")
@@ -152,7 +168,10 @@ def run_test(test_file, expected_output=None):
             failed += 1
     else:
         # Just check compilation
-        print(f"{GREEN}COMPILED{NC}")
+        if has_provenance_warning:
+            print(f"{YELLOW}COMPILED WITH WARNINGS{NC} (pointer provenance unknown)")
+        else:
+            print(f"{GREEN}COMPILED{NC}")
         passed += 1
 
 def cleanup_asm_files():
@@ -207,7 +226,16 @@ def main():
                 print(f"{YELLOW}EXPECTED FAIL{NC}")
                 known_failures_count += 1
             else:
-                print(f"{RED}UNEXPECTED PASS{NC} (should have failed)")
+                # Check if it has provenance warnings
+                has_warning = False
+                if asm_path.exists():
+                    with open(asm_path, 'r') as f:
+                        if "WARNING: Assuming unknown pointer points to global memory" in f.read():
+                            has_warning = True
+                if has_warning:
+                    print(f"{YELLOW}COMPILES WITH WARNINGS{NC} (pointer provenance issue)")
+                else:
+                    print(f"{RED}UNEXPECTED PASS{NC} (should have failed)")
     
     # Print results
     print("\n" + "="*42)
