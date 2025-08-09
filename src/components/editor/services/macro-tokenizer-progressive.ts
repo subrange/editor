@@ -616,10 +616,21 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
     setUseWasmExpander(value: boolean) {
         if (this.useWasmExpander !== value) {
             this.useWasmExpander = value;
-            // Destroy old expander and create new one
-            if (this.asyncExpander) {
-                this.asyncExpander.destroy();
-                this.asyncExpander = null;
+            // Clear the current expander so a new one will be created
+            // Don't destroy the old one - just let it be garbage collected
+            // This avoids issues with pending operations
+            this.asyncExpander = null;
+            
+            // Cancel any pending expansion
+            this.lastExpandPromise = null;
+            this.isExpanding = false;
+            
+            // Trigger re-expansion with new expander
+            if (this.fullText) {
+                // Small delay to ensure clean switch
+                setTimeout(() => {
+                    this.scheduleAsyncExpansion();
+                }, 10);
             }
         }
     }

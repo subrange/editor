@@ -664,7 +664,7 @@ impl MacroExpander {
                         },
                         end: Position {
                             line: invocation.position.line,
-                            column: invocation.position.column + (invocation.position.end - invocation.position.start),
+                            column: invocation.position.column + safe_position_length(invocation.position.start, invocation.position.end),
                             offset: Some(invocation.position.end),
                         },
                     };
