@@ -8,7 +8,7 @@ fi
 
 # Build the WASM module
 echo "Building WASM module..."
-wasm-pack build --target web --out-dir pkg
+RUSTFLAGS='-C target-feature=+bulk-memory' wasm-pack build --target web --out-dir pkg --release
 
 echo "WASM build complete! Output in ./pkg/"
 echo ""

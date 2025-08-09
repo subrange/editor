@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "generate-favicons": "node generate-favicons.js",
-    "ripple-asm": "tsx src/services/ripple-assembler/cli.ts"
+    "ripple-asm": "tsx src/services/ripple-assembler/cli.ts",
+    "build:rust-interpreter": "cd src/rust-bf && ./build-wasm.sh && cp ./pkg/* ../../public/wasm || true && cd ../.."
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
