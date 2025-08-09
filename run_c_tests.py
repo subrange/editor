@@ -85,8 +85,6 @@ COMPILE_ONLY = [
 
 # Tests that currently fail to compile (known issues)
 KNOWN_FAILURES = [
-    "test_pointer_gritty.c",  # Function with pointer parameters not supported yet
-    "test_strings_simple.c",  # Function with pointer parameters not supported yet
     "test_struct_simple2.c",  # Uses pointer to struct (ptr->field syntax)
     "test_struct_inline_simple.c",  # Inline struct definitions not supported
 ]

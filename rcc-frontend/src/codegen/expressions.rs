@@ -14,6 +14,7 @@ pub struct ExpressionGenerator<'a> {
     pub module: &'a mut rcc_ir::Module,
     pub variables: &'a HashMap<String, (Value, IrType)>,
     pub array_variables: &'a std::collections::HashSet<String>,
+    pub parameter_variables: &'a std::collections::HashSet<String>,
     pub string_literals: &'a mut HashMap<String, String>,
     pub next_string_id: &'a mut u32,
 }
@@ -121,12 +122,17 @@ impl<'a> ExpressionGenerator<'a> {
                 // Check if this is a pointer type (variable that needs to be loaded)
                 match var_type {
                     IrType::Ptr(element_type) => {
-                        // Check if this is an array variable
+                        // Check if this is an array variable or a pointer parameter
+                        // Arrays and pointer parameters decay to pointers when used as rvalues
+                        // They already contain the address, not a pointer to the address
                         if self.array_variables.contains(name) {
                             // Arrays decay to pointers when used as rvalues
                             Ok(value.clone())
+                        } else if self.parameter_variables.contains(name) {
+                            // Pointer parameters already contain the address value directly
+                            Ok(value.clone())
                         } else {
-                            // Regular variable, load its value
+                            // Regular pointer variable (local or global), load its value
                             let temp = self.builder.build_load(value.clone(), *element_type.clone())?;
                             Ok(Value::Temp(temp))
                         }

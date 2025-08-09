@@ -175,7 +175,6 @@ impl ModuleLowerer {
         self.current_function = Some(function.name.clone());
         self.value_regs.clear();
         self.has_prologue = false;
-        self.next_reg = 3; // Reset register allocation for each function
         self.local_stack_offset = 0; // Reset local stack offset
         self.local_offsets.clear(); // Clear local variable offsets
         
@@ -185,6 +184,7 @@ impl ModuleLowerer {
         
         // Map function parameters to their input registers
         // Parameters arrive in R3-R8
+        let num_params = function.parameters.len().min(6);
         for (i, (param_id, _param_type)) in function.parameters.iter().enumerate() {
             if i < 6 {
                 let param_reg = match i {
@@ -198,10 +198,16 @@ impl ModuleLowerer {
                 };
                 // Map parameter temp ID to its register
                 self.value_regs.insert(format!("t{}", param_id), param_reg);
-                // For add function, we now properly use parameters from R3, R4
-                self.next_reg = (i + 4) as u8; // Start allocating after parameter registers
             }
         }
+        
+        // Start allocating registers after parameter registers
+        // If we have parameters in R3-R8, start from the next register
+        self.next_reg = if num_params > 0 {
+            (3 + num_params) as u8
+        } else {
+            3 // No parameters, start from R3
+        };
         
         // Generate prologue only if function has calls (to save RA)
         // Special case: main doesn't need prologue/epilogue for RA saving
@@ -399,22 +405,32 @@ impl ModuleLowerer {
                         // Set dest_reg to 1 if equal, 0 otherwise
                         // Strategy: result = !(left != right)
                         // First check if left < right or right < left
-                        let temp1 = Reg::R9;
-                        let temp2 = Reg::R10;
+                        // Use temporary registers that won't conflict with operands
+                        // Save current next_reg and use high registers to avoid conflicts
+                        let saved_next_reg = self.next_reg;
+                        self.next_reg = 11; // Use R11, R12 for temps
+                        let temp1 = self.allocate_register();
+                        let temp2 = self.allocate_register();
                         self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
                         self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
                         self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
                         // Now invert the result: dest = 1 - dest
+                        // Use R11 again for the constant 1 (safe to reuse after SLTU)
                         self.instructions.push(AsmInst::LI(temp1, 1));
                         self.instructions.push(AsmInst::Sub(dest_reg, temp1, dest_reg));
+                        // Restore next_reg
+                        self.next_reg = saved_next_reg;
                     }
                     IrBinaryOp::Ne => {
                         // Set dest_reg to 1 if not equal, 0 otherwise
-                        let temp1 = Reg::R9;
-                        let temp2 = Reg::R10;
+                        let saved_next_reg = self.next_reg;
+                        self.next_reg = 11; // Use R11, R12 for temps
+                        let temp1 = self.allocate_register();
+                        let temp2 = self.allocate_register();
                         self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
                         self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
                         self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
+                        self.next_reg = saved_next_reg;
                     }
                     IrBinaryOp::Slt => {
                         // Use SLTU instead of SLT since SLT might be buggy
@@ -422,20 +438,18 @@ impl ModuleLowerer {
                     }
                     IrBinaryOp::Sle => {
                         // a <= b is !(b < a)
-                        let temp = Reg::R9;
                         self.instructions.push(AsmInst::Sltu(dest_reg, right_reg, left_reg));
-                        self.instructions.push(AsmInst::LI(temp, 1));
-                        self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
+                        self.instructions.push(AsmInst::LI(Reg::R11, 1));
+                        self.instructions.push(AsmInst::Sub(dest_reg, Reg::R11, dest_reg)); // 1 - result
                     }
                     IrBinaryOp::Sgt => {
                         self.instructions.push(AsmInst::Sltu(dest_reg, right_reg, left_reg));
                     }
                     IrBinaryOp::Sge => {
                         // a >= b is !(a < b)
-                        let temp = Reg::R9;
                         self.instructions.push(AsmInst::Sltu(dest_reg, left_reg, right_reg));
-                        self.instructions.push(AsmInst::LI(temp, 1));
-                        self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
+                        self.instructions.push(AsmInst::LI(Reg::R11, 1));
+                        self.instructions.push(AsmInst::Sub(dest_reg, Reg::R11, dest_reg)); // 1 - result
                     }
                     IrBinaryOp::Ult | IrBinaryOp::Ule | IrBinaryOp::Ugt | IrBinaryOp::Uge => {
                         // TODO: Implement unsigned comparisons
@@ -622,12 +636,31 @@ impl ModuleLowerer {
                     // Regular temp in register
                     let key = format!("t{}", id);
                     if let Some(reg) = self.value_regs.get(&key) {
+                        // Already have a register for this temp
                         Ok(*reg)
                     } else {
-                        // Allocate new register for this temp
-                        let reg = self.allocate_register();
-                        self.value_regs.insert(key, reg);
-                        Ok(reg)
+                        // Don't allocate a new register for parameter temps (t0-t5)
+                        // They should already be mapped during function setup
+                        if *id < 6 {
+                            // This is a parameter temp that wasn't mapped - something is wrong
+                            // Default to the expected register
+                            let param_reg = match *id as usize {
+                                0 => Reg::R3,
+                                1 => Reg::R4,
+                                2 => Reg::R5,
+                                3 => Reg::R6,
+                                4 => Reg::R7,
+                                5 => Reg::R8,
+                                _ => unreachable!(),
+                            };
+                            self.value_regs.insert(key.clone(), param_reg);
+                            Ok(param_reg)
+                        } else {
+                            // Allocate new register for this non-parameter temp
+                            let reg = self.allocate_register();
+                            self.value_regs.insert(key, reg);
+                            Ok(reg)
+                        }
                     }
                 }
             }
@@ -662,6 +695,8 @@ impl ModuleLowerer {
     
     /// Allocate a new register
     fn allocate_register(&mut self) -> Reg {
+        // Simple allocation - just use next available register
+        // Make sure we don't return registers below next_reg (which are reserved for parameters)
         let reg = match self.next_reg {
             3 => Reg::R3,
             4 => Reg::R4,
@@ -669,13 +704,22 @@ impl ModuleLowerer {
             6 => Reg::R6,
             7 => Reg::R7,
             8 => Reg::R8,
+            9 => Reg::R9,
+            10 => Reg::R10,
+            11 => Reg::R11,
+            12 => Reg::R12,
             _ => {
-                // Out of registers, reuse R3 (very simple spilling)
-                self.next_reg = 3;
-                Reg::R3
+                // Out of registers, use R9 for spilling
+                // Don't reset next_reg to avoid re-allocating parameter registers
+                Reg::R9
             }
         };
-        self.next_reg += 1;
+        
+        // Only increment if we're not already at the spilling point
+        if self.next_reg <= 12 {
+            self.next_reg += 1;
+        }
+        
         reg
     }
     

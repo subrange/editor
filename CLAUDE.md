@@ -169,5 +169,5 @@ cargo test
 - After every change of the C compiler, please make sure you add the test case to `python3 run_c_tests.py` and run it to ensure that we don't have any regressions
 -  To compile C file to asm, use target/release/rcc compile filename.c (optional -o output.asm) 
 
-- VM currently has bugs with opcodes: div, mul, mod, slt, for now let's not use them in compiler tests
+- VM currently has bugs with opcodes: slt, for now let's not use them in compiler tests
 - In c-code tests, use if(condition) putchar('1') else putchar('N') to make sure we actually have some asserts and can capture it in run_c_tests.py

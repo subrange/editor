@@ -24,6 +24,7 @@ pub struct CodeGenerator {
     builder: IrBuilder,
     variables: HashMap<String, (Value, IrType)>,
     array_variables: HashSet<String>,
+    parameter_variables: HashSet<String>,
     string_literals: HashMap<String, String>,
     next_string_id: u32,
     break_labels: Vec<Label>,
@@ -38,6 +39,7 @@ impl CodeGenerator {
             builder: IrBuilder::new(),
             variables: HashMap::new(),
             array_variables: HashSet::new(),
+            parameter_variables: HashSet::new(),
             string_literals: HashMap::new(),
             next_string_id: 0,
             break_labels: Vec::new(),
@@ -83,6 +85,7 @@ impl CodeGenerator {
         // Clear per-function state
         self.variables.clear();
         self.array_variables.clear();
+        self.parameter_variables.clear();
         
         // Restore globals
         for (k, v) in globals {
@@ -99,6 +102,13 @@ impl CodeGenerator {
         // Create function
         self.builder.create_function(func_def.name.clone(), return_type);
         
+        // Add parameters to the function
+        for (i, param) in func_def.parameters.iter().enumerate() {
+            let param_id = i as u32;
+            let param_type = param_types[i].clone();
+            self.builder.add_parameter(param_id, param_type.clone());
+        }
+        
         // Create entry block
         let entry = self.builder.new_label();
         self.builder.create_block(entry)?;
@@ -109,7 +119,10 @@ impl CodeGenerator {
             let param_type = param_types[i].clone();
             // Use parameter name if available, otherwise generate one
             let param_name = param.name.clone().unwrap_or_else(|| format!("arg{}", i));
-            self.variables.insert(param_name, (param_value, param_type));
+            self.variables.insert(param_name.clone(), (param_value, param_type));
+            
+            // Mark this as a parameter variable
+            self.parameter_variables.insert(param_name);
         }
         
         // Generate function body
@@ -119,6 +132,7 @@ impl CodeGenerator {
                 module: &mut self.module,
                 variables: &mut self.variables,
                 array_variables: &mut self.array_variables,
+                parameter_variables: &mut self.parameter_variables,
                 string_literals: &mut self.string_literals,
                 next_string_id: &mut self.next_string_id,
                 break_labels: &mut self.break_labels,

@@ -602,6 +602,12 @@ impl IrBuilder {
         self.current_function.as_mut().unwrap()
     }
     
+    pub fn add_parameter(&mut self, param_id: TempId, param_type: IrType) {
+        if let Some(ref mut function) = self.current_function {
+            function.add_parameter(param_id, param_type);
+        }
+    }
+    
     pub fn create_block(&mut self, label_id: LabelId) -> Result<&mut BasicBlock, String> {
         let block = BasicBlock::new(label_id);
         

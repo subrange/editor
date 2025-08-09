@@ -501,11 +501,14 @@ impl Parser {
                         let param_start = self.current_location();
                         let param_type = self.parse_type_specifier()?;
                         
-                        // Parameter name is optional in function prototypes
-                        let (param_name, full_param_type) = if matches!(self.peek().map(|t| &t.token_type), Some(TokenType::Identifier(_))) {
+                        // Parse declarator for the parameter (handles pointers, arrays, etc.)
+                        // Check if we have a declarator (could be *, identifier, or just type)
+                        let (param_name, full_param_type) = if matches!(self.peek().map(|t| &t.token_type), 
+                            Some(TokenType::Star) | Some(TokenType::Identifier(_))) {
                             let (name, full_type) = self.parse_declarator(param_type)?;
                             (Some(name), full_type)
                         } else {
+                            // No declarator, just the type (e.g., in function prototypes like void func(int))
                             (None, param_type)
                         };
                         

@@ -32,7 +32,13 @@ export enum Opcode {
   BNE = 0x16,
   BLT = 0x17,
   BGE = 0x18,
-  BRK = 0x19
+  BRK = 0x19,
+  MUL = 0x1A,
+  DIV = 0x1B,
+  MOD = 0x1C,
+  MULI = 0x1D,
+  DIVI = 0x1E,
+  MODI = 0x1F
 }
 
 export enum Register {
@@ -143,5 +149,14 @@ export const opcodeInfo: Record<Opcode, { format: InstructionFormat; mnemonic: s
   [Opcode.BNE]: { format: InstructionFormat.I, mnemonic: 'BNE' },
   [Opcode.BLT]: { format: InstructionFormat.I, mnemonic: 'BLT' },
   [Opcode.BGE]: { format: InstructionFormat.I, mnemonic: 'BGE' },
-  [Opcode.BRK]: { format: InstructionFormat.R, mnemonic: 'BRK' }
+  [Opcode.BRK]: { format: InstructionFormat.R, mnemonic: 'BRK' },
+    [Opcode.MUL]: { format: InstructionFormat.R, mnemonic: 'MUL' },
+    [Opcode.DIV]: { format: InstructionFormat.R, mnemonic: 'DIV' },
+    [Opcode.MOD]: { format: InstructionFormat.R, mnemonic: 'MOD' },
+    [Opcode.MULI]: { format: InstructionFormat.I, mnemonic: 'MULI' },
+    [Opcode.DIVI]: { format: InstructionFormat.I, mnemonic: 'DIVI' },
+    [Opcode.MODI]: { format: InstructionFormat.I, mnemonic: 'MODI' },
+
+
+
 };

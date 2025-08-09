@@ -536,6 +536,35 @@
   )
 }
 
+#define alu_mod {
+  @prevword @prevword @prevword
+  @lane(@L_SA,
+
+    @move_r_n(3) @prevwords(2)
+    @divmod
+    @nextword @clear
+    @nextword @clear
+    @nextword
+    @nextword @clear
+    @prevword
+    @move_to(@prevword >, < @nextword) <
+  )
+}
+
+#define alu_div {
+  @prevword @prevword @prevword
+  @lane(@L_SA,
+
+    @move_r_n(3) @prevwords(2)
+    @divmod
+    @nextword @clear
+    @nextword @clear
+    @nextword @clear // mod here
+    @nextword
+    @move_to(@prevwords(2) >, < @nextwords(2)) <
+  )
+}
+
 #define _alu_bin(binop) {
   @prevwords(3)
   @lane(@L_SA,
@@ -736,14 +765,16 @@
 }
 
 #define alu_sltu {
-
   @lane(@L_SA,
     @prevwords(2)
-    @lt
-    @prevword @clear @nextword
-    @move_to(@nextwords(2) >, < @prevwords(2)) <
+    @move_r_n(2)
+    @prevwords(3)
+    @move_to(@nextwords(3) >, < @prevwords(3)) <
   )
 
+  @_cmp_unsigned_lt
+
+  @lane(@L_SA, [->+<])
 }
 
 // MARK: ---------- ALU ops end ----------
@@ -1024,7 +1055,6 @@
   @lane(@L_SB,
     @set(@BANK_SIZE)
   )
-
   @lane(@L_SA,
     @times(
       >
@@ -1053,7 +1083,6 @@
       @lane(@L_PTR, @goto_zero_right_lane @inc(1))
 
       @goto_ptr_start @nextword
-
       @nextword @goto_ip_word
       offs_from_ip
       @lane_start(@L_SA)
@@ -1095,7 +1124,6 @@
     )
   @nextword
 
-
   @mem_ptr_fill_banks(@prevwords(2))
 
   // Filling ptr lane up to the needed cell
@@ -1108,6 +1136,7 @@
   @goto_start
   @goto_ptr_end
     @lane(@L_RAM, @clear)
+
   @prevword
   @goto_ptr_start
   @nextword
@@ -1398,6 +1427,8 @@
 
 #define add  @ophandler(@two_registers_op(@alu_add))
 #define sub  @ophandler(@two_registers_op(@alu_sub))
+#define mod  @ophandler(@two_registers_op(@alu_mod))
+#define div  @ophandler(@two_registers_op(@alu_div))
 #define and  @ophandler(@two_registers_op(@alu_and))
 #define or   @ophandler(@two_registers_op(@alu_or))
 #define xor  @ophandler(@two_registers_op(@alu_xor))
@@ -1407,6 +1438,8 @@
 #define sltu @ophandler(@two_registers_op(@alu_sltu))
 
 #define addi @ophandler(@one_register_op(@alu_add))
+#define modi  @ophandler(@two_registers_op(@alu_mod))
+#define divi  @ophandler(@two_registers_op(@alu_div))
 #define andi @ophandler(@one_register_op(@alu_and))
 #define ori  @ophandler(@one_register_op(@alu_or))
 #define xori @ophandler(@one_register_op(@alu_xor))
@@ -1488,12 +1521,12 @@
 
     // MARK: ------- Opcode Switch
     @switch(32, @default, >, <)
-      @opcase(#OP_MODI,   $ )
-      @opcase(#OP_DIVI,   $ )
+      @opcase(#OP_MODI,   @modi )
+      @opcase(#OP_DIVI,   @divi )
       @opcase(#OP_MULI,   $ )
 
-      @opcase(#OP_MOD,   $ )
-      @opcase(#OP_DIV,   $ )
+      @opcase(#OP_MOD,   @mod )
+      @opcase(#OP_DIV,   @div )
       @opcase(#OP_MUL,   $ )
 
       @opcase(#OP_BRK,   $ )

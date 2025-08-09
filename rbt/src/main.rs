@@ -44,6 +44,13 @@ struct Args {
     /// Generate standalone output (for macro format)
     #[arg(short = 's', long, default_value_t = true)]
     standalone: bool,
+    
+    #[arg(long = "no-optimize", default_value_t = false)]
+    no_optimize: bool,
+    
+    /// Tape size for the brainfuck interpreter (when using --run)
+    #[arg(short = 't', long, default_value = "150000000")]
+    tape_size: usize
 }
 
 struct BuildContext {
@@ -137,7 +144,8 @@ impl BuildContext {
             cmd.arg(obj);
         }
         
-        cmd.arg("--format").arg(&self.args.format);
+        cmd.arg("--format").arg(&self.args.format)
+            .arg("--bank-size").arg(self.args.bank_size.to_string());
         
         if self.args.standalone {
             cmd.arg("--standalone");
@@ -213,6 +221,10 @@ impl BuildContext {
         use std::process::Stdio;
         
         let mut cmd = Command::new(bf)
+            .arg("--tape-size")
+            .arg(self.args.tape_size.to_string())
+            .arg("--cell-size")
+            .arg("16")
             .stdin(Stdio::piped())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())

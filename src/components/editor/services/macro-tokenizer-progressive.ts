@@ -11,7 +11,7 @@ import { type MacroExpanderWasmWorkerClient } from "../../../services/macro-expa
 // Token types for macro syntax
 export interface MacroToken {
     type: 'macro' | 'macro_definition' | 'macro_invocation' | 'hash_macro_invocation' | 'builtin_function' | 
-          'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 
+          'parameter' | 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 'break' |
           'whitespace' | 'comment' | 'todo_comment' | 'mark_comment' | 'unknown' | 'error' | 'parentheses' | 'braces' | 'macro_name' | 'number' | 'continuation' | 'keyword';
     value: string;
     start: number;
@@ -382,6 +382,18 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                 tokens.push({
                     type: 'comma',
                     value: ',',
+                    start: position,
+                    end: position + 1,
+                    error: error
+                });
+                position++;
+                matched = true;
+            }
+
+            if (!matched && text[position] === '$') {
+                tokens.push({
+                    type: 'break',
+                    value: '$',
                     start: position,
                     end: position + 1,
                     error: error
@@ -779,6 +791,7 @@ export const progressiveMacroTokenStyles: Record<MacroToken['type'] | 'truncatio
     brackets: 'text-orange-300/85',
     dot: 'text-teal-300/90 bg-zinc-800/40',
     comma: 'text-teal-300/80',
+    break: 'text-red-500/100 font-bold',          // Break operator ($)
     move: 'text-yellow-400/80',
     parentheses: 'text-violet-200/70',               // Parentheses for macro calls
     braces: 'text-sky-200/70',                       // Braces for builtin functions

@@ -14,6 +14,7 @@ pub struct StatementGenerator<'a> {
     pub module: &'a mut rcc_ir::Module,
     pub variables: &'a mut HashMap<String, (Value, IrType)>,
     pub array_variables: &'a mut HashSet<String>,
+    pub parameter_variables: &'a mut HashSet<String>,
     pub string_literals: &'a mut HashMap<String, String>,
     pub next_string_id: &'a mut u32,
     pub break_labels: &'a mut Vec<Label>,
@@ -125,6 +126,7 @@ impl<'a> StatementGenerator<'a> {
             module: self.module,
             variables: self.variables,
             array_variables: self.array_variables,
+            parameter_variables: self.parameter_variables,
             string_literals: self.string_literals,
             next_string_id: self.next_string_id,
         }

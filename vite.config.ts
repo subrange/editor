@@ -24,11 +24,22 @@ export default defineConfig({
             ignored: [
                 '**/src/bf-macro-expander/**',
                 '**/src/rust-bf/**',
-                '**/src/ripple-asm/**'
+                '**/src/ripple-asm/**',
+                '**/c-code/**',
+                '**/rcc-ir/**',
+                '**/rcc-frontend/**',
+                '**/rcc-driver/**',
+                '**/rcc-common/**',
+                '**/rcc-codegen/**',
+                '*.asm',
+                '*.bf',
+                '*.asm',
+                '*.pobj'
             ]
         }
     },
     worker: {
         format: 'es'
-    }
+    },
+    assetsInclude: ["**/*.bfm"],
 })

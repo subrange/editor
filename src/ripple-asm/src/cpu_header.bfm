@@ -2,7 +2,7 @@
 
 // MARK: ------------- START -------------
 
-#define DEBUG 0
+#define DEBUG 1
 
 #define BRK_IF_DEBUG {if(#DEBUG, $, @nop)}
 
