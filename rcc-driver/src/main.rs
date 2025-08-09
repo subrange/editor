@@ -51,6 +51,10 @@ enum Commands {
         /// Output assembly file
         #[arg(short, long)]
         output: Option<PathBuf>,
+        
+        /// Print IR to stdout before lowering
+        #[arg(long)]
+        print_ir: bool,
     },
 }
 
@@ -70,8 +74,8 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Compile { input, output } => {
-            if let Err(e) = compile_c99_file(&input, output.as_deref()) {
+        Commands::Compile { input, output, print_ir } => {
+            if let Err(e) = compile_c99_file(&input, output.as_deref(), print_ir) {
                 eprintln!("Error compiling C99 file: {}", e);
                 std::process::exit(1);
             }
@@ -126,6 +130,7 @@ fn generate_asm_command(
 fn compile_c99_file(
     input_path: &std::path::Path,
     output_path: Option<&std::path::Path>,
+    print_ir: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Compiling C99 file: {}", input_path.display());
     
@@ -165,6 +170,25 @@ fn compile_c99_file(
         Ok(ir_module) => {
             println!("💫 Successfully generated IR");
             println!("🦄 Module contains {} functions", ir_module.functions.len());
+            
+            // Print IR if requested
+            if print_ir {
+                println!("\n=== IR Output ===");
+                for func in &ir_module.functions {
+                    println!("define {} {{", func.name);
+                    for (param_id, param_type) in &func.parameters {
+                        println!("  param %{}: {:?}", param_id, param_type);
+                    }
+                    for block in &func.blocks {
+                        println!("L{}:", block.id);
+                        for inst in &block.instructions {
+                            println!("  {}", inst);
+                        }
+                    }
+                    println!("}}");
+                }
+                println!("=== End IR ===\n");
+            }
             
             // Lower Module to assembly
             match rcc_ir::lower_module_to_assembly(ir_module) {

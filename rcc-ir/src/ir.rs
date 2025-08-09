@@ -599,12 +599,18 @@ impl IrBuilder {
     pub fn create_function(&mut self, name: String, return_type: IrType) -> &mut Function {
         let function = Function::new(name, return_type);
         self.current_function = Some(function);
+        // Reset temp counter for new function
+        self.next_temp_id = 0;
         self.current_function.as_mut().unwrap()
     }
     
     pub fn add_parameter(&mut self, param_id: TempId, param_type: IrType) {
         if let Some(ref mut function) = self.current_function {
             function.add_parameter(param_id, param_type);
+            // Update next_temp_id to avoid conflicts with parameter IDs
+            if param_id >= self.next_temp_id {
+                self.next_temp_id = param_id + 1;
+            }
         }
     }
     

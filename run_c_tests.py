@@ -77,6 +77,8 @@ Good!""",
     "test_if_else.c": "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n",  # Fixed pre-increment
     "test_struct_inline.c": "YY\n",  # Tests inline struct members
     "test_struct_simple.c": "12345\n",  # Tests standalone struct type definitions
+    "test_puts_debug.c": "ABC\n",  # Tests consecutive array indexing with global strings
+    "test_puts_string_literal.c": "XYZ\n",  # Tests puts with string literals
 }
 
 # Tests that should compile but may not run correctly yet
@@ -88,11 +90,10 @@ COMPILE_ONLY = [
 KNOWN_FAILURES = [
     "test_struct_simple2.c",  # Uses pointer to struct (ptr->field syntax)
     "test_struct_inline_simple.c",  # Inline struct definitions not supported
-    "test_puts.c",  # Complex puts with loops - has array indexing IR generation issue
-    "test_puts_simple.c",  # Array indexing generates cumulative offsets incorrectly
-    "test_puts_string.c",  # Infinite loop due to array indexing issue
+    "test_puts.c",  # Complex puts with loops - needs while loop support
+    "test_puts_simple.c",  # Stack pointer provenance issue - loads from wrong memory bank
+    "test_puts_string.c",  # Uses while loops which aren't fully implemented
     "test_puts_global.c",  # Global array initializers not yet implemented
-    "test_puts_debug.c",  # Demonstrates the array indexing offset bug
 ]
 
 def run_command(cmd, capture_output=True):

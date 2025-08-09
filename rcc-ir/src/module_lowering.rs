@@ -7,7 +7,15 @@ use crate::ir::{Module, Function, BasicBlock, Instruction, Value, IrType, IrBina
 use crate::simple_regalloc::SimpleRegAlloc;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::CompilerError;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+
+/// Pointer region - tracks which memory bank a pointer points into
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PtrRegion {
+    Stack,   // Points to stack memory (bank R13)
+    Global,  // Points to global memory (bank R0)
+    Unknown, // Unknown provenance
+}
 
 /// Module to assembly lowering context
 pub struct ModuleLowerer {
@@ -45,11 +53,11 @@ pub struct ModuleLowerer {
     /// This includes both user variables and spill slots
     local_stack_offset: i16,
     
-    /// Map from temp IDs to stack offsets (for local variables from alloca)
+    /// Map from temp IDs to stack offsets (ONLY for direct Alloca results)
     local_offsets: HashMap<u32, i16>,
     
-    /// Set of temp IDs that point to stack memory (from GetElementPtr on stack arrays)
-    stack_pointer_temps: HashSet<u32>,
+    /// Provenance tracking for pointer-valued temps
+    ptr_region: HashMap<u32, PtrRegion>,
     
     /// Next available spill slot offset
     next_spill_offset: i16,
@@ -78,7 +86,7 @@ impl ModuleLowerer {
             label_counter: 0,
             local_stack_offset: 0,
             local_offsets: HashMap::new(),
-            stack_pointer_temps: HashSet::new(),
+            ptr_region: HashMap::new(),
             next_spill_offset: 0,
         }
     }
@@ -213,7 +221,7 @@ impl ModuleLowerer {
         
         // Map function parameters to their input registers
         // Parameters arrive in R3-R8
-        for (i, (param_id, _param_type)) in function.parameters.iter().enumerate() {
+        for (i, (param_id, param_type)) in function.parameters.iter().enumerate() {
             if i < 6 {
                 let param_reg = match i {
                     0 => Reg::R3,
@@ -226,6 +234,19 @@ impl ModuleLowerer {
                 };
                 // Map parameter temp ID to its register location
                 self.value_locations.insert(format!("t{}", param_id), Location::Register(param_reg));
+                
+                // IMPORTANT: Remove parameter register from free list so it won't be reused
+                self.free_regs.retain(|&r| r != param_reg);
+                
+                // Also mark it as containing the parameter
+                self.reg_contents.insert(param_reg, format!("t{}", param_id));
+                
+                // If this parameter is a pointer, mark its region
+                // For now, assume pointer parameters point to global memory
+                // (In a real system, we'd need calling convention info)
+                if matches!(param_type, IrType::Ptr(_)) {
+                    self.ptr_region.insert(*param_id, PtrRegion::Global);
+                }
             } else {
                 // Parameters beyond the 6th would need to be passed on the stack
                 // For now, we don't support more than 6 parameters
@@ -335,8 +356,11 @@ impl ModuleLowerer {
                 self.local_stack_offset += total_size as i16;
                 let offset = start_offset;
                 
-                // Store the offset for this temp
+                // Store the offset for this temp (frame slot)
                 self.local_offsets.insert(*result, offset);
+                
+                // Mark this temp as a stack pointer
+                self.ptr_region.insert(*result, PtrRegion::Stack);
                 
                 // Allocate register for the address
                 let result_key = format!("t{}", result);
@@ -378,20 +402,25 @@ impl ModuleLowerer {
                     self.instructions.push(AsmInst::Comment(format!("Store {} to [{}]", 
                         self.value_to_string(value), self.value_to_string(ptr))));
                     
-                    // Check if this is a stack-allocated temp (from Alloca or GetElementPtr on stack)
-                    // Stack addresses are FP-relative, globals are absolute < 1000
-                    if let Value::Temp(tid) = ptr {
-                        if self.local_offsets.contains_key(tid) || self.stack_pointer_temps.contains(tid) {
-                            // This is a stack-allocated variable or pointer to stack
-                            self.instructions.push(AsmInst::Store(value_reg, Reg::R13, ptr_reg));
-                        } else {
-                            // This is a pointer to global memory
-                            self.instructions.push(AsmInst::Store(value_reg, Reg::R0, ptr_reg));
+                    // Determine the memory bank based on pointer provenance
+                    let bank = if let Value::Temp(tid) = ptr {
+                        match self.ptr_region.get(tid).copied().unwrap_or(PtrRegion::Unknown) {
+                            PtrRegion::Stack => Reg::R13,
+                            PtrRegion::Global => Reg::R0,
+                            PtrRegion::Unknown => {
+                                // Check if it's a direct alloca (should have Stack region but double-check)
+                                if self.local_offsets.contains_key(tid) {
+                                    Reg::R13
+                                } else {
+                                    Reg::R0 // Default to global for unknown
+                                }
+                            }
                         }
                     } else {
-                        // Default to global memory bank
-                        self.instructions.push(AsmInst::Store(value_reg, Reg::R0, ptr_reg));
-                    }
+                        Reg::R0 // Non-temp pointers default to global
+                    };
+                    
+                    self.instructions.push(AsmInst::Store(value_reg, bank, ptr_reg));
                     // Registers will be freed at statement boundary
                 }
             }
@@ -423,20 +452,25 @@ impl ModuleLowerer {
                     // For local variables, ptr should be a temp holding the address
                     let ptr_reg = self.get_value_register(ptr)?;
                     
-                    // Check if this is a stack-allocated temp (from Alloca or GetElementPtr on stack)
-                    // Stack addresses are FP-relative, globals are absolute < 1000
-                    if let Value::Temp(tid) = ptr {
-                        if self.local_offsets.contains_key(tid) || self.stack_pointer_temps.contains(tid) {
-                            // This is a stack-allocated variable or pointer to stack
-                            self.instructions.push(AsmInst::Load(dest_reg, Reg::R13, ptr_reg));
-                        } else {
-                            // This is a pointer to global memory
-                            self.instructions.push(AsmInst::Load(dest_reg, Reg::R0, ptr_reg));
+                    // Determine the memory bank based on pointer provenance
+                    let bank = if let Value::Temp(tid) = ptr {
+                        match self.ptr_region.get(tid).copied().unwrap_or(PtrRegion::Unknown) {
+                            PtrRegion::Stack => Reg::R13,
+                            PtrRegion::Global => Reg::R0,
+                            PtrRegion::Unknown => {
+                                // Check if it's a direct alloca (should have Stack region but double-check)
+                                if self.local_offsets.contains_key(tid) {
+                                    Reg::R13
+                                } else {
+                                    Reg::R0 // Default to global for unknown
+                                }
+                            }
                         }
                     } else {
-                        // Default to global memory bank
-                        self.instructions.push(AsmInst::Load(dest_reg, Reg::R0, ptr_reg));
-                    }
+                        Reg::R0 // Non-temp pointers default to global
+                    };
+                    
+                    self.instructions.push(AsmInst::Load(dest_reg, bank, ptr_reg));
                     // Registers will be freed at statement boundary
                 }
             }
@@ -728,8 +762,25 @@ impl ModuleLowerer {
                 // Get element pointer - compute address of array element
                 self.instructions.push(AsmInst::Comment(format!("GetElementPtr t{} = {} + offsets", result, self.value_to_string(ptr))));
                 
+                // Debug check: result should be different from input
+                if let Value::Temp(base_tid) = ptr {
+                    if *base_tid == *result {
+                        self.instructions.push(AsmInst::Comment(
+                            format!("WARNING: GetElementPtr result t{} overwrites input!", result)
+                        ));
+                    }
+                }
+                
                 // Get base pointer
                 let base_reg = self.get_value_register(ptr)?;
+                self.instructions.push(AsmInst::Comment(
+                    format!("  Base {} in {}", self.value_to_string(ptr), 
+                        match base_reg {
+                            Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+                            Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                            _ => "R?"
+                        })
+                ));
                 
                 // For now, we only support single index (1D arrays)
                 if indices.len() != 1 {
@@ -751,13 +802,23 @@ impl ModuleLowerer {
                 // Note: This assumes element size is 1 word. For larger types, we'd need to multiply index by element size
                 self.instructions.push(AsmInst::Add(dest_reg, base_reg, index_reg));
                 
-                // IMPORTANT: If the base pointer was from an Alloca (stack allocation),
-                // then this result also points to stack memory
+                // Propagate pointer region from base to result
                 if let Value::Temp(base_tid) = ptr {
-                    if self.local_offsets.contains_key(base_tid) || self.stack_pointer_temps.contains(base_tid) {
-                        // Mark this result as also pointing to stack memory
-                        self.stack_pointer_temps.insert(*result);
-                    }
+                    // Check if base has a known region
+                    let region = self.ptr_region.get(base_tid)
+                        .copied()
+                        .or_else(|| {
+                            // If base is an alloca, it's a stack pointer
+                            if self.local_offsets.contains_key(base_tid) {
+                                Some(PtrRegion::Stack)
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or(PtrRegion::Unknown);
+                    
+                    // Propagate the region to the result
+                    self.ptr_region.insert(*result, region);
                 }
             }
             
@@ -934,9 +995,33 @@ impl ModuleLowerer {
     fn free_all_regs(&mut self) {
         // Use centralized allocator's free_all method
         self.reg_alloc.free_all();
-        // Also clear the compatibility tracking
+        
+        // Clear reg_contents but preserve parameter registers
+        let mut param_regs = Vec::new();
+        for (reg, contents) in &self.reg_contents {
+            if contents.starts_with("t") && contents.chars().skip(1).all(|c| c.is_digit(10)) {
+                // This looks like a parameter temp (t0, t1, etc.)
+                // Check if it's in the parameter range
+                if let Ok(id) = contents[1..].parse::<u32>() {
+                    if id < 6 {  // Max 6 parameters in registers
+                        param_regs.push((*reg, contents.clone()));
+                    }
+                }
+            }
+        }
+        
         self.reg_contents.clear();
+        
+        // Restore parameter registers
+        for (reg, contents) in param_regs {
+            self.reg_contents.insert(reg, contents);
+        }
+        
+        // Reset free list but exclude parameter registers
         self.free_regs = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5, Reg::R4, Reg::R3];
+        for reg in self.reg_contents.keys() {
+            self.free_regs.retain(|&r| r != *reg);
+        }
     }
     
     /// Get a scratch register for temporary use

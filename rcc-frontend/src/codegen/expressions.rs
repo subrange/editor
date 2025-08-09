@@ -160,16 +160,15 @@ impl<'a> ExpressionGenerator<'a> {
                 let base_ptr = self.generate(left)?;
                 let index = self.generate(right)?;
                 
-                // Calculate the address: ptr + index
-                let addr = self.builder.build_binary(
-                    IrBinaryOp::Add,
+                // Use GetElementPtr for proper array indexing
+                let addr = self.builder.build_pointer_offset(
                     base_ptr,
                     index,
                     IrType::Ptr(Box::new(IrType::I8))
                 )?;
                 
                 // Load from the calculated address
-                let result = self.builder.build_load(Value::Temp(addr), IrType::I8)?;
+                let result = self.builder.build_load(addr, IrType::I8)?;
                 Ok(Value::Temp(result))
             }
             _ => {
@@ -412,15 +411,14 @@ impl<'a> ExpressionGenerator<'a> {
                 let base_ptr = self.generate(left)?;
                 let index = self.generate(right)?;
                 
-                // Calculate the address: ptr + index
-                let addr = self.builder.build_binary(
-                    IrBinaryOp::Add,
+                // Use GetElementPtr for proper array indexing
+                let addr = self.builder.build_pointer_offset(
                     base_ptr,
                     index,
                     IrType::Ptr(Box::new(IrType::I8))
                 )?;
                 
-                Ok(Value::Temp(addr))
+                Ok(addr)
             }
             
             ExpressionKind::Member { object, member, is_pointer } => {
