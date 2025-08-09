@@ -21,6 +21,7 @@ impl VirtualInstructionRegistry {
         registry.register(Box::new(DecInstruction));
         registry.register(Box::new(NegInstruction));
         registry.register(Box::new(NotInstruction));
+        registry.register(Box::new(SubiInstruction));
         
         registry
     }
@@ -269,6 +270,34 @@ impl VirtualInstruction for NotInstruction {
             line_number: 0,
             raw: String::new(),
         }])
+    }
+}
+
+struct SubiInstruction;
+impl VirtualInstruction for SubiInstruction {
+    fn name(&self) -> &str { "SUBI" }
+
+    fn expand(&self, operands: &[String]) -> Result<Vec<ParsedLine>, String> {
+        if operands.len() != 3 {
+            return Err(format!("SUBI requires 3 operands, got {}", operands.len()));
+        }
+        
+        // Assuming SUBI is a virtual instruction that subtracts an immediate value
+        // We need to parse operands[2] as an integer, and 65536 - operands[2] as the immediate value
+        if let Ok(value) = operands[2].parse::<i32>() {
+            let immediate_value = 65536 - value;
+            return Ok(vec![ParsedLine {
+                label: None,
+                mnemonic: Some("ADDI".to_string()),
+                operands: vec![operands[0].clone(), operands[1].clone(), immediate_value.to_string()],
+                directive: None,
+                directive_args: Vec::new(),
+                line_number: 0,
+                raw: String::new(),
+            }]);
+        }
+
+        Err(format!("Invalid immediate value in SUBI: {}", operands[2]))
     }
 }
 

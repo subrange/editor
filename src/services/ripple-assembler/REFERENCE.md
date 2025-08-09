@@ -23,6 +23,9 @@ SL   rd, rs, rt     ; rd = (rs << (rt & 0xF)) & 0xFFFF   ; logical
 SR   rd, rs, rt     ; rd = (rs >> (rt & 0xF))            ; logical, zero-fill
 SLT  rd, rs, rt     ; rd = ((int16)rs < (int16)rt) ? 1 : 0
 SLTU rd, rs, rt     ; rd = (rs < rt) ? 1 : 0             ; unsigned
+MUL rd, rs, rt     ; rd = (rs * rt) & 0xFFFF            ; multiply (mod 65536)
+DIV rd, rs, rt     ; rd = (rs / rt) & 0xFFFF            ; integer division (mod 65536)
+MOD rd, rs, rt     ; rd = (rs % rt) & 0xFFFF            ; remainder (mod 65536)
 
 
 ; ----------------------------------------------------------
@@ -35,6 +38,9 @@ ORI  rd, rs, imm    ; rd = rs | imm
 XORI rd, rs, imm    ; rd = rs ^ imm
 SLI  rd, rs, imm    ; rd = (rs << (imm & 0xF)) & 0xFFFF
 SRI  rd, rs, imm    ; rd = (rs >> (imm & 0xF))           ; logical
+MULI rd, rs, imm    ; rd = (rs * imm) & 0xFFFF           ; multiply (mod 65536)
+DIVI rd, rs, imm    ; rd = (rs / imm) & 0xFFFF           ; integer division (mod 65536)
+MODI rd, rs, imm    ; rd = (rs % imm) & 0xFFFF           ; remainder (mod 65536)
 
 
 ; ----------------------------------------------------------

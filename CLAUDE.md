@@ -164,3 +164,4 @@ cargo test
 
 - **Testing and Execution**
   - Please, do not try to run "npm run dev". If you want to test something, either use vitest (which can actually help us a lot), or create temporary .ts file and run it with npx tsx
+- To directly assemble, link, and run .asm file, use rcc file.asm --run. It will help with testing C compiler implementation.

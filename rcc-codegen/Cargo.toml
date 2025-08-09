@@ -1,0 +1,12 @@
+[package]
+name = "rcc-codegen"
+version = "0.1.0"
+edition = "2021"
+description = "Ripple C99 Compiler - Code Generation Backend"
+
+[dependencies]
+rcc-common.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+pretty_assertions = "1.4"

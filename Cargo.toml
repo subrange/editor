@@ -1,0 +1,25 @@
+[workspace]
+members = [
+    "rcc-codegen",
+    "rcc-common",
+    "rcc-ir",
+    "rcc-driver",
+    "rcc-frontend",
+]
+exclude = [
+    'src/rust-bf',
+    'src/ripple-asm',
+    'src/bf-macro-expander',
+    'rbt'
+]
+
+
+resolver = "2"
+
+[workspace.dependencies]
+# Common dependencies that all crates might use
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rcc-common = { path = "rcc-common" }
+rcc-frontend = { path = "rcc-frontend" }
