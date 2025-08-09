@@ -6,7 +6,7 @@
 use crate::ast::*;
 use rcc_ir::{Module, Function, BasicBlock, Instruction, Value, IrType, IrBinaryOp, IrUnaryOp, IrBuilder, GlobalVariable, Linkage};
 use rcc_common::{CompilerError, TempId, LabelId, SourceLocation};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Code generation errors
 #[derive(Debug, Clone)]
@@ -79,6 +79,9 @@ pub struct CodeGenerator {
     variables: HashMap<String, (Value, IrType)>, // Variable name -> (IR value, IR type)
     functions: HashMap<String, Value>, // Function name -> IR function value
     
+    // Track which variables are arrays (for array-to-pointer decay)
+    array_variables: HashSet<String>, // Variable names that are arrays
+    
     // String literals
     string_literals: HashMap<String, String>, // String ID -> string content
     next_string_id: u32,
@@ -100,6 +103,7 @@ impl CodeGenerator {
             builder: IrBuilder::new(),
             variables: HashMap::new(),
             functions: HashMap::new(),
+            array_variables: HashSet::new(),
             string_literals: HashMap::new(),
             next_string_id: 0,
             current_function: None,
@@ -276,6 +280,7 @@ impl CodeGenerator {
         self.current_function = None;
         self.current_return_type = None;
         self.variables.clear(); // TODO: Only clear local variables
+        self.array_variables.clear(); // Clear array tracking
         
         Ok(())
     }
@@ -413,9 +418,16 @@ impl CodeGenerator {
                     // Check if this is a pointer type (which means it's a variable that needs to be loaded)
                     match var_type {
                         IrType::Ptr(element_type) => {
-                            // This is a pointer to the variable, load its value
-                            let temp = self.builder.build_load(value.clone(), *element_type.clone())?;
-                            Ok(Value::Temp(temp))
+                            // Check if this is an array variable
+                            if self.array_variables.contains(name) {
+                                // Arrays decay to pointers when used as rvalues
+                                // Return the address directly, don't load
+                                Ok(value.clone())
+                            } else {
+                                // Regular variable, load its value
+                                let temp = self.builder.build_load(value.clone(), *element_type.clone())?;
+                                Ok(Value::Temp(temp))
+                            }
                         }
                         _ => {
                             // This is a direct value (like function parameters), use as is
@@ -440,6 +452,28 @@ impl CodeGenerator {
             
             ExpressionKind::Call { function, arguments } => {
                 self.generate_function_call(function, arguments)
+            }
+            
+            ExpressionKind::SizeofExpr(operand) => {
+                // sizeof(expression) - get size of expression's type
+                // Note: sizeof doesn't evaluate the expression
+                if let Some(ref expr_type) = operand.expr_type {
+                    let size = self.get_ast_type_size(expr_type);
+                    Ok(Value::Constant(size as i64))
+                } else {
+                    // Fallback if no type info
+                    Ok(Value::Constant(2))
+                }
+            }
+            
+            ExpressionKind::SizeofType(ast_type) => {
+                // sizeof(type) - get size of the type
+                let size = self.get_ast_type_size(ast_type);
+                Ok(Value::Constant(size as i64))
+            }
+            
+            ExpressionKind::Member { object, member, is_pointer } => {
+                self.generate_member_access(object, member, *is_pointer)
             }
             
             // TODO: Implement other expression types
@@ -527,6 +561,19 @@ impl CodeGenerator {
                         let zero = Value::Constant(0);
                         let temp = self.builder.build_binary(IrBinaryOp::Eq, operand_val, zero, IrType::I1)?;
                         Ok(Value::Temp(temp))
+                    }
+                    
+                    UnaryOp::Sizeof => {
+                        // For sizeof(expression), we need the type of the expression
+                        // Note: sizeof doesn't evaluate the expression, just gets its type
+                        if let Some(ref expr_type) = operand.expr_type {
+                            let size = self.get_ast_type_size(expr_type);
+                            Ok(Value::Constant(size as i64))
+                        } else {
+                            // If no type info, try to infer from the expression
+                            // This is a fallback, normally semantic analysis should provide the type
+                            Ok(Value::Constant(2)) // Default to word size
+                        }
                     }
                     
                     _ => Err(CodegenError::UnsupportedConstruct {
@@ -635,6 +682,92 @@ impl CodeGenerator {
                 Ok(Value::Temp(addr))
             }
             
+            ExpressionKind::Member { object, member, is_pointer } => {
+                // Get struct type
+                let obj_type = if let Some(ref expr_type) = object.expr_type {
+                    expr_type
+                } else {
+                    return Err(CodegenError::InternalError {
+                        message: "Object has no type information".to_string(),
+                        location: object.span.start.clone(),
+                    }.into());
+                };
+                
+                // Handle pointer dereferencing if needed
+                let struct_type = if *is_pointer {
+                    match obj_type {
+                        Type::Pointer(inner) => &**inner,
+                        _ => {
+                            return Err(CodegenError::InternalError {
+                                message: format!("Expected pointer type for -> operator, found {:?}", obj_type),
+                                location: object.span.start.clone(),
+                            }.into());
+                        }
+                    }
+                } else {
+                    obj_type
+                };
+                
+                // Extract struct fields
+                let fields = match struct_type {
+                    Type::Struct { fields, .. } => fields,
+                    Type::Union { fields, .. } => fields,
+                    _ => {
+                        return Err(CodegenError::InternalError {
+                            message: format!("Expected struct or union type, found {:?}", struct_type),
+                            location: object.span.start.clone(),
+                        }.into());
+                    }
+                };
+                
+                // Find the field and calculate offset
+                let mut offset = 0u64;
+                let mut found = false;
+                for field in fields {
+                    if field.name == *member {
+                        found = true;
+                        break;
+                    }
+                    // For struct, add field size to offset (no alignment for simplicity)
+                    // For union, offset is always 0
+                    if matches!(struct_type, Type::Struct { .. }) {
+                        if let Some(size) = field.field_type.size_in_words() {
+                            offset += size;
+                        } else {
+                            return Err(CodegenError::InternalError {
+                                message: format!("Cannot compute size of field {}", field.name),
+                                location: object.span.start.clone(),
+                            }.into());
+                        }
+                    }
+                }
+                
+                if !found {
+                    return Err(CodegenError::UndefinedVariable {
+                        name: format!("field '{}'", member),
+                        location: object.span.start.clone(),
+                    }.into());
+                }
+                
+                // Generate the base address
+                let base_addr = if *is_pointer {
+                    // For pointer->member, load the pointer value
+                    self.generate_expression(object)?
+                } else {
+                    // For object.member, get the address of the object
+                    self.generate_lvalue(object)?
+                };
+                
+                // Add offset if non-zero
+                if offset > 0 {
+                    let offset_val = Value::Constant(offset as i64);
+                    let temp = self.builder.build_binary(IrBinaryOp::Add, base_addr, offset_val, IrType::Ptr(Box::new(IrType::I16)))?;
+                    Ok(Value::Temp(temp))
+                } else {
+                    Ok(base_addr)
+                }
+            }
+            
             _ => Err(CodegenError::UnsupportedConstruct {
                 construct: "complex lvalue".to_string(),
                 location: expr.span.start.clone(),
@@ -646,8 +779,21 @@ impl CodeGenerator {
     fn generate_local_declaration(&mut self, decl: &Declaration) -> Result<(), CompilerError> {
         let ir_type = self.convert_type(&decl.decl_type, decl.span.start.clone())?;
         
-        // Allocate space for the variable
-        let alloca_temp = self.builder.build_alloca(ir_type.clone(), None)?;
+        // For arrays, we need to handle allocation differently
+        let (alloca_temp, var_type, is_array) = match &ir_type {
+            IrType::Array { size, element_type } => {
+                // Allocate array - alloca returns pointer to first element
+                let count = Some(Value::Constant(*size as i64));
+                let alloca_temp = self.builder.build_alloca((**element_type).clone(), count)?;
+                // The variable type is pointer to element type (array decays to pointer)
+                (alloca_temp, IrType::Ptr(element_type.clone()), true)
+            }
+            _ => {
+                // Regular scalar allocation
+                let alloca_temp = self.builder.build_alloca(ir_type.clone(), None)?;
+                (alloca_temp, IrType::Ptr(Box::new(ir_type.clone())), false)
+            }
+        };
         
         // If there's an initializer, store it
         if let Some(init) = &decl.initializer {
@@ -657,7 +803,12 @@ impl CodeGenerator {
         
         // Add to variables map
         let var_value = Value::Temp(alloca_temp);
-        self.variables.insert(decl.name.clone(), (var_value, IrType::Ptr(Box::new(ir_type))));
+        self.variables.insert(decl.name.clone(), (var_value, var_type));
+        
+        // Track if this is an array
+        if is_array {
+            self.array_variables.insert(decl.name.clone());
+        }
         
         Ok(())
     }
@@ -823,6 +974,102 @@ impl CodeGenerator {
         Ok(())
     }
     
+    /// Generate member access (object.member or pointer->member)
+    fn generate_member_access(&mut self, object: &Expression, member: &str, is_pointer: bool) -> Result<Value, CompilerError> {
+        // Get the object type
+        let obj_type = if let Some(ref expr_type) = object.expr_type {
+            expr_type
+        } else {
+            return Err(CodegenError::InternalError {
+                message: "Object has no type information".to_string(),
+                location: object.span.start.clone(),
+            }.into());
+        };
+        
+        // Handle pointer dereferencing if needed
+        let struct_type = if is_pointer {
+            // For pointer->member, we need to get the pointed-to type
+            match obj_type {
+                Type::Pointer(inner) => &**inner,
+                _ => {
+                    return Err(CodegenError::InternalError {
+                        message: format!("Expected pointer type for -> operator, found {:?}", obj_type),
+                        location: object.span.start.clone(),
+                    }.into());
+                }
+            }
+        } else {
+            // For object.member, use the type directly
+            obj_type
+        };
+        
+        // Extract struct fields
+        let fields = match struct_type {
+            Type::Struct { fields, .. } => fields,
+            Type::Union { fields, .. } => fields,
+            _ => {
+                return Err(CodegenError::InternalError {
+                    message: format!("Expected struct or union type, found {:?}", struct_type),
+                    location: object.span.start.clone(),
+                }.into());
+            }
+        };
+        
+        // Find the field and calculate offset
+        let mut offset = 0u64;
+        let mut field_type = None;
+        for field in fields {
+            if field.name == member {
+                field_type = Some(&field.field_type);
+                break;
+            }
+            // For struct, add field size to offset (no alignment for simplicity)
+            // For union, offset is always 0
+            if matches!(struct_type, Type::Struct { .. }) {
+                if let Some(size) = field.field_type.size_in_words() {
+                    offset += size;
+                } else {
+                    return Err(CodegenError::InternalError {
+                        message: format!("Cannot compute size of field {}", field.name),
+                        location: object.span.start.clone(),
+                    }.into());
+                }
+            }
+        }
+        
+        let field_type = field_type.ok_or_else(|| {
+            CodegenError::UndefinedVariable {
+                name: format!("field '{}'", member),
+                location: object.span.start.clone(),
+            }
+        })?;
+        
+        // Generate the base address
+        let base_addr = if is_pointer {
+            // For pointer->member, load the pointer value
+            self.generate_expression(object)?
+        } else {
+            // For object.member, get the address of the object
+            self.generate_lvalue(object)?
+        };
+        
+        // Add offset if non-zero
+        let field_addr = if offset > 0 {
+            let offset_val = Value::Constant(offset as i64);
+            let temp = self.builder.build_binary(IrBinaryOp::Add, base_addr, offset_val, IrType::Ptr(Box::new(IrType::I16)))?;
+            Value::Temp(temp)
+        } else {
+            base_addr
+        };
+        
+        // For member access in rvalue context, load the value
+        // The field address is what we need for lvalue context
+        // Since we're in generate_expression (rvalue context), load the value
+        let ir_field_type = self.convert_type(field_type, object.span.start.clone())?;
+        let result = self.builder.build_load(field_addr, ir_field_type)?;
+        Ok(Value::Temp(result))
+    }
+    
     /// Generate constant initializer
     fn generate_constant_initializer(&mut self, init: &Initializer) -> Result<Value, CompilerError> {
         match &init.kind {
@@ -878,10 +1125,91 @@ impl CodeGenerator {
                     Ok(IrType::Ptr(Box::new(elem_type)))
                 }
             }
+            Type::Struct { fields, .. } => {
+                // For structs, allocate as array of words
+                // Calculate total size in words
+                let mut total_words = 0u64;
+                for field in fields {
+                    if let Some(size) = field.field_type.size_in_words() {
+                        total_words += size;
+                    } else {
+                        return Err(CodegenError::InternalError {
+                            message: format!("Cannot compute size of struct field: {}", field.name),
+                            location,
+                        }.into());
+                    }
+                }
+                // Return as array of I16 (words)
+                Ok(IrType::Array { size: total_words, element_type: Box::new(IrType::I16) })
+            }
+            Type::Union { fields, .. } => {
+                // For unions, allocate the size of the largest field
+                let mut max_words = 0u64;
+                for field in fields {
+                    if let Some(size) = field.field_type.size_in_words() {
+                        max_words = max_words.max(size);
+                    } else {
+                        return Err(CodegenError::InternalError {
+                            message: format!("Cannot compute size of union field: {}", field.name),
+                            location,
+                        }.into());
+                    }
+                }
+                // Return as array of I16 (words)
+                Ok(IrType::Array { size: max_words, element_type: Box::new(IrType::I16) })
+            }
             _ => Err(CodegenError::InvalidType {
                 ast_type: ast_type.clone(),
                 location,
             }.into()),
+        }
+    }
+    
+    /// Get the size of an AST type in bytes
+    fn get_ast_type_size(&self, ast_type: &Type) -> u64 {
+        match ast_type {
+            Type::Void => 0,
+            Type::Bool => 1,
+            Type::Char | Type::SignedChar | Type::UnsignedChar => 1,
+            Type::Short | Type::UnsignedShort => 2,
+            Type::Int | Type::UnsignedInt => 2, // 16-bit int on Ripple
+            Type::Long | Type::UnsignedLong => 4,
+            Type::Pointer(_) => 2, // 16-bit pointers
+            Type::Array { element_type, size } => {
+                let elem_size = self.get_ast_type_size(element_type);
+                if let Some(size) = size {
+                    elem_size * size
+                } else {
+                    // Incomplete array type
+                    0
+                }
+            }
+            Type::Function { .. } => 0, // Functions don't have size
+            Type::Struct { .. } | Type::Union { .. } => {
+                // Use the size_in_bytes method from Type
+                ast_type.size_in_bytes().unwrap_or(0)
+            }
+            _ => 0, // TODO: Handle other types
+        }
+    }
+    
+    /// Get the size of an IR type in bytes
+    fn get_ir_type_size(&self, ir_type: &IrType) -> u64 {
+        match ir_type {
+            IrType::Void => 0,
+            IrType::I1 => 1,
+            IrType::I8 => 1,
+            IrType::I16 => 2,
+            IrType::I32 => 4,
+            IrType::I64 => 8,
+            IrType::Ptr(_) => 2, // 16-bit pointers
+            IrType::Array { element_type, size } => {
+                let elem_size = self.get_ir_type_size(element_type);
+                elem_size * size
+            }
+            IrType::Function { .. } => 0,
+            IrType::Struct { .. } => 0, // TODO: Calculate struct size
+            IrType::Label => 0,
         }
     }
     

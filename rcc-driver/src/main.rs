@@ -160,16 +160,16 @@ fn compile_c99_file(
     };
     
     // Try to compile to IR - if it fails, just show a warning but don't fail completely
-    println!("\nAttempting full compilation pipeline...");
+    println!("\n💀 Attempting full compilation pipeline");
     match Frontend::compile_to_ir(&source, input_path.file_stem().unwrap().to_str().unwrap()) {
         Ok(ir_module) => {
-            println!("Successfully generated IR...");
-            println!("Module contains {} functions", ir_module.functions.len());
+            println!("💫 Successfully generated IR");
+            println!("🦄 Module contains {} functions", ir_module.functions.len());
             
             // Lower Module to assembly
             match rcc_ir::lower_module_to_assembly(ir_module) {
                 Ok(asm_instructions) => {
-                    println!("Successfully lowered to assembly!");
+                    println!("💕 Successfully lowered to assembly");
                     
                     // Generate assembly text
                     let asm_text = rcc_codegen::emit::emit_complete_program(asm_instructions, true)?;

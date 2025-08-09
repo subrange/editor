@@ -736,16 +736,14 @@
 }
 
 #define alu_sltu {
+
   @lane(@L_SA,
     @prevwords(2)
-    @move_r_n(2)
-    @prevwords(3)
-    @move_to(@nextwords(3) >, < @prevwords(3)) <
+    @lt
+    @prevword @clear @nextword
+    @move_to(@nextwords(2) >, < @prevwords(2)) <
   )
 
-  @_cmp_unsigned_lt
-
-  @lane(@L_SA, [->+<])
 }
 
 // MARK: ---------- ALU ops end ----------

@@ -261,13 +261,21 @@ impl ModuleLowerer {
     /// Lower a single instruction
     fn lower_instruction(&mut self, instruction: &Instruction) -> Result<(), CompilerError> {
         match instruction {
-            Instruction::Alloca { result, alloc_type, .. } => {
+            Instruction::Alloca { result, alloc_type, count, .. } => {
                 // Stack allocation - allocate space and compute address
-                let size = self.get_type_size_in_words(alloc_type);
+                let base_size = self.get_type_size_in_words(alloc_type);
+                
+                // If count is provided, multiply size by count (for arrays)
+                let total_size = match count {
+                    Some(Value::Constant(n)) => base_size * (*n as u64),
+                    _ => base_size,
+                };
                 
                 // Allocate space on stack by incrementing offset
-                self.local_stack_offset += size as i16;
-                let offset = self.local_stack_offset;
+                // Note: For arrays, we allocate starting position, not ending
+                let start_offset = self.local_stack_offset + 1; // Start after current position
+                self.local_stack_offset += total_size as i16;
+                let offset = start_offset;
                 
                 // Store the offset for this temp
                 self.local_offsets.insert(*result, offset);
@@ -381,14 +389,20 @@ impl ModuleLowerer {
                     IrBinaryOp::Mul => {
                         self.instructions.push(AsmInst::Mul(dest_reg, left_reg, right_reg));
                     }
+                    IrBinaryOp::SDiv | IrBinaryOp::UDiv => {
+                        self.instructions.push(AsmInst::Div(dest_reg, left_reg, right_reg));
+                    }
+                    IrBinaryOp::SRem | IrBinaryOp::URem => {
+                        self.instructions.push(AsmInst::Mod(dest_reg, left_reg, right_reg));
+                    }
                     IrBinaryOp::Eq => {
                         // Set dest_reg to 1 if equal, 0 otherwise
                         // Strategy: result = !(left != right)
                         // First check if left < right or right < left
                         let temp1 = Reg::R9;
                         let temp2 = Reg::R10;
-                        self.instructions.push(AsmInst::Slt(temp1, left_reg, right_reg)); // 1 if left < right
-                        self.instructions.push(AsmInst::Slt(temp2, right_reg, left_reg)); // 1 if right < left
+                        self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
+                        self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
                         self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
                         // Now invert the result: dest = 1 - dest
                         self.instructions.push(AsmInst::LI(temp1, 1));
@@ -398,27 +412,28 @@ impl ModuleLowerer {
                         // Set dest_reg to 1 if not equal, 0 otherwise
                         let temp1 = Reg::R9;
                         let temp2 = Reg::R10;
-                        self.instructions.push(AsmInst::Slt(temp1, left_reg, right_reg)); // 1 if left < right
-                        self.instructions.push(AsmInst::Slt(temp2, right_reg, left_reg)); // 1 if right < left
+                        self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
+                        self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
                         self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
                     }
                     IrBinaryOp::Slt => {
-                        self.instructions.push(AsmInst::Slt(dest_reg, left_reg, right_reg));
+                        // Use SLTU instead of SLT since SLT might be buggy
+                        self.instructions.push(AsmInst::Sltu(dest_reg, left_reg, right_reg));
                     }
                     IrBinaryOp::Sle => {
                         // a <= b is !(b < a)
                         let temp = Reg::R9;
-                        self.instructions.push(AsmInst::Slt(dest_reg, right_reg, left_reg));
+                        self.instructions.push(AsmInst::Sltu(dest_reg, right_reg, left_reg));
                         self.instructions.push(AsmInst::LI(temp, 1));
                         self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
                     }
                     IrBinaryOp::Sgt => {
-                        self.instructions.push(AsmInst::Slt(dest_reg, right_reg, left_reg));
+                        self.instructions.push(AsmInst::Sltu(dest_reg, right_reg, left_reg));
                     }
                     IrBinaryOp::Sge => {
                         // a >= b is !(a < b)
                         let temp = Reg::R9;
-                        self.instructions.push(AsmInst::Slt(dest_reg, left_reg, right_reg));
+                        self.instructions.push(AsmInst::Sltu(dest_reg, left_reg, right_reg));
                         self.instructions.push(AsmInst::LI(temp, 1));
                         self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
                     }
@@ -556,16 +571,22 @@ impl ModuleLowerer {
             }
             
             Instruction::Branch(target) => {
-                // For now, use a comment - proper label resolution would be done in a later pass
-                self.instructions.push(AsmInst::Comment(format!("Jump to label {}", target)));
-                // TODO: Resolve label to actual address
+                // Unconditional jump to label
+                // Use BEQ R0, R0, label (always true) as unconditional jump
+                self.instructions.push(AsmInst::Beq(Reg::R0, Reg::R0, format!("L{}", target)));
             }
             
             Instruction::BranchCond { condition, true_label, false_label } => {
-                // Simplified conditional branch
-                self.instructions.push(AsmInst::Comment(format!("Branch if {} to L{} else L{}", 
-                    self.value_to_string(condition), true_label, false_label)));
-                // TODO: Implement proper condition evaluation
+                // Get the condition value in a register
+                let cond_reg = self.get_value_register(condition)?;
+                
+                // Branch if condition is non-zero (true)
+                // BNE cond_reg, R0, true_label
+                self.instructions.push(AsmInst::Bne(cond_reg, Reg::R0, format!("L{}", true_label)));
+                
+                // If we fall through (condition was zero/false), jump to false label
+                // Use BEQ R0, R0, false_label (always true) as unconditional jump
+                self.instructions.push(AsmInst::Beq(Reg::R0, Reg::R0, format!("L{}", false_label)));
             }
             
             _ => {

@@ -246,21 +246,23 @@ pub enum IrInst {
 **Goal**: Aggregates, address-of/deref, global data emission, .rodata strings.
 
 ### 3.1 Extended Types
-- [ ] Array types
-- [ ] Struct/union types
-- [ ] Sizeof computation
+- [x] Array types (completed - arrays properly decay to pointers)
+- [x] Struct/union types (basic support - inline structs work)
+- [x] Sizeof computation (works for all types including structs)
 - [ ] Alignment rules
+- [ ] Array initializers with {}
 
 ### 3.2 Memory Layout
-- [x] Global variable allocation
-- [x] String literal storage  
+- [x] Global variable allocation (starting at address 100)
+- [x] String literal storage (hex-encoded in variable names)
 - [ ] Section management (.data, .rodata, .bss)
 
 ### 3.3 Address Operations
 - [x] Address-of (&) operator
-- [x] Dereference (*) operator
-- [x] Array indexing
-- [ ] Struct member access
+- [x] Dereference (*) operator  
+- [x] Array indexing (with pointer arithmetic)
+- [x] Array-to-pointer decay (critical for C semantics)
+- [x] Struct member access (basic implementation - has memory bank tracking issue for stack-allocated structs)
 
 ### 3.4 Data Emission
 ```rust
@@ -272,6 +274,10 @@ fn test_string_literal() {
     assert_contains!(asm, ".string \"Hello\"");
 }
 ```
+
+### 3.5 Functions
+- [ ] Pointer parameters
+- [ ] Inline assembly support
 
 ## M4: Runtime + libc mini (Weeks 9-11)
 **Goal**: crt0, math helpers, memcpy/memset, puts/putchar.
@@ -444,9 +450,9 @@ rcc/
 
 ## Success Criteria
 
-- [ ] Compiles hello world
+- [x] Compiles hello world
 - [ ] Compiles FizzBuzz  
-- [ ] Compiles recursive Fibonacci
+- [x] Compiles recursive Fibonacci
 - [ ] Passes basic C99 conformance tests
-- [ ] Integrates with rasm/rlink toolchain (emits compatible assembly)
+- [x] Integrates with rasm/rlink toolchain (emits compatible assembly)
 - [ ] Generates debuggable code for IDE
