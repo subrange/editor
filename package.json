@@ -12,7 +12,14 @@
     "test:run": "vitest run",
     "generate-favicons": "node generate-favicons.js",
     "ripple-asm": "tsx src/services/ripple-assembler/cli.ts",
-    "build:rust-interpreter": "cd src/rust-bf && ./build-wasm.sh && cp ./pkg/* ../../public/wasm || true && cd ../.."
+    "build:wasm:rust-interpreter": "cd src/rust-bf && ./build-wasm.sh && cp ./pkg/* ../../public/wasm || true && cd ../..",
+    "build:wasm:rust-assembler": "cd src/ripple-asm && ./build-wasm.sh || true && cd ../..",
+    "build:wasm": "npm run build:wasm:rust-interpreter && npm run build:wasm:rust-assembler",
+
+    "build:rust-assembler": "cd src/ripple-asm && cargo build --release  || true && cd ../..",
+    "build:rust-interpreter": "cd src/rust-bf && cargo build --release  || true && cd ../..",
+
+    "build:native": "npm run build:rust-assembler && npm run build:rust-interpreter"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

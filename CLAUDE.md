@@ -105,6 +105,61 @@ For macro system changes, the expansion logic is in `macro-expander-v3.ts` with 
 
 The interpreter can run in both JavaScript and WASM modes - ensure changes work with both implementations.
 
+## Ripple Assembler
+
+The IDE includes a custom RISC-like assembler for the Ripple VM architecture located in `src/ripple-asm/`.
+
+### Architecture Overview
+- **16-bit architecture** with configurable bank size
+- **18 registers**: R0-R15, PC, PCB, RA, RAB
+- **Instruction format**: 8-bit opcode + 3x 16-bit operands
+- **Two-pass assembly** with label resolution
+- **Linker** for resolving cross-references between modules
+
+### Instruction Set
+**Arithmetic**: ADD, SUB, MUL, DIV, MOD (register and immediate versions)
+**Logical**: AND, OR, XOR, SLL, SRL, SLT, SLTU
+**Memory**: LOAD, STORE, LI (load immediate)
+**Control**: JAL, JALR, BEQ, BNE, BLT, BGE, BRK, HALT
+**Virtual**: MOVE, INC, DEC, PUSH, POP, CALL, RET (expand to real instructions)
+
+### Building and Testing
+
+```bash
+# Build WASM module for UI
+cd src/ripple-asm
+./build-wasm.sh
+
+# Build CLI tools
+cargo build --release
+
+# Run tests
+cargo test
+
+# Assemble a file
+./target/release/rasm assemble test.asm --bank-size 32 --max-immediate 1000000
+
+# Link object files
+./target/release/rlink file1.pobj file2.pobj -o program.bin
+
+# Convert to macro format
+./target/release/rlink -f macro program.pobj
+```
+
+### Key Implementation Files
+- `src/assembler.rs` - Main assembler logic, label detection, reference tracking
+- `src/linker.rs` - Links object files, resolves label references
+- `src/encoder.rs` - Instruction encoding logic
+- `src/wasm.rs` - WASM bindings for browser integration
+- `src/services/ripple-assembler/assembler.ts` - TypeScript wrapper with automatic linking
+
+### Important Notes
+- The assembler automatically runs the linker when unresolved references are detected
+- JAL uses absolute instruction indices, branches use relative offsets
+- Label references are properly categorized as branch/absolute/data based on instruction type
+- The UI integration uses WASM through `src/services/ripple-assembler/`
+- Browser caching can be an issue - hard refresh (Cmd+Shift+R) after rebuilding WASM
+
 ## Development Guidelines
 
 - **Testing and Execution**
