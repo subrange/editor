@@ -11,7 +11,7 @@ import { AssemblyOutput } from "./assembly-output.tsx";
 import { DraggableVSep } from "../ui/draggable-vsep.tsx";
 import { useLocalStorageState } from "../../hooks/use-local-storage-state.tsx";
 import { EditorStore } from "../editor/stores/editor.store.ts";
-import { createAssembler } from "../../services/ripple-assembler/index.ts";
+import { createAssembler, initAssembler } from "../../services/ripple-assembler/assembler.ts";
 import { AssemblyQuickNavStore, type AssemblyNavigationItem } from "./stores/assembly-quick-nav.store.ts";
 import { AssemblyQuickNav } from "./components/assembly-quick-nav.tsx";
 import {HSep} from "../helper-components.tsx";
@@ -24,6 +24,11 @@ export function AssemblyEditor() {
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoCompile = settings?.assembly?.autoCompile ?? false;
     const autoOpenOutput = settings?.assembly?.autoOpenOutput ?? false;
+    
+    // Initialize WASM assembler on mount
+    useEffect(() => {
+        initAssembler().catch(console.error);
+    }, []);
     
     // Subscribe to minimap state
     const [minimapEnabled, setMinimapEnabled] = useLocalStorageState("assemblyMinimap", false);
@@ -114,14 +119,13 @@ export function AssemblyEditor() {
         const code = assemblyEditor.getText();
         
         try {
-            // Create assembler with current settings
+            // Use Rust WASM assembler
             const assembler = createAssembler({
                 bankSize: settings?.assembly?.bankSize,
                 maxImmediate: settings?.assembly?.maxImmediate
             });
             
-            // Use the configured assembler
-            const result = assembler.assemble(code);
+            const result = await assembler.assemble(code);
             
             if (result.errors.length > 0) {
                 // Report errors

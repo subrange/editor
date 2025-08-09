@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve, basename, dirname, extname, join } from 'path';
 import { Command } from 'commander';
-import { RippleAssembler } from './assembler';
+import { RippleAssembler } from '../assembler.js';
 
 const program = new Command();
 
