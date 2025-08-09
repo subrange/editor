@@ -4,8 +4,9 @@ import {
     type MacroExpansionError,
     type MacroDefinition
 } from "../../../services/macro-expander/macro-expander.ts";
-import { createAsyncMacroExpander } from "../../../services/macro-expander/create-macro-expander.ts";
+import { createAsyncMacroExpander, createAsyncMacroExpanderWasm } from "../../../services/macro-expander/create-macro-expander.ts";
 import { type MacroExpanderWorkerClient } from "../../../services/macro-expander/macro-expander-worker-client.ts";
+import { type MacroExpanderWasmWorkerClient } from "../../../services/macro-expander/macro-expander-wasm-worker-client.ts";
 
 // Token types for macro syntax
 export interface MacroToken {
@@ -51,7 +52,8 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
         macroDefinitionBraceDepth: 0
     };
     
-    private asyncExpander: MacroExpanderWorkerClient | null = null;
+    private asyncExpander: MacroExpanderWorkerClient | MacroExpanderWasmWorkerClient | null = null;
+    private useWasmExpander: boolean = false;
     private fullText = '';
     private lineOffsets: number[] = [];
     private lastExpandPromise: Promise<void> | null = null;
@@ -607,7 +609,18 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
     // Initialize the async expander if not already done
     private ensureAsyncExpander() {
         if (!this.asyncExpander) {
-            this.asyncExpander = createAsyncMacroExpander();
+            this.asyncExpander = this.useWasmExpander ? createAsyncMacroExpanderWasm() : createAsyncMacroExpander();
+        }
+    }
+
+    setUseWasmExpander(value: boolean) {
+        if (this.useWasmExpander !== value) {
+            this.useWasmExpander = value;
+            // Destroy old expander and create new one
+            if (this.asyncExpander) {
+                this.asyncExpander.destroy();
+                this.asyncExpander = null;
+            }
         }
     }
 

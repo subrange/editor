@@ -12,7 +12,7 @@ import {editorManager} from "./services/editor-manager.service.ts";
 import {EditorStore} from "./components/editor/stores/editor.store.ts";
 import {useEffect, useState, useCallback} from "react";
 import {ProgressiveMacroTokenizer} from "./components/editor/services/macro-tokenizer-progressive.ts";
-import {createAsyncMacroExpander} from "./services/macro-expander/create-macro-expander.ts";
+import {createAsyncMacroExpander, createAsyncMacroExpanderWasm} from "./services/macro-expander/create-macro-expander.ts";
 import {CpuChipIcon, ArrowPathIcon, DocumentTextIcon, CommandLineIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 
@@ -144,7 +144,8 @@ function EditorPanel() {
     const [leftPanelWidth, setLeftPanelWidth] = useLocalStorageState("editorLeftPanelWidth", 50); // percentage
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoExpand = settings?.macro.autoExpand ?? false;
-    const [macroExpander] = useState(() => createAsyncMacroExpander());
+    const useWasmExpander = settings?.macro.useWasmExpander ?? false;
+    const [macroExpander] = useState(() => useWasmExpander ? createAsyncMacroExpanderWasm() : createAsyncMacroExpander());
     
     // Subscribe to minimap states
     const [mainEditorMinimapEnabled, setMainEditorMinimapEnabled] = useState(false);
@@ -163,6 +164,16 @@ function EditorPanel() {
             return () => sub.unsubscribe();
         }
     }, [macroEditor]);
+
+    // Update tokenizer when WASM expander setting changes
+    useEffect(() => {
+        if (macroEditor) {
+            const tokenizer = macroEditor.getTokenizer();
+            if (tokenizer instanceof ProgressiveMacroTokenizer) {
+                tokenizer.setUseWasmExpander(useWasmExpander);
+            }
+        }
+    }, [macroEditor, useWasmExpander]);
 
     useEffect(() => {
         // Cleanup on unmount

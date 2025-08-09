@@ -4,6 +4,7 @@ export interface MacroSettings {
     stripComments: boolean;
     collapseEmptyLines: boolean;
     autoExpand: boolean;
+    useWasmExpander: boolean;
 }
 
 export type DebuggerViewMode = 'normal' | 'compact' | 'lane';
@@ -38,7 +39,8 @@ class SettingsStore {
         macro: {
             stripComments: this.loadFromStorage('macroStripComments', true),
             collapseEmptyLines: this.loadFromStorage('macroCollapseEmptyLines', true),
-            autoExpand: this.loadFromStorage('autoExpandMacros', false)
+            autoExpand: this.loadFromStorage('autoExpandMacros', false),
+            useWasmExpander: this.loadFromStorage('macroUseWasmExpander', false)
         },
         debugger: {
             compactView: this.loadFromStorage('debuggerCompactView', false),
@@ -91,6 +93,18 @@ class SettingsStore {
             }
         });
         this.saveToStorage('autoExpandMacros', value);
+    }
+
+    setMacroUseWasmExpander(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            macro: {
+                ...current.macro,
+                useWasmExpander: value
+            }
+        });
+        this.saveToStorage('macroUseWasmExpander', value);
     }
 
     setDebuggerCompactView(value: boolean) {

@@ -1,0 +1,3 @@
+start:
+    CALL func
+    HALT

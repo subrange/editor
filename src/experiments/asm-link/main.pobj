@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "instructions": [
+    {
+      "opcode": 19,
+      "word0": 19,
+      "word1": 3,
+      "word2": 0,
+      "word3": 0
+    },
+    {
+      "opcode": 0,
+      "word0": 0,
+      "word1": 0,
+      "word2": 0,
+      "word3": 0
+    }
+  ],
+  "data": [],
+  "labels": {
+    "start": {
+      "name": "start",
+      "bank": 0,
+      "offset": 0,
+      "absolute_address": 0
+    }
+  },
+  "data_labels": {},
+  "unresolved_references": {
+    "0": {
+      "label": "func",
+      "ref_type": "absolute"
+    }
+  },
+  "entry_point": "start"
+}

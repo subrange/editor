@@ -324,6 +324,21 @@ export function Settings() {
                         <p className="text-xs text-zinc-500 -mt-2">
                             Remove lines that contain no Brainfuck commands
                         </p>
+
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                Use Rust WASM Expander
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={settings?.macro.useWasmExpander ?? false}
+                                onChange={(e) => settingsStore.setMacroUseWasmExpander(e.target.checked)}
+                                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                            />
+                        </label>
+                        <p className="text-xs text-zinc-500 -mt-2">
+                            Use Rust-based WASM macro expander (experimental)
+                        </p>
                     </div>
                 </SettingSection>
 
