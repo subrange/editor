@@ -284,7 +284,7 @@ pub struct AssemblerOptions {
     pub start_bank: u16,
     pub bank_size: u16,
     pub max_immediate: u32,
-    pub data_offset: u16,
+    pub memory_offset: u16,  // Offset to add to all memory addresses (default 2 for VM special values)
 }
 
 impl Default for AssemblerOptions {
@@ -294,7 +294,7 @@ impl Default for AssemblerOptions {
             start_bank: 0,
             bank_size: DEFAULT_BANK_SIZE,
             max_immediate: DEFAULT_MAX_IMMEDIATE,
-            data_offset: 2,
+            memory_offset: 2,  // Default to 2 to account for VM special values
         }
     }
 }

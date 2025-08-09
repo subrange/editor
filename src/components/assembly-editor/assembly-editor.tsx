@@ -141,7 +141,8 @@ export function AssemblyEditor() {
             // Use Rust WASM assembler
             const assembler = createAssembler({
                 bankSize: settings?.assembly?.bankSize,
-                maxImmediate: settings?.assembly?.maxImmediate
+                maxImmediate: settings?.assembly?.maxImmediate,
+                memoryOffset: settings?.assembly?.memoryOffset
             });
             
             const result = await assembler.assemble(code);
@@ -170,7 +171,7 @@ export function AssemblyEditor() {
             assemblyOutputStore.setError(`Assembly failed: ${error}`);
             console.error('Assembly error:', error);
         }
-    }, [assemblyEditor, autoOpenOutput, showOutput, setShowOutput, settings?.assembly?.bankSize, settings?.assembly?.maxImmediate]);
+    }, [assemblyEditor, autoOpenOutput, showOutput, setShowOutput, settings?.assembly?.bankSize, settings?.assembly?.maxImmediate, settings?.assembly?.memoryOffset]);
 
     // Auto-compile effect
     useEffect(() => {

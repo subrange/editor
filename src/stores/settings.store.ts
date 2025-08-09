@@ -20,6 +20,7 @@ export interface AssemblySettings {
     autoOpenOutput: boolean;
     bankSize: number;
     maxImmediate: number;
+    memoryOffset: number;  // Offset for data addresses (default 2 for VM special values)
 }
 
 export interface InterpreterSettings {
@@ -51,7 +52,8 @@ class SettingsStore {
             autoCompile: this.loadFromStorage('assemblyAutoCompile', false),
             autoOpenOutput: this.loadFromStorage('assemblyAutoOpenOutput', true),
             bankSize: this.loadFromStorage('assemblyBankSize', 16),
-            maxImmediate: this.loadFromStorage('assemblyMaxImmediate', 65535)
+            maxImmediate: this.loadFromStorage('assemblyMaxImmediate', 65535),
+            memoryOffset: this.loadFromStorage('assemblyMemoryOffset', 2)
         },
         interpreter: {
             wrapCells: this.loadFromStorage('interpreterWrapCells', true),
@@ -192,6 +194,18 @@ class SettingsStore {
             }
         });
         this.saveToStorage('assemblyMaxImmediate', value);
+    }
+    
+    setAssemblyMemoryOffset(value: number) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            assembly: {
+                ...current.assembly,
+                memoryOffset: value
+            }
+        });
+        this.saveToStorage('assemblyMemoryOffset', value);
     }
 
     setInterpreterWrapCells(value: boolean) {

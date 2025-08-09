@@ -1,5 +1,0 @@
-#define times(code) TIMES_START[code]TIMES_END
-
-#define mark_register(offs) @times(offs >)
-
-@mark_register(VALUE)

@@ -128,7 +128,7 @@ impl RippleAssembler {
     ) -> Vec<ParsedLine> {
         let mut current_section = Section::Code;
         let mut code_lines = Vec::new();
-        let mut current_data_offset = self.options.data_offset as u32;
+        let mut current_data_offset = self.options.memory_offset as u32;
 
         for line in lines {
             if let Some(directive) = &line.directive {
@@ -226,6 +226,29 @@ impl RippleAssembler {
                             bytes_added += 1;
                         }
                     }
+                }
+            }
+            "space" => {
+                // .space N reserves N bytes of zero-initialized memory
+                if let Some(arg) = line.directive_args.first() {
+                    if let Ok(count) = self.encoder.parse_immediate(arg) {
+                        if count > 0 {
+                            for _ in 0..count {
+                                state.memory_data.push(0);
+                                bytes_added += 1;
+                            }
+                        }
+                    } else {
+                        state.errors.push(format!(
+                            "Line {}: Invalid argument for .space directive: {}",
+                            line.line_number, arg
+                        ));
+                    }
+                } else {
+                    state.errors.push(format!(
+                        "Line {}: .space directive requires a size argument",
+                        line.line_number
+                    ));
                 }
             }
             _ => {
@@ -347,7 +370,7 @@ impl RippleAssembler {
                 let ref_type = match opcode {
                     Opcode::Beq | Opcode::Bne | Opcode::Blt | Opcode::Bge => ReferenceType::Branch,
                     Opcode::Jal => ReferenceType::Absolute,
-                    Opcode::Load | Opcode::Store => ReferenceType::Data,
+                    Opcode::Load | Opcode::Store | Opcode::Li => ReferenceType::Data,
                     _ => ReferenceType::Absolute,
                 };
 
@@ -458,5 +481,56 @@ start:
         
         assert_eq!(result.instructions.len(), 1);
         assert!(result.instructions[0].is_halt());
+    }
+
+    #[test]
+    fn test_assemble_space_directive() {
+        let assembler = RippleAssembler::new(AssemblerOptions::default());
+        let source = r#"
+.data
+buffer: .space 20
+value: .byte 0xFF
+
+.code
+start:
+    LI R3, 0
+"#;
+        let result = assembler.assemble(source).unwrap();
+        
+        assert_eq!(result.instructions.len(), 1);
+        // Check that .space created 20 zeros followed by 0xFF
+        assert_eq!(result.data.len(), 21);
+        for i in 0..20 {
+            assert_eq!(result.data[i], 0, "Expected zero at position {}", i);
+        }
+        assert_eq!(result.data[20], 0xFF);
+        assert!(result.data_labels.contains_key("buffer"));
+        assert!(result.data_labels.contains_key("value"));
+    }
+
+    #[test]
+    fn test_memory_offset() {
+        // Test with default offset (2)
+        let assembler = RippleAssembler::new(AssemblerOptions::default());
+        let source = r#"
+.data
+data1: .byte 0xAA
+data2: .word 0x1234
+
+.code
+start:
+    NOP
+"#;
+        let result = assembler.assemble(source).unwrap();
+        assert_eq!(result.data_labels.get("data1"), Some(&2));
+        assert_eq!(result.data_labels.get("data2"), Some(&3));
+        
+        // Test with custom offset (10)
+        let mut options = AssemblerOptions::default();
+        options.memory_offset = 10;
+        let assembler = RippleAssembler::new(options);
+        let result = assembler.assemble(source).unwrap();
+        assert_eq!(result.data_labels.get("data1"), Some(&10));
+        assert_eq!(result.data_labels.get("data2"), Some(&11));
     }
 }

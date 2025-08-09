@@ -24,14 +24,14 @@ impl WasmAssembler {
         case_insensitive: bool,
         bank_size: u16,
         max_immediate: u32,
-        data_offset: u16,
+        memory_offset: u16,
     ) -> Self {
         let options = AssemblerOptions {
             case_insensitive,
             start_bank: 0,
             bank_size,
             max_immediate,
-            data_offset,
+            memory_offset,
         };
         
         Self {

@@ -65,7 +65,7 @@ print_loop:
     BEQ R6, R8, done
 
     ; Load number from array
-    LOAD R3, R7, 0
+    LOAD R3, 0, R7
 
     ; Print the number
     JAL R0, R0, print_number
@@ -105,7 +105,7 @@ done:
 print_string:
     ADD R12, RA, R0
 ps_loop:
-    LOAD R13, R3, 0
+    LOAD R13, 0, R3
     BEQ R13, R0, ps_done
     STORE R13, 0, 0
     ADDI R3, R3, 1

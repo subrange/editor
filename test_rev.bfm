@@ -1,2 +1,0 @@
-#define POWERS {1, 2, 4, 8}
-{reverse(@POWERS)}

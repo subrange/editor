@@ -47,6 +47,17 @@ export class MacroFormatter {
   }
 
   formatInstruction(instruction: Instruction, isFirst: boolean = false): string {
+    // Debug LI instructions
+    if (instruction.opcode === 0x0E) {
+      console.log('Formatting LI instruction:', {
+        opcode: instruction.opcode,
+        word0: instruction.word0,
+        word1: instruction.word1,
+        word2: instruction.word2,
+        word3: instruction.word3
+      });
+    }
+    
     let opcodeMacro = this.opcodeToMacro.get(instruction.opcode) || '@OP_NOP';
     
     // Special case for HALT (encoded as NOP 0,0,0)

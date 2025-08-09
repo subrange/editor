@@ -40,9 +40,9 @@ enum Commands {
         #[arg(short, long, default_value = "65535")]
         max_immediate: u32,
         
-        /// Data section offset
-        #[arg(short, long, default_value = "2")]
-        data_offset: u16,
+        /// Memory offset for data addresses (default 2 for VM special values)
+        #[arg(short = 'm', long, default_value = "2")]
+        memory_offset: u16,
         
         /// Case insensitive parsing
         #[arg(long, default_value = "true")]
@@ -283,7 +283,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             format, 
             bank_size, 
             max_immediate,
-            data_offset,
+            memory_offset,
             case_insensitive,
         } => {
             let source = fs::read_to_string(&input)?;
@@ -293,7 +293,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 start_bank: 0,
                 bank_size,
                 max_immediate,
-                data_offset,
+                memory_offset,
             };
             
             let assembler = RippleAssembler::new(options);

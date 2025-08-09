@@ -69,7 +69,7 @@ export interface AssemblerOptions {
   startBank?: number;
   bankSize?: number;
   maxImmediate?: number;
-  dataOffset?: number;  // Offset for data section to account for memory-mapped regions
+  memoryOffset?: number;  // Offset for data section to account for memory-mapped regions (default 2)
 }
 
 export interface Label {

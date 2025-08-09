@@ -142,11 +142,18 @@ impl Linker {
                 }
             }
             "data" => {
-                // For data references (LOAD/STORE with labels)
+                // For data references (LOAD/STORE/LI with labels)
                 let data_addr = data_labels.get(&reference.label)
                     .ok_or_else(|| format!("Undefined data label: {}", reference.label))?;
                 
-                instruction.word3 = *data_addr as u16;
+                // Check if this is an LI instruction (opcode 0x0E)
+                if instruction.opcode == 0x0E {
+                    // For LI, the immediate value goes in word2
+                    instruction.word2 = *data_addr as u16;
+                } else {
+                    // For LOAD/STORE, the address goes in word3
+                    instruction.word3 = *data_addr as u16;
+                }
             }
             _ => {
                 return Err(format!("Unknown reference type: {}", reference.ref_type));

@@ -30,7 +30,7 @@ export class RippleAssembler {
             startBank: options.startBank ?? 0,
             bankSize: options.bankSize ?? 16,
             maxImmediate: options.maxImmediate ?? 65535,
-            dataOffset: options.dataOffset ?? 2
+            memoryOffset: options.memoryOffset ?? 2
         };
     }
     
@@ -42,7 +42,7 @@ export class RippleAssembler {
                 this.options.caseInsensitive!,
                 this.options.bankSize!,
                 this.options.maxImmediate!,
-                this.options.dataOffset!
+                this.options.memoryOffset!
             );
         }
         
@@ -59,6 +59,21 @@ export class RippleAssembler {
             const objectFile = this.rustAssembler!.assemble(source);
             console.log('Object file from WASM:', objectFile);
             console.log('Unresolved refs field:', objectFile.unresolved_references);
+            
+            // Debug: Check instruction structure
+            if (objectFile.instructions && objectFile.instructions.length > 0) {
+                console.log('First instruction structure:', objectFile.instructions[0]);
+                const firstInst = objectFile.instructions[0];
+                if (firstInst.opcode === 0x0E) { // LI opcode
+                    console.log('LI instruction found:', {
+                        opcode: firstInst.opcode,
+                        word0: firstInst.word0,
+                        word1: firstInst.word1,
+                        word2: firstInst.word2,
+                        word3: firstInst.word3
+                    });
+                }
+            }
             
             // Check if we have unresolved references that need linking
             // The unresolved_references comes as a Map from WASM
