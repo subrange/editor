@@ -19,6 +19,13 @@ export default defineConfig({
             'Cross-Origin-Opener-Policy': 'same-origin',
             'Cross-Origin-Embedder-Policy': 'require-corp',
             'Cross-Origin-Resource-Policy': 'cross-origin',
+        },
+        watch: {
+            ignored: [
+                '**/src/bf-macro-expander/**',
+                '**/src/rust-bf/**',
+                '**/src/ripple-asm/**'
+            ]
         }
     },
     worker: {
