@@ -284,21 +284,22 @@ fn test_string_literal() {
 **Goal**: crt0, math helpers, memcpy/memset, puts/putchar.
 
 ### 4.1 CRT0 Assembly
-- [ ] Stack initialization
+- [x] Stack initialization (completed - crt0.asm with stack setup)
 - [ ] BSS zeroing
-- [ ] Main invocation
+- [x] Main invocation (completed - calls main after setup)
 - [ ] Exit handling
 
 ### 4.2 Built-in Functions
-- [ ] putchar implementation
-- [ ] puts implementation
-- [ ] memcpy/memset
+- [x] putchar implementation (completed - runtime/putchar.c using inline asm)
+- [x] puts implementation (completed - runtime/puts.c)
+- [x] memcpy/memset (completed - runtime/memcpy.c and runtime/memset.c)
 - [ ] 32-bit arithmetic helpers
 
 ### 4.3 Linking Support
-- [ ] Symbol exports
-- [ ] External references
-- [ ] Section layout
+- [x] Symbol exports (completed - rlink handles symbol resolution)
+- [x] External references (completed - rlink resolves cross-file references)
+- [x] Section layout (completed - rlink can generate standalone BF with --standalone)
+- [x] Multi-file linking (completed - successfully linked test programs with runtime library)
 
 ## M5: Optimizations + Debug (Weeks 11-13)
 **Goal**: O1, line maps, symbol dumping for IDE, verify stepping.

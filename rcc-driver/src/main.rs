@@ -190,13 +190,16 @@ fn compile_c99_file(
                 println!("=== End IR ===\n");
             }
             
+            // Check if main function exists
+            let has_main = ir_module.functions.iter().any(|f| f.name == "main");
+            
             // Lower Module to assembly
             match rcc_ir::lower_module_to_assembly(ir_module) {
                 Ok(asm_instructions) => {
                     println!("💕 Successfully lowered to assembly");
                     
                     // Generate assembly text
-                    let asm_text = rcc_codegen::emit::emit_complete_program(asm_instructions, true)?;
+                    let asm_text = rcc_codegen::emit::emit_complete_program(asm_instructions, has_main)?;
                     
                     // Write to output file
                     let final_output_path = if let Some(path) = output_path {

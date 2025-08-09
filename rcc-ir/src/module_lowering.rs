@@ -325,7 +325,11 @@ impl ModuleLowerer {
     fn lower_basic_block(&mut self, block: &BasicBlock) -> Result<(), CompilerError> {
         // Add label for block if not the first one
         if block.id != 0 {
-            self.instructions.push(AsmInst::Label(format!("L{}", block.id)));
+            // Generate unique label by prefixing with function name
+            let func_name = self.current_function.as_ref()
+                .map(|f| f.clone())
+                .unwrap_or_else(|| "unknown".to_string());
+            self.instructions.push(AsmInst::Label(format!("{}_L{}", func_name, block.id)));
         }
         
         for (idx, instruction) in block.instructions.iter().enumerate() {
@@ -788,20 +792,27 @@ impl ModuleLowerer {
             Instruction::Branch(target) => {
                 // Unconditional jump to label
                 // Use BEQ R0, R0, label (always true) as unconditional jump
-                self.instructions.push(AsmInst::Beq(Reg::R0, Reg::R0, format!("L{}", target)));
+                let func_name = self.current_function.as_ref()
+                    .map(|f| f.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+                self.instructions.push(AsmInst::Beq(Reg::R0, Reg::R0, format!("{}_L{}", func_name, target)));
             }
             
             Instruction::BranchCond { condition, true_label, false_label } => {
                 // Get the condition value in a register
                 let cond_reg = self.get_value_register(condition)?;
                 
+                let func_name = self.current_function.as_ref()
+                    .map(|f| f.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+                
                 // Branch if condition is non-zero (true)
                 // BNE cond_reg, R0, true_label
-                self.instructions.push(AsmInst::Bne(cond_reg, Reg::R0, format!("L{}", true_label)));
+                self.instructions.push(AsmInst::Bne(cond_reg, Reg::R0, format!("{}_L{}", func_name, true_label)));
                 
                 // If we fall through (condition was zero/false), jump to false label
                 // Use BEQ R0, R0, false_label (always true) as unconditional jump
-                self.instructions.push(AsmInst::Beq(Reg::R0, Reg::R0, format!("L{}", false_label)));
+                self.instructions.push(AsmInst::Beq(Reg::R0, Reg::R0, format!("{}_L{}", func_name, false_label)));
             }
             
             Instruction::GetElementPtr { result, ptr, indices, .. } => {
