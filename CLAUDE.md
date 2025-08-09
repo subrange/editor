@@ -164,6 +164,10 @@ cargo test
 
 - **Testing and Execution**
   - Please, do not try to run "npm run dev". If you want to test something, either use vitest (which can actually help us a lot), or create temporary .ts file and run it with npx tsx
-- To directly assemble, link, and run .asm file, use rcc file.asm --run. It will help with testing C compiler implementation.
+- To directly assemble, link, and run .asm file, use rbt file.asm --run. It will help with testing C compiler implementation.
 - Make sure to run rbt via gtimeout to not accidentally get stuck in an infinite loop
 - After every change of the C compiler, please make sure you add the test case to `python3 run_c_tests.py` and run it to ensure that we don't have any regressions
+-  To compile C file to asm, use target/release/rcc compile filename.c (optional -o output.asm) 
+
+- VM currently has bugs with opcodes: div, mul, mod, slt, for now let's not use them in compiler tests
+- In c-code tests, use if(condition) putchar('1') else putchar('N') to make sure we actually have some asserts and can capture it in run_c_tests.py

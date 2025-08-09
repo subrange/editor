@@ -46,6 +46,9 @@ pub enum SemanticError {
     InvalidLvalue {
         location: SourceLocation,
     },
+    RedefinedType {
+        name: String,
+    },
 }
 
 impl From<SemanticError> for CompilerError {
@@ -99,6 +102,12 @@ impl From<SemanticError> for CompilerError {
                     location,
                 )
             }
+            SemanticError::RedefinedType { name } => {
+                CompilerError::semantic_error(
+                    format!("Redefinition of type: {}", name),
+                    SourceLocation::new_simple(0, 0), // TODO: Track location
+                )
+            }
         }
     }
 }
@@ -109,6 +118,7 @@ pub struct SemanticAnalyzer {
     current_function: Option<Type>, // Current function's return type
     symbol_locations: HashMap<SymbolId, SourceLocation>, // For error reporting
     symbol_types: HashMap<SymbolId, Type>, // Type information for each symbol
+    type_definitions: HashMap<String, Type>, // Named type definitions (structs, unions, enums)
 }
 
 impl SemanticAnalyzer {
@@ -119,13 +129,14 @@ impl SemanticAnalyzer {
             current_function: None,
             symbol_locations: HashMap::new(),
             symbol_types: HashMap::new(),
+            type_definitions: HashMap::new(),
         }
     }
     
     /// Analyze a translation unit
     pub fn analyze(&mut self, ast: &mut TranslationUnit) -> Result<(), CompilerError> {
         // First pass: collect all function and global variable declarations
-        for item in &ast.items {
+        for item in &mut ast.items {
             match item {
                 TopLevelItem::Function(func) => {
                     self.declare_function(func)?;
@@ -133,8 +144,8 @@ impl SemanticAnalyzer {
                 TopLevelItem::Declaration(decl) => {
                     self.declare_global_variable(decl)?;
                 }
-                TopLevelItem::TypeDefinition { .. } => {
-                    // TODO: Handle type definitions
+                TopLevelItem::TypeDefinition { name, type_def, .. } => {
+                    self.register_type_definition(name.clone(), type_def.clone())?;
                 }
             }
         }
@@ -190,7 +201,7 @@ impl SemanticAnalyzer {
     }
     
     /// Declare a global variable in the symbol table
-    fn declare_global_variable(&mut self, decl: &Declaration) -> Result<(), CompilerError> {
+    fn declare_global_variable(&mut self, decl: &mut Declaration) -> Result<(), CompilerError> {
         if self.symbol_table.exists_in_current_scope(&decl.name) {
             return Err(SemanticError::RedefinedSymbol {
                 name: decl.name.clone(),
@@ -198,6 +209,9 @@ impl SemanticAnalyzer {
                 redefinition_location: decl.span.start.clone(),
             }.into());
         }
+        
+        // Resolve the type (in case it references a named struct/union/enum)
+        decl.decl_type = self.resolve_type(&decl.decl_type);
         
         let symbol_id = self.symbol_table.add_symbol(decl.name.clone());
         self.symbol_locations.insert(symbol_id, decl.span.start.clone());
@@ -217,6 +231,56 @@ impl SemanticAnalyzer {
         }
         
         Ok(())
+    }
+    
+    /// Register a type definition (struct, union, enum)
+    fn register_type_definition(&mut self, name: String, type_def: Type) -> Result<(), CompilerError> {
+        // Check if type already exists
+        if self.type_definitions.contains_key(&name) {
+            return Err(SemanticError::RedefinedType {
+                name: name.clone(),
+            }.into());
+        }
+        
+        // Store the type definition
+        self.type_definitions.insert(name, type_def);
+        
+        Ok(())
+    }
+    
+    /// Resolve a type reference (e.g., struct Point -> actual struct definition)
+    fn resolve_type(&self, ty: &Type) -> Type {
+        match ty {
+            Type::Struct { name: Some(name), fields } if fields.is_empty() => {
+                // This is a reference to a named struct type
+                if let Some(actual_type) = self.type_definitions.get(name) {
+                    actual_type.clone()
+                } else {
+                    // Type not found, return as-is
+                    ty.clone()
+                }
+            }
+            Type::Union { name: Some(name), fields } if fields.is_empty() => {
+                // This is a reference to a named union type
+                if let Some(actual_type) = self.type_definitions.get(name) {
+                    actual_type.clone()
+                } else {
+                    ty.clone()
+                }
+            }
+            Type::Pointer(inner) => {
+                // Recursively resolve pointed-to type
+                Type::Pointer(Box::new(self.resolve_type(inner)))
+            }
+            Type::Array { element_type, size } => {
+                // Recursively resolve element type
+                Type::Array {
+                    element_type: Box::new(self.resolve_type(element_type)),
+                    size: *size,
+                }
+            }
+            _ => ty.clone(),
+        }
     }
     
     /// Analyze a function definition
@@ -371,6 +435,9 @@ impl SemanticAnalyzer {
                 redefinition_location: decl.span.start.clone(),
             }.into());
         }
+        
+        // Resolve the type (in case it references a named struct/union/enum)
+        decl.decl_type = self.resolve_type(&decl.decl_type);
         
         // Add to symbol table
         let symbol_id = self.symbol_table.add_symbol(decl.name.clone());

@@ -75,6 +75,7 @@ Good!""",
     "test_strings_addr.c": "A\n",
     "test_if_else.c": "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n",  # Fixed pre-increment
     "test_struct_inline.c": "YY\n",  # Tests inline struct members
+    "test_struct_simple.c": "12345\n",  # Tests standalone struct type definitions
 }
 
 # Tests that should compile but may not run correctly yet
@@ -86,8 +87,7 @@ COMPILE_ONLY = [
 KNOWN_FAILURES = [
     "test_pointer_gritty.c",  # Function with pointer parameters not supported yet
     "test_strings_simple.c",  # Function with pointer parameters not supported yet
-    "test_struct_simple.c",  # Struct type definitions not parsed correctly
-    "test_struct_simple2.c",  # Struct type definitions not parsed correctly
+    "test_struct_simple2.c",  # Uses pointer to struct (ptr->field syntax)
     "test_struct_inline_simple.c",  # Inline struct definitions not supported
 ]
 

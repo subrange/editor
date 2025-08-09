@@ -167,6 +167,50 @@ impl Parser {
         let storage_class = self.parse_storage_class();
         let base_type = self.parse_type_specifier()?;
         
+        // Remember the start location for span tracking
+        let start_loc = self.current_location();
+        
+        // Check if this is a standalone struct/union/enum definition
+        match &base_type {
+            Type::Struct { name: Some(name), fields, .. } if !fields.is_empty() => {
+                // This is a struct definition with a name and fields
+                if self.check(&TokenType::Semicolon) {
+                    let end_loc = self.current_location();
+                    self.advance(); // Consume the semicolon
+                    return Ok(TopLevelItem::TypeDefinition {
+                        name: name.clone(),
+                        type_def: base_type,
+                        span: SourceSpan::new(start_loc, end_loc),
+                    });
+                }
+            }
+            Type::Union { name: Some(name), fields, .. } if !fields.is_empty() => {
+                // This is a union definition with a name and fields
+                if self.check(&TokenType::Semicolon) {
+                    let end_loc = self.current_location();
+                    self.advance(); // Consume the semicolon
+                    return Ok(TopLevelItem::TypeDefinition {
+                        name: name.clone(),
+                        type_def: base_type,
+                        span: SourceSpan::new(start_loc, end_loc),
+                    });
+                }
+            }
+            Type::Enum { name: Some(name), .. } => {
+                // This is an enum definition with a name
+                if self.check(&TokenType::Semicolon) {
+                    let end_loc = self.current_location();
+                    self.advance(); // Consume the semicolon
+                    return Ok(TopLevelItem::TypeDefinition {
+                        name: name.clone(),
+                        type_def: base_type,
+                        span: SourceSpan::new(start_loc, end_loc),
+                    });
+                }
+            }
+            _ => {}
+        }
+        
         // Parse declarator (name and type modifications like pointers, arrays, functions)
         let (name, full_type) = self.parse_declarator(base_type)?;
         
