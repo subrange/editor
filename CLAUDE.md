@@ -166,3 +166,4 @@ cargo test
   - Please, do not try to run "npm run dev". If you want to test something, either use vitest (which can actually help us a lot), or create temporary .ts file and run it with npx tsx
 - To directly assemble, link, and run .asm file, use rcc file.asm --run. It will help with testing C compiler implementation.
 - Make sure to run rbt via gtimeout to not accidentally get stuck in an infinite loop
+- After every change of the C compiler, please make sure you add the test case to `python3 run_c_tests.py` and run it to ensure that we don't have any regressions

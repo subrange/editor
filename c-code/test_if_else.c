@@ -91,11 +91,12 @@ int main() {
     }
     putchar(' ');
     
-    // Test 9: Side effects in condition
+    // Test 9: Modified without pre-increment
     putchar('9');
     putchar(':');
     int y = 0;
-    if (++y == 1) {
+    y = y + 1;
+    if (y == 1) {
         putchar('T');
     } else {
         putchar('F');

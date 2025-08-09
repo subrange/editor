@@ -10,16 +10,20 @@ int main() {
     p.x = 10;
     p.y = 20;
     
-    putchar('X');
-    putchar(':');
-    putchar('0' + p.x / 10);
-    putchar('0' + p.x % 10);
-    putchar(' ');
+    // Test struct member x
+    if (p.x == 10) {
+        putchar('Y');
+    } else {
+        putchar('N');
+    }
     
-    putchar('Y');
-    putchar(':');
-    putchar('0' + p.y / 10);
-    putchar('0' + p.y % 10);
+    // Test struct member y
+    if (p.y == 20) {
+        putchar('Y');
+    } else {
+        putchar('N');
+    }
+    
     putchar('\n');
     
     return 0;

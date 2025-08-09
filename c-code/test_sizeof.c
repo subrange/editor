@@ -1,13 +1,6 @@
 // Test sizeof operator
 void putchar(int c);
 
-void print_number(int n) {
-    if (n >= 10) {
-        print_number(n / 10);
-    }
-    putchar('0' + (n % 10));
-}
-
 int main() {
     // Test sizeof on types
     int size_char = sizeof(char);
@@ -21,30 +14,44 @@ int main() {
     int size_var = sizeof(x);
     int size_arr = sizeof(arr);
     
-    // Print sizes
-    putchar('c'); putchar('h'); putchar('a'); putchar('r'); putchar(':'); putchar(' ');
-    print_number(size_char);
-    putchar(10);
+    // Verify sizes are correct
+    if (size_char == 1) {
+        putchar('1');
+    } else {
+        putchar('X');
+    }
     
-    putchar('i'); putchar('n'); putchar('t'); putchar(':'); putchar(' ');
-    print_number(size_int);
-    putchar(10);
+    if (size_int == 2) {
+        putchar('2');
+    } else {
+        putchar('X');
+    }
     
-    putchar('l'); putchar('o'); putchar('n'); putchar('g'); putchar(':'); putchar(' ');
-    print_number(size_long);
-    putchar(10);
+    if (size_long == 4) {
+        putchar('3');
+    } else {
+        putchar('X');
+    }
     
-    putchar('p'); putchar('t'); putchar('r'); putchar(':'); putchar(' ');
-    print_number(size_ptr);
-    putchar(10);
+    if (size_ptr == 2) {
+        putchar('4');
+    } else {
+        putchar('X');
+    }
     
-    putchar('v'); putchar('a'); putchar('r'); putchar(':'); putchar(' ');
-    print_number(size_var);
-    putchar(10);
+    if (size_var == 2) {
+        putchar('5');
+    } else {
+        putchar('X');
+    }
     
-    putchar('a'); putchar('r'); putchar('r'); putchar('['); putchar('1'); putchar('0'); putchar(']'); putchar(':'); putchar(' ');
-    print_number(size_arr);
-    putchar(10);
+    if (size_arr == 20) {
+        putchar('6');
+    } else {
+        putchar('X');
+    }
+    
+    putchar('\n');
     
     return 0;
 }
