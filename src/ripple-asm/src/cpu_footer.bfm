@@ -1,3 +1,4 @@
+
 }
 
 // MARK: ----------- CODE END ----------
@@ -447,7 +448,9 @@
     < @prevwords(2) - @nextword @set(1) @nextwords(2) >
   ]
 
-  < @prevword @prevword
+  @prevword @clear @prevword < @prevword @clear @nextword
+
+
 }
 
 // MARK: -- simple_register_op
@@ -766,13 +769,13 @@
 
 #define alu_sltu {
   @lane(@L_SA,
-    @prevwords(2)
-    @move_r_n(2)
-    @prevwords(3)
-    @move_to(@nextwords(3) >, < @prevwords(3)) <
-  )
+    // // [0, y, >x, [0, 1]]
+    @prevword > @set(1) < @prevword
 
-  @_cmp_unsigned_lt
+    @lt
+
+    @move_to(@nextwords(2) >, < @prevwords(2)) <
+  )
 
   @lane(@L_SA, [->+<])
 }
@@ -948,6 +951,7 @@
 
   @lane(@L_SA,
     cmp
+    $
     {if(should_inverse, @not(>, <), @nop)}
   )
   @lane_start(@L_SA)

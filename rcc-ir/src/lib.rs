@@ -10,6 +10,7 @@ pub mod simple;
 pub mod lowering;
 pub mod ir;
 pub mod module_lowering;
+pub mod simple_regalloc;
 mod module_lowering_tests;
 
 pub use simple::{SimpleIR, SimpleProgram};
