@@ -331,6 +331,11 @@ pub enum Instruction {
         location: SourceLocation,
     },
     
+    /// Inline assembly
+    InlineAsm {
+        assembly: String,
+    },
+    
     /// Comment (for debugging)
     Comment(String),
 }
@@ -410,6 +415,7 @@ impl fmt::Display for Instruction {
             Instruction::DebugLoc { location } => {
                 write!(f, "!dbg !{}", location.line)
             }
+            Instruction::InlineAsm { assembly } => write!(f, "asm \"{}\"", assembly),
             Instruction::Comment(text) => write!(f, "; {}", text),
         }
     }
@@ -695,6 +701,11 @@ impl IrBuilder {
         
         self.add_instruction(instr)?;
         Ok(Value::Temp(result))
+    }
+    
+    pub fn build_inline_asm(&mut self, assembly: String) -> Result<(), String> {
+        let instr = Instruction::InlineAsm { assembly };
+        self.add_instruction(instr)
     }
     
     fn add_instruction(&mut self, instr: Instruction) -> Result<(), String> {

@@ -24,6 +24,7 @@ pub enum TokenType {
     Double, Else, Enum, Extern, Float, For, Goto, If,
     Int, Long, Register, Return, Short, Signed, Sizeof, Static,
     Struct, Switch, Typedef, Union, Unsigned, Void, Volatile, While,
+    Asm,  // For inline assembly
     
     // Operators
     Plus,           // +
@@ -128,6 +129,7 @@ impl fmt::Display for TokenType {
             TokenType::Void => write!(f, "void"),
             TokenType::Volatile => write!(f, "volatile"),
             TokenType::While => write!(f, "while"),
+            TokenType::Asm => write!(f, "asm"),
             
             // Operators - show the symbol
             TokenType::Plus => write!(f, "+"),
@@ -272,6 +274,8 @@ impl Lexer {
             ("void", TokenType::Void),
             ("volatile", TokenType::Volatile),
             ("while", TokenType::While),
+            ("asm", TokenType::Asm),
+            ("__asm__", TokenType::Asm),  // GCC-style inline assembly
         ];
         
         for (keyword, token_type) in keywords {

@@ -515,6 +515,12 @@ pub enum StatementKind {
         statement: Box<Statement>,
     },
     
+    /// Inline assembly
+    InlineAsm {
+        assembly: String,  // Raw assembly code
+        // TODO: Add support for constraints, clobbers, etc.
+    },
+    
     /// Empty statement (just semicolon)
     Empty,
 }

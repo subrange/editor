@@ -251,6 +251,7 @@ pub enum IrInst {
 - [x] Sizeof computation (works for all types including structs)
 - [ ] Alignment rules
 - [x] Array initializers with {} (completed - supports both list and string literal initializers)
+- [ ] Typedef support (partially implemented - semantic analysis done, but parser needs symbol table to track typedef names)
 
 ### 3.2 Memory Layout
 - [x] Global variable allocation (starting at address 100)
@@ -277,7 +278,7 @@ fn test_string_literal() {
 
 ### 3.5 Functions
 - [ ] Pointer parameters
-- [ ] Inline assembly support
+- [x] Inline assembly support (completed - basic __asm__ and asm keywords with string literals)
 
 ## M4: Runtime + libc mini (Weeks 9-11)
 **Goal**: crt0, math helpers, memcpy/memset, puts/putchar.

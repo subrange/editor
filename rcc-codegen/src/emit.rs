@@ -32,6 +32,10 @@ pub fn emit_instructions(instructions: Vec<AsmInst>) -> Result<String, CodegenEr
                 // Comments get their own line with no indentation
                 output.push_str(&format!("{}\n", instruction));
             }
+            AsmInst::Raw(ref asm) => {
+                // Raw assembly passes through with indentation
+                output.push_str(&format!("    {}\n", asm));
+            }
             _ => {
                 // Regular instructions are indented
                 output.push_str(&format!("    {}\n", instruction));

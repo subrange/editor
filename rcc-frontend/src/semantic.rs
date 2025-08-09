@@ -202,6 +202,15 @@ impl SemanticAnalyzer {
     
     /// Declare a global variable in the symbol table
     fn declare_global_variable(&mut self, decl: &mut Declaration) -> Result<(), CompilerError> {
+        // Handle typedef specially - it defines a type alias, not a variable
+        if decl.storage_class == crate::ast::StorageClass::Typedef {
+            // Resolve the type first
+            decl.decl_type = self.resolve_type(&decl.decl_type);
+            // Register this as a type definition
+            self.type_definitions.insert(decl.name.clone(), decl.decl_type.clone());
+            return Ok(());
+        }
+        
         if self.symbol_table.exists_in_current_scope(&decl.name) {
             return Err(SemanticError::RedefinedSymbol {
                 name: decl.name.clone(),
@@ -251,6 +260,16 @@ impl SemanticAnalyzer {
     /// Resolve a type reference (e.g., struct Point -> actual struct definition)
     fn resolve_type(&self, ty: &Type) -> Type {
         match ty {
+            Type::Typedef(name) => {
+                // Look up typedef name
+                if let Some(actual_type) = self.type_definitions.get(name) {
+                    // Recursively resolve in case of typedef chains
+                    self.resolve_type(actual_type)
+                } else {
+                    // Type not found, return as-is
+                    ty.clone()
+                }
+            }
             Type::Struct { name: Some(name), fields } if fields.is_empty() => {
                 // This is a reference to a named struct type
                 if let Some(actual_type) = self.type_definitions.get(name) {
@@ -416,6 +435,11 @@ impl SemanticAnalyzer {
                 // No semantic analysis needed
             }
             
+            StatementKind::InlineAsm { assembly: _ } => {
+                // Inline assembly - no semantic analysis needed for now
+                // The assembly code will be passed through directly to the backend
+            }
+            
             // TODO: Handle other statement types
             _ => {
                 // For now, skip unimplemented statement types
@@ -427,6 +451,15 @@ impl SemanticAnalyzer {
     
     /// Analyze a declaration
     fn analyze_declaration(&mut self, decl: &mut Declaration) -> Result<(), CompilerError> {
+        // Handle typedef specially - it defines a type alias, not a variable
+        if decl.storage_class == crate::ast::StorageClass::Typedef {
+            // Resolve the type first
+            decl.decl_type = self.resolve_type(&decl.decl_type);
+            // Register this as a type definition
+            self.type_definitions.insert(decl.name.clone(), decl.decl_type.clone());
+            return Ok(());
+        }
+        
         // Check for redefinition in current scope
         if self.symbol_table.exists_in_current_scope(&decl.name) {
             return Err(SemanticError::RedefinedSymbol {
@@ -436,7 +469,7 @@ impl SemanticAnalyzer {
             }.into());
         }
         
-        // Resolve the type (in case it references a named struct/union/enum)
+        // Resolve the type (in case it references a named struct/union/enum or typedef)
         decl.decl_type = self.resolve_type(&decl.decl_type);
         
         // Add to symbol table

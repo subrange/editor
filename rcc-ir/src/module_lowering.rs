@@ -868,6 +868,19 @@ impl ModuleLowerer {
                 }
             }
             
+            Instruction::InlineAsm { assembly } => {
+                // Pass inline assembly directly through
+                // Parse each line and convert to AsmInst
+                for line in assembly.lines() {
+                    let trimmed = line.trim();
+                    if !trimmed.is_empty() {
+                        // For now, pass through as raw assembly
+                        // We'll need a way to handle this in AsmInst
+                        self.instructions.push(AsmInst::Raw(trimmed.to_string()));
+                    }
+                }
+            }
+            
             _ => {
                 self.instructions.push(AsmInst::Comment(format!("Unimplemented: {:?}", instruction)));
             }

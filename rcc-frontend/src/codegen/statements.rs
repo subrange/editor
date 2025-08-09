@@ -89,6 +89,11 @@ impl<'a> StatementGenerator<'a> {
                 self.generate_do_while_loop(body, condition)?;
             }
             
+            StatementKind::InlineAsm { assembly } => {
+                // Pass inline assembly directly to the IR
+                self.builder.build_inline_asm(assembly.clone())?;
+            }
+            
             _ => {
                 return Err(CodegenError::UnsupportedConstruct {
                     construct: format!("statement type: {:?}", stmt.kind),

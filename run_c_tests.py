@@ -81,6 +81,7 @@ Good!""",
     "test_puts_string_literal.c": "XYZ\n",  # Tests puts with string literals
     "test-cond.c": "T\n",  # Simple conditional test
     "test_pointer_gritty.c": "7\n",  # Tests passing address-of local variable to function
+    "test_inline_asm.c": "Y\n",  # Tests inline assembly support
     # Note: test_puts.c partially works but has issues with stack arrays due to pointer provenance
 }
 
@@ -91,12 +92,21 @@ COMPILE_ONLY = [
 
 # Tests that currently fail to compile (known issues)
 KNOWN_FAILURES = [
-    "test_struct_simple2.c",  # Uses pointer to struct (ptr->field syntax)
+    # Typedef support - partially implemented but needs parser symbol table
+    "test_typedef.c",  # Parser needs to track typedef names during parsing (classic C parsing problem)
+    "test_typedef_simple.c",  # Same typedef parsing issue
+    "test_struct_simple2.c",  # Uses typedef struct - blocked by typedef parsing
+    
+    # Other struct issues
     "test_struct_inline_simple.c",  # Inline struct definitions not supported
-    "test_puts.c",  # Complex puts with loops - needs while loop support
+    
+    # Pointer provenance issues (deferred to M4)
+    "test_puts.c",  # Complex puts with loops - also needs while loop support
     "test_puts_simple.c",  # Stack pointer provenance issue - loads from wrong memory bank
     "test_puts_string.c",  # Uses while loops which aren't fully implemented
-    "test_puts_global.c",  # Global array initializers not yet implemented
+    "test_puts_global.c",  # Global array initializers not yet implemented (deferred to M4)
+    
+    # Misc issues
     "test_strings_simple.c",  # Function redefinition error (puts declared twice)
 ]
 

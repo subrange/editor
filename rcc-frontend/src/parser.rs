@@ -235,6 +235,7 @@ impl Parser {
             Some(TokenType::Static) => { self.advance(); StorageClass::Static }
             Some(TokenType::Extern) => { self.advance(); StorageClass::Extern }
             Some(TokenType::Register) => { self.advance(); StorageClass::Register }
+            Some(TokenType::Typedef) => { self.advance(); StorageClass::Typedef }
             _ => StorageClass::Auto, // Default storage class
         }
     }
@@ -722,6 +723,10 @@ impl Parser {
                 self.expect(TokenType::Semicolon, "continue statement")?;
                 StatementKind::Continue
             }
+            Some(TokenType::Asm) => {
+                self.advance();
+                self.parse_inline_asm_statement()?
+            }
             Some(TokenType::Semicolon) => {
                 self.advance();
                 StatementKind::Empty
@@ -750,6 +755,7 @@ impl Parser {
     fn is_declaration_start(&self) -> bool {
         matches!(self.peek().map(|t| &t.token_type), Some(
             TokenType::Auto | TokenType::Static | TokenType::Extern | TokenType::Register |
+            TokenType::Typedef |
             TokenType::Void | TokenType::Char | TokenType::Short | TokenType::Int | 
             TokenType::Long | TokenType::Signed | TokenType::Unsigned |
             TokenType::Struct | TokenType::Union | TokenType::Enum
@@ -912,6 +918,33 @@ impl Parser {
         
         self.expect(TokenType::Semicolon, "return statement")?;
         Ok(StatementKind::Return(value))
+    }
+    
+    /// Parse inline assembly statement
+    fn parse_inline_asm_statement(&mut self) -> Result<StatementKind, CompilerError> {
+        // Basic syntax: asm("assembly code");
+        // TODO: Support extended syntax with constraints
+        self.expect(TokenType::LeftParen, "inline assembly")?;
+        
+        // Expect a string literal containing the assembly code
+        let assembly = match self.peek().map(|t| &t.token_type) {
+            Some(TokenType::StringLiteral(s)) => {
+                let code = s.clone();
+                self.advance();
+                code
+            }
+            _ => {
+                return Err(CompilerError::parse_error(
+                    "Expected string literal for inline assembly".to_string(),
+                    self.current_location(),
+                ));
+            }
+        };
+        
+        self.expect(TokenType::RightParen, "inline assembly")?;
+        self.expect(TokenType::Semicolon, "inline assembly")?;
+        
+        Ok(StatementKind::InlineAsm { assembly })
     }
     
     /// Parse expression (top level)

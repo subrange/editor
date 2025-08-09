@@ -109,6 +109,7 @@ pub enum AsmInst {
     // Assembly Pseudo-Instructions
     Label(String),                // Label for jumps/calls
     Comment(String),              // Assembly comment
+    Raw(String),                  // Raw assembly passthrough (for inline asm)
 }
 
 impl fmt::Display for AsmInst {
@@ -166,6 +167,7 @@ impl fmt::Display for AsmInst {
             // Pseudo
             AsmInst::Label(label) => write!(f, "{}:", label),
             AsmInst::Comment(text) => write!(f, "; {}", text),
+            AsmInst::Raw(asm) => write!(f, "{}", asm),
         }
     }
 }
