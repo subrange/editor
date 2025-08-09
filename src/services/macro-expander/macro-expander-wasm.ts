@@ -47,13 +47,22 @@ export class MacroExpanderWasm implements MacroExpander {
 
       const result = wasmExpander.expand(input, wasmOptions);
       
+      // Convert WASM source map to expected format if present
+      let sourceMap = undefined;
+      if (result.source_map) {
+        // The WASM source map might have a different structure
+        // For now, we'll skip source map support for WASM expander
+        // TODO: Implement proper source map conversion
+        // console.warn('Source map from WASM expander not yet supported');
+      }
+      
       // Map the result from WASM format to our format
       return {
         expanded: result.expanded || '',
         errors: result.errors || [],
         tokens: result.tokens || [],
         macros: result.macros || [],
-        sourceMap: result.source_map,
+        sourceMap: sourceMap,
       };
     } catch (error) {
       return {
