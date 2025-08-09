@@ -1,8 +1,9 @@
 //! Statement code generation
 
 use std::collections::{HashMap, HashSet};
+use rcc_common::TempId;
 use rcc_ir::{Value, IrType, IrBuilder, LabelId as Label};
-use crate::ast::{Statement, StatementKind, Declaration, Expression, BinaryOp, Initializer, InitializerKind};
+use crate::ast::{Statement, StatementKind, Declaration, Expression, BinaryOp, Initializer, InitializerKind, ExpressionKind, Type};
 use crate::CompilerError;
 use super::errors::CodegenError;
 use super::types::convert_type;
@@ -134,7 +135,43 @@ impl<'a> StatementGenerator<'a> {
     
     /// Generate local variable declaration
     fn generate_local_declaration(&mut self, decl: &Declaration) -> Result<(), CompilerError> {
-        let ir_type = convert_type(&decl.decl_type, decl.span.start.clone())?;
+        // First, check if we need to infer array size from initializer
+        let decl_type = if let Type::Array { element_type, size: None } = &decl.decl_type {
+            // Array with unspecified size - need to infer from initializer
+            if let Some(init) = &decl.initializer {
+                let inferred_size = match &init.kind {
+                    InitializerKind::List(items) => items.len() as u64,
+                    InitializerKind::Expression(expr) => {
+                        if let ExpressionKind::StringLiteral(s) = &expr.kind {
+                            // String literal includes null terminator
+                            (s.len() + 1) as u64
+                        } else {
+                            return Err(CodegenError::InternalError {
+                                message: "Cannot infer array size from non-list initializer".to_string(),
+                                location: init.span.start.clone(),
+                            }.into());
+                        }
+                    }
+                    _ => return Err(CodegenError::InternalError {
+                        message: "Cannot infer array size from complex initializer".to_string(),
+                        location: init.span.start.clone(),
+                    }.into()),
+                };
+                Type::Array {
+                    element_type: element_type.clone(),
+                    size: Some(inferred_size),
+                }
+            } else {
+                return Err(CodegenError::InternalError {
+                    message: "Array with unspecified size must have initializer".to_string(),
+                    location: decl.span.start.clone(),
+                }.into());
+            }
+        } else {
+            decl.decl_type.clone()
+        };
+        
+        let ir_type = convert_type(&decl_type, decl.span.start.clone())?;
         
         // For arrays, we need to handle allocation differently
         let (alloca_temp, var_type, is_array) = match &ir_type {
@@ -152,10 +189,16 @@ impl<'a> StatementGenerator<'a> {
             }
         };
         
-        // If there's an initializer, store it
+        // If there's an initializer, handle it appropriately
         if let Some(init) = &decl.initializer {
-            let init_value = self.generate_initializer(init)?;
-            self.builder.build_store(init_value, Value::Temp(alloca_temp))?;
+            if is_array {
+                // For arrays, we need to handle initializer lists specially
+                self.generate_array_initializer(alloca_temp, &ir_type, init)?;
+            } else {
+                // For scalars, generate and store the value
+                let init_value = self.generate_initializer(init)?;
+                self.builder.build_store(init_value, Value::Temp(alloca_temp))?;
+            }
         }
         
         // Add to variables map
@@ -170,14 +213,113 @@ impl<'a> StatementGenerator<'a> {
         Ok(())
     }
     
-    /// Generate initializer
+    /// Generate initializer for scalar values
     fn generate_initializer(&mut self, init: &Initializer) -> Result<Value, CompilerError> {
         match &init.kind {
             InitializerKind::Expression(expr) => {
                 self.generate_expression(expr)
             }
+            InitializerKind::List(items) if items.len() == 1 => {
+                // Single-element list can be treated as scalar
+                self.generate_initializer(&items[0])
+            }
             _ => Err(CodegenError::UnsupportedConstruct {
                 construct: "complex initializer".to_string(),
+                location: init.span.start.clone(),
+            }.into()),
+        }
+    }
+    
+    /// Generate array initializer
+    fn generate_array_initializer(&mut self, array_ptr: TempId, array_type: &IrType, init: &Initializer) 
+        -> Result<(), CompilerError> {
+        match &init.kind {
+            InitializerKind::List(items) => {
+                // Get element type
+                let element_type = match array_type {
+                    IrType::Array { element_type, .. } => element_type.as_ref(),
+                    _ => return Err(CodegenError::InternalError {
+                        message: "Expected array type for array initializer".to_string(),
+                        location: init.span.start.clone(),
+                    }.into()),
+                };
+                
+                // Initialize each array element
+                for (index, item) in items.iter().enumerate() {
+                    // Calculate pointer to element at index
+                    let index_val = Value::Constant(index as i64);
+                    let elem_ptr = self.builder.build_pointer_offset(
+                        Value::Temp(array_ptr),
+                        index_val,
+                        IrType::Ptr(Box::new(element_type.clone()))
+                    )?;
+                    
+                    // Generate value for this element
+                    let elem_value = match &item.kind {
+                        InitializerKind::Expression(expr) => self.generate_expression(expr)?,
+                        _ => return Err(CodegenError::UnsupportedConstruct {
+                            construct: "nested initializer list".to_string(),
+                            location: item.span.start.clone(),
+                        }.into()),
+                    };
+                    
+                    // Store the value
+                    self.builder.build_store(elem_value, elem_ptr)?;
+                }
+                
+                Ok(())
+            }
+            InitializerKind::Expression(expr) => {
+                // Handle string literal as array initializer for char arrays
+                if let ExpressionKind::StringLiteral(s) = &expr.kind {
+                    let element_type = match array_type {
+                        IrType::Array { element_type, .. } => element_type.as_ref(),
+                        _ => return Err(CodegenError::InternalError {
+                            message: "Expected array type for array initializer".to_string(),
+                            location: init.span.start.clone(),
+                        }.into()),
+                    };
+                    
+                    // Only support char arrays for string literals
+                    if !matches!(element_type, IrType::I8) {
+                        return Err(CodegenError::InternalError {
+                            message: format!("String literal can only initialize char array, not {:?} array", element_type),
+                            location: expr.span.start.clone(),
+                        }.into());
+                    }
+                    
+                    // Initialize char array with string contents
+                    for (index, ch) in s.bytes().enumerate() {
+                        let index_val = Value::Constant(index as i64);
+                        let elem_ptr = self.builder.build_pointer_offset(
+                            Value::Temp(array_ptr),
+                            index_val,
+                            IrType::Ptr(Box::new(IrType::I8))
+                        )?;
+                        
+                        let char_val = Value::Constant(ch as i64);
+                        self.builder.build_store(char_val, elem_ptr)?;
+                    }
+                    
+                    // Add null terminator
+                    let null_index = Value::Constant(s.len() as i64);
+                    let null_ptr = self.builder.build_pointer_offset(
+                        Value::Temp(array_ptr),
+                        null_index,
+                        IrType::Ptr(Box::new(IrType::I8))
+                    )?;
+                    self.builder.build_store(Value::Constant(0), null_ptr)?;
+                    
+                    Ok(())
+                } else {
+                    Err(CodegenError::UnsupportedConstruct {
+                        construct: "non-list array initializer".to_string(),
+                        location: expr.span.start.clone(),
+                    }.into())
+                }
+            }
+            _ => Err(CodegenError::UnsupportedConstruct {
+                construct: "unsupported array initializer".to_string(),
                 location: init.span.start.clone(),
             }.into()),
         }
@@ -342,4 +484,3 @@ impl<'a> StatementGenerator<'a> {
     }
 }
 
-use crate::ast::ExpressionKind;

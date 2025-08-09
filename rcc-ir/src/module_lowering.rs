@@ -7,7 +7,7 @@ use crate::ir::{Module, Function, BasicBlock, Instruction, Value, IrType, IrBina
 use crate::simple_regalloc::SimpleRegAlloc;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::CompilerError;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Module to assembly lowering context
 pub struct ModuleLowerer {
@@ -48,6 +48,9 @@ pub struct ModuleLowerer {
     /// Map from temp IDs to stack offsets (for local variables from alloca)
     local_offsets: HashMap<u32, i16>,
     
+    /// Set of temp IDs that point to stack memory (from GetElementPtr on stack arrays)
+    stack_pointer_temps: HashSet<u32>,
+    
     /// Next available spill slot offset
     next_spill_offset: i16,
 }
@@ -75,6 +78,7 @@ impl ModuleLowerer {
             label_counter: 0,
             local_stack_offset: 0,
             local_offsets: HashMap::new(),
+            stack_pointer_temps: HashSet::new(),
             next_spill_offset: 0,
         }
     }
@@ -374,11 +378,11 @@ impl ModuleLowerer {
                     self.instructions.push(AsmInst::Comment(format!("Store {} to [{}]", 
                         self.value_to_string(value), self.value_to_string(ptr))));
                     
-                    // Check if this is a stack-allocated temp (from Alloca)
+                    // Check if this is a stack-allocated temp (from Alloca or GetElementPtr on stack)
                     // Stack addresses are FP-relative, globals are absolute < 1000
                     if let Value::Temp(tid) = ptr {
-                        if self.local_offsets.contains_key(tid) {
-                            // This is a stack-allocated variable
+                        if self.local_offsets.contains_key(tid) || self.stack_pointer_temps.contains(tid) {
+                            // This is a stack-allocated variable or pointer to stack
                             self.instructions.push(AsmInst::Store(value_reg, Reg::R13, ptr_reg));
                         } else {
                             // This is a pointer to global memory
@@ -419,11 +423,11 @@ impl ModuleLowerer {
                     // For local variables, ptr should be a temp holding the address
                     let ptr_reg = self.get_value_register(ptr)?;
                     
-                    // Check if this is a stack-allocated temp (from Alloca)
+                    // Check if this is a stack-allocated temp (from Alloca or GetElementPtr on stack)
                     // Stack addresses are FP-relative, globals are absolute < 1000
                     if let Value::Temp(tid) = ptr {
-                        if self.local_offsets.contains_key(tid) {
-                            // This is a stack-allocated variable
+                        if self.local_offsets.contains_key(tid) || self.stack_pointer_temps.contains(tid) {
+                            // This is a stack-allocated variable or pointer to stack
                             self.instructions.push(AsmInst::Load(dest_reg, Reg::R13, ptr_reg));
                         } else {
                             // This is a pointer to global memory
@@ -718,6 +722,43 @@ impl ModuleLowerer {
                 // If we fall through (condition was zero/false), jump to false label
                 // Use BEQ R0, R0, false_label (always true) as unconditional jump
                 self.instructions.push(AsmInst::Beq(Reg::R0, Reg::R0, format!("L{}", false_label)));
+            }
+            
+            Instruction::GetElementPtr { result, ptr, indices, .. } => {
+                // Get element pointer - compute address of array element
+                self.instructions.push(AsmInst::Comment(format!("GetElementPtr t{} = {} + offsets", result, self.value_to_string(ptr))));
+                
+                // Get base pointer
+                let base_reg = self.get_value_register(ptr)?;
+                
+                // For now, we only support single index (1D arrays)
+                if indices.len() != 1 {
+                    return Err(CompilerError::codegen_error(
+                        format!("Multi-dimensional arrays not yet supported"),
+                        rcc_common::SourceLocation::new_simple(0, 0),
+                    ));
+                }
+                
+                // Get index value
+                let index_reg = self.get_value_register(&indices[0])?;
+                
+                // Allocate register for result
+                let result_key = format!("t{}", result);
+                let dest_reg = self.get_reg(result_key.clone());
+                self.value_locations.insert(result_key, Location::Register(dest_reg));
+                
+                // Calculate address: result = base + index
+                // Note: This assumes element size is 1 word. For larger types, we'd need to multiply index by element size
+                self.instructions.push(AsmInst::Add(dest_reg, base_reg, index_reg));
+                
+                // IMPORTANT: If the base pointer was from an Alloca (stack allocation),
+                // then this result also points to stack memory
+                if let Value::Temp(base_tid) = ptr {
+                    if self.local_offsets.contains_key(base_tid) || self.stack_pointer_temps.contains(base_tid) {
+                        // Mark this result as also pointing to stack memory
+                        self.stack_pointer_temps.insert(*result);
+                    }
+                }
             }
             
             _ => {

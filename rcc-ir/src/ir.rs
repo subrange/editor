@@ -678,6 +678,19 @@ impl IrBuilder {
         self.add_instruction(instr)
     }
     
+    pub fn build_pointer_offset(&mut self, ptr: Value, offset: Value, result_type: IrType) -> Result<Value, String> {
+        let result = self.new_temp();
+        let instr = Instruction::GetElementPtr { 
+            result, 
+            ptr, 
+            indices: vec![offset], 
+            result_type: result_type.clone() 
+        };
+        
+        self.add_instruction(instr)?;
+        Ok(Value::Temp(result))
+    }
+    
     fn add_instruction(&mut self, instr: Instruction) -> Result<(), String> {
         if let Some(ref mut function) = self.current_function {
             if let Some(block_id) = self.current_block {

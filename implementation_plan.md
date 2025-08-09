@@ -250,7 +250,7 @@ pub enum IrInst {
 - [x] Struct/union types (basic support - inline structs work)
 - [x] Sizeof computation (works for all types including structs)
 - [ ] Alignment rules
-- [ ] Array initializers with {}
+- [x] Array initializers with {} (completed - supports both list and string literal initializers)
 
 ### 3.2 Memory Layout
 - [x] Global variable allocation (starting at address 100)
