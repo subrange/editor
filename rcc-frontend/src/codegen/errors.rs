@@ -41,3 +41,48 @@ pub enum CodegenError {
         location: SourceLocation,
     },
 }
+
+use rcc_common::CompilerError;
+
+impl From<CodegenError> for CompilerError {
+    fn from(err: CodegenError) -> Self {
+        match err {
+            CodegenError::UnsupportedConstruct { construct, location } => {
+                CompilerError::codegen_error(
+                    format!("Unsupported construct: {}", construct),
+                    location,
+                )
+            }
+            CodegenError::InvalidType { ast_type, location } => {
+                CompilerError::codegen_error(
+                    format!("Invalid type: {:?}", ast_type),
+                    location,
+                )
+            }
+            CodegenError::UndefinedFunction { name, location } => {
+                CompilerError::codegen_error(
+                    format!("Undefined function: {}", name),
+                    location,
+                )
+            }
+            CodegenError::UndefinedVariable { name, location } => {
+                CompilerError::codegen_error(
+                    format!("Undefined variable: {}", name),
+                    location,
+                )
+            }
+            CodegenError::InternalError { message, location } => {
+                CompilerError::codegen_error(
+                    format!("Internal error: {}", message),
+                    location,
+                )
+            }
+            CodegenError::InvalidLvalue { location } => {
+                CompilerError::codegen_error(
+                    "Invalid lvalue".to_string(),
+                    location,
+                )
+            }
+        }
+    }
+}

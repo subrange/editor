@@ -18,4 +18,5 @@ pub use ir::{
     Module, Function, BasicBlock, Instruction, Value, IrType,
     IrBinaryOp, IrUnaryOp, GlobalVariable, Linkage, IrBuilder
 };
+pub use rcc_common::LabelId;
 pub use module_lowering::lower_module_to_assembly;

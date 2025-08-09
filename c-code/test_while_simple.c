@@ -3,18 +3,29 @@ void putchar(int c);
 
 int main() {
     int i = 0;
+    int count = 0;
     
-    putchar('S');
-    putchar(':');
-    
+    // Count iterations
     while (i < 3) {
-        putchar('0' + i);
+        count = count + 1;
         i = i + 1;
     }
     
-    putchar(10);
-    putchar('E');
-    putchar(10);
+    // Verify loop ran 3 times
+    if (count == 3) {
+        putchar('Y');
+    } else {
+        putchar('N');
+    }
+    
+    // Verify final value of i
+    if (i == 3) {
+        putchar('Y');
+    } else {
+        putchar('N');
+    }
+    
+    putchar('\n');
     
     return 0;
 }

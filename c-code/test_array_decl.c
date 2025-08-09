@@ -9,13 +9,28 @@ int main() {
     numbers[1] = 105; // 'i'
     numbers[2] = 33;  // '!'
     numbers[3] = 10;  // '\n'
-    numbers[4] = 0;   // null terminator
+    numbers[4] = 99;  // test value
     
-    // Print array elements
-    putchar(numbers[0]);
-    putchar(numbers[1]);
-    putchar(numbers[2]);
-    putchar(numbers[3]);
+    // Test array indexing works correctly
+    if (numbers[0] == 72) {
+        putchar('1');
+    } else {
+        putchar('X');
+    }
+    
+    if (numbers[1] == 105) {
+        putchar('2');
+    } else {
+        putchar('X');
+    }
+    
+    if (numbers[4] == 99) {
+        putchar('3');
+    } else {
+        putchar('X');
+    }
+    
+    putchar('\n');
     
     return 0;
 }

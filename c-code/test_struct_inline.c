@@ -1,4 +1,6 @@
 // Test inline struct
+void putchar(int c);
+
 int main() {
     struct {
         int x;

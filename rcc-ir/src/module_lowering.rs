@@ -452,6 +452,7 @@ impl ModuleLowerer {
                 // Extract function name from Value
                 let func_name = match function {
                     Value::Function(name) => name.clone(),
+                    Value::Global(name) => name.clone(),
                     _ => "unknown".to_string(),
                 };
                 
