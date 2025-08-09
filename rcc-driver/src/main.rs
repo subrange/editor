@@ -164,7 +164,7 @@ fn compile_c99_file(
         }
     };
     
-    // Try to compile to IR - if it fails, just show a warning but don't fail completely
+    // Try to compile to IR - if it fails, return an error
     println!("\n💀 Attempting full compilation pipeline");
     match Frontend::compile_to_ir(&source, input_path.file_stem().unwrap().to_str().unwrap()) {
         Ok(ir_module) => {
@@ -209,20 +209,21 @@ fn compile_c99_file(
                     
                     fs::write(&final_output_path, asm_text)?;
                     println!("Assembly written to: {}", final_output_path.display());
+                    Ok(())
                 }
                 Err(e) => {
-                    println!("Warning: Failed to lower IR to assembly: {}", e);
-                    println!("Note: Code generation is still under development for complex features");
+                    eprintln!("Error: Failed to lower IR to assembly: {}", e);
+                    eprintln!("Note: Code generation is still under development for complex features");
+                    Err(e.into())
                 }
             }
         }
         Err(e) => {
-            println!("Warning: Failed to generate IR: {}", e);
-            println!("Note: Code generation is still under development for complex features");
+            eprintln!("Error: Failed to generate IR: {}", e);
+            eprintln!("Note: Code generation is still under development for complex features");
+            Err(e.into())
         }
     }
-    
-    Ok(())
 }
 
 #[cfg(test)]

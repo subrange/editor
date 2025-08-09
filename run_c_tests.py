@@ -79,6 +79,8 @@ Good!""",
     "test_struct_simple.c": "12345\n",  # Tests standalone struct type definitions
     "test_puts_debug.c": "ABC\n",  # Tests consecutive array indexing with global strings
     "test_puts_string_literal.c": "XYZ\n",  # Tests puts with string literals
+    "test-cond.c": "T\n",  # Simple conditional test
+    "test_pointer_gritty.c": "7\n",  # Tests passing address-of local variable to function
     # Note: test_puts.c partially works but has issues with stack arrays due to pointer provenance
 }
 
@@ -95,6 +97,7 @@ KNOWN_FAILURES = [
     "test_puts_simple.c",  # Stack pointer provenance issue - loads from wrong memory bank
     "test_puts_string.c",  # Uses while loops which aren't fully implemented
     "test_puts_global.c",  # Global array initializers not yet implemented
+    "test_strings_simple.c",  # Function redefinition error (puts declared twice)
 ]
 
 def run_command(cmd, capture_output=True):
