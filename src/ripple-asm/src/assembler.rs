@@ -302,7 +302,7 @@ impl RippleAssembler {
                         Ok(instruction) => {
                             // Store label references if any
                             if has_label_ref {
-                                self.check_label_references(&line.operands, state.instructions.len(), state);
+                                self.check_label_references(&line.operands, state.instructions.len(), state, opcode);
                             }
                             state.instructions.push(instruction);
                         }
@@ -331,6 +331,7 @@ impl RippleAssembler {
         operands: &[String],
         instruction_idx: usize,
         state: &mut AssemblerState,
+        opcode: Opcode,
     ) {
         for operand in operands {
             // Check if operand looks like a label (not a register or immediate)
@@ -342,16 +343,12 @@ impl RippleAssembler {
             
             if !is_register && !is_number {
                 
-                // Determine reference type based on the current instruction's opcode
-                let ref_type = if let Some(inst) = state.instructions.get(instruction_idx) {
-                    match inst.opcode {
-                        op if op >= Opcode::Beq as u8 && op <= Opcode::Bge as u8 => ReferenceType::Branch,
-                        op if op == Opcode::Jal as u8 => ReferenceType::Absolute,
-                        op if op == Opcode::Load as u8 || op == Opcode::Store as u8 => ReferenceType::Data,
-                        _ => ReferenceType::Absolute,
-                    }
-                } else {
-                    ReferenceType::Absolute
+                // Determine reference type based on the opcode
+                let ref_type = match opcode {
+                    Opcode::Beq | Opcode::Bne | Opcode::Blt | Opcode::Bge => ReferenceType::Branch,
+                    Opcode::Jal => ReferenceType::Absolute,
+                    Opcode::Load | Opcode::Store => ReferenceType::Data,
+                    _ => ReferenceType::Absolute,
                 };
 
                 state.pending_references.insert(instruction_idx, PendingReference {

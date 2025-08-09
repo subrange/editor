@@ -39,6 +39,40 @@ impl WasmAssembler {
         }
     }
 
+    #[wasm_bindgen(js_name = "getAvailableMnemonics")]
+    pub fn get_available_mnemonics(&self) -> Vec<String> {
+        use crate::types::{Opcode, Register};
+        use crate::virtual_instructions::VirtualInstructionRegistry;
+        
+        let mut mnemonics = vec![];
+        
+        // Add all hardware instructions from Opcode::all()
+        for opcode in Opcode::all() {
+            mnemonics.push(opcode.to_string());
+        }
+        
+        // Add HALT as special case (it's NOP with all zeros)
+        mnemonics.push("HALT".to_string());
+        
+        // Add virtual instructions
+        let registry = VirtualInstructionRegistry::new();
+        for name in registry.get_all_names() {
+            mnemonics.push(name);
+        }
+        
+        mnemonics
+    }
+
+    #[wasm_bindgen(js_name = "getAvailableRegisters")]
+    pub fn get_available_registers(&self) -> Vec<String> {
+        use crate::types::Register;
+        
+        Register::all()
+            .into_iter()
+            .map(|r| r.to_string())
+            .collect()
+    }
+
     #[wasm_bindgen]
     pub fn assemble(&self, source: &str) -> Result<JsValue, JsValue> {
         match self.assembler.assemble(source) {

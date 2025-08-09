@@ -116,22 +116,25 @@ impl Linker {
                 let target_label = labels.get(&reference.label)
                     .ok_or_else(|| format!("Undefined label: {}", reference.label))?;
                 
-                let current_addr = current_idx as i32 * 4;
-                let target_addr = target_label.absolute_address as i32;
-                let offset = (target_addr - current_addr) / 4;
+                // Both addresses should be in instruction indices, not bytes
+                let current_inst = current_idx as i32;
+                let target_inst = (target_label.absolute_address / 4) as i32;
+                let offset = target_inst - current_inst;
                 
                 // Update the immediate field (word3 for branches)
                 instruction.word3 = offset as u16;
             }
             "absolute" => {
-                // For absolute references (JAL, etc.), use the absolute address
+                // For absolute references (JAL, etc.), use the instruction index (not byte address)
                 if let Some(label) = labels.get(&reference.label) {
-                    let addr = label.absolute_address;
-                    // Split address into high and low parts
-                    instruction.word2 = (addr >> 16) as u16;
-                    instruction.word3 = (addr & 0xFFFF) as u16;
+                    // JAL expects instruction index, not byte address
+                    // absolute_address is in bytes, so divide by 4 to get instruction index
+                    let instruction_idx = label.absolute_address / 4;
+                    // Split instruction index into high and low parts
+                    instruction.word2 = (instruction_idx >> 16) as u16;
+                    instruction.word3 = (instruction_idx & 0xFFFF) as u16;
                 } else if let Some(&data_addr) = data_labels.get(&reference.label) {
-                    // Reference to data section
+                    // Reference to data section (shouldn't happen for JAL, but handle it)
                     instruction.word2 = (data_addr >> 16) as u16;
                     instruction.word3 = (data_addr & 0xFFFF) as u16;
                 } else {

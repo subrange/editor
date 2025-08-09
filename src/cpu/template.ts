@@ -140,6 +140,14 @@ export const CPU_FOOTER = `
 
 #define OP_BRK  0x19
 
+#define OP_MUL  0x1A
+#define OP_DIV  0x1B
+#define OP_MOD  0x1C
+
+#define OP_MULI  0x1D
+#define OP_DIVI  0x1E
+#define OP_MODI  0x1F
+
 // MARK: ----- Register Constants
 #define REG_ZONE_W  20
 #define REG_ZONE_CW 5
@@ -1488,7 +1496,14 @@ export const CPU_FOOTER = `
     @inc(1) // To properly work with switch statement
 
     // MARK: ------- Opcode Switch
-    @switch(26, @default, >, <)
+    @switch(32, @default, >, <)
+      @opcase(#OP_MODI,   $ )
+      @opcase(#OP_DIVI,   $ ) 
+      @opcase(#OP_MULI,   $ )
+
+      @opcase(#OP_MOD,   $ )
+      @opcase(#OP_DIV,   $ )
+      @opcase(#OP_MUL,   $ )
 
       @opcase(#OP_BRK,   $ )
 

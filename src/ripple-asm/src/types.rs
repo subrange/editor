@@ -30,6 +30,12 @@ pub enum Opcode {
     Blt = 0x17,
     Bge = 0x18,
     Brk = 0x19,
+    Mul = 0x1A,
+    Div = 0x1B,
+    Mod = 0x1C,
+    Muli = 0x1D,
+    Divi = 0x1E,
+    Modi = 0x1F,
 }
 
 impl Opcode {
@@ -61,6 +67,12 @@ impl Opcode {
             "BLT" => Some(Opcode::Blt),
             "BGE" => Some(Opcode::Bge),
             "BRK" => Some(Opcode::Brk),
+            "MUL" => Some(Opcode::Mul),
+            "DIV" => Some(Opcode::Div),
+            "MOD" => Some(Opcode::Mod),
+            "MULI" => Some(Opcode::Muli),
+            "DIVI" => Some(Opcode::Divi),
+            "MODI" => Some(Opcode::Modi),
             _ => None,
         }
     }
@@ -93,19 +105,34 @@ impl Opcode {
             Opcode::Blt => "BLT",
             Opcode::Bge => "BGE",
             Opcode::Brk => "BRK",
+            Opcode::Mul => "MUL",
+            Opcode::Div => "DIV",
+            Opcode::Mod => "MOD",
+            Opcode::Muli => "MULI",
+            Opcode::Divi => "DIVI",
+            Opcode::Modi => "MODI",
         }
+    }
+
+    pub fn all() -> Vec<&'static str> {
+        vec![
+            "NOP", "ADD", "SUB", "AND", "OR", "XOR", "SLL", "SRL", "SLT", "SLTU",
+            "ADDI", "ANDI", "ORI", "XORI", "LI", "SLLI", "SRLI", "LOAD", "STORE",
+            "JAL", "JALR", "BEQ", "BNE", "BLT", "BGE", "BRK", "MUL", "DIV", "MOD",
+            "MULI", "DIVI", "MODI"
+        ]
     }
 
     pub fn format(&self) -> InstructionFormat {
         match self {
             Opcode::Nop | Opcode::Add | Opcode::Sub | Opcode::And | Opcode::Or | 
             Opcode::Xor | Opcode::Sll | Opcode::Srl | Opcode::Slt | Opcode::Sltu | 
-            Opcode::Jalr | Opcode::Brk => InstructionFormat::R,
+            Opcode::Jalr | Opcode::Brk | Opcode::Mul | Opcode::Div | Opcode::Mod => InstructionFormat::R,
             
             Opcode::Addi | Opcode::Andi | Opcode::Ori | Opcode::Xori | 
             Opcode::Slli | Opcode::Srli | Opcode::Load | Opcode::Store | 
             Opcode::Beq | Opcode::Bne | Opcode::Blt | Opcode::Bge | 
-            Opcode::Jal => InstructionFormat::I,
+            Opcode::Jal | Opcode::Muli | Opcode::Divi | Opcode::Modi => InstructionFormat::I,
             
             Opcode::Li => InstructionFormat::I1,
         }
@@ -180,6 +207,14 @@ impl Register {
             Register::R14 => "@R14",
             Register::R15 => "@R15",
         }
+    }
+
+    pub fn all() -> Vec<&'static str> {
+        vec![
+            "R0", "PC", "PCB", "RA", "RAB", "R3", "R4", "R5", 
+            "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", 
+            "R14", "R15"
+        ]
     }
 }
 

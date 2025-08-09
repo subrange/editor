@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Editor } from "../editor/editor.tsx";
 import { editorManager } from "../../services/editor-manager.service.ts";
-import { AssemblyTokenizer } from "../editor/services/assembly-tokenizer.ts";
+import { AssemblyTokenizer, assemblyTokenizerState$ } from "../editor/services/assembly-tokenizer.ts";
 import { CpuChipIcon, DocumentTextIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
 import { IconButton } from "../ui/icon-button.tsx";
 import { settingsStore } from "../../stores/settings.store.ts";
@@ -29,6 +29,25 @@ export function AssemblyEditor() {
     useEffect(() => {
         initAssembler().catch(console.error);
     }, []);
+    
+    // Subscribe to tokenizer state changes and trigger retokenization
+    useEffect(() => {
+        if (!assemblyEditor) return;
+        
+        const subscription = assemblyTokenizerState$.subscribe((state) => {
+            if (state.initialized) {
+                console.log('Assembly tokenizer updated with WASM instructions, triggering retokenization');
+                // Force retokenization by triggering a state update
+                const currentState = assemblyEditor.editorState.value;
+                assemblyEditor.editorState.next({
+                    ...currentState,
+                    lines: [...currentState.lines] // Create new array reference to trigger update
+                });
+            }
+        });
+        
+        return () => subscription.unsubscribe();
+    }, [assemblyEditor]);
     
     // Subscribe to minimap state
     const [minimapEnabled, setMinimapEnabled] = useLocalStorageState("assemblyMinimap", false);

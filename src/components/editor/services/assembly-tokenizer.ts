@@ -1,4 +1,6 @@
 import { type ITokenizer } from "../../../services/editor-manager.service.ts";
+import { getAvailableMnemonics, getAvailableRegisters } from "../../../services/ripple-assembler/assembler.ts";
+import { BehaviorSubject } from "rxjs";
 
 // Token types for assembly syntax
 export interface AssemblyToken {
@@ -10,18 +12,69 @@ export interface AssemblyToken {
     end: number;
 }
 
-// Assembly instructions from the Ripple VM
-const INSTRUCTIONS = new Set([
-    'NOP', 'ADD', 'SUB', 'AND', 'OR', 'XOR', 'SLL', 'SRL', 'SLT', 'SLTU',
-    'ADDI', 'ANDI', 'ORI', 'XORI', 'LI', 'SLLI', 'SRLI', 'LOAD', 'STORE',
-    'JAL', 'JALR', 'BEQ', 'BNE', 'BLT', 'BGE', 'HALT', 'BRK'
-]);
+// Store for tokenizer state
+interface TokenizerState {
+    instructions: Set<string>;
+    registers: Set<string>;
+    initialized: boolean;
+}
 
-// Register names
-const REGISTERS = new Set([
-    'R0', 'PC', 'PCB', 'RA', 'RAB', 'R3', 'R4', 'R5', 'R6', 'R7', 
-    'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15'
-]);
+// Initial state with defaults
+const initialState: TokenizerState = {
+    instructions: new Set([
+        'NOP', 'ADD', 'SUB', 'AND', 'OR', 'XOR', 'SLL', 'SRL', 'SLT', 'SLTU',
+        'ADDI', 'ANDI', 'ORI', 'XORI', 'LI', 'SLLI', 'SRLI', 'LOAD', 'STORE',
+        'JAL', 'JALR', 'BEQ', 'BNE', 'BLT', 'BGE', 'HALT', 'BRK',
+        'MOVE', 'PUSH', 'POP', 'CALL', 'RET', 'INC', 'DEC', 'NEG', 'NOT'
+    ]),
+    registers: new Set([
+        'R0', 'PC', 'PCB', 'RA', 'RAB', 'R3', 'R4', 'R5', 'R6', 'R7', 
+        'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15'
+    ]),
+    initialized: false
+};
+
+// RxJS store for tokenizer state
+const tokenizerState$ = new BehaviorSubject<TokenizerState>(initialState);
+
+// Current state references for quick access
+let INSTRUCTIONS = initialState.instructions;
+let REGISTERS = initialState.registers;
+
+// Initialize instruction and register sets from WASM
+async function initializeSets() {
+    const state = tokenizerState$.value;
+    if (state.initialized) return;
+    
+    try {
+        const [mnemonics, registers] = await Promise.all([
+            getAvailableMnemonics(),
+            getAvailableRegisters()
+        ]);
+        
+        // Update with dynamic values from WASM
+        INSTRUCTIONS = new Set(mnemonics.map(m => m.toUpperCase()));
+        REGISTERS = new Set(registers.map(r => r.toUpperCase()));
+        
+        // Update the store
+        tokenizerState$.next({
+            instructions: INSTRUCTIONS,
+            registers: REGISTERS,
+            initialized: true
+        });
+        
+        console.log('Assembly tokenizer: Loaded dynamic instruction set from WASM');
+    } catch (error) {
+        console.warn('Assembly tokenizer: Using default instruction set (WASM not loaded yet)', error);
+        // Keep using the defaults that were already set
+    }
+}
+
+// Export the observable for components to subscribe to
+export const assemblyTokenizerState$ = tokenizerState$.asObservable();
+
+// Try to initialize on module load (but don't wait for it)
+initializeSets();
 
 // Directives
 const DIRECTIVES = new Set([
@@ -32,6 +85,11 @@ export class AssemblyTokenizer implements ITokenizer {
     private labels: Set<string> = new Set();
     private inDataSection = false;
     private inCodeSection = false;
+
+    constructor() {
+        // Ensure sets are initialized when tokenizer is created
+        initializeSets();
+    }
 
     reset() {
         this.labels.clear();

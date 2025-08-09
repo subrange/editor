@@ -35,6 +35,10 @@ impl VirtualInstructionRegistry {
     pub fn get(&self, name: &str) -> Option<&Box<dyn VirtualInstruction>> {
         self.instructions.get(&name.to_uppercase())
     }
+
+    pub fn get_all_names(&self) -> Vec<String> {
+        self.instructions.keys().cloned().collect()
+    }
 }
 
 // MOVE rd, rs - Copy value from rs to rd

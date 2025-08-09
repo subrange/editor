@@ -278,6 +278,96 @@ fn test_error_handling() {
 }
 
 #[test]
+fn test_jal_label_resolution() {
+    let assembler = RippleAssembler::new(AssemblerOptions::default());
+    let linker = Linker::new(16);
+    
+    let source = r#"
+start:
+    LI R3, 10
+    JAL R0, R0, print_loop
+    HALT
+print_loop:
+    ADDI R3, R3, -1
+    BNE R3, R0, print_loop
+    JALR R0, R0, RA
+    "#;
+    
+    // Assemble the code
+    let obj = assembler.assemble(source).unwrap();
+    
+    // Check that we have unresolved references
+    assert!(obj.unresolved_references.len() > 0, "Expected unresolved references for JAL");
+    
+    // Link the object file
+    let linked = linker.link(vec![obj]).unwrap();
+    
+    // Verify the JAL instruction (at index 1) has been resolved correctly
+    // print_loop is at instruction index 3 (0: LI, 1: JAL, 2: HALT, 3: print_loop)
+    let jal_instruction = &linked.instructions[1];
+    assert_eq!(jal_instruction.opcode, Opcode::Jal as u8);
+    assert_eq!(jal_instruction.word1, 0); // R0
+    assert_eq!(jal_instruction.word2, 0); // High part of address (0 for small programs)
+    assert_eq!(jal_instruction.word3, 3); // Low part of address - should be instruction index 3
+    
+    // Also check the BNE instruction (at index 4) has been resolved correctly
+    // It should branch back to print_loop (relative offset)
+    let bne_instruction = &linked.instructions[4];
+    assert_eq!(bne_instruction.opcode, Opcode::Bne as u8);
+    // BNE uses relative offset, so it should be -1 (go back 1 instruction from 4 to 3)
+    // -1 as u16 in two's complement is 0xFFFF
+    assert_eq!(bne_instruction.word3, 0xFFFF);
+}
+
+#[test]
+fn test_hello_world_with_linking() {
+    let assembler = RippleAssembler::new(AssemblerOptions::default());
+    let linker = Linker::new(16);
+    
+    let source = r#"
+; Hello World Example with proper linking
+.data
+hello_msg:  .asciiz "Hello, Ripple!\n"
+
+.code
+start:
+    LI R3, 0
+    LI R5, 2
+
+print_loop:
+    LOAD  R3, R5, 0
+    BNE   R3, R0, continue
+    HALT
+continue:
+    ADDI  R5, R5, 1
+    STORE R3, R0, 0
+    JAL   R0, R0, print_loop
+    "#;
+    
+    // Assemble
+    let obj = assembler.assemble(source).unwrap();
+    
+    // Check for unresolved references
+    let unresolved_count = obj.unresolved_references.len();
+    assert!(unresolved_count > 0, "Expected unresolved references, got none");
+    
+    // Link
+    let linked = linker.link(vec![obj]).unwrap();
+    
+    // Verify JAL instruction is properly resolved
+    // JAL is at instruction index 6 (0: LI, 1: LI, 2: LOAD, 3: BNE, 4: HALT, 5: ADDI, 6: STORE, 7: JAL)
+    let jal_instruction = &linked.instructions[7];
+    assert_eq!(jal_instruction.opcode, Opcode::Jal as u8);
+    assert_eq!(jal_instruction.word3, 2); // Should jump to print_loop at instruction 2
+    
+    // The BNE instruction at index 3 should have the correct relative offset
+    // From instruction 3 to instruction 5 (continue label) is +2 instructions
+    let bne_instruction = &linked.instructions[3];
+    assert_eq!(bne_instruction.opcode, Opcode::Bne as u8);
+    assert_eq!(bne_instruction.word3, 2); // Should branch forward 2 instructions to 'continue'
+}
+
+#[test]
 fn test_bank_overflow() {
     let mut options = AssemblerOptions::default();
     options.bank_size = 8; // Small bank size to test overflow
