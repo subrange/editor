@@ -7,39 +7,113 @@ memset:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
+; === ModuleLowerer::get_reg for 't4' ===
+; get_reg for 't4'
+;   Allocated free register for t4
 ; Alloca for t4 at FP+1 (fat ptr: stack bank)
-    ADDI R5, R15, 1
-    ADDI R6, R15, 1
+    ADDI R8, R15, 1
+; === ModuleLowerer::get_reg for 'addr_t4_0' ===
+; get_reg for 'addr_t4_0'
+;   Allocated free register for addr_t4_0
+    ADDI R9, R15, 1
 ; Store 0 to [t4]
-    LI R8, 0
-    STORE R8, R13, R6
+; get_reg for 'const_0_1'
+;   Allocated free register for const_0_1
+    LI R10, 0
+    STORE R10, R13, R9
     BEQ R0, R0, memset_L1
 memset_L1:
 ; Load from [t4] to t5
+; === ModuleLowerer::get_reg for 't5' ===
+; get_reg for 't5'
+;   Allocated free register for t5
+; === ModuleLowerer::get_reg for 'addr_t4_2' ===
+; get_reg for 'addr_t4_2'
+;   Allocated free register for addr_t4_2
     ADDI R6, R15, 1
     LOAD R5, R13, R6
-    SLTU R7, R5, R7
-    BNE R7, R0, memset_L2
+; === Processing Binary t6 ===
+; Binary op: t6 = t5 Slt t3
+; Getting register for temp t5
+; t5 already in register
+;   t5 is now in R5
+; Getting register for temp t3
+; t3 not found, allocating new register
+; get_reg for 't3'
+;   Allocated free register for t3
+;   t3 is now in R7
+; === ModuleLowerer::get_reg for 't6' ===
+; get_reg for 't6'
+;   Allocated free register for t6
+    SLTU R8, R5, R7
+; Getting register for temp t6
+; t6 already in register
+;   t6 is now in R8
+    BNE R8, R0, memset_L2
     BEQ R0, R0, memset_L4
 memset_L2:
 ; Load from [t4] to t7
+; === ModuleLowerer::get_reg for 't7' ===
+; get_reg for 't7'
+;   Allocated free register for t7
+; === ModuleLowerer::get_reg for 'addr_t4_3' ===
+; get_reg for 'addr_t4_3'
+;   Allocated free register for addr_t4_3
     ADDI R6, R15, 1
     LOAD R5, R13, R6
 ; GetElementPtr t8 = t0 + offsets
-;   Base t0 in R3
-    ADD R7, R3, R5
+; Getting register for temp t0
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   Allocated free register for t0
+;   t0 is now in R7
+;   Base t0 in R7
+; Getting register for temp t7
+; t7 already in register
+;   t7 is now in R5
+; === ModuleLowerer::get_reg for 't8' ===
+; get_reg for 't8'
+;   Allocated free register for t8
+    ADD R8, R7, R5
+; Getting register for temp t8
+; t8 already in register
+;   t8 is now in R8
 ; WARNING: Unknown pointer bank, defaulting to global
 ; Store t2 to [t8]
-    STORE R6, R0, R7
+; Getting register for temp t2
+; t2 not found, allocating new register
+; get_reg for 't2'
+;   Allocated free register for t2
+;   t2 is now in R9
+    STORE R9, R0, R8
     BEQ R0, R0, memset_L3
 memset_L3:
 ; Load from [t4] to t9
+; === ModuleLowerer::get_reg for 't9' ===
+; get_reg for 't9'
+;   Allocated free register for t9
+; === ModuleLowerer::get_reg for 'addr_t4_4' ===
+; get_reg for 'addr_t4_4'
+;   Allocated free register for addr_t4_4
     ADDI R6, R15, 1
     LOAD R5, R13, R6
+; === Processing Binary t10 ===
+; Getting register for temp t9
+; t9 already in register
+;   t9 is now in R5
     LI R4, 1
+; === ModuleLowerer::get_reg for 't10' ===
+; get_reg for 't10'
+;   Allocated free register for t10
     ADD R7, R5, R4
+; === ModuleLowerer::get_reg for 'addr_t4_5' ===
+; get_reg for 'addr_t4_5'
+;   Allocated free register for addr_t4_5
     ADDI R8, R15, 1
 ; Store t10 to [t4]
+; Getting register for temp t10
+; t10 already in register
+;   t10 is now in R7
     STORE R7, R13, R8
     BEQ R0, R0, memset_L1
 memset_L4:

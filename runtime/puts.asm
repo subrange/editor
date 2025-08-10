@@ -7,18 +7,35 @@ puts:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
+; === Processing Binary t2 ===
+; Getting register for temp t0
+; t0 already in register
+;   t0 is now in R3
     LI R4, 0
-    SLTU R7, R3, R4
-    SLTU R6, R4, R3
-    OR R5, R7, R6
-    LI R6, 1
-    SUB R5, R6, R5
-    BNE R5, R0, puts_L1
+; === ModuleLowerer::get_reg for 't2' ===
+; get_reg for 't2'
+;   Allocated free register for t2
+    SLTU R8, R3, R4
+    SLTU R7, R4, R3
+    OR R6, R8, R7
+    LI R7, 1
+    SUB R6, R7, R6
+; Getting register for temp t2
+; t2 already in register
+;   t2 is now in R6
+    BNE R6, R0, puts_L1
     BEQ R0, R0, puts_L3
 puts_L1:
+; === Processing Binary t3 ===
     LI R3, 0
     LI R4, 1
+; === ModuleLowerer::get_reg for 't3' ===
+; get_reg for 't3'
+;   Allocated free register for t3
     SUB R5, R3, R4
+; Getting register for temp t3
+; t3 already in register
+;   t3 is now in R5
     ADD R3, R5, R0
     ADD R14, R15, R0
     ADDI R14, R14, -1
@@ -31,49 +48,101 @@ puts_L3:
     BEQ R0, R0, puts_L4
 puts_L4:
 ; Load from [t0] to t4
+; === ModuleLowerer::get_reg for 't4' ===
+; get_reg for 't4'
+;   Allocated free register for t4
+; Getting register for temp t0
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   Allocated free register for t0
+;   t0 is now in R6
+; === ModuleLowerer::get_reg for 'bank_select_2' ===
+; get_reg for 'bank_select_2'
+;   Allocated free register for bank_select_2
 ; Select bank register based on tag
-    LI R6, 1
-    BEQ R4, R6, bank_stack_3
-    ADD R6, R0, R0
+    LI R7, 1
+    BEQ R4, R7, bank_stack_3
+    ADD R7, R0, R0
     BEQ R0, R0, bank_done_3
 bank_stack_3:
-    ADD R6, R13, R0
+    ADD R7, R13, R0
 bank_done_3:
-    LOAD R5, R6, R3
+    LOAD R5, R7, R6
+; Getting register for temp t4
+; t4 already in register
+;   t4 is now in R5
     BNE R5, R0, puts_L5
     BEQ R0, R0, puts_L6
 puts_L5:
 ; Load from [t0] to t5
+; === ModuleLowerer::get_reg for 't5' ===
+; get_reg for 't5'
+;   Allocated free register for t5
+; Getting register for temp t0
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   Allocated free register for t0
+;   t0 is now in R6
+; === ModuleLowerer::get_reg for 'bank_select_4' ===
+; get_reg for 'bank_select_4'
+;   Allocated free register for bank_select_4
 ; Select bank register based on tag
-    LI R6, 1
-    BEQ R4, R6, bank_stack_5
-    ADD R6, R0, R0
+    LI R7, 1
+    BEQ R4, R7, bank_stack_5
+    ADD R7, R0, R0
     BEQ R0, R0, bank_done_5
 bank_stack_5:
-    ADD R6, R13, R0
+    ADD R7, R13, R0
 bank_done_5:
-    LOAD R5, R6, R3
+    LOAD R5, R7, R6
+; Getting register for temp t5
+; t5 already in register
+;   t5 is now in R5
     ADD R3, R5, R0
     CALL putchar
+; === Processing Binary t6 ===
+; Getting register for temp t0
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   Allocated free register for t0
+;   t0 is now in R5
     LI R4, 1
-    ADD R5, R3, R4
+; === ModuleLowerer::get_reg for 't6' ===
+; get_reg for 't6'
+;   Allocated free register for t6
+    ADD R6, R5, R4
+; Getting register for temp t0
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   Allocated free register for t0
+;   t0 is now in R7
+; === ModuleLowerer::get_reg for 'bank_select_6' ===
+; get_reg for 'bank_select_6'
+;   Allocated free register for bank_select_6
 ; Select bank register based on tag
-    LI R6, 1
-    BEQ R4, R6, bank_stack_7
-    ADD R6, R0, R0
+    LI R8, 1
+    BEQ R4, R8, bank_stack_7
+    ADD R8, R0, R0
     BEQ R0, R0, bank_done_7
 bank_stack_7:
-    ADD R6, R13, R0
+    ADD R8, R13, R0
 bank_done_7:
 ; Store t6 to [t0]
-    STORE R5, R6, R3
+; Getting register for temp t6
+; t6 already in register
+;   t6 is now in R6
+    STORE R6, R8, R7
     BEQ R0, R0, puts_L4
 puts_L6:
-    LI R4, 10
-    ADD R3, R4, R0
+; get_reg for 'const_10_8'
+;   Allocated free register for const_10_8
+    LI R5, 10
+    ADD R3, R5, R0
     CALL putchar
-    LI R4, 0
-    ADD R3, R4, R0
+; get_reg for 'const_0_9'
+;   Allocated free register for const_0_9
+    LI R5, 0
+    ADD R3, R5, R0
     ADD R14, R15, R0
     ADDI R14, R14, -1
     LOAD R15, R13, R14

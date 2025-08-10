@@ -42,21 +42,46 @@ impl SimpleRegAlloc {
     /// Get a register for a value
     /// If all registers are in use, spills the least recently used one
     pub fn get_reg(&mut self, for_value: String) -> Reg {
+        self.instructions.push(AsmInst::Comment(format!("get_reg for '{}'", for_value)));
+        
         // Check if this value already has a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &for_value) {
+            self.instructions.push(AsmInst::Comment(format!("  {} already in register", for_value)));
             return reg;
         }
         
         // Try to get a free register
         if let Some(reg) = self.free_list.pop() {
+            self.instructions.push(AsmInst::Comment(format!("  Allocated free register for {}", for_value)));
             self.reg_contents.insert(reg, for_value);
             return reg;
         }
         
         // No free registers - need to spill
+        self.instructions.push(AsmInst::Comment(format!("  No free registers, need to spill for {}", for_value)));
+        
+        // Log current register contents
+        for (reg, val) in &self.reg_contents {
+            let reg_name = match reg {
+                Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+                Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
+                _ => "R?",
+            };
+            self.instructions.push(AsmInst::Comment(format!("    {} contains '{}'", reg_name, val)));
+        }
+        
         // Pick the first register in reg_contents (simple LRU approximation)
         let victim = *self.reg_contents.keys().next().unwrap();
         let victim_value = self.reg_contents.remove(&victim).unwrap();
+        
+        let victim_name = match victim {
+            Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+            Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+            Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
+            _ => "R?",
+        };
+        self.instructions.push(AsmInst::Comment(format!("  Chose to spill {} from {}", victim_value, victim_name)));
         
         // Spill the victim
         let spill_offset = self.get_spill_slot(&victim_value);
@@ -65,6 +90,7 @@ impl SimpleRegAlloc {
         self.instructions.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
         
         // Now use this register for the new value
+        self.instructions.push(AsmInst::Comment(format!("  Now {} will contain {}", victim_name, for_value)));
         self.reg_contents.insert(victim, for_value);
         victim
     }
@@ -197,6 +223,7 @@ impl SimpleRegAlloc {
     pub fn reload(&mut self, value: String) -> Reg {
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &value) {
+            self.instructions.push(AsmInst::Comment(format!("{} already in register", value)));
             return reg;
         }
         
@@ -210,6 +237,7 @@ impl SimpleRegAlloc {
         }
         
         // Not spilled, just get a new register
+        self.instructions.push(AsmInst::Comment(format!("{} not found, allocating new register", value)));
         self.get_reg(value)
     }
     

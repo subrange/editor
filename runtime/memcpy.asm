@@ -7,51 +7,167 @@ memcpy:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
+; === ModuleLowerer::get_reg for 't5' ===
+; get_reg for 't5'
+;   Allocated free register for t5
 ; Alloca for t5 at FP+1 (fat ptr: stack bank)
-    ADDI R5, R15, 1
-    ADDI R6, R15, 1
+    ADDI R9, R15, 1
+; === ModuleLowerer::get_reg for 'addr_t5_0' ===
+; get_reg for 'addr_t5_0'
+;   Allocated free register for addr_t5_0
+    ADDI R10, R15, 1
 ; Store 0 to [t5]
-    LI R9, 0
-    STORE R9, R13, R6
+; get_reg for 'const_0_1'
+;   Allocated free register for const_0_1
+    LI R11, 0
+    STORE R11, R13, R10
     BEQ R0, R0, memcpy_L1
 memcpy_L1:
 ; Load from [t5] to t6
+; === ModuleLowerer::get_reg for 't6' ===
+; get_reg for 't6'
+;   Allocated free register for t6
+; === ModuleLowerer::get_reg for 'addr_t5_2' ===
+; get_reg for 'addr_t5_2'
+;   Allocated free register for addr_t5_2
     ADDI R6, R15, 1
     LOAD R5, R13, R6
-; Reloading t4 from FP+2
-    ADDI R12, R15, 2
-    LOAD R7, R13, R12
+; === Processing Binary t7 ===
+; Binary op: t7 = t6 Slt t4
+; Getting register for temp t6
+; t6 already in register
+;   t6 is now in R5
+; Getting register for temp t4
+; t4 not found, allocating new register
+; get_reg for 't4'
+;   Allocated free register for t4
+;   t4 is now in R7
+; === ModuleLowerer::get_reg for 't7' ===
+; get_reg for 't7'
+;   Allocated free register for t7
     SLTU R8, R5, R7
+; Getting register for temp t7
+; t7 already in register
+;   t7 is now in R8
     BNE R8, R0, memcpy_L2
     BEQ R0, R0, memcpy_L4
 memcpy_L2:
 ; Load from [t5] to t8
+; === ModuleLowerer::get_reg for 't8' ===
+; get_reg for 't8'
+;   Allocated free register for t8
+; === ModuleLowerer::get_reg for 'addr_t5_3' ===
+; get_reg for 'addr_t5_3'
+;   Allocated free register for addr_t5_3
     ADDI R6, R15, 1
     LOAD R5, R13, R6
 ; GetElementPtr t9 = t2 + offsets
-;   Base t2 in R6
-    ADD R7, R6, R5
+; Getting register for temp t2
+; t2 not found, allocating new register
+; get_reg for 't2'
+;   Allocated free register for t2
+;   t2 is now in R7
+;   Base t2 in R7
+; Getting register for temp t8
+; t8 already in register
+;   t8 is now in R5
+; === ModuleLowerer::get_reg for 't9' ===
+; get_reg for 't9'
+;   Allocated free register for t9
+    ADD R8, R7, R5
 ; Load from [t9] to t10
+; === ModuleLowerer::get_reg for 't10' ===
+; get_reg for 't10'
+;   Allocated free register for t10
+; Getting register for temp t9
+; t9 already in register
+;   t9 is now in R8
 ; WARNING: Unknown pointer bank, defaulting to global
-    LOAD R8, R0, R7
+    LOAD R9, R0, R8
 ; Load from [t5] to t11
-    ADDI R10, R15, 1
-    LOAD R9, R13, R10
+; === ModuleLowerer::get_reg for 't11' ===
+; get_reg for 't11'
+;   Allocated free register for t11
+; === ModuleLowerer::get_reg for 'addr_t5_4' ===
+; get_reg for 'addr_t5_4'
+;   Allocated free register for addr_t5_4
+    ADDI R11, R15, 1
+    LOAD R10, R13, R11
 ; GetElementPtr t12 = t0 + offsets
-;   Base t0 in R3
-    ADD R11, R3, R9
+; Getting register for temp t0
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   No free registers, need to spill for t0
+;     R5 contains 't8'
+;     R6 contains 'addr_t5_3'
+;     R7 contains 't2'
+;     R8 contains 't9'
+;     R9 contains 't10'
+;     R10 contains 't11'
+;     R11 contains 'addr_t5_4'
+;   Chose to spill t8 from R5
+; Spilling t8 to FP+0
+    ADDI R12, R15, 0
+    STORE R5, R13, R12
+;   Now R5 will contain t0
+;   t0 is now in R5
+;   Base t0 in R5
+; Getting register for temp t11
+; t11 already in register
+;   t11 is now in R10
+; === ModuleLowerer::get_reg for 't12' ===
+; get_reg for 't12'
+;   No free registers, need to spill for t12
+;     R5 contains 't0'
+;     R6 contains 'addr_t5_3'
+;     R7 contains 't2'
+;     R8 contains 't9'
+;     R9 contains 't10'
+;     R10 contains 't11'
+;     R11 contains 'addr_t5_4'
+;   Chose to spill t0 from R5
+; Spilling t0 to FP+1
+    ADDI R12, R15, 1
+    STORE R5, R13, R12
+;   Now R5 will contain t12
+    ADD R5, R5, R10
+; Getting register for temp t12
+; t12 already in register
+;   t12 is now in R5
 ; WARNING: Unknown pointer bank, defaulting to global
 ; Store t10 to [t12]
-    STORE R8, R0, R11
+; Getting register for temp t10
+; t10 already in register
+;   t10 is now in R9
+    STORE R9, R0, R5
     BEQ R0, R0, memcpy_L3
 memcpy_L3:
 ; Load from [t5] to t13
+; === ModuleLowerer::get_reg for 't13' ===
+; get_reg for 't13'
+;   Allocated free register for t13
+; === ModuleLowerer::get_reg for 'addr_t5_5' ===
+; get_reg for 'addr_t5_5'
+;   Allocated free register for addr_t5_5
     ADDI R6, R15, 1
     LOAD R5, R13, R6
+; === Processing Binary t14 ===
+; Getting register for temp t13
+; t13 already in register
+;   t13 is now in R5
     LI R4, 1
+; === ModuleLowerer::get_reg for 't14' ===
+; get_reg for 't14'
+;   Allocated free register for t14
     ADD R7, R5, R4
+; === ModuleLowerer::get_reg for 'addr_t5_6' ===
+; get_reg for 'addr_t5_6'
+;   Allocated free register for addr_t5_6
     ADDI R8, R15, 1
 ; Store t14 to [t5]
+; Getting register for temp t14
+; t14 already in register
+;   t14 is now in R7
     STORE R7, R13, R8
     BEQ R0, R0, memcpy_L1
 memcpy_L4:

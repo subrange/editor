@@ -94,6 +94,7 @@ enum Location {
 
 impl ModuleLowerer {
     pub fn new() -> Self {
+        eprintln!("Creating new ModuleLowerer");
         Self {
             instructions: Vec::new(),
             reg_alloc: SimpleRegAlloc::new(),
@@ -231,6 +232,7 @@ impl ModuleLowerer {
     
     /// Lower a function to assembly
     fn lower_function(&mut self, function: &Function) -> Result<(), CompilerError> {
+        eprintln!("=== Lowering function: {} ===", function.name);
         self.current_function = Some(function.name.clone());
         self.value_locations.clear();
         // Old system - no longer used, using reg_alloc instead
@@ -699,6 +701,9 @@ impl ModuleLowerer {
             }
             
             Instruction::Binary { result, op, lhs, rhs, .. } => {
+                eprintln!("=== Processing Binary t{} ===", result);
+                self.instructions.push(AsmInst::Comment(format!("=== Processing Binary t{} ===", result)));
+                
                 // For binary operations, ensure operands get different registers
                 // Use the centralized allocator for proper handling
                 
@@ -736,9 +741,34 @@ impl ModuleLowerer {
                         }
                         let left = self.get_value_register(lhs)?;
                         let right = self.get_value_register(rhs)?;
-                        (left, right)
+                        
+                        // CRITICAL: If left and right are the same register but different values,
+                        // we have a problem! We need to save one of them.
+                        if left == right && lhs != rhs {
+                            // This shouldn't happen if the allocator is working correctly
+                            self.instructions.push(AsmInst::Comment(
+                                format!("ERROR: Both operands in same register!")
+                            ));
+                            // Try to reload the right operand to a different register
+                            if let Value::Temp(rid) = rhs {
+                                let temp_reg = self.get_reg(format!("reload_t{}", rid));
+                                self.instructions.push(AsmInst::Add(temp_reg, right, Reg::R0));
+                                (left, temp_reg)
+                            } else {
+                                (left, right)
+                            }
+                        } else {
+                            (left, right)
+                        }
                     }
                 };
+                
+                // CRITICAL: Mark operand registers as in-use before allocating result
+                // This prevents them from being spilled when allocating the result register
+                self.reg_alloc.mark_in_use(left_reg, format!("binary_left_t{}", 
+                    if let Value::Temp(id) = lhs { *id } else { 999999u32 }));
+                self.reg_alloc.mark_in_use(right_reg, format!("binary_right_t{}", 
+                    if let Value::Temp(id) = rhs { *id } else { 999999u32 }));
                 
                 // Allocate register for result
                 let result_key = format!("t{}", result);
@@ -753,6 +783,12 @@ impl ModuleLowerer {
                         self.instructions.push(AsmInst::Sub(dest_reg, left_reg, right_reg));
                     }
                     IrBinaryOp::Mul => {
+                        // Debug: log what we're multiplying
+                        if let (Value::Temp(lid), Value::Temp(rid)) = (lhs, rhs) {
+                            self.instructions.push(AsmInst::Comment(
+                                format!("MUL t{} = t{} * t{}", result, lid, rid)
+                            ));
+                        }
                         if left_reg == right_reg && lhs != rhs {
                             self.instructions.push(AsmInst::Comment(
                                 format!("WARNING: MUL using same register {} for different values!", 
@@ -1322,31 +1358,24 @@ impl ModuleLowerer {
                 } else {
                     // Regular temp value
                     let key = format!("t{}", id);
-                    if let Some(&loc) = self.value_locations.get(&key) {
-                        // Already have a location for this temp
-                        match loc {
-                            Location::Register(r) => {
-                                self.instructions.push(AsmInst::Comment(format!("Using {} from register", key)));
-                                Ok(r)
-                            },
-                            Location::Spilled(offset) => {
-                                // Reload from spill
-                                let reg = self.get_reg(key.clone());
-                                self.instructions.push(AsmInst::Comment(format!("Reloading {} from FP+{}", key, offset)));
-                                self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, offset));
-                                self.instructions.push(AsmInst::Load(reg, Reg::R13, Reg::R12));
-                                // Update location
-                                self.value_locations.insert(key, Location::Register(reg));
-                                Ok(reg)
-                            }
-                        }
-                    } else {
-                        // This temp hasn't been seen before - shouldn't happen
-                        Err(CompilerError::codegen_error(
-                            format!("Undefined temp t{}", id),
-                            rcc_common::SourceLocation::new_simple(0, 0),
-                        ))
-                    }
+                    
+                    self.instructions.push(AsmInst::Comment(format!("Getting register for temp {}", key)));
+                    
+                    // Use SimpleRegAlloc's reload which knows about spilled values
+                    let reg = self.reg_alloc.reload(key.clone());
+                    self.instructions.append(&mut self.reg_alloc.take_instructions());
+                    
+                    let reg_name = match reg {
+                        Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+                        Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                        Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
+                        _ => "R?",
+                    };
+                    self.instructions.push(AsmInst::Comment(format!("  {} is now in {}", key, reg_name)));
+                    
+                    // Update our tracking
+                    self.value_locations.insert(key, Location::Register(reg));
+                    Ok(reg)
                 }
             }
             Value::Function(name) => {
@@ -1505,6 +1534,9 @@ impl ModuleLowerer {
     }
     
     fn get_reg(&mut self, for_value: String) -> Reg {
+        eprintln!("=== ModuleLowerer::get_reg for '{}' ===", for_value);
+        self.instructions.push(AsmInst::Comment(format!("=== ModuleLowerer::get_reg for '{}' ===", for_value)));
+        
         // Use the centralized allocator
         let reg = self.reg_alloc.get_reg(for_value.clone());
         
