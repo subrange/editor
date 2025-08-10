@@ -180,4 +180,116 @@ rlink -f macro program.pobj
 
 - Rasm, Rlink are placed in src/ripple-asm/target/release/ and can be run from there
 - Rbt is placed in rbt/target/release/ and can be run from there
-- 
+
+## Developing C Compiler
+
+When working on the C compiler, follow these steps:
+1. Create a new test file in `c-test/tests/` or `c-test/tests-runtime/`.
+2. Add the test to a proper section of `c-test/run_tests.py` with expected output.
+3. Implement compiler logic
+4. Run the test suite with `python3 c-test/run_tests.py` to verify changes.
+5. If a test fails, use `--no-cleanup` to keep intermediate files for debugging.
+6. Ensure all tests pass.
+
+## Directory Structure
+
+```
+c-test/
+├── tests/                    # Main test cases that should pass
+├── tests-runtime/            # Tests requiring full runtime library
+├── tests-known-failures/     # Tests expected to fail (unsupported features)
+├── build/                    # Temporary build artifacts (auto-created)
+└── run_tests.py             # Test runner script
+```
+
+## Running Tests
+
+```bash
+# Run all tests
+python3 run_tests.py
+
+# Run tests without cleanup (keep generated files for debugging)
+python3 run_tests.py --no-cleanup
+
+# Clean build directory only
+python3 run_tests.py --clean
+```
+
+## Adding a New Test
+
+### 1. Create a Test File
+
+Create a `.c` file in the appropriate directory:
+- `tests/` - For standard tests using only basic features
+- `tests-runtime/` - For tests requiring runtime library functions
+- `tests-known-failures/` - For tests documenting unsupported features
+
+### 2. Write Test Code
+
+Tests should output predictable text that can be verified. Use `putchar()` for output:
+
+```c
+// tests/test_example.c
+void putchar(int c);
+
+int main() {
+    if (2 + 2 == 4) {
+        putchar('Y');  // Yes, test passed
+    } else {
+        putchar('N');  // No, test failed
+    }
+    putchar('\n');
+    return 0;
+}
+```
+
+### 3. Add Test to run_tests.py
+
+Edit `run_tests.py` and add your test to the `tests` list:
+
+```python
+tests = [
+    # ... existing tests ...
+    ("tests/test_example.c", "Y\n", False),  # (file, expected_output, use_runtime)
+]
+```
+
+Parameters:
+- **file**: Path to test C file
+- **expected_output**: Exact expected output string
+- **use_runtime**: `False` for basic tests, `True` for runtime tests
+
+### 4. Run Your Test
+
+```bash
+python3 run_tests.py
+```
+
+## Test Guidelines
+
+1. **Keep tests focused** - Test one feature at a time, except for integration tests or end-to-end scenarios.
+2. **Use assertions** - Output 'Y' for pass, 'N' for fail conditions
+4. **Include newlines** - End output with `\n` for clean formatting
+
+## Understanding Test Output
+
+- ✓ Green: Test passed
+- ✗ Red: Test failed
+- ✓ Yellow: Test passed with warnings (e.g., pointer provenance issues)
+- Known failures: Tests in `tests-known-failures/` are expected to fail
+
+## Debugging Failed Tests
+
+Use `--no-cleanup` to keep intermediate files:
+
+```bash
+python3 run_tests.py --no-cleanup
+```
+
+This preserves in `build/`:
+- `.asm` - Generated assembly
+- `.pobj` - Assembled object files
+- `.bf` - Linked Brainfuck output
+- `_expanded.bfm` - Expanded macro code
+
+You can then manually inspect or run individual compilation steps.
