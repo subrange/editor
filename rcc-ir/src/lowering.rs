@@ -5,7 +5,6 @@
 
 use crate::simple::{SimpleIR, SimpleProgram};
 use rcc_codegen::{AsmInst, Reg};
-use rcc_codegen::regalloc::{SimpleRegAssigner, Temporary};
 use rcc_common::TempId;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -33,7 +32,6 @@ pub fn lower_to_assembly(program: SimpleProgram) -> Result<Vec<AsmInst>, Lowerin
 
 /// IR to assembly lowering implementation
 struct IRLowerer {
-    reg_assigner: SimpleRegAssigner,
     temp_to_reg: HashMap<TempId, Reg>,
     scratch_reg: Reg,
 }
@@ -41,7 +39,6 @@ struct IRLowerer {
 impl IRLowerer {
     fn new() -> Self {
         Self {
-            reg_assigner: SimpleRegAssigner::new(),
             temp_to_reg: HashMap::new(),
             scratch_reg: Reg::R3, // Use R3 as scratch register (R1/R2 don't exist)
         }
@@ -168,10 +165,7 @@ impl IRLowerer {
             return Ok(reg);
         }
         
-        // Assign new register
-        let temp_obj = Temporary::new(temp);
-        let reg = self.reg_assigner
-            .assign_temp(temp_obj)
+        let reg = self.get_or_assign_reg(temp)
             .map_err(|_| LoweringError::RegisterAllocationFailed(temp))?;
         
         self.temp_to_reg.insert(temp, reg);

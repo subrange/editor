@@ -10,7 +10,6 @@
 
 pub mod asm;
 pub mod abi;
-pub mod regalloc;
 pub mod emit;
 
 pub use asm::{Reg, AsmInst};

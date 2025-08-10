@@ -1,13 +1,12 @@
 //! Simple IR for M1 Backend Testing
 //! 
-//! This module defines a minimal intermediate representation that's sufficient
-//! for testing the backend code generation. It will be replaced with a more
-//! sophisticated IR in later milestones.
+//! This module defines a minimal intermediate representation that's sufficient. 
+//! It will be replaced with a more
+//! sophisticated IR if needed
 
 use rcc_common::{TempId, SymbolId};
 use std::fmt;
 
-/// Simple IR instruction set for M1 testing
 #[derive(Debug, Clone, PartialEq)]
 pub enum SimpleIR {
     /// Load constant into temporary: temp = value

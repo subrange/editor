@@ -470,23 +470,35 @@
         ],
         "data": [],
         "labels": {
-          "puts_L4": {
-            "name": "puts_L4",
-            "bank": 0,
-            "offset": 100,
-            "absolute_address": 100
-          },
-          "puts": {
-            "name": "puts",
-            "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
           "puts_L6": {
             "name": "puts_L6",
             "bank": 0,
             "offset": 200,
             "absolute_address": 200
+          },
+          "puts_L1": {
+            "name": "puts_L1",
+            "bank": 0,
+            "offset": 52,
+            "absolute_address": 52
+          },
+          "bank_done_11": {
+            "name": "bank_done_11",
+            "bank": 0,
+            "offset": 192,
+            "absolute_address": 192
+          },
+          "bank_stack_8": {
+            "name": "bank_stack_8",
+            "bank": 0,
+            "offset": 148,
+            "absolute_address": 148
+          },
+          "bank_stack_11": {
+            "name": "bank_stack_11",
+            "bank": 0,
+            "offset": 188,
+            "absolute_address": 188
           },
           "bank_stack_6": {
             "name": "bank_stack_6",
@@ -500,29 +512,11 @@
             "offset": 132,
             "absolute_address": 132
           },
-          "bank_stack_11": {
-            "name": "bank_stack_11",
-            "bank": 0,
-            "offset": 188,
-            "absolute_address": 188
-          },
           "puts_L3": {
             "name": "puts_L3",
             "bank": 0,
             "offset": 96,
             "absolute_address": 96
-          },
-          "bank_stack_8": {
-            "name": "bank_stack_8",
-            "bank": 0,
-            "offset": 148,
-            "absolute_address": 148
-          },
-          "puts_L1": {
-            "name": "puts_L1",
-            "bank": 0,
-            "offset": 52,
-            "absolute_address": 52
           },
           "bank_done_8": {
             "name": "bank_done_8",
@@ -530,26 +524,32 @@
             "offset": 152,
             "absolute_address": 152
           },
+          "puts": {
+            "name": "puts",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
           "bank_done_6": {
             "name": "bank_done_6",
             "bank": 0,
             "offset": 120,
             "absolute_address": 120
           },
-          "bank_done_11": {
-            "name": "bank_done_11",
+          "puts_L4": {
+            "name": "puts_L4",
             "bank": 0,
-            "offset": 192,
-            "absolute_address": 192
+            "offset": 100,
+            "absolute_address": 100
           }
         },
         "data_labels": {},
         "unresolved_references": {
-          "40": {
+          "52": {
             "label": "putchar",
             "ref_type": "absolute"
           },
-          "52": {
+          "40": {
             "label": "putchar",
             "ref_type": "absolute"
           }
@@ -796,6 +796,18 @@
         ],
         "data": [],
         "labels": {
+          "memset": {
+            "name": "memset",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
+          "memset_L4": {
+            "name": "memset_L4",
+            "bank": 0,
+            "offset": 108,
+            "absolute_address": 108
+          },
           "memset_L2": {
             "name": "memset_L2",
             "bank": 0,
@@ -808,23 +820,11 @@
             "offset": 40,
             "absolute_address": 40
           },
-          "memset": {
-            "name": "memset",
-            "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
           "memset_L3": {
             "name": "memset_L3",
             "bank": 0,
             "offset": 80,
             "absolute_address": 80
-          },
-          "memset_L4": {
-            "name": "memset_L4",
-            "bank": 0,
-            "offset": 108,
-            "absolute_address": 108
           }
         },
         "data_labels": {},
@@ -1133,6 +1133,18 @@
             "offset": 0,
             "absolute_address": 0
           },
+          "memcpy_L2": {
+            "name": "memcpy_L2",
+            "bank": 0,
+            "offset": 60,
+            "absolute_address": 60
+          },
+          "memcpy_L1": {
+            "name": "memcpy_L1",
+            "bank": 0,
+            "offset": 40,
+            "absolute_address": 40
+          },
           "memcpy_L3": {
             "name": "memcpy_L3",
             "bank": 0,
@@ -1144,18 +1156,6 @@
             "bank": 0,
             "offset": 140,
             "absolute_address": 140
-          },
-          "memcpy_L1": {
-            "name": "memcpy_L1",
-            "bank": 0,
-            "offset": 40,
-            "absolute_address": 40
-          },
-          "memcpy_L2": {
-            "name": "memcpy_L2",
-            "bank": 0,
-            "offset": 60,
-            "absolute_address": 60
           }
         },
         "data_labels": {},
