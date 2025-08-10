@@ -24,7 +24,7 @@ puts:
 ;   Allocated free register for eq_temp2_1
     SLTU R7, R3, R6
     SLTU R8, R6, R3
-    OR R3, R7, R8
+    OR R3, R9, R10
 ; === ModuleLowerer::get_reg for 'eq_inv_2' ===
 ; get_reg for 'eq_inv_2'
 ;   Allocated free register for eq_inv_2

@@ -16,6 +16,8 @@ pub type LabelId = u32;
 /// Temporary variable identifier for IR
 pub type TempId = u32;
 
+// To cast TempId to u32, use `as u32` when needed
+
 /// Basic integer types supported by the Ripple VM
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IntType {

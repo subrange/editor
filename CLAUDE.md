@@ -169,16 +169,12 @@ rlink -f macro program.pobj
 ## Development Guidelines
 
 - **Testing and Execution**
-- To directly assemble, link, and run .asm file, use `rbt file.asm --run`. It will help with testing C compiler implementation.
-- Make sure to run rbt via gtimeout to not accidentally get stuck in an infinite loop
 - After every change of the C compiler, please make sure you add the test case to `python3 c-test/run_tests.py` and run it to ensure that we don't have any regressions
-- To compile C file to asm, use target/release/rcc compile filename.c (optional -o output.asm) 
-
+- After every change of the C compiler, make sure to rebuild it from project root with `cargo build --release` to ensure the latest changes are included
 - VM opcodes div, mod, divi, modi, mul, muli, slt, and store have been fixed and are now safe to use
 - In c-test tests, use if(condition) putchar('1') else putchar('N') to make sure we actually have some asserts and can capture it in run_tests.py
 
 - Rasm, Rlink are placed in src/ripple-asm/target/release/ and can be run from there
-- Rbt is placed in rbt/target/release/ and can be run from there
 
 ## Developing C Compiler
 
