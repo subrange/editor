@@ -192,39 +192,39 @@ def main():
     
     tests = [
         # Tests with crt0 only (stack setup but no runtime library functions)
-        ("test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", False),
-        ("test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", False),
-        ("test_sizeof_simple.c", "1 2 2 :\n", False),
-        ("test_globals.c", "*A\n", False),
-        ("test_strings.c", "Plea", False),
-        ("test_m3_comprehensive.c", "M3: OK!\nABC\nGood!", False),
-        ("test_add.c", "Y\n", False),
-        ("test_array_decl.c", "123\n", False),
-        ("test_while_simple.c", "YY\n", False),
-        ("test_hello.c", "Hello\n", False),
-        ("test_simple_putchar.c", "AB\n", False),
-        ("test_address_of.c", "OK\n", False),
-        ("test_struct_basic.c", "Y\n", False),
-        ("test_array_init.c", "1234\n", False),
-        ("test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", False),
-        ("test_pointers_comprehensive.c", "12345\n", False),
-        ("test_while_debug.c", "ABL0L1L2C\n", False),
-        ("test_sizeof.c", "123456\n", False),
-        ("test_sizeof_final.c", "YYYYYYYYY\n", False),
-        ("test_strings_addr.c", "A", False),
-        ("test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", False),
-        ("test_struct_inline.c", "YY\n", False),
-        ("test_struct_simple.c", "12345\n", False),
-        ("test_puts_debug.c", "ABC\n", False),
-        ("test_puts_string_literal.c", "XYZ\n", False),
-        ("test-cond.c", "T", False),
-        ("test_pointer_gritty.c", "7", False),
-        ("test_inline_asm.c", "Y\n", False),
+        ("tests/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", False),
+        ("tests/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", False),
+        ("tests/test_sizeof_simple.c", "1 2 2 :\n", False),
+        ("tests/test_globals.c", "*A\n", False),
+        ("tests/test_strings.c", "Plea", False),
+        ("tests/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!", False),
+        ("tests/test_add.c", "Y\n", False),
+        ("tests/test_array_decl.c", "123\n", False),
+        ("tests/test_while_simple.c", "YY\n", False),
+        ("tests/test_hello.c", "Hello\n", False),
+        ("tests/test_simple_putchar.c", "AB\n", False),
+        ("tests/test_address_of.c", "OK\n", False),
+        ("tests/test_struct_basic.c", "Y\n", False),
+        ("tests/test_array_init.c", "1234\n", False),
+        ("tests/test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", False),
+        ("tests/test_pointers_comprehensive.c", "12345\n", False),
+        ("tests/test_while_debug.c", "ABL0L1L2C\n", False),
+        ("tests/test_sizeof.c", "123456\n", False),
+        ("tests/test_sizeof_final.c", "YYYYYYYYY\n", False),
+        ("tests/test_strings_addr.c", "A", False),
+        ("tests/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", False),
+        ("tests/test_struct_inline.c", "YY\n", False),
+        ("tests/test_struct_simple.c", "12345\n", False),
+        ("tests/test_puts_debug.c", "ABC\n", False),
+        ("tests/test_puts_string_literal.c", "XYZ\n", False),
+        ("tests/test-cond.c", "T", False),
+        ("tests/test_pointer_gritty.c", "7", False),
+        ("tests/test_inline_asm.c", "Y\n", False),
         
         # Tests with full runtime (crt0 + libruntime.par)
-        ("test_runtime_simple.c", "RT\n", True),
-        ("test_runtime_full.c", "Hi!\nOK\n", True),
-        ("test_external_putchar.c", "Hi\n", True),
+        ("tests-runtime/test_runtime_simple.c", "RT\n", True),
+        ("tests-runtime/test_runtime_full.c", "Hi!\nOK\n", True),
+        ("tests-runtime/test_external_putchar.c", "Hi\n", True),
     ]
     
     # Sort tests alphabetically by filename
@@ -255,15 +255,15 @@ def main():
     
     # Known failures section (tests that are expected to fail)
     known_failures = [
-        "test_typedef.c",  # Typedef support not implemented
-        "test_typedef_simple.c",  # Typedef support not implemented
-        "test_struct_simple2.c",  # Uses typedef struct
-        "test_struct_inline_simple.c",  # Inline struct definitions not supported
-        "test_puts.c",  # Complex puts with loops
-        "test_puts_simple.c",  # Stack pointer provenance issue
-        "test_puts_string.c",  # Uses while loops
-        "test_puts_global.c",  # Global array initializers not implemented
-        "test_strings_simple.c",  # Function redefinition error
+        "tests-known-failures/test_typedef.c",  # Typedef support not implemented
+        "tests-known-failures/test_typedef_simple.c",  # Typedef support not implemented
+        "tests-known-failures/test_struct_simple2.c",  # Uses typedef struct
+        "tests-known-failures/test_struct_inline_simple.c",  # Inline struct definitions not supported
+        "tests-known-failures/test_puts.c",  # Complex puts with loops
+        "tests-known-failures/test_puts_simple.c",  # Stack pointer provenance issue
+        "tests-known-failures/test_puts_string.c",  # Uses while loops
+        "tests-known-failures/test_puts_global.c",  # Global array initializers not implemented
+        "tests-known-failures/test_strings_simple.c",  # Function redefinition error
     ]
     
     # Sort known failures alphabetically
