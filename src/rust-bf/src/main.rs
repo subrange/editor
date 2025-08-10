@@ -15,7 +15,7 @@ struct Args {
     execute: Option<String>,
 
     /// Cell size in bits (8, 16, or 32)
-    #[arg(long, value_name = "BITS", default_value = "8")]
+    #[arg(long, value_name = "BITS", default_value = "16")]
     cell_size: u8,
 
     /// Disable cell wrapping behavior

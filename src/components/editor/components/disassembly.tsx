@@ -43,7 +43,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   const disassembledCode = useMemo(() => {
     const lines: string[] = [];
     const instructions: Array<{ index: number; text: string; isHalt: boolean }> = [];
-    const maxInstructions = 100; // Limit to prevent excessive processing
+    const maxInstructions = 1000; // Limit to prevent excessive processing
     let lastNonHaltIndex = -1;
     
     // First pass: collect all instructions and track last non-HALT
@@ -92,7 +92,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
     // Second pass: build final output
     // Include all instructions up to the last non-HALT, plus up to 3 more HALTs
     let haltCount = 0;
-    const maxTrailingHalts = 3;
+    const maxTrailingHalts = 10;
     
     for (const inst of instructions) {
       if (inst.index <= lastNonHaltIndex) {

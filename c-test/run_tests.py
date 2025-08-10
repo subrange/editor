@@ -162,7 +162,7 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
     if ret != 0:
         return False, f"Macro expansion failed: {stderr}", has_provenance_warning
     
-    ret, stdout, stderr = run_command(f"bf {expanded_file}", timeout=timeout)
+    ret, stdout, stderr = run_command(f"bf {expanded_file} --cell-size 16 --tape-size 150000000", timeout=timeout)
     if ret == -1:
         # Show partial output if verbose mode is enabled and timeout occurred
         if verbose and stdout:
@@ -305,7 +305,7 @@ def main():
         (f"{BASE_DIR}/tests-runtime/test_sizeof_simple.c", "1 2 2 :\n", True),
         (f"{BASE_DIR}/tests-runtime/test_globals.c", "*A\n", True),
         (f"{BASE_DIR}/tests-runtime/test_strings.c", "Plea", True),
-        (f"{BASE_DIR}/tests-runtime/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!", True),
+        (f"{BASE_DIR}/tests-runtime/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!\n", True),
         (f"{BASE_DIR}/tests-runtime/test_add.c", "Y\n", True),
         (f"{BASE_DIR}/tests-runtime/test_array_decl.c", "123\n", True),
         (f"{BASE_DIR}/tests-runtime/test_while_simple.c", "YY\n", True),

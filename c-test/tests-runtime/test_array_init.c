@@ -30,13 +30,13 @@ int main() {
     } else {
         putchar('F');  // Test 3 failed
     }
-//
-//    // Print from string literal initialized array
-//    if (hello[1] == 'e') {
-//        putchar('4');  // Test 4 passed
-//    } else {
-//        putchar('F');  // Test 4 failed
-//    }
+
+    // Print from string literal initialized array
+    if (hello[1] == 'e') {
+        putchar('4');  // Test 4 passed
+    } else {
+        putchar('F');  // Test 4 failed
+    }
     
     putchar('\n');
     

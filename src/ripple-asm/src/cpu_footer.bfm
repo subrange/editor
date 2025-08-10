@@ -951,7 +951,6 @@
 
   @lane(@L_SA,
     cmp
-    $
     {if(should_inverse, @not(>, <), @nop)}
   )
   @lane_start(@L_SA)

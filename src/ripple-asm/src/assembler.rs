@@ -315,9 +315,30 @@ impl RippleAssembler {
                         
                         if !is_register && !is_number {
                             // This is likely a label reference
-                            has_label_ref = true;
-                            // Replace with placeholder 0 - actual address will be resolved by linker
-                            modified_operands[i] = "0".to_string();
+                            // Check if it's a local label we can resolve now
+                            if let Some(label) = state.labels.get(operand) {
+                                // For branches, calculate relative offset
+                                if matches!(opcode, Opcode::Beq | Opcode::Bne | Opcode::Blt | Opcode::Bge) {
+                                    let current_addr = (state.current_bank as u32 * self.options.bank_size as u32) 
+                                        + state.current_offset as u32;
+                                    let current_inst = current_addr / 4;
+                                    let target_inst = label.absolute_address / 4;
+                                    let offset = (target_inst as i32) - (current_inst as i32);
+                                    modified_operands[i] = offset.to_string();
+                                } else {
+                                    // For absolute references, use the instruction index
+                                    let inst_idx = label.absolute_address / 4;
+                                    modified_operands[i] = inst_idx.to_string();
+                                }
+                            } else if state.data_labels.contains_key(operand) {
+                                // Data label - will be resolved by linker
+                                has_label_ref = true;
+                                modified_operands[i] = "0".to_string();
+                            } else {
+                                // External label - will be resolved by linker
+                                has_label_ref = true;
+                                modified_operands[i] = "0".to_string();
+                            }
                         }
                     }
                     
@@ -365,19 +386,25 @@ impl RippleAssembler {
                 || operand.starts_with("0b") || operand.starts_with("0B");
             
             if !is_register && !is_number {
+                // Check if this is a local label that we already know about
+                let is_local_label = state.labels.contains_key(operand);
+                let is_local_data = state.data_labels.contains_key(operand);
                 
-                // Determine reference type based on the opcode
-                let ref_type = match opcode {
-                    Opcode::Beq | Opcode::Bne | Opcode::Blt | Opcode::Bge => ReferenceType::Branch,
-                    Opcode::Jal => ReferenceType::Absolute,
-                    Opcode::Load | Opcode::Store | Opcode::Li => ReferenceType::Data,
-                    _ => ReferenceType::Absolute,
-                };
+                // Only mark as unresolved if it's not a local label
+                if !is_local_label && !is_local_data {
+                    // Determine reference type based on the opcode
+                    let ref_type = match opcode {
+                        Opcode::Beq | Opcode::Bne | Opcode::Blt | Opcode::Bge => ReferenceType::Branch,
+                        Opcode::Jal => ReferenceType::Absolute,
+                        Opcode::Load | Opcode::Store | Opcode::Li => ReferenceType::Data,
+                        _ => ReferenceType::Absolute,
+                    };
 
-                state.pending_references.insert(instruction_idx, PendingReference {
-                    label: operand.clone(),
-                    ref_type,
-                });
+                    state.pending_references.insert(instruction_idx, PendingReference {
+                        label: operand.clone(),
+                        ref_type,
+                    });
+                }
             }
         }
     }
