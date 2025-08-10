@@ -19,6 +19,15 @@ c-test/
 # Run all tests
 python3 run_tests.py
 
+# Run single test file
+python3 run_tests.py tests/test_example.c
+
+# Run tests with verbose flag to see what build program outputs
+python3 run_tests.py tests/test_example.c --verbose
+
+# Run tests with custom timeout. Default is 2 seconds.
+python3 run_tests.py tests/test_example.c --timeout 5
+
 # Run tests without cleanup (keep generated files for debugging)
 python3 run_tests.py --no-cleanup
 

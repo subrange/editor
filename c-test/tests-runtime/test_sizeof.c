@@ -50,7 +50,7 @@ int main() {
     } else {
         putchar('X');
     }
-    
+
     putchar('\n');
     
     return 0;

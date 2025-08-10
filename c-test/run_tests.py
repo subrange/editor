@@ -2,11 +2,21 @@
 """
 Test runner for the Ripple C compiler
 
-Usage: python3 run_tests.py [options]
+Usage: python3 run_tests.py [options] [test_file]
 
 Options:
   --no-cleanup  Don't clean up generated files after tests
   --clean       Only clean the build directory and exit
+  --timeout N   Set timeout in seconds for test execution (default: 2)
+  --verbose     Show output from test programs as they run
+  test_file     Optional: Path to a single test file to run
+
+Examples:
+  python3 run_tests.py                              # Run all tests
+  python3 run_tests.py tests-runtime/test_hello.c   # Run single test
+  python3 run_tests.py --no-cleanup tests-runtime/test_add.c  # Run single test, keep artifacts
+  python3 run_tests.py --timeout 10                 # Run with 10 second timeout
+  python3 run_tests.py --verbose                    # Show test program output
 
 Prerequisites:
 - Build the compiler: cargo build --release (in project root)
@@ -50,7 +60,7 @@ BUILD_DIR = "build"
 BANK_SIZE = 4096
 MAX_IMMEDIATE = 65535
 
-def run_command(cmd, timeout=5):
+def run_command(cmd, timeout=2):
     """Run a command with timeout"""
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
@@ -58,7 +68,7 @@ def run_command(cmd, timeout=5):
     except subprocess.TimeoutExpired:
         return -1, "", "Timeout"
 
-def compile_and_run(c_file, expected_output, use_full_runtime=True):
+def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False):
     """Compile a C file and run it, checking output
     
     Args:
@@ -66,6 +76,8 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True):
         expected_output: Expected output from the program
         use_full_runtime: If True, link with full runtime (crt0 + libruntime.par)
                          If False, link with crt0 only (for stack setup)
+        timeout: Timeout in seconds for execution
+        verbose: If True, show program output
     
     Returns:
         tuple: (success, message, has_provenance_warning)
@@ -73,7 +85,7 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True):
     basename = Path(c_file).stem
     asm_file = f"{BUILD_DIR}/{basename}.asm"
     pobj_file = f"{BUILD_DIR}/{basename}.pobj"
-    bf_file = f"{BUILD_DIR}/{basename}.bf"
+    bf_file = f"{BUILD_DIR}/{basename}.bfm"
     
     # Clean up previous files
     for f in [asm_file, pobj_file, bf_file, f"{BUILD_DIR}/{basename}_expanded.bf"]:
@@ -112,16 +124,22 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True):
         return False, f"Linking failed: {stderr}", has_provenance_warning
     
     # Expand and run
-    expanded_file = f"{BUILD_DIR}/{basename}_expanded.bfm"
+    expanded_file = f"{BUILD_DIR}/{basename}_expanded.bf"
     ret, stdout, stderr = run_command(f"bfm expand {bf_file} -o {expanded_file}")
     if ret != 0:
         return False, f"Macro expansion failed: {stderr}", has_provenance_warning
     
-    ret, stdout, stderr = run_command(f"bf {expanded_file}", timeout=30)
+    ret, stdout, stderr = run_command(f"bf {expanded_file}", timeout=timeout)
     if ret == -1:
         return False, "Execution timeout", has_provenance_warning
     
-    if expected_output and stdout != expected_output:
+    if verbose and stdout:
+        print(f"    Output: {repr(stdout)}")
+    
+    if expected_output is None:
+        # No expected output specified, just return the actual output
+        return True, stdout, has_provenance_warning
+    elif stdout != expected_output:
         if has_provenance_warning:
             return False, f"Output mismatch (likely due to pointer provenance issue). Expected: {repr(expected_output)}, Got: {repr(stdout)}", has_provenance_warning
         else:
@@ -129,14 +147,34 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True):
     
     return True, "OK", has_provenance_warning
 
+def cleanup_test_files(basename):
+    """Remove generated files for a specific test"""
+    files_to_remove = [
+        f"{BUILD_DIR}/{basename}.asm",
+        f"{BUILD_DIR}/{basename}.pobj",
+        f"{BUILD_DIR}/{basename}.bfm",
+        f"{BUILD_DIR}/{basename}_expanded.bf"
+    ]
+    
+    removed = 0
+    for file in files_to_remove:
+        if os.path.exists(file):
+            try:
+                os.remove(file)
+                removed += 1
+            except:
+                pass
+    
+    return removed
+
 def cleanup_files():
     """Remove all generated files in the build directory"""
     # Patterns for files to clean up in build directory
     patterns = [
         f"{BUILD_DIR}/*.asm",
         f"{BUILD_DIR}/*.pobj", 
-        f"{BUILD_DIR}/*.bf",
-        f"{BUILD_DIR}/*_expanded.bfm"
+        f"{BUILD_DIR}/*.bfm",
+        f"{BUILD_DIR}/*_expanded.bf"
     ]
     
     total_removed = 0
@@ -150,7 +188,7 @@ def cleanup_files():
                 pass  # Ignore errors during cleanup
     
     # Also clean up any stray files in current directory (for backwards compatibility)
-    old_patterns = ["*.asm", "*.pobj", "*.bf", "*_expanded.bfm"]
+    old_patterns = ["*.asm", "*.pobj", "*.bfm", "*_expanded.bf"]
     for pattern in old_patterns:
         files = glob.glob(pattern)
         for file in files:
@@ -166,6 +204,28 @@ def main():
     # Check for command line flags
     no_cleanup = "--no-cleanup" in sys.argv
     clean_only = "--clean" in sys.argv
+    verbose = "--verbose" in sys.argv
+    single_test = None
+    timeout = 2  # Default timeout in seconds
+    
+    # Parse arguments
+    i = 1
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg == "--timeout":
+            if i + 1 < len(sys.argv):
+                try:
+                    timeout = int(sys.argv[i + 1])
+                    i += 1  # Skip the timeout value
+                except ValueError:
+                    print(f"Error: Invalid timeout value '{sys.argv[i + 1]}'")
+                    return 1
+            else:
+                print("Error: --timeout requires a value")
+                return 1
+        elif not arg.startswith("--") and arg.endswith(".c"):
+            single_test = arg
+        i += 1
     
     # If --clean flag is provided, just clean and exit
     if clean_only:
@@ -175,7 +235,8 @@ def main():
         return 0
     
     # Ensure runtime is built
-    print("Building runtime library...")
+    verbose_msg = ", verbose" if verbose else ""
+    print(f"Building runtime library (timeout: {timeout}s{verbose_msg})...")
     ret, _, stderr = run_command(f"cd {RUNTIME_DIR} && make clean && make all")
     if ret != 0:
         print(f"Failed to build runtime: {stderr}")
@@ -192,66 +253,153 @@ def main():
     
     tests = [
         # Tests with crt0 only (stack setup but no runtime library functions)
-        ("tests/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", False),
-        ("tests/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", False),
-        ("tests/test_sizeof_simple.c", "1 2 2 :\n", False),
-        ("tests/test_globals.c", "*A\n", False),
-        ("tests/test_strings.c", "Plea", False),
-        ("tests/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!", False),
-        ("tests/test_add.c", "Y\n", False),
-        ("tests/test_array_decl.c", "123\n", False),
-        ("tests/test_while_simple.c", "YY\n", False),
-        ("tests/test_hello.c", "Hello\n", False),
-        ("tests/test_simple_putchar.c", "AB\n", False),
-        ("tests/test_address_of.c", "OK\n", False),
-        ("tests/test_struct_basic.c", "Y\n", False),
-        ("tests/test_array_init.c", "1234\n", False),
-        ("tests/test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", False),
-        ("tests/test_pointers_comprehensive.c", "12345\n", False),
-        ("tests/test_while_debug.c", "ABL0L1L2C\n", False),
-        ("tests/test_sizeof.c", "123456\n", False),
-        ("tests/test_sizeof_final.c", "YYYYYYYYY\n", False),
-        ("tests/test_strings_addr.c", "A", False),
-        ("tests/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", False),
-        ("tests/test_struct_inline.c", "YY\n", False),
-        ("tests/test_struct_simple.c", "12345\n", False),
-        ("tests/test_puts_debug.c", "ABC\n", False),
-        ("tests/test_puts_string_literal.c", "XYZ\n", False),
-        ("tests/test-cond.c", "T", False),
-        ("tests/test_pointer_gritty.c", "7", False),
         ("tests/test_inline_asm.c", "Y\n", False),
         
         # Tests with full runtime (crt0 + libruntime.par)
         ("tests-runtime/test_runtime_simple.c", "RT\n", True),
         ("tests-runtime/test_runtime_full.c", "Hi!\nOK\n", True),
         ("tests-runtime/test_external_putchar.c", "Hi\n", True),
+        
+        # Tests moved from tests/ directory (all use putchar)
+        ("tests-runtime/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", True),
+        ("tests-runtime/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", True),
+        ("tests-runtime/test_sizeof_simple.c", "1 2 2 :\n", True),
+        ("tests-runtime/test_globals.c", "*A\n", True),
+        ("tests-runtime/test_strings.c", "Plea", True),
+        ("tests-runtime/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!", True),
+        ("tests-runtime/test_add.c", "Y\n", True),
+        ("tests-runtime/test_array_decl.c", "123\n", True),
+        ("tests-runtime/test_while_simple.c", "YY\n", True),
+        ("tests-runtime/test_hello.c", "Hello\n", True),
+        ("tests-runtime/test_simple_putchar.c", "AB\n", True),
+        ("tests-runtime/test_address_of.c", "OK\n", True),
+        ("tests-runtime/test_struct_basic.c", "Y\n", True),
+        ("tests-runtime/test_array_init.c", "1234\n", True),
+        ("tests-runtime/test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", True),
+        ("tests-runtime/test_pointers_comprehensive.c", "12345\n", True),
+        ("tests-runtime/test_while_debug.c", "ABL0L1L2C\n", True),
+        ("tests-runtime/test_sizeof.c", "123456\n", True),
+        ("tests-runtime/test_sizeof_final.c", "YYYYYYYYY\n", True),
+        ("tests-runtime/test_strings_addr.c", "A", True),
+        ("tests-runtime/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
+        ("tests-runtime/test_struct_inline.c", "YY\n", True),
+        ("tests-runtime/test_struct_simple.c", "12345\n", True),
+        ("tests-runtime/test_puts_debug.c", "ABC\n", True),
+        ("tests-runtime/test_puts_string_literal.c", "XYZ\n", True),
+        ("tests-runtime/test-cond.c", "T", True),
+        ("tests-runtime/test_pointer_gritty.c", "7", True),
     ]
+    
+    # If single test specified, filter the test list
+    if single_test:
+        # Find the test in the list
+        matching_test = None
+        for test in tests:
+            if test[0] == single_test:
+                matching_test = test
+                break
+        
+        if not matching_test:
+            # If not found in tests list, try to run it anyway
+            # Check if file exists
+            if not os.path.exists(single_test):
+                print(f"Error: Test file '{single_test}' not found")
+                return 1
+            
+            # Determine if it should use runtime based on directory or content
+            # Check if file uses putchar or other runtime functions
+            use_runtime = True  # Default to using runtime for safety
+            
+            # You could also check file content if needed:
+            # with open(single_test, 'r') as f:
+            #     content = f.read()
+            #     use_runtime = 'putchar' in content or 'puts' in content
+            
+            print(f"Running single test: {single_test}")
+            print(f"Note: Expected output not defined in test list, will show actual output")
+            print("-" * 60)
+            
+            success, message, has_provenance_warning = compile_and_run(single_test, None, use_runtime, timeout, verbose)
+            
+            if success:
+                if has_provenance_warning:
+                    print(f"{YELLOW}✓ {single_test}: COMPILED WITH WARNINGS{NC} (pointer provenance unknown)")
+                else:
+                    print(f"{GREEN}✓ {single_test}: COMPILED AND RAN{NC}")
+                print(f"Output: {message}")
+            else:
+                print(f"{RED}✗ {single_test}{NC}: {message}")
+            
+            if not no_cleanup:
+                cleanup_files()
+            
+            return 0 if success else 1
+        
+        # Found in test list, run with expected output
+        tests = [matching_test]
+        print(f"Running single test: {single_test}")
     
     # Sort tests alphabetically by filename
     tests.sort(key=lambda x: x[0])
     
+    # Separate tests by runtime usage
+    tests_without_runtime = [(f, e, r) for f, e, r in tests if not r]
+    tests_with_runtime = [(f, e, r) for f, e, r in tests if r]
+    
     passed = 0
     failed = 0
     
-    print("\nRunning tests...")
-    print("-" * 60)
-    
-    for test_file, expected, use_full_runtime in tests:
-        if not os.path.exists(test_file):
-            print(f"SKIP {test_file}: File not found")
-            continue
-            
-        success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime)
+    # Run tests without runtime first (if any)
+    if tests_without_runtime:
+        print("\nTests without runtime (crt0 only):")
+        print("-" * 60)
         
-        if success:
-            if has_provenance_warning:
-                print(f"{YELLOW}✓ {test_file}: PASSED WITH WARNINGS{NC} (pointer provenance unknown)")
+        for test_file, expected, use_full_runtime in tests_without_runtime:
+            if not os.path.exists(test_file):
+                print(f"SKIP {test_file}: File not found")
+                continue
+                
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose)
+            
+            if success:
+                if has_provenance_warning:
+                    print(f"{YELLOW}✓ {test_file}: PASSED WITH WARNINGS{NC} (pointer provenance unknown)")
+                else:
+                    print(f"{GREEN}✓ {test_file}{NC}")
+                passed += 1
             else:
-                print(f"{GREEN}✓ {test_file}{NC}")
-            passed += 1
-        else:
-            print(f"{RED}✗ {test_file}{NC}: {message}")
-            failed += 1
+                print(f"{RED}✗ {test_file}{NC}: {message}")
+                failed += 1
+    
+    # Run tests with runtime
+    if tests_with_runtime:
+        print("\nTests with runtime (crt0 + libruntime):")
+        print("-" * 60)
+        
+        for test_file, expected, use_full_runtime in tests_with_runtime:
+            if not os.path.exists(test_file):
+                print(f"SKIP {test_file}: File not found")
+                continue
+                
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose)
+            
+            if success:
+                if has_provenance_warning:
+                    print(f"{YELLOW}✓ {test_file}: PASSED WITH WARNINGS{NC} (pointer provenance unknown)")
+                else:
+                    print(f"{GREEN}✓ {test_file}{NC}")
+                passed += 1
+            else:
+                print(f"{RED}✗ {test_file}{NC}: {message}")
+                failed += 1
+    
+    # Skip known failures section if running single test
+    if single_test:
+        if not no_cleanup:
+            num_cleaned = cleanup_files()
+            print(f"\nCleaned up {num_cleaned} generated files")
+        
+        return 0 if passed == 1 else 1
     
     # Known failures section (tests that are expected to fail)
     known_failures = [

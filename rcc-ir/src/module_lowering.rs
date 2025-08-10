@@ -302,21 +302,11 @@ impl ModuleLowerer {
         Ok(())
     }
     
-    /// Check if function has any call instructions (excluding putchar which is inlined)
+    /// Check if function has any call instructions
     fn function_has_calls(&self, function: &Function) -> bool {
         function.blocks.iter().any(|block| {
             block.instructions.iter().any(|inst| {
-                match inst {
-                    Instruction::Call { function: func, .. } => {
-                        // putchar is special-cased as MMIO, not a real call
-                        if let Value::Function(name) = func {
-                            name != "putchar"
-                        } else {
-                            true
-                        }
-                    }
-                    _ => false
-                }
+                matches!(inst, Instruction::Call { .. })
             })
         })
     }
@@ -672,102 +662,96 @@ impl ModuleLowerer {
                     _ => "unknown".to_string(),
                 };
                 
-                // For putchar, directly handle it as a store to MMIO
-                if func_name == "putchar" && args.len() == 1 {
-                    let arg_reg = self.get_value_register(&args[0])?;
-                    self.instructions.push(AsmInst::Store(arg_reg, Reg::R0, Reg::R0));
-                } else {
-                    // General function call - set up arguments first
-                    // Using calling convention: R3-R8 for arguments
-                    
-                    // Collect argument registers and their destinations
-                    let mut arg_regs = Vec::new();
-                    for (i, arg) in args.iter().enumerate() {
-                        if i < 6 {  // Max 6 register arguments
-                            let arg_reg = self.get_value_register(arg)?;
-                            let param_reg = match i {
-                                0 => Reg::R3,
-                                1 => Reg::R4,
-                                2 => Reg::R5,
-                                3 => Reg::R6,
-                                4 => Reg::R7,
-                                5 => Reg::R8,
-                                _ => unreachable!(),
-                            };
-                            arg_regs.push((arg_reg, param_reg));
-                        }
+                // General function call - set up arguments first
+                // Using calling convention: R3-R8 for arguments
+                
+                // Collect argument registers and their destinations
+                let mut arg_regs = Vec::new();
+                for (i, arg) in args.iter().enumerate() {
+                    if i < 6 {  // Max 6 register arguments
+                        let arg_reg = self.get_value_register(arg)?;
+                        let param_reg = match i {
+                            0 => Reg::R3,
+                            1 => Reg::R4,
+                            2 => Reg::R5,
+                            3 => Reg::R6,
+                            4 => Reg::R7,
+                            5 => Reg::R8,
+                            _ => unreachable!(),
+                        };
+                        arg_regs.push((arg_reg, param_reg));
                     }
-                    
-                    // Move arguments to parameter registers
-                    // Handle potential conflicts by using R9 as temporary
-                    let mut moved = vec![false; arg_regs.len()];
-                    
-                    // First, move any that don't conflict
-                    for i in 0..arg_regs.len() {
-                        let (src, dst) = arg_regs[i];
-                        if src == dst {
+                }
+                
+                // Move arguments to parameter registers
+                // Handle potential conflicts by using R9 as temporary
+                let mut moved = vec![false; arg_regs.len()];
+                
+                // First, move any that don't conflict
+                for i in 0..arg_regs.len() {
+                    let (src, dst) = arg_regs[i];
+                    if src == dst {
+                        moved[i] = true;
+                    } else {
+                        // Check if dst is needed as a source for an unmoved arg
+                        let dst_needed = arg_regs.iter().enumerate()
+                            .any(|(j, (s, _))| !moved[j] && j != i && *s == dst);
+                        
+                        if !dst_needed {
+                            self.instructions.push(AsmInst::Add(dst, src, Reg::R0));
                             moved[i] = true;
-                        } else {
-                            // Check if dst is needed as a source for an unmoved arg
-                            let dst_needed = arg_regs.iter().enumerate()
-                                .any(|(j, (s, _))| !moved[j] && j != i && *s == dst);
-                            
-                            if !dst_needed {
-                                self.instructions.push(AsmInst::Add(dst, src, Reg::R0));
-                                moved[i] = true;
-                            }
                         }
                     }
-                    
-                    // Now handle any remaining moves (these form cycles)
-                    // Simple approach: use R9 to save conflicting values
-                    for i in 0..arg_regs.len() {
-                        if !moved[i] {
-                            let (src, dst) = arg_regs[i];
-                            
-                            // Check if any other unmoved arg needs our dst as src
-                            let mut conflict_idx = None;
-                            for j in 0..arg_regs.len() {
-                                if !moved[j] && j != i {
-                                    let (src2, _) = arg_regs[j];
-                                    if src2 == dst {
-                                        conflict_idx = Some(j);
-                                        break;
-                                    }
+                }
+                
+                // Now handle any remaining moves (these form cycles)
+                // Simple approach: use R9 to save conflicting values
+                for i in 0..arg_regs.len() {
+                    if !moved[i] {
+                        let (src, dst) = arg_regs[i];
+                        
+                        // Check if any other unmoved arg needs our dst as src
+                        let mut conflict_idx = None;
+                        for j in 0..arg_regs.len() {
+                            if !moved[j] && j != i {
+                                let (src2, _) = arg_regs[j];
+                                if src2 == dst {
+                                    conflict_idx = Some(j);
+                                    break;
                                 }
                             }
-                            
-                            if let Some(j) = conflict_idx {
-                                // Save the conflicting source to R9 first
-                                let (_, dst2) = arg_regs[j];
-                                self.instructions.push(AsmInst::Add(Reg::R9, dst, Reg::R0));
-                                // Now we can move src to dst
-                                self.instructions.push(AsmInst::Add(dst, src, Reg::R0));
-                                moved[i] = true;
-                                // And move R9 to dst2
-                                self.instructions.push(AsmInst::Add(dst2, Reg::R9, Reg::R0));
-                                moved[j] = true;
-                            } else {
-                                // No conflict, just move
-                                self.instructions.push(AsmInst::Add(dst, src, Reg::R0));
-                                moved[i] = true;
-                            }
+                        }
+                        
+                        if let Some(j) = conflict_idx {
+                            // Save the conflicting source to R9 first
+                            let (_, dst2) = arg_regs[j];
+                            self.instructions.push(AsmInst::Add(Reg::R9, dst, Reg::R0));
+                            // Now we can move src to dst
+                            self.instructions.push(AsmInst::Add(dst, src, Reg::R0));
+                            moved[i] = true;
+                            // And move R9 to dst2
+                            self.instructions.push(AsmInst::Add(dst2, Reg::R9, Reg::R0));
+                            moved[j] = true;
+                        } else {
+                            // No conflict, just move
+                            self.instructions.push(AsmInst::Add(dst, src, Reg::R0));
+                            moved[i] = true;
                         }
                     }
+                }
+                
+                self.instructions.push(AsmInst::Call(func_name));
+                
+                if let Some(dest) = result {
+                    // Result is in R3 by convention
+                    // Allocate register for result
+                    let result_key = format!("t{}", dest);
+                    let dest_reg = self.get_reg(result_key.clone());
+                    self.value_locations.insert(result_key, Location::Register(dest_reg));
                     
-                    self.instructions.push(AsmInst::Call(func_name));
-                    
-                    if let Some(dest) = result {
-                        // Result is in R3 by convention
-                        // Allocate register for result
-                        let result_key = format!("t{}", dest);
-                        let dest_reg = self.get_reg(result_key.clone());
-                        self.value_locations.insert(result_key, Location::Register(dest_reg));
-                        
-                        // Move result from R3 to allocated register if different
-                        if dest_reg != Reg::R3 {
-                            self.instructions.push(AsmInst::Add(dest_reg, Reg::R3, Reg::R0));
-                        }
+                    // Move result from R3 to allocated register if different
+                    if dest_reg != Reg::R3 {
+                        self.instructions.push(AsmInst::Add(dest_reg, Reg::R3, Reg::R0));
                     }
                 }
             }

@@ -39,7 +39,8 @@ puts_L5:
 ; Load from [t0] to t4
 ; WARNING: Assuming unknown pointer points to global memory
     LOAD R5, R0, R3
-    STORE R5, R0, R0
+    ADD R3, R5, R0
+    CALL putchar
     LI R4, 1
     ADD R5, R3, R4
 ; Store t5 to [t0]
@@ -48,7 +49,8 @@ puts_L5:
     BEQ R0, R0, puts_L4
 puts_L6:
     LI R4, 10
-    STORE R4, R0, R0
+    ADD R3, R4, R0
+    CALL putchar
     LI R4, 0
     ADD R3, R4, R0
     ADD R14, R15, R0
