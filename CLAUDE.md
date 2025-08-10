@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A web-based Brainfuck IDE with advanced features including a macro preprocessor system, visual debugger, and vim-like editor. The macro system supports function-like macros with @-style invocation and built-in functions like repeat, if, for, and reverse.
+1.
+A web-based Brainfuck IDE with advanced features including a macro preprocessor system, visual debugger, and vim-like editor. 
+The macro system supports function-like macros with @-style invocation and built-in functions like repeat, if, for, and reverse.
+2.
+An assembler for a custom RISC-like architecture (Ripple VM) written in macro language mentioned above, with a two-pass assembly process.
+3.
+A Ripple C toolchain that compiles C99 code to Brainfuck, including a C compiler (rcc), assembler (rasm), linker (rlink), an rbt CLI tool for quick run, and a runtime library for standard C functions.
 
 ## Development Commands
 
@@ -111,7 +117,7 @@ The IDE includes a custom RISC-like assembler for the Ripple VM architecture loc
 
 ### Architecture Overview
 - **16-bit architecture** with configurable bank size
-- **18 registers**: R0-R15, PC, PCB, RA, RAB
+- **18 registers**: R0, PC, PCB, RA, RAB, R3-R15,
 - **Instruction format**: 8-bit opcode + 3x 16-bit operands
 - **Two-pass assembly** with label resolution
 - **Linker** for resolving cross-references between modules
@@ -137,13 +143,13 @@ cargo build --release
 cargo test
 
 # Assemble a file
-./target/release/rasm assemble test.asm --bank-size 32 --max-immediate 1000000
+rasm assemble test.asm --bank-size 4096 --max-immediate 65535
 
 # Link object files
-./target/release/rlink file1.pobj file2.pobj -o program.bin
+rlink file1.pobj file2.pobj -o program.bin
 
 # Convert to macro format
-./target/release/rlink -f macro program.pobj
+rlink -f macro program.pobj
 ```
 
 ### Key Implementation Files
@@ -163,12 +169,15 @@ cargo test
 ## Development Guidelines
 
 - **Testing and Execution**
-  - Please, do not try to run "npm run dev". If you want to test something, either use vitest (which can actually help us a lot), or create temporary .ts file and run it with npx tsx
-- To directly assemble, link, and run .asm file, use rbt file.asm --run. It will help with testing C compiler implementation.
+- To directly assemble, link, and run .asm file, use `rbt file.asm --run`. It will help with testing C compiler implementation.
 - Make sure to run rbt via gtimeout to not accidentally get stuck in an infinite loop
-- After every change of the C compiler, please make sure you add the test case to `python3 run_c_tests.py` and run it to ensure that we don't have any regressions
+- After every change of the C compiler, please make sure you add the test case to `python3 c-test/run_tests.py` and run it to ensure that we don't have any regressions
 - To compile C file to asm, use target/release/rcc compile filename.c (optional -o output.asm) 
 
 - VM opcodes div, mod, divi, modi, and store have been fixed and are now safe to use
 - VM currently has bugs with opcodes: mul, muli, slt - avoid using these in compiler tests for now
-- In c-code tests, use if(condition) putchar('1') else putchar('N') to make sure we actually have some asserts and can capture it in run_c_tests.py
+- In c-test tests, use if(condition) putchar('1') else putchar('N') to make sure we actually have some asserts and can capture it in run_tests.py
+
+- Rasm, Rlink are placed in src/ripple-asm/target/release/ and can be run from there
+- Rbt is placed in rbt/target/release/ and can be run from there
+- 

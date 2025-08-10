@@ -1,8 +1,0 @@
-main:
-    STORE RA, R13, R14
-    ADDI R14, R14, 1
-    STORE R15, R13, R14
-    ADDI R14, R14, 1
-    ADD R15, R14, R0
-    LI R3, 82
-    STORE R3, R0, R0

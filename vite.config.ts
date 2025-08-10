@@ -26,6 +26,7 @@ export default defineConfig({
                 '**/src/rust-bf/**',
                 '**/src/ripple-asm/**',
                 '**/c-code/**',
+                '**/c-test/**',
                 '**/rcc-ir/**',
                 '**/rcc-frontend/**',
                 '**/rcc-driver/**',

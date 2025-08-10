@@ -1,3 +1,33 @@
+02ead20 2025-08-10 02:14:28 +0200 Updated linker to support .par archive
+aa970db 2025-08-10 01:55:53 +0200 Runtime
+0a7b1e1 2025-08-10 01:18:59 +0200 Inline assembly
+7502105 2025-08-10 00:46:08 +0200 More tests
+27ed9b7 2025-08-10 00:37:26 +0200 Pointer provenance
+2dca72a 2025-08-10 00:15:50 +0200 Much Progress, Such Wow
+7934e27 2025-08-09 23:39:47 +0200 Array initializers
+9e90891 2025-08-09 23:00:21 +0200 I killed myself today, For second life replay
+bcb01fa 2025-08-09 20:43:30 +0200 Fix A LOT OF ISSUES
+6ba785d 2025-08-09 18:36:23 +0200 Structs, ifs, arrays, and a lot of other shit without which even other shit won't work
+edcc3d7 2025-08-09 18:07:11 +0200 Just shit here and there
+e6a4a66 2025-08-09 17:57:28 +0200 Regression test suite for RCC
+f64d688 2025-08-09 16:47:36 +0200 Structs, ifs, arrays, and a lot of other shit without which even other shit won't work
+0ac4afb 2025-08-09 15:16:21 +0200 Pointers, array access, strings
+72efacc 2025-08-09 13:32:29 +0200 C M2
+db7dfe2 2025-08-09 10:02:18 +0200 Add rbt
+e76113c 2025-08-09 09:32:18 +0200 Fix bugs in assembler
+d24fee0 2025-08-09 07:49:18 +0200 asm -> obj -> bfm -> bf -> run peepeeline works
+ae061c0 2025-08-09 07:15:49 +0200 I have fingers and they are fun
+e824e45 2025-08-09 07:11:07 +0200 Macro expander wasm
+9712333 2025-08-09 07:09:15 +0200 Integrated wasm macro expander
+c226948 2025-08-09 07:01:03 +0200 savepoint
+5ed4c9f 2025-08-09 05:09:55 +0200 asm reference
+7136f85 2025-08-09 04:52:23 +0200 Assembler and linker fully work in UI
+becffc0 2025-08-09 03:39:08 +0200 Replace ts assembler with the rust one
+748b474 2025-08-09 03:19:26 +0200 Rust assembler and linker
+a13265e 2025-08-09 02:28:27 +0200 Improve wasm build scripts
+7838259 2025-08-09 02:10:03 +0200 Ainane ainanenane
+b10c3a1 2025-08-09 01:50:29 +0200 Fix live asm
+e211cb6 2025-08-09 01:46:45 +0200 Integrate WASM interpreter in UI
 262463e 2025-08-09 01:18:51 +0200 Add optimiz moo boo brain fart
 cd3e63a 2025-08-09 00:21:48 +0200 Rust interpreter
 f7edb48 2025-08-08 23:22:09 +0200 Assembly auto-compilation
