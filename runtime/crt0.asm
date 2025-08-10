@@ -12,8 +12,9 @@ _start:
     ; TODO: Zero BSS section (uninitialized globals)
     ; For now, we'll skip this as we don't have a BSS section yet
     
-    ; TODO: Initialize global variables
-    ; This would call _init_globals if we have initialized globals
+    ; Initialize global variables
+    ; Call _init_globals if it exists (the linker will resolve this)
+    CALL _init_globals
     
     ; Call main function
     ; main() should be provided by the user program

@@ -321,6 +321,10 @@ def main():
         (f"{BASE_DIR}/tests-runtime/test_sizeof_final.c", "YYYYYYYYY\n", True),
         (f"{BASE_DIR}/tests-runtime/test_strings_addr.c", "A", True),
         (f"{BASE_DIR}/tests-runtime/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
+        
+        # Pointer provenance tests with fat pointers
+        (f"{BASE_DIR}/tests/test_pointer_provenance.c", "GSSSS\n", True),
+        (f"{BASE_DIR}/tests/test_pointer_phi.c", "1234\n", True),
         (f"{BASE_DIR}/tests-runtime/test_struct_inline.c", "YY\n", True),
         (f"{BASE_DIR}/tests-runtime/test_struct_simple.c", "12345\n", True),
         (f"{BASE_DIR}/tests-runtime/test_puts_debug.c", "ABC\n", True),

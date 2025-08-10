@@ -8,6 +8,21 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
+/// Memory bank tag for fat pointers
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BankTag {
+    Global = 0,  // Global memory (bank R0)
+    Stack = 1,   // Stack memory (bank R13)
+    // Future: Heap = 2
+}
+
+/// Fat pointer representation - carries both address and bank
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FatPointer {
+    pub addr: Box<Value>,  // Address value
+    pub bank: BankTag,     // Bank tag
+}
+
 /// IR Value - represents operands in IR instructions
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
@@ -23,6 +38,9 @@ pub enum Value {
     /// Function reference
     Function(String),
     
+    /// Fat pointer (address + bank)
+    FatPtr(FatPointer),
+    
     /// Undefined value (for uninitialized variables)
     Undef,
 }
@@ -34,6 +52,7 @@ impl fmt::Display for Value {
             Value::Constant(val) => write!(f, "{}", val),
             Value::Global(name) => write!(f, "@{}", name),
             Value::Function(name) => write!(f, "@{}", name),
+            Value::FatPtr(ptr) => write!(f, "{{addr: {}, bank: {:?}}}", ptr.addr, ptr.bank),
             Value::Undef => write!(f, "undef"),
         }
     }
@@ -86,7 +105,7 @@ impl IrType {
             IrType::I16 => Some(2),
             IrType::I32 => Some(4),
             IrType::I64 => Some(8),
-            IrType::Ptr(_) => Some(2), // 16-bit pointers on Ripple
+            IrType::Ptr(_) => Some(4), // Fat pointers: 2 words (address + bank tag)
             IrType::Array { size, element_type } => {
                 element_type.size_in_bytes().map(|elem_size| elem_size * size)
             }

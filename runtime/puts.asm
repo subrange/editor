@@ -30,22 +30,43 @@ puts_L1:
 puts_L3:
     BEQ R0, R0, puts_L4
 puts_L4:
-; Load from [t0] to t3
-; WARNING: Assuming unknown pointer points to global memory
-    LOAD R5, R0, R3
+; Load from [t0] to t4
+; Select bank register based on tag
+    LI R6, 1
+    BEQ R4, R6, bank_stack_3
+    ADD R6, R0, R0
+    BEQ R0, R0, bank_done_3
+bank_stack_3:
+    ADD R6, R13, R0
+bank_done_3:
+    LOAD R5, R6, R3
     BNE R5, R0, puts_L5
     BEQ R0, R0, puts_L6
 puts_L5:
-; Load from [t0] to t4
-; WARNING: Assuming unknown pointer points to global memory
-    LOAD R5, R0, R3
+; Load from [t0] to t5
+; Select bank register based on tag
+    LI R6, 1
+    BEQ R4, R6, bank_stack_5
+    ADD R6, R0, R0
+    BEQ R0, R0, bank_done_5
+bank_stack_5:
+    ADD R6, R13, R0
+bank_done_5:
+    LOAD R5, R6, R3
     ADD R3, R5, R0
     CALL putchar
     LI R4, 1
     ADD R5, R3, R4
-; Store t5 to [t0]
-; WARNING: Assuming unknown pointer points to global memory
-    STORE R5, R0, R3
+; Select bank register based on tag
+    LI R6, 1
+    BEQ R4, R6, bank_stack_7
+    ADD R6, R0, R0
+    BEQ R0, R0, bank_done_7
+bank_stack_7:
+    ADD R6, R13, R0
+bank_done_7:
+; Store t6 to [t0]
+    STORE R5, R6, R3
     BEQ R0, R0, puts_L4
 puts_L6:
     LI R4, 10

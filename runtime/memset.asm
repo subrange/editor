@@ -7,39 +7,39 @@ memset:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
-; Alloca for t3 at FP+1
+; Alloca for t4 at FP+1 (fat ptr: stack bank)
     ADDI R5, R15, 1
-    LI R6, 0
     ADDI R6, R15, 1
-; Store 0 to [t3]
-    STORE R6, R13, R6
+; Store 0 to [t4]
+    LI R8, 0
+    STORE R8, R13, R6
     BEQ R0, R0, memset_L1
 memset_L1:
-; Load from [t3] to t4
+; Load from [t4] to t5
     ADDI R6, R15, 1
     LOAD R5, R13, R6
-    SLTU R7, R5, R5
+    SLTU R7, R5, R7
     BNE R7, R0, memset_L2
     BEQ R0, R0, memset_L4
 memset_L2:
-; Load from [t3] to t6
+; Load from [t4] to t7
     ADDI R6, R15, 1
     LOAD R5, R13, R6
-; GetElementPtr t7 = t0 + offsets
+; GetElementPtr t8 = t0 + offsets
 ;   Base t0 in R3
     ADD R7, R3, R5
-; Store t1 to [t7]
-; WARNING: Assuming unknown pointer points to global memory
-    STORE R4, R0, R7
+; WARNING: Unknown pointer bank, defaulting to global
+; Store t2 to [t8]
+    STORE R6, R0, R7
     BEQ R0, R0, memset_L3
 memset_L3:
-; Load from [t3] to t8
+; Load from [t4] to t9
     ADDI R6, R15, 1
     LOAD R5, R13, R6
     LI R4, 1
     ADD R7, R5, R4
     ADDI R8, R15, 1
-; Store t9 to [t3]
+; Store t10 to [t4]
     STORE R7, R13, R8
     BEQ R0, R0, memset_L1
 memset_L4:

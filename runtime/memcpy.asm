@@ -7,48 +7,51 @@ memcpy:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
-; Alloca for t3 at FP+1
+; Alloca for t5 at FP+1 (fat ptr: stack bank)
     ADDI R5, R15, 1
-    LI R6, 0
     ADDI R6, R15, 1
-; Store 0 to [t3]
-    STORE R6, R13, R6
+; Store 0 to [t5]
+    LI R9, 0
+    STORE R9, R13, R6
     BEQ R0, R0, memcpy_L1
 memcpy_L1:
-; Load from [t3] to t4
+; Load from [t5] to t6
     ADDI R6, R15, 1
     LOAD R5, R13, R6
-    SLTU R7, R5, R5
-    BNE R7, R0, memcpy_L2
+; Reloading t4 from FP+2
+    ADDI R12, R15, 2
+    LOAD R7, R13, R12
+    SLTU R8, R5, R7
+    BNE R8, R0, memcpy_L2
     BEQ R0, R0, memcpy_L4
 memcpy_L2:
-; Load from [t3] to t6
+; Load from [t5] to t8
     ADDI R6, R15, 1
     LOAD R5, R13, R6
-; GetElementPtr t7 = t1 + offsets
-;   Base t1 in R4
-    ADD R7, R4, R5
-; Load from [t7] to t8
-; WARNING: Assuming unknown pointer points to global memory
+; GetElementPtr t9 = t2 + offsets
+;   Base t2 in R6
+    ADD R7, R6, R5
+; Load from [t9] to t10
+; WARNING: Unknown pointer bank, defaulting to global
     LOAD R8, R0, R7
-; Load from [t3] to t9
+; Load from [t5] to t11
     ADDI R10, R15, 1
     LOAD R9, R13, R10
-; GetElementPtr t10 = t0 + offsets
+; GetElementPtr t12 = t0 + offsets
 ;   Base t0 in R3
     ADD R11, R3, R9
-; Store t8 to [t10]
-; WARNING: Assuming unknown pointer points to global memory
+; WARNING: Unknown pointer bank, defaulting to global
+; Store t10 to [t12]
     STORE R8, R0, R11
     BEQ R0, R0, memcpy_L3
 memcpy_L3:
-; Load from [t3] to t11
+; Load from [t5] to t13
     ADDI R6, R15, 1
     LOAD R5, R13, R6
     LI R4, 1
     ADD R7, R5, R4
     ADDI R8, R15, 1
-; Store t12 to [t3]
+; Store t14 to [t5]
     STORE R7, R13, R8
     BEQ R0, R0, memcpy_L1
 memcpy_L4:

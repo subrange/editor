@@ -3,7 +3,7 @@
 //! This module implements the lowering from the full IR (Module/Function/Instruction)
 //! to Ripple assembly instructions.
 
-use crate::ir::{Module, Function, BasicBlock, Instruction, Value, IrType, IrBinaryOp, GlobalVariable};
+use crate::ir::{Module, Function, BasicBlock, Instruction, Value, IrType, IrBinaryOp, GlobalVariable, BankTag, FatPointer};
 use crate::simple_regalloc::SimpleRegAlloc;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::CompilerError;
@@ -30,6 +30,13 @@ impl PtrRegion {
             _ => Mixed, // Stack + Global = Mixed
         }
     }
+}
+
+/// Fat pointer components tracking
+#[derive(Debug, Clone)]
+struct FatPtrComponents {
+    addr_temp: u32,  // Temp ID holding the address
+    bank_tag: BankTag,  // Bank tag for this pointer
 }
 
 /// Module to assembly lowering context
@@ -71,8 +78,11 @@ pub struct ModuleLowerer {
     /// Map from temp IDs to stack offsets (ONLY for direct Alloca results)
     local_offsets: HashMap<u32, i16>,
     
-    /// Provenance tracking for pointer-valued temps
+    /// Provenance tracking for pointer-valued temps (legacy - will be replaced by fat pointers)
     ptr_region: HashMap<u32, PtrRegion>,
+    
+    /// Fat pointer components for pointer-typed temporaries
+    fat_ptr_components: HashMap<u32, FatPtrComponents>,
     
     /// Next available spill slot offset
     next_spill_offset: i16,
@@ -102,25 +112,32 @@ impl ModuleLowerer {
             local_stack_offset: 0,
             local_offsets: HashMap::new(),
             ptr_region: HashMap::new(),
+            fat_ptr_components: HashMap::new(),
             next_spill_offset: 0,
         }
     }
     
     /// Lower a module to assembly
     pub fn lower(&mut self, module: Module) -> Result<Vec<AsmInst>, CompilerError> {
-        // Generate global initialization function
-        if !module.globals.is_empty() {
+        // Check if this module has a main function (indicating it's the main module)
+        let has_main = module.functions.iter().any(|f| f.name == "main");
+        
+        // Only generate _init_globals for the main module
+        // This avoids duplicate labels when linking multiple object files
+        if has_main {
             self.instructions.push(AsmInst::Label("_init_globals".to_string()));
-        }
-        
-        // Generate globals and their initialization
-        for global in &module.globals {
-            self.lower_global(global)?;
-        }
-        
-        // Return from _init_globals if we have globals
-        if !module.globals.is_empty() {
+            
+            // Generate globals and their initialization
+            for global in &module.globals {
+                self.lower_global(global)?;
+            }
+            
             self.instructions.push(AsmInst::Ret);
+        } else {
+            // For library modules, just generate globals without _init_globals
+            for global in &module.globals {
+                self.lower_global(global)?;
+            }
         }
         
         // Generate functions
@@ -228,6 +245,7 @@ impl ModuleLowerer {
         self.needs_frame = false;
         self.local_stack_offset = 0; // Reset local stack offset
         self.local_offsets.clear(); // Clear local variable offsets
+        self.fat_ptr_components.clear(); // Clear fat pointer components
         self.next_spill_offset = 0; // Reset spill offset
         
         // Function label
@@ -235,38 +253,110 @@ impl ModuleLowerer {
         self.instructions.push(AsmInst::Label(function.name.clone()));
         
         // Map function parameters to their input registers
-        // Parameters arrive in R3-R8
-        for (i, (param_id, param_type)) in function.parameters.iter().enumerate() {
-            if i < 6 {
-                let param_reg = match i {
-                    0 => Reg::R3,
-                    1 => Reg::R4,
-                    2 => Reg::R5,
-                    3 => Reg::R6,
-                    4 => Reg::R7,
-                    5 => Reg::R8,
-                    _ => unreachable!(),
-                };
-                // Map parameter temp ID to its register location
-                self.value_locations.insert(format!("t{}", param_id), Location::Register(param_reg));
-                
-                // IMPORTANT: Remove parameter register from free list so it won't be reused
-                self.free_regs.retain(|&r| r != param_reg);
-                
-                // Also mark it as containing the parameter
-                self.reg_contents.insert(param_reg, format!("t{}", param_id));
-                
-                // If this parameter is a pointer, mark its region as Unknown
-                // We can't know at compile time whether it points to stack or global memory
-                // This is a fundamental limitation that would require runtime tagging or
-                // a more sophisticated type system to resolve
-                if matches!(param_type, IrType::Ptr(_)) {
+        // Parameters arrive in R3-R8, extras on stack
+        // For fat pointers, address is in one register and bank tag in the next
+        // Stack parameters are at positive offsets from FP (after saved registers)
+        let mut next_param_reg_idx = 0;
+        let mut stack_param_offset = 2; // After saved RA and old FP
+        
+        for (param_id, param_type) in function.parameters.iter() {
+            if matches!(param_type, IrType::Ptr(_)) {
+                // Pointer parameter - receives as fat pointer (addr, bank)
+                if next_param_reg_idx < 5 {
+                    // Can fit both parts in registers
+                    
+                    // Address is in current register
+                    let addr_reg = match next_param_reg_idx {
+                        0 => Reg::R3,
+                        1 => Reg::R4,
+                        2 => Reg::R5,
+                        3 => Reg::R6,
+                        4 => Reg::R7,
+                        _ => Reg::R8,
+                    };
+                    
+                    // Map parameter temp ID to its register location (address)
+                    self.value_locations.insert(format!("t{}", param_id), Location::Register(addr_reg));
+                    self.free_regs.retain(|&r| r != addr_reg);
+                    self.reg_contents.insert(addr_reg, format!("t{}", param_id));
+                    next_param_reg_idx += 1;
+                    
+                    // Bank tag is in next register
+                    let bank_reg = match next_param_reg_idx {
+                        1 => Reg::R4,
+                        2 => Reg::R5,
+                        3 => Reg::R6,
+                        4 => Reg::R7,
+                        5 => Reg::R8,
+                        _ => unreachable!(),
+                    };
+                    
+                    // Store the bank tag in a temporary for later use
+                    // We'll need to check the bank value and set up fat pointer components
+                    self.free_regs.retain(|&r| r != bank_reg);
+                    
+                    // Create a temp to hold the bank value
+                    let bank_temp_key = format!("param_{}_bank", param_id);
+                    self.reg_contents.insert(bank_reg, bank_temp_key.clone());
+                    
+                    // For fat pointers, we need to use the bank register at runtime
+                    // Store it in a temp that we can track
+                    let bank_temp_id = 100000 + param_id; // Use high temp IDs for bank tags
+                    self.value_locations.insert(format!("t{}", bank_temp_id), Location::Register(bank_reg));
+                    self.reg_contents.insert(bank_reg, format!("t{}_bank", param_id));
+                    
+                    // Mark the parameter as having unknown region since it's runtime-determined
+                    // But track that we have the bank in a register
                     self.ptr_region.insert(*param_id, PtrRegion::Unknown);
+                    next_param_reg_idx += 1;
+                } else if next_param_reg_idx == 5 {
+                    // Address in R8, bank on stack
+                    self.value_locations.insert(format!("t{}", param_id), Location::Register(Reg::R8));
+                    self.free_regs.retain(|&r| r != Reg::R8);
+                    self.reg_contents.insert(Reg::R8, format!("t{}", param_id));
+                    next_param_reg_idx += 1;
+                    
+                    // Bank tag is on stack - will be loaded by caller
+                    let bank_temp_id = 100000 + param_id;
+                    self.value_locations.insert(format!("t{}", bank_temp_id), Location::Spilled(stack_param_offset));
+                    self.ptr_region.insert(*param_id, PtrRegion::Unknown);
+                    stack_param_offset += 1;
+                    self.needs_frame = true;
+                } else {
+                    // Both parts on stack
+                    self.value_locations.insert(format!("t{}", param_id), Location::Spilled(stack_param_offset));
+                    stack_param_offset += 1;
+                    
+                    let bank_temp_id = 100000 + param_id;
+                    self.value_locations.insert(format!("t{}", bank_temp_id), Location::Spilled(stack_param_offset));
+                    self.ptr_region.insert(*param_id, PtrRegion::Unknown);
+                    stack_param_offset += 1;
+                    self.needs_frame = true;
                 }
             } else {
-                // Parameters beyond the 6th would need to be passed on the stack
-                // For now, we don't support more than 6 parameters
-                unimplemented!("More than 6 parameters not yet supported");
+                // Non-pointer parameter
+                if next_param_reg_idx < 6 {
+                    // Fits in register
+                    let param_reg = match next_param_reg_idx {
+                        0 => Reg::R3,
+                        1 => Reg::R4,
+                        2 => Reg::R5,
+                        3 => Reg::R6,
+                        4 => Reg::R7,
+                        5 => Reg::R8,
+                        _ => unreachable!(),
+                    };
+                    
+                    self.value_locations.insert(format!("t{}", param_id), Location::Register(param_reg));
+                    self.free_regs.retain(|&r| r != param_reg);
+                    self.reg_contents.insert(param_reg, format!("t{}", param_id));
+                    next_param_reg_idx += 1;
+                } else {
+                    // Goes on stack
+                    self.value_locations.insert(format!("t{}", param_id), Location::Spilled(stack_param_offset));
+                    stack_param_offset += 1;
+                    self.needs_frame = true;
+                }
             }
         }
         
@@ -369,15 +459,21 @@ impl ModuleLowerer {
                 // Store the offset for this temp (frame slot)
                 self.local_offsets.insert(*result, offset);
                 
-                // Mark this temp as a stack pointer
+                // Mark this temp as a stack pointer (legacy provenance tracking)
                 self.ptr_region.insert(*result, PtrRegion::Stack);
+                
+                // Store fat pointer components - alloca produces stack pointers
+                self.fat_ptr_components.insert(*result, FatPtrComponents {
+                    addr_temp: *result,  // The result temp holds the address
+                    bank_tag: BankTag::Stack,
+                });
                 
                 // Allocate register for the address
                 let result_key = format!("t{}", result);
                 let addr_reg = self.get_reg(result_key.clone());
                 self.value_locations.insert(result_key, Location::Register(addr_reg));
                 
-                self.instructions.push(AsmInst::Comment(format!("Alloca for t{} at FP+{}", result, offset)));
+                self.instructions.push(AsmInst::Comment(format!("Alloca for t{} at FP+{} (fat ptr: stack bank)", result, offset)));
                 
                 // Address = R15 (FP) + offset
                 if offset > 0 {
@@ -388,71 +484,147 @@ impl ModuleLowerer {
             }
             
             Instruction::Store { value, ptr } => {
+                // Check if we're storing a pointer value (fat pointer - needs 2 stores)
+                let is_pointer_value = match value {
+                    Value::Temp(tid) => {
+                        self.fat_ptr_components.contains_key(tid) ||
+                        self.ptr_region.contains_key(tid) ||
+                        self.local_offsets.contains_key(tid)
+                    }
+                    Value::Global(_) => true,
+                    Value::FatPtr(_) => true,
+                    _ => false,
+                };
+                
                 // Check if ptr is a global address
                 if let Value::Global(name) = ptr {
                     if let Some(&addr) = self.global_addresses.get(name) {
                         // Store to global address
                         self.instructions.push(AsmInst::Comment(format!("Store {} to @{}", 
                             self.value_to_string(value), name)));
-                        let value_reg = self.get_value_register(value)?;
-                        let addr_reg = self.get_reg(format!("store_addr_{}", self.label_counter));
-                        self.label_counter += 1;
-                        self.instructions.push(AsmInst::LI(addr_reg, addr as i16));
-                        self.instructions.push(AsmInst::Store(value_reg, Reg::R0, addr_reg));
+                        
+                        if is_pointer_value {
+                            // Storing a fat pointer - need to store both address and bank tag
+                            let value_reg = self.get_value_register(value)?;
+                            let addr_reg = self.get_reg(format!("store_addr_{}", self.label_counter));
+                            self.label_counter += 1;
+                            
+                            // Store address part
+                            self.instructions.push(AsmInst::LI(addr_reg, addr as i16));
+                            self.instructions.push(AsmInst::Store(value_reg, Reg::R0, addr_reg));
+                            
+                            // Get bank tag for the value
+                            let bank_tag = match value {
+                                Value::Temp(tid) if self.fat_ptr_components.contains_key(tid) => {
+                                    match self.fat_ptr_components[tid].bank_tag {
+                                        BankTag::Global => 0,
+                                        BankTag::Stack => 1,
+                                    }
+                                }
+                                Value::Temp(tid) if self.local_offsets.contains_key(tid) => 1, // Stack
+                                Value::Global(_) => 0, // Global
+                                _ => 0, // Default to global
+                            };
+                            
+                            // Store bank tag at next word
+                            let bank_reg = self.get_reg(format!("store_bank_{}", self.label_counter));
+                            self.label_counter += 1;
+                            self.instructions.push(AsmInst::LI(bank_reg, bank_tag));
+                            self.instructions.push(AsmInst::LI(addr_reg, (addr + 1) as i16));
+                            self.instructions.push(AsmInst::Store(bank_reg, Reg::R0, addr_reg));
+                        } else {
+                            // Regular value store
+                            let value_reg = self.get_value_register(value)?;
+                            let addr_reg = self.get_reg(format!("store_addr_{}", self.label_counter));
+                            self.label_counter += 1;
+                            self.instructions.push(AsmInst::LI(addr_reg, addr as i16));
+                            self.instructions.push(AsmInst::Store(value_reg, Reg::R0, addr_reg));
+                        }
                         // Registers will be freed at statement boundary
                     } else {
                         self.instructions.push(AsmInst::Comment(format!("Store to undefined global @{}", name)));
                     }
                 } else {
-                    // For local variables, ptr should be a temp holding the address
-                    // Get value first, then ptr to avoid conflicts
-                    let value_reg = self.get_value_register(value)?;
+                    // Get ptr register first
                     let ptr_reg = self.get_value_register(ptr)?;
                     
-                    self.instructions.push(AsmInst::Comment(format!("Store {} to [{}]", 
-                        self.value_to_string(value), self.value_to_string(ptr))));
+                    // Get the memory bank for the pointer BEFORE getting value register
+                    // This ensures the bank register is allocated and preserved
+                    let bank = self.get_bank_for_pointer(ptr)?;
                     
-                    // Determine the memory bank based on pointer provenance
-                    let bank = if let Value::Temp(tid) = ptr {
-                        match self.ptr_region.get(tid).copied().unwrap_or(PtrRegion::Unknown) {
-                            PtrRegion::Stack => Reg::R13,
-                            PtrRegion::Global => Reg::R0,
-                            PtrRegion::Unknown => {
-                                // Check if it's a direct alloca (should have Stack region but double-check)
-                                if self.local_offsets.contains_key(tid) {
-                                    Reg::R13
-                                } else {
-                                    // For M3, we assume Unknown pointer parameters point to global memory
-                                    // This is a pragmatic choice that works for string literals and global arrays
-                                    // but will fail for stack arrays passed to functions
-                                    self.instructions.push(AsmInst::Comment(
-                                        "WARNING: Assuming unknown pointer points to global memory".to_string()
-                                    ));
-                                    Reg::R0
-                                }
-                            }
-                            PtrRegion::Mixed => {
-                                // Mixed provenance is an error - we can't handle pointers that might
-                                // point to different memory banks on different paths
-                                return Err(CompilerError::codegen_error(
-                                    "Cannot handle pointer with mixed provenance (points to stack on some paths, global on others). \
-                                     This typically happens with PHI nodes or conditional assignments.".to_string(),
-                                    rcc_common::SourceLocation::new_simple(0, 0),
-                                ));
-                            }
-                        }
+                    // If bank is a dynamically selected register, we need to preserve it
+                    // Check if it's not R0 or R13 (static banks)
+                    let bank_needs_preservation = bank != Reg::R0 && bank != Reg::R13;
+                    let preserved_bank = if bank_needs_preservation {
+                        // The bank was dynamically calculated, preserve it
+                        bank
                     } else {
-                        Reg::R0 // Non-temp pointers default to global
+                        bank
                     };
                     
-                    self.instructions.push(AsmInst::Store(value_reg, bank, ptr_reg));
+                    if is_pointer_value {
+                        // Storing a fat pointer - need to store both address and bank tag
+                        self.instructions.push(AsmInst::Comment(format!("Store fat pointer {} to [{}]", 
+                            self.value_to_string(value), self.value_to_string(ptr))));
+                        
+                        // Get address part of value
+                        let value_reg = self.get_value_register(value)?;
+                        
+                        // Store address
+                        self.instructions.push(AsmInst::Store(value_reg, preserved_bank.clone(), ptr_reg));
+                        
+                        // Get bank tag for the value
+                        let value_bank_tag = self.get_bank_for_pointer(value)?;
+                        let bank_tag_val = if value_bank_tag == Reg::R0 {
+                            0 // Global
+                        } else if value_bank_tag == Reg::R13 {
+                            1 // Stack
+                        } else {
+                            // It's a dynamic bank - need to extract the tag value
+                            // This is complex, for now default to the tag based on static analysis
+                            match value {
+                                Value::Temp(tid) if self.fat_ptr_components.contains_key(tid) => {
+                                    match self.fat_ptr_components[tid].bank_tag {
+                                        BankTag::Global => 0,
+                                        BankTag::Stack => 1,
+                                    }
+                                }
+                                _ => 0,
+                            }
+                        };
+                        
+                        // Store bank tag at next word
+                        // Get register for bank value first
+                        let bank_reg = self.get_reg(format!("store_bank_{}", self.label_counter));
+                        self.label_counter += 1;
+                        self.instructions.push(AsmInst::LI(bank_reg, bank_tag_val));
+                        
+                        // Then calculate the address for next word
+                        // Do this after loading bank value to avoid register conflicts
+                        let next_addr = self.get_reg(format!("next_addr_{}", self.label_counter));
+                        self.label_counter += 1;
+                        self.instructions.push(AsmInst::AddI(next_addr, ptr_reg, 1));
+                        
+                        // Store the bank tag
+                        self.instructions.push(AsmInst::Store(bank_reg, preserved_bank.clone(), next_addr));
+                    } else {
+                        // Regular value store
+                        self.instructions.push(AsmInst::Comment(format!("Store {} to [{}]", 
+                            self.value_to_string(value), self.value_to_string(ptr))));
+                        
+                        let value_reg = self.get_value_register(value)?;
+                        self.instructions.push(AsmInst::Store(value_reg, preserved_bank, ptr_reg));
+                    }
                     // Registers will be freed at statement boundary
                 }
             }
             
-            Instruction::Load { result, ptr, .. } => {
+            Instruction::Load { result, ptr, result_type } => {
                 self.instructions.push(AsmInst::Comment(format!("Load from [{}] to t{}", 
                     self.value_to_string(ptr), result)));
+                
+                // Check if we're loading a pointer type
+                let is_loading_pointer = matches!(result_type, IrType::Ptr(_));
                 
                 // Allocate register for result
                 let result_key = format!("t{}", result);
@@ -462,11 +634,38 @@ impl ModuleLowerer {
                 // Check if ptr is a global address
                 if let Value::Global(name) = ptr {
                     if let Some(&addr) = self.global_addresses.get(name) {
-                        // Load from global address
-                        let addr_reg = self.get_reg(format!("load_addr_{}", self.label_counter));
-                        self.label_counter += 1;
-                        self.instructions.push(AsmInst::LI(addr_reg, addr as i16));
-                        self.instructions.push(AsmInst::Load(dest_reg, Reg::R0, addr_reg));
+                        if is_loading_pointer {
+                            // Loading a fat pointer from global - load address and bank tag
+                            self.instructions.push(AsmInst::Comment("Loading fat pointer from global".to_string()));
+                            
+                            // Load address part
+                            let addr_reg = self.get_reg(format!("load_addr_{}", self.label_counter));
+                            self.label_counter += 1;
+                            self.instructions.push(AsmInst::LI(addr_reg, addr as i16));
+                            self.instructions.push(AsmInst::Load(dest_reg, Reg::R0, addr_reg));
+                            
+                            // Load bank tag from next word
+                            let bank_addr_reg = self.get_reg(format!("load_bank_addr_{}", self.label_counter));
+                            let bank_reg = self.get_reg(format!("load_bank_{}", self.label_counter));
+                            self.label_counter += 1;
+                            self.instructions.push(AsmInst::LI(bank_addr_reg, (addr + 1) as i16));
+                            self.instructions.push(AsmInst::Load(bank_reg, Reg::R0, bank_addr_reg));
+                            
+                            // Store bank tag for later use
+                            let bank_temp_id = 100000 + result;
+                            self.value_locations.insert(format!("t{}", bank_temp_id), Location::Register(bank_reg));
+                            self.reg_contents.insert(bank_reg, format!("t{}_bank", result));
+                            
+                            // Set up fat pointer components based on loaded bank
+                            // For now mark as Unknown since it's runtime-determined
+                            self.ptr_region.insert(*result, PtrRegion::Unknown);
+                        } else {
+                            // Regular load from global address
+                            let addr_reg = self.get_reg(format!("load_addr_{}", self.label_counter));
+                            self.label_counter += 1;
+                            self.instructions.push(AsmInst::LI(addr_reg, addr as i16));
+                            self.instructions.push(AsmInst::Load(dest_reg, Reg::R0, addr_reg));
+                        }
                         // Registers will be freed at statement boundary
                     } else {
                         // Uninitialized global
@@ -474,43 +673,35 @@ impl ModuleLowerer {
                         self.instructions.push(AsmInst::LI(dest_reg, 0));
                     }
                 } else {
-                    // For local variables, ptr should be a temp holding the address
+                    // Get pointer address and bank
                     let ptr_reg = self.get_value_register(ptr)?;
+                    let bank = self.get_bank_for_pointer(ptr)?;
                     
-                    // Determine the memory bank based on pointer provenance
-                    let bank = if let Value::Temp(tid) = ptr {
-                        match self.ptr_region.get(tid).copied().unwrap_or(PtrRegion::Unknown) {
-                            PtrRegion::Stack => Reg::R13,
-                            PtrRegion::Global => Reg::R0,
-                            PtrRegion::Unknown => {
-                                // Check if it's a direct alloca (should have Stack region but double-check)
-                                if self.local_offsets.contains_key(tid) {
-                                    Reg::R13
-                                } else {
-                                    // For M3, we assume Unknown pointer parameters point to global memory
-                                    // This is a pragmatic choice that works for string literals and global arrays
-                                    // but will fail for stack arrays passed to functions
-                                    self.instructions.push(AsmInst::Comment(
-                                        "WARNING: Assuming unknown pointer points to global memory".to_string()
-                                    ));
-                                    Reg::R0
-                                }
-                            }
-                            PtrRegion::Mixed => {
-                                // Mixed provenance is an error - we can't handle pointers that might
-                                // point to different memory banks on different paths
-                                return Err(CompilerError::codegen_error(
-                                    "Cannot handle pointer with mixed provenance (points to stack on some paths, global on others). \
-                                     This typically happens with PHI nodes or conditional assignments.".to_string(),
-                                    rcc_common::SourceLocation::new_simple(0, 0),
-                                ));
-                            }
-                        }
+                    if is_loading_pointer {
+                        // Loading a fat pointer - load address and bank tag
+                        self.instructions.push(AsmInst::Comment("Loading fat pointer".to_string()));
+                        
+                        // Load address part
+                        self.instructions.push(AsmInst::Load(dest_reg, bank.clone(), ptr_reg));
+                        
+                        // Load bank tag from next word
+                        let next_addr = self.get_reg(format!("next_addr_{}", self.label_counter));
+                        let bank_reg = self.get_reg(format!("load_bank_{}", self.label_counter));
+                        self.label_counter += 1;
+                        self.instructions.push(AsmInst::AddI(next_addr, ptr_reg, 1));
+                        self.instructions.push(AsmInst::Load(bank_reg, bank.clone(), next_addr));
+                        
+                        // Store bank tag for later use
+                        let bank_temp_id = 100000 + result;
+                        self.value_locations.insert(format!("t{}", bank_temp_id), Location::Register(bank_reg));
+                        self.reg_contents.insert(bank_reg, format!("t{}_bank", result));
+                        
+                        // Mark as having unknown region since it's runtime-determined
+                        self.ptr_region.insert(*result, PtrRegion::Unknown);
                     } else {
-                        Reg::R0 // Non-temp pointers default to global
-                    };
-                    
-                    self.instructions.push(AsmInst::Load(dest_reg, bank, ptr_reg));
+                        // Regular load
+                        self.instructions.push(AsmInst::Load(dest_reg, bank, ptr_reg));
+                    }
                     // Registers will be freed at statement boundary
                 }
             }
@@ -664,13 +855,152 @@ impl ModuleLowerer {
                 
                 // General function call - set up arguments first
                 // Using calling convention: R3-R8 for arguments
+                // For fat pointers, we pass address in one register and bank in the next
                 
                 // Collect argument registers and their destinations
                 let mut arg_regs = Vec::new();
-                for (i, arg) in args.iter().enumerate() {
-                    if i < 6 {  // Max 6 register arguments
+                let mut stack_args = Vec::new(); // Arguments that go on stack
+                let mut next_param_reg_idx = 0;
+                
+                for arg in args.iter() {
+                    // Check if we still have registers available
+                    let use_stack = next_param_reg_idx >= 6;
+                    
+                    // Check if this argument is a pointer that needs fat pointer handling
+                    let is_pointer = match arg {
+                        Value::Temp(tid) => {
+                            // Check if this temp has fat pointer components
+                            self.fat_ptr_components.contains_key(tid) ||
+                            self.ptr_region.contains_key(tid) ||
+                            self.local_offsets.contains_key(tid)
+                        }
+                        Value::Global(_) => true,  // Globals are always pointers
+                        Value::FatPtr(_) => true,
+                        _ => false,
+                    };
+                    
+                    if is_pointer && !use_stack && next_param_reg_idx < 5 {  // Need 2 registers for fat pointer
+                        // Get address register
+                        let addr_reg = self.get_value_register(arg)?;
+                        let addr_param_reg = match next_param_reg_idx {
+                            0 => Reg::R3,
+                            1 => Reg::R4,
+                            2 => Reg::R5,
+                            3 => Reg::R6,
+                            4 => Reg::R7,
+                            _ => Reg::R8,
+                        };
+                        arg_regs.push((addr_reg, addr_param_reg));
+                        next_param_reg_idx += 1;
+                        
+                        // Get bank tag and pass it in the next register
+                        let bank_param_reg = match next_param_reg_idx {
+                            1 => Reg::R4,
+                            2 => Reg::R5,
+                            3 => Reg::R6,
+                            4 => Reg::R7,
+                            5 => Reg::R8,
+                            _ => unreachable!(),
+                        };
+                        
+                        // Check if we have a loaded pointer with bank tag stored
+                        let bank_val_reg = if let Value::Temp(tid) = arg {
+                            let bank_temp_id = 100000 + tid;
+                            let bank_temp_key = format!("t{}", bank_temp_id);
+                            if let Some(&Location::Register(stored_bank_reg)) = self.value_locations.get(&bank_temp_key) {
+                                // We have the bank tag value in a register already
+                                stored_bank_reg
+                            } else {
+                                // Fall back to get_bank_for_pointer
+                                let bank_reg = self.get_bank_for_pointer(arg)?;
+                                if bank_reg == Reg::R0 {
+                                    // Global bank = 0
+                                    let temp_reg = self.get_reg(format!("bank_global_{}", self.label_counter));
+                                    self.label_counter += 1;
+                                    self.instructions.push(AsmInst::LI(temp_reg, 0));
+                                    temp_reg
+                                } else if bank_reg == Reg::R13 {
+                                    // Stack bank = 1
+                                    let temp_reg = self.get_reg(format!("bank_stack_{}", self.label_counter));
+                                    self.label_counter += 1;
+                                    self.instructions.push(AsmInst::LI(temp_reg, 1));
+                                    temp_reg
+                                } else {
+                                    bank_reg  // Already a value register
+                                }
+                            }
+                        } else {
+                            // Not a temp, use get_bank_for_pointer
+                            let bank_reg = self.get_bank_for_pointer(arg)?;
+                            if bank_reg == Reg::R0 {
+                                // Global bank = 0
+                                let temp_reg = self.get_reg(format!("bank_global_{}", self.label_counter));
+                                self.label_counter += 1;
+                                self.instructions.push(AsmInst::LI(temp_reg, 0));
+                                temp_reg
+                            } else if bank_reg == Reg::R13 {
+                                // Stack bank = 1
+                                let temp_reg = self.get_reg(format!("bank_stack_{}", self.label_counter));
+                                self.label_counter += 1;
+                                self.instructions.push(AsmInst::LI(temp_reg, 1));
+                                temp_reg
+                            } else {
+                                bank_reg  // Already a value register
+                            }
+                        };
+                        
+                        arg_regs.push((bank_val_reg, bank_param_reg));
+                        next_param_reg_idx += 1;
+                    } else if use_stack {
+                        // Argument goes on stack
+                        if is_pointer {
+                            // Push fat pointer (2 values) on stack
+                            let addr_reg = self.get_value_register(arg)?;
+                            stack_args.push(addr_reg);
+                            
+                            // Get bank tag value
+                            let bank_val = if let Value::Temp(tid) = arg {
+                                let bank_temp_id = 100000 + tid;
+                                let bank_temp_key = format!("t{}", bank_temp_id);
+                                if let Some(&Location::Register(stored_bank_reg)) = self.value_locations.get(&bank_temp_key) {
+                                    stored_bank_reg
+                                } else {
+                                    // Get bank and convert to value
+                                    let bank_reg = self.get_bank_for_pointer(arg)?;
+                                    let temp_reg = self.get_reg(format!("bank_val_{}", self.label_counter));
+                                    self.label_counter += 1;
+                                    if bank_reg == Reg::R0 {
+                                        self.instructions.push(AsmInst::LI(temp_reg, 0));
+                                    } else if bank_reg == Reg::R13 {
+                                        self.instructions.push(AsmInst::LI(temp_reg, 1));
+                                    } else {
+                                        self.instructions.push(AsmInst::Add(temp_reg, bank_reg, Reg::R0));
+                                    }
+                                    temp_reg
+                                }
+                            } else {
+                                let bank_reg = self.get_bank_for_pointer(arg)?;
+                                let temp_reg = self.get_reg(format!("bank_val_{}", self.label_counter));
+                                self.label_counter += 1;
+                                if bank_reg == Reg::R0 {
+                                    self.instructions.push(AsmInst::LI(temp_reg, 0));
+                                } else if bank_reg == Reg::R13 {
+                                    self.instructions.push(AsmInst::LI(temp_reg, 1));
+                                } else {
+                                    self.instructions.push(AsmInst::Add(temp_reg, bank_reg, Reg::R0));
+                                }
+                                temp_reg
+                            };
+                            stack_args.push(bank_val);
+                        } else {
+                            // Regular value on stack
+                            let arg_reg = self.get_value_register(arg)?;
+                            stack_args.push(arg_reg);
+                        }
+                    } else {
+                        // Non-pointer argument in register
                         let arg_reg = self.get_value_register(arg)?;
-                        let param_reg = match i {
+                        let param_reg = match next_param_reg_idx {
                             0 => Reg::R3,
                             1 => Reg::R4,
                             2 => Reg::R5,
@@ -680,6 +1010,7 @@ impl ModuleLowerer {
                             _ => unreachable!(),
                         };
                         arg_regs.push((arg_reg, param_reg));
+                        next_param_reg_idx += 1;
                     }
                 }
                 
@@ -740,7 +1071,28 @@ impl ModuleLowerer {
                     }
                 }
                 
+                // Push stack arguments in reverse order (rightmost first)
+                if !stack_args.is_empty() {
+                    // Adjust stack pointer for arguments
+                    let stack_space = stack_args.len() as i16;
+                    self.instructions.push(AsmInst::AddI(Reg::R14, Reg::R14, -stack_space));
+                    
+                    // Push each argument onto the stack
+                    for (i, arg_reg) in stack_args.iter().enumerate() {
+                        let offset = i as i16;
+                        let addr_reg = self.get_reg(format!("stack_arg_addr_{}", i));
+                        self.instructions.push(AsmInst::AddI(addr_reg, Reg::R14, offset));
+                        self.instructions.push(AsmInst::Store(*arg_reg, Reg::R13, addr_reg));
+                    }
+                }
+                
                 self.instructions.push(AsmInst::Call(func_name));
+                
+                // Clean up stack after call
+                if !stack_args.is_empty() {
+                    let stack_space = stack_args.len() as i16;
+                    self.instructions.push(AsmInst::AddI(Reg::R14, Reg::R14, stack_space));
+                }
                 
                 if let Some(dest) = result {
                     // Result is in R3 by convention
@@ -843,9 +1195,19 @@ impl ModuleLowerer {
                 // Note: This assumes element size is 1 word. For larger types, we'd need to multiply index by element size
                 self.instructions.push(AsmInst::Add(dest_reg, base_reg, index_reg));
                 
-                // Propagate pointer region from base to result
+                // Propagate pointer provenance from base to result
+                // GEP preserves the bank tag - only the address changes
                 if let Value::Temp(base_tid) = ptr {
-                    // Check if base has a known region
+                    // Check if base has fat pointer components
+                    if let Some(base_components) = self.fat_ptr_components.get(base_tid) {
+                        // Propagate fat pointer components - GEP keeps same bank
+                        self.fat_ptr_components.insert(*result, FatPtrComponents {
+                            addr_temp: *result,  // Result temp holds the new address
+                            bank_tag: base_components.bank_tag,  // Keep same bank
+                        });
+                    }
+                    
+                    // Also propagate legacy region tracking (for compatibility)
                     let region = self.ptr_region.get(base_tid)
                         .copied()
                         .or_else(|| {
@@ -860,6 +1222,12 @@ impl ModuleLowerer {
                     
                     // Propagate the region to the result
                     self.ptr_region.insert(*result, region);
+                } else if let Value::FatPtr(fat_ptr) = ptr {
+                    // If the base is already a fat pointer, propagate its bank
+                    self.fat_ptr_components.insert(*result, FatPtrComponents {
+                        addr_temp: *result,
+                        bank_tag: fat_ptr.bank,
+                    });
                 }
             }
             
@@ -969,6 +1337,11 @@ impl ModuleLowerer {
                     ))
                 }
             }
+            Value::FatPtr(ptr) => {
+                // For fat pointers, we only return the address register here
+                // The bank is handled separately in load/store operations
+                self.get_value_register(&ptr.addr)
+            }
             _ => {
                 Err(CompilerError::codegen_error(
                     format!("Unsupported value type: {:?}", value),
@@ -981,6 +1354,97 @@ impl ModuleLowerer {
     /// Get register for a value
     fn get_value_register(&mut self, value: &Value) -> Result<Reg, CompilerError> {
         self.get_value_register_impl(value)
+    }
+    
+    /// Get the bank register for a pointer value
+    fn get_bank_for_pointer(&mut self, value: &Value) -> Result<Reg, CompilerError> {
+        match value {
+            Value::FatPtr(ptr) => {
+                // For fat pointers, return the appropriate bank register
+                match ptr.bank {
+                    BankTag::Global => Ok(Reg::R0),
+                    BankTag::Stack => Ok(Reg::R13),
+                }
+            }
+            Value::Temp(tid) => {
+                // Check if this is a pointer parameter with a bank register
+                let bank_temp_id = 100000 + tid;
+                let bank_temp_key = format!("t{}", bank_temp_id);
+                if let Some(&Location::Register(bank_reg)) = self.value_locations.get(&bank_temp_key) {
+                    // We have the bank tag in a register - need to convert to bank register
+                    // Generate runtime check to select R0 or R13 based on tag
+                    let result_reg = self.get_reg(format!("bank_select_{}", self.label_counter));
+                    self.label_counter += 1;
+                    
+                    let stack_label = format!("bank_stack_{}", self.label_counter);
+                    let done_label = format!("bank_done_{}", self.label_counter);
+                    self.label_counter += 1;
+                    
+                    // Check if bank_reg == 1 (stack)
+                    self.instructions.push(AsmInst::Comment("Select bank register based on tag".to_string()));
+                    self.instructions.push(AsmInst::LI(result_reg, 1));
+                    self.instructions.push(AsmInst::Beq(bank_reg, result_reg, stack_label.clone()));
+                    
+                    // Bank is 0 (global) - use R0
+                    self.instructions.push(AsmInst::Add(result_reg, Reg::R0, Reg::R0));
+                    self.instructions.push(AsmInst::Beq(Reg::R0, Reg::R0, done_label.clone()));
+                    
+                    // Bank is 1 (stack) - use R13
+                    self.instructions.push(AsmInst::Label(stack_label));
+                    self.instructions.push(AsmInst::Add(result_reg, Reg::R13, Reg::R0));
+                    
+                    self.instructions.push(AsmInst::Label(done_label));
+                    
+                    // Mark this register as containing the bank to prevent reuse
+                    self.reg_contents.insert(result_reg, format!("bank_for_t{}", tid));
+                    self.value_locations.insert(format!("bank_for_t{}", tid), Location::Register(result_reg));
+                    // CRITICAL: Remove from free list to prevent reuse
+                    self.free_regs.retain(|&r| r != result_reg);
+                    
+                    return Ok(result_reg);
+                }
+                
+                // Check if this temp has fat pointer components
+                if let Some(components) = self.fat_ptr_components.get(tid) {
+                    match components.bank_tag {
+                        BankTag::Global => Ok(Reg::R0),
+                        BankTag::Stack => Ok(Reg::R13),
+                    }
+                } else {
+                    // Fall back to old provenance tracking (for migration)
+                    match self.ptr_region.get(tid).copied().unwrap_or(PtrRegion::Unknown) {
+                        PtrRegion::Stack => Ok(Reg::R13),
+                        PtrRegion::Global => Ok(Reg::R0),
+                        PtrRegion::Unknown => {
+                            // Check if it's a direct alloca
+                            if self.local_offsets.contains_key(tid) {
+                                Ok(Reg::R13)
+                            } else {
+                                // Default to global for now (will be fixed as we migrate to fat pointers)
+                                self.instructions.push(AsmInst::Comment(
+                                    "WARNING: Unknown pointer bank, defaulting to global".to_string()
+                                ));
+                                Ok(Reg::R0)
+                            }
+                        }
+                        PtrRegion::Mixed => {
+                            Err(CompilerError::codegen_error(
+                                "Cannot handle pointer with mixed provenance".to_string(),
+                                rcc_common::SourceLocation::new_simple(0, 0),
+                            ))
+                        }
+                    }
+                }
+            }
+            Value::Global(_) => {
+                // Global addresses always use global bank
+                Ok(Reg::R0)
+            }
+            _ => {
+                // Other values default to global bank
+                Ok(Reg::R0)
+            }
+        }
     }
     
     /// Get a register, spilling if necessary - now uses centralized allocator
@@ -1174,7 +1638,7 @@ impl ModuleLowerer {
             IrType::I1 => 1, // Boolean takes 1 word
             IrType::I8 | IrType::I16 => 1,
             IrType::I32 | IrType::I64 => 2,
-            IrType::Ptr(_) => 1, // 16-bit pointers
+            IrType::Ptr(_) => 2, // Fat pointers: 2 words (address + bank tag)
             IrType::Array { element_type, size } => {
                 let elem_size = self.get_type_size_in_words(element_type);
                 elem_size * size
@@ -1192,6 +1656,7 @@ impl ModuleLowerer {
             Value::Temp(id) => format!("t{}", id),
             Value::Function(name) => name.clone(),
             Value::Global(name) => format!("@{}", name),
+            Value::FatPtr(ptr) => format!("{{addr: {}, bank: {:?}}}", self.value_to_string(&ptr.addr), ptr.bank),
             _ => "?".to_string(),
         }
     }
