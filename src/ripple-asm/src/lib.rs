@@ -12,7 +12,8 @@ pub mod wasm;
 pub use types::{
     Instruction, Opcode, Register, InstructionFormat, Label, ParsedLine,
     Section, AssemblerOptions, AssemblerState, ObjectFile, UnresolvedReference,
-    VirtualInstruction, DEFAULT_BANK_SIZE, INSTRUCTION_SIZE, DEFAULT_MAX_IMMEDIATE,
+    VirtualInstruction, Archive, ArchiveEntry,
+    DEFAULT_BANK_SIZE, INSTRUCTION_SIZE, DEFAULT_MAX_IMMEDIATE,
 };
 
 pub use parser::Parser;

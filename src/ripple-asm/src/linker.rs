@@ -1,4 +1,4 @@
-use crate::types::{Instruction, Label, ObjectFile, Opcode, ReferenceType, UnresolvedReference};
+use crate::types::{Instruction, Label, ObjectFile, Opcode, ReferenceType, UnresolvedReference, Archive, ArchiveEntry};
 use std::collections::HashMap;
 use std::path::Path;
 use std::fs;
@@ -10,6 +10,23 @@ pub struct Linker {
 impl Linker {
     pub fn new(bank_size: u16) -> Self {
         Self { bank_size }
+    }
+    
+    /// Create an archive from multiple object files
+    pub fn create_archive(object_files: Vec<(String, ObjectFile)>) -> Archive {
+        Archive {
+            version: 1,
+            objects: object_files.into_iter()
+                .map(|(name, object)| ArchiveEntry { name, object })
+                .collect(),
+        }
+    }
+    
+    /// Extract object files from an archive
+    pub fn extract_from_archive(archive: &Archive) -> Vec<ObjectFile> {
+        archive.objects.iter()
+            .map(|entry| entry.object.clone())
+            .collect()
     }
 
     pub fn link(&self, object_files: Vec<ObjectFile>) -> Result<LinkedProgram, Vec<String>> {

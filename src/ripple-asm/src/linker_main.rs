@@ -1,5 +1,5 @@
 use clap::Parser;
-use ripple_asm::{Linker, MacroFormatter};
+use ripple_asm::{Linker, MacroFormatter, Archive, ObjectFile};
 use std::fs;
 use std::path::PathBuf;
 
@@ -15,7 +15,7 @@ struct Cli {
     #[arg(short, long)]
     output: Option<PathBuf>,
     
-    /// Output format (binary, text, macro)
+    /// Output format (binary, text, macro, archive)
     #[arg(short, long, default_value = "binary")]
     format: String,
     
@@ -40,20 +40,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
     
-    // Load all object files
+    // Load all object files (with names for archive)
     let mut object_files = Vec::new();
+    let mut named_object_files = Vec::new();
     for input_path in &cli.inputs {
         let content = fs::read_to_string(input_path)?;
-        match serde_json::from_str(&content) {
-            Ok(obj) => {
-                println!("Loaded {}", input_path.display());
-                object_files.push(obj);
+        
+        // Try to load as archive first
+        if let Ok(archive) = serde_json::from_str::<Archive>(&content) {
+            println!("Loaded archive {}", input_path.display());
+            let extracted = Linker::extract_from_archive(&archive);
+            object_files.extend(extracted);
+            // For archive creation, preserve the archive name
+            for entry in archive.objects {
+                named_object_files.push((entry.name, entry.object));
             }
-            Err(e) => {
-                eprintln!("Failed to parse {}: {}", input_path.display(), e);
-                std::process::exit(1);
+        } else {
+            // Try as regular object file
+            match serde_json::from_str::<ObjectFile>(&content) {
+                Ok(obj) => {
+                    println!("Loaded {}", input_path.display());
+                    let name = input_path.file_stem()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned();
+                    named_object_files.push((name, obj.clone()));
+                    object_files.push(obj);
+                }
+                Err(e) => {
+                    eprintln!("Failed to parse {}: {}", input_path.display(), e);
+                    std::process::exit(1);
+                }
             }
         }
+    }
+    
+    // Handle archive creation separately
+    if cli.format == "archive" {
+        let archive = Linker::create_archive(named_object_files);
+        let output_path = cli.output.unwrap_or_else(|| PathBuf::from("lib.par"));
+        let json = serde_json::to_string_pretty(&archive)?;
+        fs::write(&output_path, json)?;
+        println!("✓ Created archive {}", output_path.display());
+        println!("  Contains {} object files", archive.objects.len());
+        for entry in &archive.objects {
+            println!("    - {}", entry.name);
+        }
+        return Ok(());
     }
     
     // Link the object files

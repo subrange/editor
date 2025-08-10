@@ -6,8 +6,8 @@ RASM = ../src/ripple-asm/target/release/rasm
 RLINK = ../src/ripple-asm/target/release/rlink
 
 # Assembler settings
-BANK_SIZE = 32
-MAX_IMMEDIATE = 1000000
+BANK_SIZE = 4096
+MAX_IMMEDIATE = 65535
 
 # Source files
 C_SOURCES = putchar.c puts.c memset.c memcpy.c
@@ -19,7 +19,7 @@ C_OBJ_FILES = $(C_SOURCES:.c=.pobj)
 # Don't include crt0 in the runtime library - it should be linked separately
 RUNTIME_OBJ_FILES = $(C_OBJ_FILES)
 ALL_OBJ_FILES = $(C_OBJ_FILES) crt0.pobj
-RUNTIME_LIB = runtime.pobj
+RUNTIME_LIB = libruntime.par
 
 # Default target
 all: $(RUNTIME_LIB)
@@ -39,25 +39,24 @@ crt0.pobj: crt0.asm
 	@echo "Assembling crt0.asm to object..."
 	@$(RASM) assemble crt0.asm -o crt0.pobj --bank-size $(BANK_SIZE) --max-immediate $(MAX_IMMEDIATE)
 
-# Link runtime objects into a library (without crt0) - for archival purposes only
-# Note: This creates a binary format file that cannot be re-linked
+# Create runtime library archive (without crt0)
 $(RUNTIME_LIB): $(RUNTIME_OBJ_FILES)
-	@echo "Creating runtime library archive (not for linking)..."
-	@$(RLINK) $(RUNTIME_OBJ_FILES) -o $(RUNTIME_LIB)
+	@echo "Creating runtime library archive..."
+	@$(RLINK) $(RUNTIME_OBJ_FILES) -f archive -o $(RUNTIME_LIB)
 
 # Clean generated files (but not crt0.asm which is hand-written)
 clean:
-	rm -f $(ASM_FILES) *.pobj *.bf *.bfm
+	rm -f $(ASM_FILES) *.pobj *.par *.bf *.bfm
 	@echo "Cleaned runtime directory"
 
 # Test target - build a test program with runtime
-test: $(RUNTIME_OBJ_FILES) crt0.pobj
+test: $(RUNTIME_LIB) crt0.pobj
 	@echo "Building test program with runtime..."
 	@$(RCC) compile ../c-code/test_runtime_simple.c -o test_main.asm
 	@$(RASM) assemble test_main.asm -o test_main.pobj --bank-size $(BANK_SIZE) --max-immediate $(MAX_IMMEDIATE)
-	@echo "Linking crt0 + runtime + test program..."
-	@$(RLINK) crt0.pobj $(RUNTIME_OBJ_FILES) test_main.pobj -f macro --standalone -o test_standalone.bf
+	@echo "Linking crt0 + runtime archive + test program..."
+	@$(RLINK) crt0.pobj $(RUNTIME_LIB) test_main.pobj -f macro --standalone -o test_standalone.bf
 	@echo "Test program built: test_standalone.bf"
-	@echo "Run with: bfm expand test_standalone.bf -o test.bf && bf test.bf"
+	@echo "Run with: bfm expand test_standalone.bf | bf"
 
 .PHONY: all clean test

@@ -345,6 +345,18 @@ pub struct UnresolvedReference {
     pub ref_type: String, // "branch", "absolute", "data"
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Archive {
+    pub version: u32,
+    pub objects: Vec<ArchiveEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArchiveEntry {
+    pub name: String,  // Original filename or module name
+    pub object: ObjectFile,
+}
+
 // Virtual instruction definitions for extensibility
 pub trait VirtualInstruction {
     fn name(&self) -> &str;
