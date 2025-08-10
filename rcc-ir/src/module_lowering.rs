@@ -47,11 +47,8 @@ pub struct ModuleLowerer {
     /// Centralized register allocator
     reg_alloc: SimpleRegAlloc,
     
-    /// Free list of available registers (R3-R11) - kept for compatibility
-    free_regs: Vec<Reg>,
-    
-    /// Map from register to the temp it contains (for spilling decisions) - kept for compatibility  
-    reg_contents: HashMap<Reg, String>,
+    // Old register allocation system - REMOVED
+    // Now using SimpleRegAlloc for all register management
     
     /// Mapping from IR values to either registers or spill slots
     value_locations: HashMap<String, Location>,
@@ -100,9 +97,6 @@ impl ModuleLowerer {
         Self {
             instructions: Vec::new(),
             reg_alloc: SimpleRegAlloc::new(),
-            // R3-R11 are allocatable, R12 reserved for spill address calculations
-            free_regs: vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5, Reg::R4, Reg::R3],
-            reg_contents: HashMap::new(),
             value_locations: HashMap::new(),
             global_addresses: HashMap::new(),
             next_global_addr: 100, // Start globals at address 100
@@ -239,8 +233,9 @@ impl ModuleLowerer {
     fn lower_function(&mut self, function: &Function) -> Result<(), CompilerError> {
         self.current_function = Some(function.name.clone());
         self.value_locations.clear();
-        self.reg_contents.clear();
-        self.free_regs = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5, Reg::R4, Reg::R3];
+        // Old system - no longer used, using reg_alloc instead
+        // self.reg_contents.clear();
+        // self.free_regs = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5, Reg::R4, Reg::R3];
         self.reg_alloc.reset(); // Reset the centralized allocator
         self.needs_frame = false;
         self.local_stack_offset = 0; // Reset local stack offset
@@ -277,8 +272,8 @@ impl ModuleLowerer {
                     
                     // Map parameter temp ID to its register location (address)
                     self.value_locations.insert(format!("t{}", param_id), Location::Register(addr_reg));
-                    self.free_regs.retain(|&r| r != addr_reg);
-                    self.reg_contents.insert(addr_reg, format!("t{}", param_id));
+                    // Inform the centralized allocator that this register is in use
+                    self.reg_alloc.mark_in_use(addr_reg, format!("t{}", param_id));
                     next_param_reg_idx += 1;
                     
                     // Bank tag is in next register
@@ -293,17 +288,15 @@ impl ModuleLowerer {
                     
                     // Store the bank tag in a temporary for later use
                     // We'll need to check the bank value and set up fat pointer components
-                    self.free_regs.retain(|&r| r != bank_reg);
-                    
                     // Create a temp to hold the bank value
                     let bank_temp_key = format!("param_{}_bank", param_id);
-                    self.reg_contents.insert(bank_reg, bank_temp_key.clone());
+                    self.reg_alloc.mark_in_use(bank_reg, bank_temp_key.clone());
                     
                     // For fat pointers, we need to use the bank register at runtime
                     // Store it in a temp that we can track
                     let bank_temp_id = 100000 + param_id; // Use high temp IDs for bank tags
                     self.value_locations.insert(format!("t{}", bank_temp_id), Location::Register(bank_reg));
-                    self.reg_contents.insert(bank_reg, format!("t{}_bank", param_id));
+                    // Already marked in use via reg_alloc.mark_in_use above
                     
                     // Mark the parameter as having unknown region since it's runtime-determined
                     // But track that we have the bank in a register
@@ -312,8 +305,7 @@ impl ModuleLowerer {
                 } else if next_param_reg_idx == 5 {
                     // Address in R8, bank on stack
                     self.value_locations.insert(format!("t{}", param_id), Location::Register(Reg::R8));
-                    self.free_regs.retain(|&r| r != Reg::R8);
-                    self.reg_contents.insert(Reg::R8, format!("t{}", param_id));
+                    self.reg_alloc.mark_in_use(Reg::R8, format!("t{}", param_id));
                     next_param_reg_idx += 1;
                     
                     // Bank tag is on stack - will be loaded by caller
@@ -348,8 +340,7 @@ impl ModuleLowerer {
                     };
                     
                     self.value_locations.insert(format!("t{}", param_id), Location::Register(param_reg));
-                    self.free_regs.retain(|&r| r != param_reg);
-                    self.reg_contents.insert(param_reg, format!("t{}", param_id));
+                    self.reg_alloc.mark_in_use(param_reg, format!("t{}", param_id));
                     next_param_reg_idx += 1;
                 } else {
                     // Goes on stack
@@ -654,7 +645,7 @@ impl ModuleLowerer {
                             // Store bank tag for later use
                             let bank_temp_id = 100000 + result;
                             self.value_locations.insert(format!("t{}", bank_temp_id), Location::Register(bank_reg));
-                            self.reg_contents.insert(bank_reg, format!("t{}_bank", result));
+                            self.reg_alloc.mark_in_use(bank_reg, format!("t{}_bank", result));
                             
                             // Set up fat pointer components based on loaded bank
                             // For now mark as Unknown since it's runtime-determined
@@ -695,7 +686,7 @@ impl ModuleLowerer {
                         // Store bank tag for later use
                         let bank_temp_id = 100000 + result;
                         self.value_locations.insert(format!("t{}", bank_temp_id), Location::Register(bank_reg));
-                        self.reg_contents.insert(bank_reg, format!("t{}_bank", result));
+                        self.reg_alloc.mark_in_use(bank_reg, format!("t{}_bank", result));
                         
                         // Mark as having unknown region since it's runtime-determined
                         self.ptr_region.insert(*result, PtrRegion::Unknown);
@@ -737,6 +728,12 @@ impl ModuleLowerer {
                     }
                     _ => {
                         // Neither is constant
+                        // Add debug info for complex expressions
+                        if let (Value::Temp(lid), Value::Temp(rid)) = (lhs, rhs) {
+                            self.instructions.push(AsmInst::Comment(
+                                format!("Binary op: t{} = t{} {:?} t{}", result, lid, op, rid)
+                            ));
+                        }
                         let left = self.get_value_register(lhs)?;
                         let right = self.get_value_register(rhs)?;
                         (left, right)
@@ -756,6 +753,16 @@ impl ModuleLowerer {
                         self.instructions.push(AsmInst::Sub(dest_reg, left_reg, right_reg));
                     }
                     IrBinaryOp::Mul => {
+                        if left_reg == right_reg && lhs != rhs {
+                            self.instructions.push(AsmInst::Comment(
+                                format!("WARNING: MUL using same register {} for different values!", 
+                                    match left_reg {
+                                        Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+                                        Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                                        _ => "R?"
+                                    })
+                            ));
+                        }
                         self.instructions.push(AsmInst::Mul(dest_reg, left_reg, right_reg));
                     }
                     IrBinaryOp::SDiv | IrBinaryOp::UDiv => {
@@ -782,10 +789,6 @@ impl ModuleLowerer {
                         self.reg_alloc.free_reg(temp2);
                         
                         // Now invert the result: dest = 1 - dest
-                        // IMPORTANT: Make sure dest_reg is tracked so it doesn't get reused as temp3
-                        self.reg_contents.insert(dest_reg, format!("eq_result_{}", result));
-                        self.free_regs.retain(|&r| r != dest_reg);
-                        
                         let temp3 = self.get_single_temp("eq_inv");
                         self.label_counter += 1;
                         self.instructions.push(AsmInst::LI(temp3, 1));
@@ -848,13 +851,32 @@ impl ModuleLowerer {
                         self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
                         self.reg_alloc.free_reg(temp);
                     }
+                    IrBinaryOp::And => {
+                        self.instructions.push(AsmInst::And(dest_reg, left_reg, right_reg));
+                    }
+                    IrBinaryOp::Or => {
+                        self.instructions.push(AsmInst::Or(dest_reg, left_reg, right_reg));
+                    }
+                    IrBinaryOp::Xor => {
+                        self.instructions.push(AsmInst::Xor(dest_reg, left_reg, right_reg));
+                    }
+                    IrBinaryOp::Shl => {
+                        self.instructions.push(AsmInst::Sll(dest_reg, left_reg, right_reg));
+                    }
+                    IrBinaryOp::LShr | IrBinaryOp::AShr => {
+                        self.instructions.push(AsmInst::Srl(dest_reg, left_reg, right_reg));
+                    }
                     IrBinaryOp::Ult | IrBinaryOp::Ule | IrBinaryOp::Ugt | IrBinaryOp::Uge => {
-                        // TODO: Implement unsigned comparisons
-                        self.instructions.push(AsmInst::Comment(format!("TODO: Unsigned comparison {:?}", op)));
-                        self.instructions.push(AsmInst::LI(dest_reg, 0));
+                        return Err(CompilerError::codegen_error(
+                            format!("Unsigned comparison {:?} not yet implemented", op),
+                            rcc_common::SourceLocation::new_simple(0, 0),
+                        ));
                     }
                     _ => {
-                        self.instructions.push(AsmInst::Comment(format!("Unsupported binary op: {:?}", op)));
+                        return Err(CompilerError::codegen_error(
+                            format!("Unsupported binary operation: {:?}", op),
+                            rcc_common::SourceLocation::new_simple(0, 0),
+                        ));
                     }
                 }
                 
@@ -1273,22 +1295,13 @@ impl ModuleLowerer {
     fn get_value_register_impl(&mut self, value: &Value) -> Result<Reg, CompilerError> {
         match value {
             Value::Constant(n) => {
-                // For constants, use free list first, then check what's available
-                let reg = if !self.free_regs.is_empty() {
-                    // Pop from free list (LIFO for better cache locality)
-                    self.free_regs.pop().unwrap()
-                } else {
-                    // No free registers, need to spill
-                    let victim = self.pick_spill_victim();
-                    self.spill_register(victim);
-                    self.reg_contents.remove(&victim);
-                    victim
-                };
-                
-                // Mark as containing this constant so it won't be reused until freed
+                // Use the centralized allocator for constants
                 let const_key = format!("const_{}_{}", n, self.label_counter);
                 self.label_counter += 1;
-                self.reg_contents.insert(reg, const_key);
+                let reg = self.reg_alloc.get_reg(const_key);
+                
+                // Append any spill/reload instructions generated
+                self.instructions.append(&mut self.reg_alloc.take_instructions());
                 
                 self.instructions.push(AsmInst::LI(reg, *n as i16));
                 Ok(reg)
@@ -1312,7 +1325,10 @@ impl ModuleLowerer {
                     if let Some(&loc) = self.value_locations.get(&key) {
                         // Already have a location for this temp
                         match loc {
-                            Location::Register(r) => Ok(r),
+                            Location::Register(r) => {
+                                self.instructions.push(AsmInst::Comment(format!("Using {} from register", key)));
+                                Ok(r)
+                            },
                             Location::Spilled(offset) => {
                                 // Reload from spill
                                 let reg = self.get_reg(key.clone());
@@ -1413,10 +1429,8 @@ impl ModuleLowerer {
                     self.instructions.push(AsmInst::Label(done_label));
                     
                     // Mark this register as containing the bank to prevent reuse
-                    self.reg_contents.insert(result_reg, format!("bank_for_t{}", tid));
+                    self.reg_alloc.mark_in_use(result_reg, format!("bank_for_t{}", tid));
                     self.value_locations.insert(format!("bank_for_t{}", tid), Location::Register(result_reg));
-                    // CRITICAL: Remove from free list to prevent reuse
-                    self.free_regs.retain(|&r| r != result_reg);
                     
                     return Ok(result_reg);
                 }
@@ -1503,47 +1517,8 @@ impl ModuleLowerer {
         reg
     }
     
-    /// Spill a register to memory
-    fn spill_register(&mut self, reg: Reg) {
-        if let Some(old_value) = self.reg_contents.get(&reg).cloned() {
-            // Don't spill temporary constants - they're single use
-            if !old_value.starts_with("const_") && !old_value.starts_with("addr_") {
-                if let Some(Location::Register(r)) = self.value_locations.get(&old_value) {
-                    if *r == reg {
-                        // Spill this value
-                        let spill_offset = self.next_spill_offset;
-                        self.next_spill_offset += 1;
-                        self.needs_frame = true;
-                        
-                        // Emit spill code using R12 as scratch
-                        self.instructions.push(AsmInst::Comment(format!("Spilling {} to FP+{}", old_value, spill_offset)));
-                        self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset));
-                        self.instructions.push(AsmInst::Store(reg, Reg::R13, Reg::R12));
-                        
-                        // Update location
-                        self.value_locations.insert(old_value, Location::Spilled(spill_offset));
-                    }
-                }
-            }
-        }
-    }
-    
-    /// Pick a register to spill - try to pick one that's not actively needed
-    fn pick_spill_victim(&self) -> Reg {
-        // Try to pick a register containing a constant or temporary value first
-        for reg in [Reg::R3, Reg::R4, Reg::R5, Reg::R6, Reg::R7, Reg::R8, Reg::R9, Reg::R10, Reg::R11] {
-            if let Some(content) = self.reg_contents.get(&reg) {
-                if content.starts_with("const_") || content.starts_with("addr_") {
-                    // This is a temporary value, prefer to spill this
-                    return reg;
-                }
-            }
-        }
-        
-        // Otherwise pick the first allocatable register
-        // Could implement LRU or other heuristics here
-        Reg::R3
-    }
+    // Old spill_register and pick_spill_victim functions removed
+    // Now using SimpleRegAlloc which handles all spilling internally
     
     /// Free a register - now uses centralized allocator
     fn free_reg(&mut self, reg: Reg) {
@@ -1556,32 +1531,8 @@ impl ModuleLowerer {
         // Use centralized allocator's free_all method
         self.reg_alloc.free_all();
         
-        // Clear reg_contents but preserve parameter registers
-        let mut param_regs = Vec::new();
-        for (reg, contents) in &self.reg_contents {
-            if contents.starts_with("t") && contents.chars().skip(1).all(|c| c.is_digit(10)) {
-                // This looks like a parameter temp (t0, t1, etc.)
-                // Check if it's in the parameter range
-                if let Ok(id) = contents[1..].parse::<u32>() {
-                    if id < 6 {  // Max 6 parameters in registers
-                        param_regs.push((*reg, contents.clone()));
-                    }
-                }
-            }
-        }
-        
-        self.reg_contents.clear();
-        
-        // Restore parameter registers
-        for (reg, contents) in param_regs {
-            self.reg_contents.insert(reg, contents);
-        }
-        
-        // Reset free list but exclude parameter registers
-        self.free_regs = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5, Reg::R4, Reg::R3];
-        for reg in self.reg_contents.keys() {
-            self.free_regs.retain(|&r| r != *reg);
-        }
+        // The SimpleRegAlloc maintains its own state across basic blocks
+        // Parameters have already been marked in use via mark_in_use()
     }
     
     /// Get a scratch register for temporary use
