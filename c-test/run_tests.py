@@ -116,16 +116,17 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
     """
     basename = Path(c_file).stem
     asm_file = f"{BUILD_DIR}/{basename}.asm"
+    ir_file = f"{BUILD_DIR}/{basename}.ir"
     pobj_file = f"{BUILD_DIR}/{basename}.pobj"
     bf_file = f"{BUILD_DIR}/{basename}.bfm"
     
     # Clean up previous files
-    for f in [asm_file, pobj_file, bf_file, f"{BUILD_DIR}/{basename}_expanded.bf"]:
+    for f in [asm_file, ir_file, pobj_file, bf_file, f"{BUILD_DIR}/{basename}_expanded.bf"]:
         if os.path.exists(f):
             os.remove(f)
     
-    # Compile C to assembly
-    ret, stdout, stderr = run_command(f"{RCC} compile {c_file} -o {asm_file}")
+    # Compile C to assembly (and save IR to build directory)
+    ret, stdout, stderr = run_command(f"{RCC} compile {c_file} -o {asm_file} --save-ir --ir-output {ir_file}")
     if ret != 0:
         return False, f"Compilation failed: {stderr}", False
     
@@ -186,6 +187,7 @@ def cleanup_test_files(basename):
     """Remove generated files for a specific test"""
     files_to_remove = [
         f"{BUILD_DIR}/{basename}.asm",
+        f"{BUILD_DIR}/{basename}.ir",
         f"{BUILD_DIR}/{basename}.pobj",
         f"{BUILD_DIR}/{basename}.bfm",
         f"{BUILD_DIR}/{basename}_expanded.bf"
@@ -207,6 +209,7 @@ def cleanup_files():
     # Patterns for files to clean up in build directory
     patterns = [
         f"{BUILD_DIR}/*.asm",
+        f"{BUILD_DIR}/*.ir",
         f"{BUILD_DIR}/*.pobj", 
         f"{BUILD_DIR}/*.bfm",
         f"{BUILD_DIR}/*_expanded.bf"
@@ -478,9 +481,10 @@ def main():
         
         basename = Path(test_file).stem
         asm_file = f"{BUILD_DIR}/{basename}.asm"
+        ir_file = f"{BUILD_DIR}/{basename}.ir"
         
-        # Try to compile it
-        ret, stdout, stderr = run_command(f"{RCC} compile {test_file} -o {asm_file}")
+        # Try to compile it (save IR to build directory)
+        ret, stdout, stderr = run_command(f"{RCC} compile {test_file} -o {asm_file} --save-ir --ir-output {ir_file}")
         
         if ret != 0:
             print(f"{YELLOW}✓ {test_file}: EXPECTED FAIL{NC}")

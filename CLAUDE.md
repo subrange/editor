@@ -296,9 +296,10 @@ python3 run_tests.py --no-cleanup
 ```
 
 This preserves in `build/`:
+- `.ir` - Intermediate representation files
 - `.asm` - Generated assembly
 - `.pobj` - Assembled object files
-- `.bf` - Linked Brainfuck output
-- `_expanded.bfm` - Expanded macro code
+- `.bfm` - Linked Brainfuck macro output
+- `_expanded.bf` - Expanded macro code
 
 You can then manually inspect or run individual compilation steps.

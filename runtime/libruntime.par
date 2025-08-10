@@ -365,18 +365,6 @@
         ],
         "data": [],
         "labels": {
-          "puts_L1": {
-            "name": "puts_L1",
-            "bank": 0,
-            "offset": 52,
-            "absolute_address": 52
-          },
-          "puts_L5": {
-            "name": "puts_L5",
-            "bank": 0,
-            "offset": 112,
-            "absolute_address": 112
-          },
           "puts": {
             "name": "puts",
             "bank": 0,
@@ -389,55 +377,67 @@
             "offset": 100,
             "absolute_address": 100
           },
-          "puts_L3": {
-            "name": "puts_L3",
-            "bank": 0,
-            "offset": 96,
-            "absolute_address": 96
-          },
           "puts_L6": {
             "name": "puts_L6",
             "bank": 0,
             "offset": 140,
             "absolute_address": 140
+          },
+          "puts_L1": {
+            "name": "puts_L1",
+            "bank": 0,
+            "offset": 52,
+            "absolute_address": 52
+          },
+          "puts_L5": {
+            "name": "puts_L5",
+            "bank": 0,
+            "offset": 112,
+            "absolute_address": 112
+          },
+          "puts_L3": {
+            "name": "puts_L3",
+            "bank": 0,
+            "offset": 96,
+            "absolute_address": 96
           }
         },
         "data_labels": {},
         "unresolved_references": {
-          "23": {
-            "label": "puts_L3",
-            "ref_type": "branch"
-          },
-          "30": {
-            "label": "putchar",
-            "ref_type": "absolute"
-          },
-          "37": {
-            "label": "putchar",
-            "ref_type": "absolute"
-          },
-          "26": {
-            "label": "puts_L5",
-            "ref_type": "branch"
-          },
-          "24": {
-            "label": "puts_L4",
+          "11": {
+            "label": "puts_L1",
             "ref_type": "branch"
           },
           "27": {
             "label": "puts_L6",
             "ref_type": "branch"
           },
-          "11": {
-            "label": "puts_L1",
+          "30": {
+            "label": "putchar",
+            "ref_type": "absolute"
+          },
+          "23": {
+            "label": "puts_L3",
             "ref_type": "branch"
           },
           "12": {
             "label": "puts_L3",
             "ref_type": "branch"
           },
+          "37": {
+            "label": "putchar",
+            "ref_type": "absolute"
+          },
           "34": {
             "label": "puts_L4",
+            "ref_type": "branch"
+          },
+          "24": {
+            "label": "puts_L4",
+            "ref_type": "branch"
+          },
+          "26": {
+            "label": "puts_L5",
             "ref_type": "branch"
           }
         },
@@ -683,17 +683,23 @@
         ],
         "data": [],
         "labels": {
-          "memset_L4": {
-            "name": "memset_L4",
+          "memset_L3": {
+            "name": "memset_L3",
             "bank": 0,
-            "offset": 108,
-            "absolute_address": 108
+            "offset": 80,
+            "absolute_address": 80
           },
           "memset_L2": {
             "name": "memset_L2",
             "bank": 0,
             "offset": 60,
             "absolute_address": 60
+          },
+          "memset_L4": {
+            "name": "memset_L4",
+            "bank": 0,
+            "offset": 108,
+            "absolute_address": 108
           },
           "memset": {
             "name": "memset",
@@ -706,30 +712,24 @@
             "bank": 0,
             "offset": 40,
             "absolute_address": 40
-          },
-          "memset_L3": {
-            "name": "memset_L3",
-            "bank": 0,
-            "offset": 80,
-            "absolute_address": 80
           }
         },
         "data_labels": {},
         "unresolved_references": {
-          "26": {
-            "label": "memset_L1",
-            "ref_type": "branch"
-          },
           "19": {
             "label": "memset_L3",
             "ref_type": "branch"
           },
-          "14": {
-            "label": "memset_L4",
+          "26": {
+            "label": "memset_L1",
             "ref_type": "branch"
           },
           "9": {
             "label": "memset_L1",
+            "ref_type": "branch"
+          },
+          "14": {
+            "label": "memset_L4",
             "ref_type": "branch"
           },
           "13": {
@@ -1007,23 +1007,11 @@
         ],
         "data": [],
         "labels": {
-          "memcpy": {
-            "name": "memcpy",
+          "memcpy_L1": {
+            "name": "memcpy_L1",
             "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
-          "memcpy_L2": {
-            "name": "memcpy_L2",
-            "bank": 0,
-            "offset": 60,
-            "absolute_address": 60
-          },
-          "memcpy_L4": {
-            "name": "memcpy_L4",
-            "bank": 0,
-            "offset": 124,
-            "absolute_address": 124
+            "offset": 40,
+            "absolute_address": 40
           },
           "memcpy_L3": {
             "name": "memcpy_L3",
@@ -1031,29 +1019,41 @@
             "offset": 96,
             "absolute_address": 96
           },
-          "memcpy_L1": {
-            "name": "memcpy_L1",
+          "memcpy_L2": {
+            "name": "memcpy_L2",
             "bank": 0,
-            "offset": 40,
-            "absolute_address": 40
+            "offset": 60,
+            "absolute_address": 60
+          },
+          "memcpy": {
+            "name": "memcpy",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
+          "memcpy_L4": {
+            "name": "memcpy_L4",
+            "bank": 0,
+            "offset": 124,
+            "absolute_address": 124
           }
         },
         "data_labels": {},
         "unresolved_references": {
-          "23": {
-            "label": "memcpy_L3",
-            "ref_type": "branch"
-          },
-          "14": {
-            "label": "memcpy_L4",
-            "ref_type": "branch"
-          },
           "30": {
             "label": "memcpy_L1",
             "ref_type": "branch"
           },
           "13": {
             "label": "memcpy_L2",
+            "ref_type": "branch"
+          },
+          "14": {
+            "label": "memcpy_L4",
+            "ref_type": "branch"
+          },
+          "23": {
+            "label": "memcpy_L3",
             "ref_type": "branch"
           },
           "9": {

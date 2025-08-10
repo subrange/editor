@@ -55,6 +55,14 @@ enum Commands {
         /// Print IR to stdout before lowering
         #[arg(long)]
         print_ir: bool,
+        
+        /// Save IR to file with .ir extension
+        #[arg(long)]
+        save_ir: bool,
+        
+        /// Specify output path for IR file (used with --save-ir)
+        #[arg(long)]
+        ir_output: Option<PathBuf>,
     },
 }
 
@@ -74,8 +82,8 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Compile { input, output, print_ir } => {
-            if let Err(e) = compile_c99_file(&input, output.as_deref(), print_ir) {
+        Commands::Compile { input, output, print_ir, save_ir, ir_output } => {
+            if let Err(e) = compile_c99_file(&input, output.as_deref(), print_ir, save_ir, ir_output.as_deref()) {
                 eprintln!("Error compiling C99 file: {}", e);
                 std::process::exit(1);
             }
@@ -131,6 +139,8 @@ fn compile_c99_file(
     input_path: &std::path::Path,
     output_path: Option<&std::path::Path>,
     print_ir: bool,
+    save_ir: bool,
+    ir_output_path: Option<&std::path::Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Compiling C99 file: {}", input_path.display());
     
@@ -171,23 +181,42 @@ fn compile_c99_file(
             println!("💫 Successfully generated IR");
             println!("🦄 Module contains {} functions", ir_module.functions.len());
             
+            // Format IR output
+            let mut ir_output = String::new();
+            for func in &ir_module.functions {
+                ir_output.push_str(&format!("define {} {{\n", func.name));
+                for (param_id, param_type) in &func.parameters {
+                    ir_output.push_str(&format!("  param %{}: {:?}\n", param_id, param_type));
+                }
+                for block in &func.blocks {
+                    ir_output.push_str(&format!("L{}:\n", block.id));
+                    for inst in &block.instructions {
+                        ir_output.push_str(&format!("  {}\n", inst));
+                    }
+                }
+                ir_output.push_str("}\n");
+            }
+            
             // Print IR if requested
             if print_ir {
                 println!("\n=== IR Output ===");
-                for func in &ir_module.functions {
-                    println!("define {} {{", func.name);
-                    for (param_id, param_type) in &func.parameters {
-                        println!("  param %{}: {:?}", param_id, param_type);
-                    }
-                    for block in &func.blocks {
-                        println!("L{}:", block.id);
-                        for inst in &block.instructions {
-                            println!("  {}", inst);
-                        }
-                    }
-                    println!("}}");
-                }
+                print!("{}", ir_output);
                 println!("=== End IR ===\n");
+            }
+            
+            // Save IR to file if requested
+            if save_ir {
+                let ir_path = if let Some(path) = ir_output_path {
+                    // Use the specified IR output path
+                    path.to_path_buf()
+                } else {
+                    // Default: save next to input file with .ir extension
+                    let mut path = input_path.to_path_buf();
+                    path.set_extension("ir");
+                    path
+                };
+                fs::write(&ir_path, &ir_output)?;
+                println!("IR saved to: {}", ir_path.display());
             }
             
             // Check if main function exists
