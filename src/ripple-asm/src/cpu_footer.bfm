@@ -568,6 +568,23 @@
   )
 }
 
+
+#define alu_mul {
+  @prevword @prevword
+  @lane(@L_SA,
+   [>+<-]
+   >
+   [
+     @prevword < [@nextword+@prevword > + < -]>[<+>-]
+     @nextword -
+   ]
+
+   < @prevword @clear @nextword
+
+   @move_to(@nextwords(2) >, < @prevwords(2))  <
+  )
+}
+
 #define _alu_bin(binop) {
   @prevwords(3)
   @lane(@L_SA,
@@ -681,90 +698,26 @@
   @lane(@L_SA, [->+<])
 }
 
-#define _alu_slt_different_sign {
-  // If the sign is different, then we just move rs's sign to the result cell
-  @lane(@L_SA,
-    @prevword
-
-    @move_to(@prevwords(8) >, < @nextwords(8))
-    <
-    @nextwords(8)
-  )
-}
-
-#define _alu_slt_same_sign {
-  @lane(@L_SA,
-    @nextwords(2)
-    // Clean the old binary representations
-    {repeat(16, @clear @nextword)}
-    >
-    {repeat(16, @clear @prevword)}
-    <
-    @prevwords(2)
-
-    @prevwords(10)
-
-    @move_r
-    @prevword >
-    @move_r <
-  )
-
-  @_cmp_unsigned_lt
-
-  @lane(@L_SA, [->+<])
-
-  @nextwords(8)
-}
-
 #define alu_slt {
-  @prevwords(2)
-  @lane_start(@L_SA) // MARK: Bad Pavlo, starts at sA, ends at sB
-  [-@nextword+@nextword+@prevwords(2)]@nextwords(2)
-
-  @prevwords(3)
-  [->+<]>
-  [-@nextwords(2)+@nextword+@prevwords(3)]@nextwords(3)
-  @lane_end(@L_SB)
-
-  @dec2bin(@sA)
-  @dec2bin(@sB)
-
-  @nextwords(10)
-  @lane_start(@L_SA)
-
-  [-@prevword+@prevword+@prevword+@nextwords(3)] @prevwords(3) @move_to(@nextwords(3), @prevwords(3))
-  >
-  [-@prevword+@prevword+@prevword+@nextwords(3)] @prevwords(3) @move_to(@nextwords(3), @prevwords(3))
-  <
+  // Unsigned comparison is the same as signed minus bias
 
   @prevwords(1)
 
-  [->+<]
-  >+
-
-  @switch(3, @default, @lane_end(@L_SB), @lane_start(@L_SB))
-  @case(3, @_alu_slt_same_sign, @lane_end(@L_SB), @lane_start(@L_SB))
-  @case(2, @_alu_slt_different_sign, @lane_end(@L_SB), @lane_start(@L_SB)) // When signs are different, the one with 0 is bigger. We can just copy the sign of the second operand
-  @case(1, @_alu_slt_same_sign, @lane_end(@L_SB), @lane_start(@L_SB))
-
-  @prevwords(8)
-  @lane_end(@L_SB)
-
-  // Cleanup
-  @prevword
-  @lane(@L_SA, @clear > @clear <)
-  @nextword
-
   @lane(@L_SA,
-    @nextwords(8)
-    {repeat(18, @clear @nextword)}
+    @set(0x8000)
     >
-    {repeat(18, @clear @prevword)}
+    @set(0x8000)
+
+    [-<@prevword-@nextword>]
     <
-    @prevwords(8)
+    [-@prevwords(2)-@nextwords(2)]
+
+    @prevword
+
+    @lt
+
+    @move_to(@nextwords(2) >, < @prevwords(2)) <
   )
-
-
 }
 
 #define alu_sltu {
@@ -1431,6 +1384,7 @@
 #define add  @ophandler(@two_registers_op(@alu_add))
 #define sub  @ophandler(@two_registers_op(@alu_sub))
 #define mod  @ophandler(@two_registers_op(@alu_mod))
+#define mul  @ophandler(@two_registers_op(@alu_mul))
 #define div  @ophandler(@two_registers_op(@alu_div))
 #define and  @ophandler(@two_registers_op(@alu_and))
 #define or   @ophandler(@two_registers_op(@alu_or))
@@ -1441,8 +1395,9 @@
 #define sltu @ophandler(@two_registers_op(@alu_sltu))
 
 #define addi @ophandler(@one_register_op(@alu_add))
-#define modi  @ophandler(@two_registers_op(@alu_mod))
-#define divi  @ophandler(@two_registers_op(@alu_div))
+#define modi  @ophandler(@one_register_op(@alu_mod))
+#define divi  @ophandler(@one_register_op(@alu_div))
+#define muli  @ophandler(@one_register_op(@alu_mul))
 #define andi @ophandler(@one_register_op(@alu_and))
 #define ori  @ophandler(@one_register_op(@alu_or))
 #define xori @ophandler(@one_register_op(@alu_xor))
@@ -1526,11 +1481,11 @@
     @switch(32, @default, >, <)
       @opcase(#OP_MODI,   @modi )
       @opcase(#OP_DIVI,   @divi )
-      @opcase(#OP_MULI,   $ )
+      @opcase(#OP_MULI,   @muli )
 
       @opcase(#OP_MOD,   @mod )
       @opcase(#OP_DIV,   @div )
-      @opcase(#OP_MUL,   $ )
+      @opcase(#OP_MUL,   @mul )
 
       @opcase(#OP_BRK,   $ )
 

@@ -43,7 +43,7 @@ impl IRLowerer {
         Self {
             reg_assigner: SimpleRegAssigner::new(),
             temp_to_reg: HashMap::new(),
-            scratch_reg: Reg::R1, // Use R1 as scratch register
+            scratch_reg: Reg::R3, // Use R3 as scratch register (R1/R2 don't exist)
         }
     }
     

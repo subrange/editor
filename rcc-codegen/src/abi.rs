@@ -22,7 +22,7 @@ pub enum AbiError {
 /// 
 /// Register Usage:
 /// - R0: Zero/scratch register
-/// - R1-R2: Scratch registers  
+/// - R3-R4: Scratch registers (R1-R2 don't exist)  
 /// - R3-R8: Argument/return value registers
 /// - R9-R12: Callee-saved registers
 /// - R13: Stack bank register (always 0 for now)
@@ -42,7 +42,7 @@ impl CallingConvention {
     pub const CALLEE_SAVED: [Reg; 4] = [Reg::R9, Reg::R10, Reg::R11, Reg::R12];
     
     /// Registers that can be freely used by callee
-    pub const CALLER_SAVED: [Reg; 8] = [Reg::R0, Reg::R1, Reg::R2, Reg::R3, Reg::R4, Reg::R5, Reg::R6, Reg::R7];
+    pub const CALLER_SAVED: [Reg; 6] = [Reg::R0, Reg::R3, Reg::R4, Reg::R5, Reg::R6, Reg::R7];
     
     /// Stack registers
     pub const STACK_BANK: Reg = Reg::R13;  // Bank register for stack
@@ -348,12 +348,12 @@ mod tests {
     #[test]
     fn test_call_generation() {
         let frame = Frame::new(0);
-        let args = vec![Reg::R1, Reg::R2];
+        let args = vec![Reg::R5, Reg::R6];
         let call_seq = frame.gen_call("printf", &args).unwrap();
         
         // Should move args to parameter registers and call
-        assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Move(Reg::R3, Reg::R1))));
-        assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Move(Reg::R4, Reg::R2))));
+        assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Move(Reg::R3, Reg::R5))));
+        assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Move(Reg::R4, Reg::R6))));
         assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Call(label) if label == "printf")));
     }
 
@@ -361,7 +361,7 @@ mod tests {
     fn test_too_many_args() {
         let frame = Frame::new(0);
         let args: Vec<Reg> = (0..10).map(|i| match i {
-            0 => Reg::R0, 1 => Reg::R1, 2 => Reg::R2, 3 => Reg::R3, 4 => Reg::R4,
+            0 => Reg::R0, 1 => Reg::R3, 2 => Reg::R4, 3 => Reg::R5, 4 => Reg::R6,
             5 => Reg::R5, 6 => Reg::R6, 7 => Reg::R7, 8 => Reg::R8, _ => Reg::R9,
         }).collect();
         

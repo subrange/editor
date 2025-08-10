@@ -69,8 +69,8 @@ impl LinearScanAllocator {
         // Use caller-saved registers for temporaries
         // Avoid R0 (often used as zero/scratch) and parameter registers during allocation
         let available_regs = vec![
-            Reg::R1, Reg::R2,  // Scratch registers
             // Parameter registers R3-R8 can be used after parameter setup
+            // Note: R1 and R2 don't exist in Ripple VM
             Reg::R3, Reg::R4, Reg::R5, Reg::R6, Reg::R7, Reg::R8,
         ];
         

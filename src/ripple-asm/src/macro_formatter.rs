@@ -39,6 +39,12 @@ impl MacroFormatter {
         opcode_to_macro.insert(Opcode::Blt as u8, "@OP_BLT");
         opcode_to_macro.insert(Opcode::Bge as u8, "@OP_BGE");
         opcode_to_macro.insert(Opcode::Brk as u8, "@OP_BRK");
+        opcode_to_macro.insert(Opcode::Mul as u8, "@OP_MUL");
+        opcode_to_macro.insert(Opcode::Div as u8, "@OP_DIV");
+        opcode_to_macro.insert(Opcode::Mod as u8, "@OP_MOD");
+        opcode_to_macro.insert(Opcode::Muli as u8, "@OP_MULI");
+        opcode_to_macro.insert(Opcode::Divi as u8, "@OP_DIVI");
+        opcode_to_macro.insert(Opcode::Modi as u8, "@OP_MODI");
         
         Self { opcode_to_macro }
     }
@@ -59,7 +65,10 @@ impl MacroFormatter {
         let mut opcode_macro = self.opcode_to_macro
             .get(&instruction.opcode)
             .copied()
-            .unwrap_or("@OP_NOP");
+            .unwrap_or_else(|| {
+                panic!("Unknown opcode {} (0x{:02x}) in macro formatter", 
+                       instruction.opcode, instruction.opcode)
+            });
         
         // Special case for HALT (encoded as NOP 0,0,0)
         if instruction.is_halt() {
@@ -89,7 +98,9 @@ impl MacroFormatter {
                  x == Opcode::And as u8 || x == Opcode::Or as u8 || 
                  x == Opcode::Xor as u8 || x == Opcode::Sll as u8 || 
                  x == Opcode::Srl as u8 || x == Opcode::Slt as u8 || 
-                 x == Opcode::Sltu as u8 || x == Opcode::Jalr as u8
+                 x == Opcode::Sltu as u8 || x == Opcode::Jalr as u8 ||
+                 x == Opcode::Mul as u8 || x == Opcode::Div as u8 ||
+                 x == Opcode::Mod as u8
         );
 
         let is_i_format = matches!(opcode,
@@ -98,7 +109,9 @@ impl MacroFormatter {
                  x == Opcode::Slli as u8 || x == Opcode::Srli as u8 || 
                  x == Opcode::Load as u8 || x == Opcode::Store as u8 ||
                  x == Opcode::Beq as u8 || x == Opcode::Bne as u8 || 
-                 x == Opcode::Blt as u8 || x == Opcode::Bge as u8
+                 x == Opcode::Blt as u8 || x == Opcode::Bge as u8 ||
+                 x == Opcode::Muli as u8 || x == Opcode::Divi as u8 ||
+                 x == Opcode::Modi as u8
         );
 
         let (word1_str, word2_str, word3_str) = if is_r_format {

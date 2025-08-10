@@ -52,7 +52,7 @@ clean:
 # Test target - build a test program with runtime
 test: $(RUNTIME_LIB) crt0.pobj
 	@echo "Building test program with runtime..."
-	@$(RCC) compile ../c-code/test_runtime_simple.c -o test_main.asm
+	@$(RCC) compile ../c-test/tests-runtime/test_runtime_simple.c -o test_main.asm
 	@$(RASM) assemble test_main.asm -o test_main.pobj --bank-size $(BANK_SIZE) --max-immediate $(MAX_IMMEDIATE)
 	@echo "Linking crt0 + runtime archive + test program..."
 	@$(RLINK) crt0.pobj $(RUNTIME_LIB) test_main.pobj -f macro --standalone -o test_standalone.bf

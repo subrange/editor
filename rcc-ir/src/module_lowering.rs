@@ -795,18 +795,32 @@ impl ModuleLowerer {
                     IrBinaryOp::Ne => {
                         // Set dest_reg to 1 if not equal, 0 otherwise
                         
-                        // Get two different temporary registers
-                        let (temp1, temp2) = self.get_comparison_temps("ne");
-                        self.label_counter += 1;
-                        
-                        // Generate the comparison
-                        self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
-                        self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
-                        self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
-                        
-                        // Free temp registers
-                        self.reg_alloc.free_reg(temp1);
-                        self.reg_alloc.free_reg(temp2);
+                        // Special case: if comparing with 0 and dest_reg == left_reg
+                        // We can just check if the value is non-zero
+                        if matches!(rhs, Value::Constant(0)) && dest_reg == left_reg {
+                            // left_reg != 0 can be done with simple SLTU comparisons
+                            // Result = (0 < left_reg) 
+                            let temp = self.get_reg(format!("ne_zero_temp_{}", self.label_counter));
+                            self.instructions.append(&mut self.reg_alloc.take_instructions());
+                            self.label_counter += 1;
+                            
+                            self.instructions.push(AsmInst::LI(temp, 0));
+                            self.instructions.push(AsmInst::Sltu(dest_reg, temp, left_reg)); // dest = 0 < left
+                            self.reg_alloc.free_reg(temp);
+                        } else {
+                            // General case: need two temp registers for comparison
+                            let (temp1, temp2) = self.get_comparison_temps("ne");
+                            self.label_counter += 1;
+                            
+                            // Generate the comparison
+                            self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
+                            self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
+                            self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
+                            
+                            // Free temp registers
+                            self.reg_alloc.free_reg(temp1);
+                            self.reg_alloc.free_reg(temp2);
+                        }
                     }
                     IrBinaryOp::Slt => {
                         // Use SLTU instead of SLT since SLT might be buggy

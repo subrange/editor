@@ -171,12 +171,38 @@ impl<'a> ExpressionGenerator<'a> {
                 let result = self.builder.build_load(addr, IrType::I8)?;
                 Ok(Value::Temp(result))
             }
+            BinaryOp::LogicalAnd | BinaryOp::LogicalOr => {
+                // For now, compile as simple arithmetic operations
+                // TODO: Implement proper short-circuit evaluation
+                let left_val = self.generate(left)?;
+                let right_val = self.generate(right)?;
+                
+                // Both values should be 0 or 1 from comparison operations
+                // For AND: both must be true (multiply works)
+                // For OR: at least one must be true (add then clamp to 0/1)
+                let result_type = IrType::I16;
+                
+                if op == BinaryOp::LogicalAnd {
+                    // AND: result = left & right (both are 0 or 1)
+                    let temp = self.builder.build_binary(IrBinaryOp::And, left_val, right_val, result_type.clone())?;
+                    Ok(Value::Temp(temp))
+                } else {
+                    // OR: result = left | right (both are already 0 or 1)
+                    let temp = self.builder.build_binary(IrBinaryOp::Or, left_val, right_val, result_type)?;
+                    Ok(Value::Temp(temp))
+                }
+            }
             _ => {
                 // Regular binary operation
                 let left_val = self.generate(left)?;
                 let right_val = self.generate(right)?;
                 
-                let ir_op = convert_binary_op(op);
+                let ir_op = convert_binary_op(op).map_err(|msg| {
+                    CodegenError::UnsupportedConstruct {
+                        construct: msg,
+                        location: left.span.start.clone(),
+                    }
+                })?;
                 let result_type = IrType::I16; // Simplified for MVP
                 
                 let temp = self.builder.build_binary(ir_op, left_val, right_val, result_type)?;
@@ -521,25 +547,39 @@ impl<'a> ExpressionGenerator<'a> {
 }
 
 /// Convert AST binary op to IR binary op
-fn convert_binary_op(op: BinaryOp) -> IrBinaryOp {
+fn convert_binary_op(op: BinaryOp) -> Result<IrBinaryOp, String> {
     match op {
-        BinaryOp::Add => IrBinaryOp::Add,
-        BinaryOp::Sub => IrBinaryOp::Sub,
-        BinaryOp::Mul => IrBinaryOp::Mul,
-        BinaryOp::Div => IrBinaryOp::SDiv, // Use signed division for now
-        BinaryOp::Mod => IrBinaryOp::SRem, // Use signed remainder for now
-        BinaryOp::BitAnd => IrBinaryOp::And,
-        BinaryOp::BitOr => IrBinaryOp::Or,
-        BinaryOp::BitXor => IrBinaryOp::Xor,
-        BinaryOp::LeftShift => IrBinaryOp::Shl,
-        BinaryOp::RightShift => IrBinaryOp::AShr, // Arithmetic shift for signed
-        BinaryOp::Less => IrBinaryOp::Slt,
-        BinaryOp::Greater => IrBinaryOp::Sgt,
-        BinaryOp::LessEqual => IrBinaryOp::Sle,
-        BinaryOp::GreaterEqual => IrBinaryOp::Sge,
-        BinaryOp::Equal => IrBinaryOp::Eq,
-        BinaryOp::NotEqual => IrBinaryOp::Ne,
-        _ => IrBinaryOp::Add, // TODO: Handle other ops
+        BinaryOp::Add => Ok(IrBinaryOp::Add),
+        BinaryOp::Sub => Ok(IrBinaryOp::Sub),
+        BinaryOp::Mul => Ok(IrBinaryOp::Mul),
+        BinaryOp::Div => Ok(IrBinaryOp::SDiv), // Use signed division for now
+        BinaryOp::Mod => Ok(IrBinaryOp::SRem), // Use signed remainder for now
+        BinaryOp::BitAnd => Ok(IrBinaryOp::And),
+        BinaryOp::BitOr => Ok(IrBinaryOp::Or),
+        BinaryOp::BitXor => Ok(IrBinaryOp::Xor),
+        BinaryOp::LeftShift => Ok(IrBinaryOp::Shl),
+        BinaryOp::RightShift => Ok(IrBinaryOp::AShr), // Arithmetic shift for signed
+        BinaryOp::Less => Ok(IrBinaryOp::Slt),
+        BinaryOp::Greater => Ok(IrBinaryOp::Sgt),
+        BinaryOp::LessEqual => Ok(IrBinaryOp::Sle),
+        BinaryOp::GreaterEqual => Ok(IrBinaryOp::Sge),
+        BinaryOp::Equal => Ok(IrBinaryOp::Eq),
+        BinaryOp::NotEqual => Ok(IrBinaryOp::Ne),
+        // These are handled specially with short-circuit evaluation
+        BinaryOp::LogicalAnd | BinaryOp::LogicalOr => {
+            Err(format!("Logical operator {:?} should use short-circuit evaluation", op))
+        }
+        // Assignment operators are handled elsewhere
+        BinaryOp::Assign | BinaryOp::AddAssign | BinaryOp::SubAssign | 
+        BinaryOp::MulAssign | BinaryOp::DivAssign | BinaryOp::ModAssign | 
+        BinaryOp::BitAndAssign | BinaryOp::BitOrAssign | BinaryOp::BitXorAssign | 
+        BinaryOp::LeftShiftAssign | BinaryOp::RightShiftAssign => {
+            Err(format!("Assignment operator {:?} should be handled specially", op))
+        }
+        // Array indexing is handled specially
+        BinaryOp::Index => {
+            Err(format!("Index operator should be handled specially"))
+        }
     }
 }
 

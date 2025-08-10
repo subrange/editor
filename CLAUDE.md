@@ -174,8 +174,7 @@ rlink -f macro program.pobj
 - After every change of the C compiler, please make sure you add the test case to `python3 c-test/run_tests.py` and run it to ensure that we don't have any regressions
 - To compile C file to asm, use target/release/rcc compile filename.c (optional -o output.asm) 
 
-- VM opcodes div, mod, divi, modi, and store have been fixed and are now safe to use
-- VM currently has bugs with opcodes: mul, muli, slt - avoid using these in compiler tests for now
+- VM opcodes div, mod, divi, modi, mul, muli, slt, and store have been fixed and are now safe to use
 - In c-test tests, use if(condition) putchar('1') else putchar('N') to make sure we actually have some asserts and can capture it in run_tests.py
 
 - Rasm, Rlink are placed in src/ripple-asm/target/release/ and can be run from there
