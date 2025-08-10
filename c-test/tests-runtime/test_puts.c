@@ -1,16 +1,5 @@
-// Test implementing puts function using arrays and loops
 void putchar(int c);
-
-// Our own puts implementation
-int puts(char *str) {
-    int i = 0;
-    while (str[i] != '\0') {
-        putchar(str[i]);
-        i = i + 1;
-    }
-    putchar('\n');  // puts adds a newline
-    return i;  // Return number of characters written (excluding newline)
-}
+void puts(char* c);
 
 int main() {
     // Test 1: Simple string

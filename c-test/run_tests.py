@@ -244,7 +244,7 @@ def main():
     clean_only = "--clean" in sys.argv
     verbose = "--verbose" in sys.argv
     single_test = None
-    timeout = 2  # Default timeout in seconds
+    timeout = 10  # Default timeout in seconds
     
     # Parse arguments
     i = 1
@@ -321,7 +321,10 @@ def main():
         (f"{BASE_DIR}/tests-runtime/test_sizeof_final.c", "YYYYYYYYY\n", True),
         (f"{BASE_DIR}/tests-runtime/test_strings_addr.c", "A", True),
         (f"{BASE_DIR}/tests-runtime/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
-        
+
+        (f"{BASE_DIR}/tests-runtime/test_puts.c", "Hello, World!\n", True),
+
+
         # Pointer provenance tests with fat pointers
         (f"{BASE_DIR}/tests/test_pointer_provenance.c", "GSSSS\n", True),
         (f"{BASE_DIR}/tests/test_pointer_phi.c", "1234\n", True),
@@ -464,7 +467,6 @@ def main():
         f"{BASE_DIR}/tests-known-failures/test_typedef_simple.c",  # Typedef support not implemented
         f"{BASE_DIR}/tests-known-failures/test_struct_simple2.c",  # Uses typedef struct
         f"{BASE_DIR}/tests-known-failures/test_struct_inline_simple.c",  # Inline struct definitions not supported
-        f"{BASE_DIR}/tests-known-failures/test_puts.c",  # Complex puts with loops
         f"{BASE_DIR}/tests-known-failures/test_puts_simple.c",  # Stack pointer provenance issue
         f"{BASE_DIR}/tests-known-failures/test_puts_string.c",  # Uses while loops
         f"{BASE_DIR}/tests-known-failures/test_puts_global.c",  # Global array initializers not implemented

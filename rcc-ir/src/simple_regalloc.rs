@@ -4,7 +4,7 @@
 //! This is a minimal, spill-only register allocator with a simple free list.
 
 use rcc_codegen::{AsmInst, Reg};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Simple register allocator with spill support
 pub struct SimpleRegAlloc {
@@ -13,10 +13,10 @@ pub struct SimpleRegAlloc {
     
     /// Map from register to what it contains (for spill decisions)
     /// Key is register, value is descriptive string (e.g., "t5", "const_42")
-    reg_contents: HashMap<Reg, String>,
+    reg_contents: BTreeMap<Reg, String>,
     
     /// Map from spilled values to their stack offsets
-    spill_slots: HashMap<String, i16>,
+    spill_slots: BTreeMap<String, i16>,
     
     /// Next available spill slot offset (relative to FP)
     next_spill_offset: i16,
@@ -32,8 +32,8 @@ impl SimpleRegAlloc {
             // Initialize in reverse order so R5 is preferred (popped last)
             // Following the formalized doc: POOL = [R5, R6, R7, R8, R9, R10, R11]
             free_list: vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5],
-            reg_contents: HashMap::new(),
-            spill_slots: HashMap::new(),
+            reg_contents: BTreeMap::new(),
+            spill_slots: BTreeMap::new(),
             next_spill_offset: 0,
             instructions: Vec::new(),
         }
@@ -91,6 +91,85 @@ impl SimpleRegAlloc {
         // Load constant into the register
         self.instructions.push(AsmInst::LI(victim, value));
         victim
+    }
+    
+    /// Get a temporary register that won't be tracked for spilling
+    /// This is useful for short-lived temporaries in computations
+    pub fn get_temp_reg(&mut self) -> Option<Reg> {
+        // Try to get a free register without tracking it
+        self.free_list.pop()
+    }
+    
+    /// Mark a register as containing a value without spilling
+    /// This prevents the register from being chosen for spilling
+    pub fn mark_in_use(&mut self, reg: Reg, value: String) {
+        self.reg_contents.insert(reg, value);
+        // Remove from free list if it's there
+        self.free_list.retain(|&r| r != reg);
+    }
+    
+    /// Get two different registers for operations that need them
+    /// This ensures they are different and handles spilling
+    pub fn get_two_regs(&mut self, value1: String, value2: String) -> ((Reg, Reg), Vec<AsmInst>) {
+        let mut insts = Vec::new();
+        
+        // Try to get both from free list
+        if self.free_list.len() >= 2 {
+            let reg2 = self.free_list.pop().unwrap();
+            let reg1 = self.free_list.pop().unwrap();
+            self.reg_contents.insert(reg1, value1.clone());
+            self.reg_contents.insert(reg2, value2.clone());
+            return ((reg1, reg2), insts);
+        }
+        
+        // If we have one free, use it for reg1
+        if let Some(reg1) = self.free_list.pop() {
+            self.reg_contents.insert(reg1, value1.clone());
+            
+            // Need to spill for reg2, but don't spill reg1
+            let victims: Vec<_> = self.reg_contents.keys()
+                .filter(|&&r| r != reg1)
+                .copied()
+                .collect();
+            
+            if let Some(&victim) = victims.first() {
+                let victim_value = self.reg_contents.remove(&victim).unwrap();
+                let spill_offset = self.get_spill_slot(&victim_value);
+                insts.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim_value, spill_offset)));
+                insts.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset));
+                insts.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
+                self.reg_contents.insert(victim, value2.clone());
+                return ((reg1, victim), insts);
+            }
+        }
+        
+        // Need to spill for both
+        let victims: Vec<_> = self.reg_contents.keys().copied().collect();
+        if victims.len() >= 2 {
+            let reg1 = victims[0];
+            let reg2 = victims[1];
+            
+            // Spill reg1's current value
+            let victim1_value = self.reg_contents.remove(&reg1).unwrap();
+            let spill_offset1 = self.get_spill_slot(&victim1_value);
+            insts.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim1_value, spill_offset1)));
+            insts.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset1));
+            insts.push(AsmInst::Store(reg1, Reg::R13, Reg::R12));
+            
+            // Spill reg2's current value
+            let victim2_value = self.reg_contents.remove(&reg2).unwrap();
+            let spill_offset2 = self.get_spill_slot(&victim2_value);
+            insts.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim2_value, spill_offset2)));
+            insts.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset2));
+            insts.push(AsmInst::Store(reg2, Reg::R13, Reg::R12));
+            
+            self.reg_contents.insert(reg1, value1);
+            self.reg_contents.insert(reg2, value2);
+            return ((reg1, reg2), insts);
+        }
+        
+        // Fallback - should never happen if we have at least 2 allocatable registers
+        panic!("Cannot allocate two registers");
     }
     
     /// Free a register, returning it to the free list

@@ -10,10 +10,10 @@ use std::fmt;
 /// - R0-R15: General purpose registers (R0 is typically zero/scratch)
 /// - PC, PCB: Program counter and program counter bank
 /// - RA, RAB: Return address and return address bank
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Reg {
     // General purpose registers
-    R0, R1, R2, R3, R4, R5, R6, R7,
+    R0, R3, R4, R5, R6, R7,
     R8, R9, R10, R11, R12, R13, R14, R15,
     
     // Special registers
@@ -27,8 +27,6 @@ impl fmt::Display for Reg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Reg::R0 => write!(f, "R0"),
-            Reg::R1 => write!(f, "R1"),
-            Reg::R2 => write!(f, "R2"),
             Reg::R3 => write!(f, "R3"),
             Reg::R4 => write!(f, "R4"),
             Reg::R5 => write!(f, "R5"),
@@ -187,8 +185,8 @@ mod tests {
     #[test]
     fn test_instruction_display() {
         assert_eq!(format!("{}", AsmInst::LI(Reg::R3, 42)), "LI R3, 42");
-        assert_eq!(format!("{}", AsmInst::Add(Reg::R1, Reg::R2, Reg::R3)), "ADD R1, R2, R3");
-        assert_eq!(format!("{}", AsmInst::Store(Reg::R3, Reg::R0, Reg::R1)), "STORE R3, R0, R1");
+        assert_eq!(format!("{}", AsmInst::Add(Reg::R3, Reg::R4, Reg::R5)), "ADD R3, R4, R5");
+        assert_eq!(format!("{}", AsmInst::Store(Reg::R3, Reg::R0, Reg::R0)), "STORE R3, R0, R0");
         assert_eq!(format!("{}", AsmInst::Label("main".to_string())), "main:");
         assert_eq!(format!("{}", AsmInst::Comment("Hello world".to_string())), "; Hello world");
     }

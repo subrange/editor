@@ -8,11 +8,11 @@ puts:
     ADDI R14, R14, 1
     ADD R15, R14, R0
     LI R4, 0
-    SLTU R6, R3, R4
-    SLTU R7, R4, R3
-    OR R5, R6, R7
-    LI R7, 1
-    SUB R5, R7, R5
+    SLTU R7, R3, R4
+    SLTU R6, R4, R3
+    OR R5, R7, R6
+    LI R6, 1
+    SUB R5, R6, R5
     BNE R5, R0, puts_L1
     BEQ R0, R0, puts_L3
 puts_L1:

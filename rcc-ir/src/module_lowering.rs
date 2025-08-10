@@ -686,9 +686,10 @@ impl ModuleLowerer {
                         
                         // Load bank tag from next word
                         let next_addr = self.get_reg(format!("next_addr_{}", self.label_counter));
+                        self.instructions.push(AsmInst::AddI(next_addr, ptr_reg, 1));
+                        // Get bank_reg AFTER using next_addr to avoid spilling next_addr before use
                         let bank_reg = self.get_reg(format!("load_bank_{}", self.label_counter));
                         self.label_counter += 1;
-                        self.instructions.push(AsmInst::AddI(next_addr, ptr_reg, 1));
                         self.instructions.push(AsmInst::Load(bank_reg, bank.clone(), next_addr));
                         
                         // Store bank tag for later use
@@ -766,12 +767,12 @@ impl ModuleLowerer {
                     IrBinaryOp::Eq => {
                         // Set dest_reg to 1 if equal, 0 otherwise
                         // Strategy: result = !(left != right)
-                        // Allocate temp registers using centralized allocator
-                        let temp1 = self.reg_alloc.get_reg(format!("eq_temp1_{}", self.label_counter));
-                        let temp2 = self.reg_alloc.get_reg(format!("eq_temp2_{}", self.label_counter));
-                        self.label_counter += 1;
-                        self.instructions.append(&mut self.reg_alloc.take_instructions());
                         
+                        // Get two different temporary registers
+                        let (temp1, temp2) = self.get_comparison_temps("eq");
+                        self.label_counter += 1;
+                        
+                        // Generate the comparison
                         self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
                         self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
                         self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
@@ -781,21 +782,24 @@ impl ModuleLowerer {
                         self.reg_alloc.free_reg(temp2);
                         
                         // Now invert the result: dest = 1 - dest
-                        let temp3 = self.reg_alloc.get_reg(format!("eq_temp3_{}", self.label_counter));
+                        // IMPORTANT: Make sure dest_reg is tracked so it doesn't get reused as temp3
+                        self.reg_contents.insert(dest_reg, format!("eq_result_{}", result));
+                        self.free_regs.retain(|&r| r != dest_reg);
+                        
+                        let temp3 = self.get_single_temp("eq_inv");
                         self.label_counter += 1;
-                        self.instructions.append(&mut self.reg_alloc.take_instructions());
                         self.instructions.push(AsmInst::LI(temp3, 1));
                         self.instructions.push(AsmInst::Sub(dest_reg, temp3, dest_reg));
                         self.reg_alloc.free_reg(temp3);
                     }
                     IrBinaryOp::Ne => {
                         // Set dest_reg to 1 if not equal, 0 otherwise
-                        // Allocate temp registers using centralized allocator
-                        let temp1 = self.reg_alloc.get_reg(format!("ne_temp1_{}", self.label_counter));
-                        let temp2 = self.reg_alloc.get_reg(format!("ne_temp2_{}", self.label_counter));
-                        self.label_counter += 1;
-                        self.instructions.append(&mut self.reg_alloc.take_instructions());
                         
+                        // Get two different temporary registers
+                        let (temp1, temp2) = self.get_comparison_temps("ne");
+                        self.label_counter += 1;
+                        
+                        // Generate the comparison
                         self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
                         self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
                         self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
@@ -824,9 +828,8 @@ impl ModuleLowerer {
                     IrBinaryOp::Sge => {
                         // a >= b is !(a < b)
                         self.instructions.push(AsmInst::Sltu(dest_reg, left_reg, right_reg));
-                        let temp = self.reg_alloc.get_reg(format!("sge_temp_{}", self.label_counter));
+                        let temp = self.get_single_temp("sge");
                         self.label_counter += 1;
-                        self.instructions.append(&mut self.reg_alloc.take_instructions());
                         self.instructions.push(AsmInst::LI(temp, 1));
                         self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
                         self.reg_alloc.free_reg(temp);
@@ -1448,6 +1451,31 @@ impl ModuleLowerer {
     }
     
     /// Get a register, spilling if necessary - now uses centralized allocator
+    /// Get two temporary registers for comparison operations
+    /// Ensures they are different registers and handles spilling if necessary
+    fn get_comparison_temps(&mut self, op_name: &str) -> (Reg, Reg) {
+        // Use the new method that guarantees two different registers
+        let ((temp1, temp2), mut spill_insts) = self.reg_alloc.get_two_regs(
+            format!("{}_temp1_{}", op_name, self.label_counter),
+            format!("{}_temp2_{}", op_name, self.label_counter)
+        );
+        self.instructions.append(&mut spill_insts);
+        (temp1, temp2)
+    }
+    
+    /// Get a single temporary register for operations
+    fn get_single_temp(&mut self, op_name: &str) -> Reg {
+        // Try to get a temporary register that won't be spilled
+        if let Some(t) = self.reg_alloc.get_temp_reg() {
+            return t;
+        }
+        
+        // Fall back to regular allocation with spilling
+        let temp = self.reg_alloc.get_reg(format!("{}_{}", op_name, self.label_counter));
+        self.instructions.append(&mut self.reg_alloc.take_instructions());
+        temp
+    }
+    
     fn get_reg(&mut self, for_value: String) -> Reg {
         // Use the centralized allocator
         let reg = self.reg_alloc.get_reg(for_value.clone());
