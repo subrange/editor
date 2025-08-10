@@ -2,21 +2,25 @@
 """
 Test runner for the Ripple C compiler
 
-Usage: python3 run_tests.py [options] [test_file]
+Can be run from either the project root or the c-test directory.
+
+Usage: python3 c-test/run_tests.py [options] [test_name]
+   or: python3 run_tests.py [options] [test_name] (from c-test dir)
 
 Options:
   --no-cleanup  Don't clean up generated files after tests
   --clean       Only clean the build directory and exit
   --timeout N   Set timeout in seconds for test execution (default: 2)
   --verbose     Show output from test programs as they run
-  test_file     Optional: Path to a single test file to run
+  test_name     Optional: Name of a single test to run (without path or .c extension)
 
 Examples:
-  python3 run_tests.py                              # Run all tests
-  python3 run_tests.py tests-runtime/test_hello.c   # Run single test
-  python3 run_tests.py --no-cleanup tests-runtime/test_add.c  # Run single test, keep artifacts
-  python3 run_tests.py --timeout 10                 # Run with 10 second timeout
-  python3 run_tests.py --verbose                    # Show test program output
+  python3 c-test/run_tests.py                    # Run all tests (from root)
+  python3 c-test/run_tests.py test_hello         # Run single test by name
+  python3 c-test/run_tests.py test_add.c         # Also accepts with .c extension
+  python3 c-test/run_tests.py --no-cleanup test_add  # Run single test, keep artifacts
+  python3 c-test/run_tests.py --timeout 10       # Run with 10 second timeout
+  python3 c-test/run_tests.py --verbose          # Show test program output
 
 Prerequisites:
 - Build the compiler: cargo build --release (in project root)
@@ -42,19 +46,41 @@ GREEN = '\033[0;32m'
 YELLOW = '\033[1;33m'
 NC = '\033[0m'  # No Color
 
-# Build paths
-RCC = "../target/release/rcc"
-RASM = "../src/ripple-asm/target/release/rasm"
-RLINK = "../src/ripple-asm/target/release/rlink"
+# Detect if script is being run from root or c-test directory
+# We check if we're in a directory containing c-test or if we're already in c-test
+current_dir = os.getcwd()
+if os.path.exists('c-test') and os.path.isdir('c-test'):
+    # Running from root directory
+    BASE_DIR = "c-test"
+    PROJECT_ROOT = "."
+elif os.path.basename(current_dir) == 'c-test':
+    # Running from c-test directory
+    BASE_DIR = "."
+    PROJECT_ROOT = ".."
+else:
+    # Try to detect based on parent directory
+    parent_dir = os.path.dirname(current_dir)
+    if os.path.exists(os.path.join(parent_dir, 'c-test')):
+        BASE_DIR = os.path.join(parent_dir, 'c-test')
+        PROJECT_ROOT = parent_dir
+    else:
+        # Default to assuming we're in c-test
+        BASE_DIR = "."
+        PROJECT_ROOT = ".."
+
+# Build paths (relative to project root)
+RCC = f"{PROJECT_ROOT}/target/release/rcc"
+RASM = f"{PROJECT_ROOT}/src/ripple-asm/target/release/rasm"
+RLINK = f"{PROJECT_ROOT}/src/ripple-asm/target/release/rlink"
 RBT = "rbt"  # Global binary
 
 # Runtime files
-RUNTIME_DIR = "../runtime"
+RUNTIME_DIR = f"{PROJECT_ROOT}/runtime"
 CRT0 = f"{RUNTIME_DIR}/crt0.pobj"
 RUNTIME_LIB = f"{RUNTIME_DIR}/libruntime.par"
 
-# Build directory for temporary artifacts
-BUILD_DIR = "build"
+# Build directory for temporary artifacts (inside c-test)
+BUILD_DIR = f"{BASE_DIR}/build"
 
 # Assembler settings (must match Makefile)
 BANK_SIZE = 4096
@@ -65,8 +91,14 @@ def run_command(cmd, timeout=2):
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
         return result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired:
-        return -1, "", "Timeout"
+    except subprocess.TimeoutExpired as e:
+        # Capture any partial output that was produced before timeout
+        stdout = e.stdout if e.stdout else ""
+        stderr = e.stderr if e.stderr else ""
+        timeout_msg = f"Timeout after {timeout}s"
+        if stderr:
+            timeout_msg = f"{timeout_msg}\nStderr: {stderr}"
+        return -1, stdout, timeout_msg
 
 def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False):
     """Compile a C file and run it, checking output
@@ -131,7 +163,10 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
     
     ret, stdout, stderr = run_command(f"bf {expanded_file}", timeout=timeout)
     if ret == -1:
-        return False, "Execution timeout", has_provenance_warning
+        # Show partial output if verbose mode is enabled and timeout occurred
+        if verbose and stdout:
+            print(f"    Partial output before timeout: {repr(stdout)}")
+        return False, stderr, has_provenance_warning
     
     if verbose and stdout:
         print(f"    Output: {repr(stdout)}")
@@ -223,7 +258,8 @@ def main():
             else:
                 print("Error: --timeout requires a value")
                 return 1
-        elif not arg.startswith("--") and arg.endswith(".c"):
+        elif not arg.startswith("--"):
+            # Accept test names with or without .c extension
             single_test = arg
         i += 1
     
@@ -253,82 +289,96 @@ def main():
     
     tests = [
         # Tests with crt0 only (stack setup but no runtime library functions)
-        ("tests/test_inline_asm.c", "Y\n", False),
+        (f"{BASE_DIR}/tests/test_inline_asm.c", "Y\n", False),
         
         # Tests with full runtime (crt0 + libruntime.par)
-        ("tests-runtime/test_runtime_simple.c", "RT\n", True),
-        ("tests-runtime/test_runtime_full.c", "Hi!\nOK\n", True),
-        ("tests-runtime/test_external_putchar.c", "Hi\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_runtime_simple.c", "RT\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_runtime_full.c", "Hi!\nOK\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_external_putchar.c", "Hi\n", True),
         
         # Tests moved from tests/ directory (all use putchar)
-        ("tests-runtime/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", True),
-        ("tests-runtime/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", True),
-        ("tests-runtime/test_sizeof_simple.c", "1 2 2 :\n", True),
-        ("tests-runtime/test_globals.c", "*A\n", True),
-        ("tests-runtime/test_strings.c", "Plea", True),
-        ("tests-runtime/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!", True),
-        ("tests-runtime/test_add.c", "Y\n", True),
-        ("tests-runtime/test_array_decl.c", "123\n", True),
-        ("tests-runtime/test_while_simple.c", "YY\n", True),
-        ("tests-runtime/test_hello.c", "Hello\n", True),
-        ("tests-runtime/test_simple_putchar.c", "AB\n", True),
-        ("tests-runtime/test_address_of.c", "OK\n", True),
-        ("tests-runtime/test_struct_basic.c", "Y\n", True),
-        ("tests-runtime/test_array_init.c", "1234\n", True),
-        ("tests-runtime/test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", True),
-        ("tests-runtime/test_pointers_comprehensive.c", "12345\n", True),
-        ("tests-runtime/test_while_debug.c", "ABL0L1L2C\n", True),
-        ("tests-runtime/test_sizeof.c", "123456\n", True),
-        ("tests-runtime/test_sizeof_final.c", "YYYYYYYYY\n", True),
-        ("tests-runtime/test_strings_addr.c", "A", True),
-        ("tests-runtime/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
-        ("tests-runtime/test_struct_inline.c", "YY\n", True),
-        ("tests-runtime/test_struct_simple.c", "12345\n", True),
-        ("tests-runtime/test_puts_debug.c", "ABC\n", True),
-        ("tests-runtime/test_puts_string_literal.c", "XYZ\n", True),
-        ("tests-runtime/test-cond.c", "T", True),
-        ("tests-runtime/test_pointer_gritty.c", "7", True),
+        (f"{BASE_DIR}/tests-runtime/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_sizeof_simple.c", "1 2 2 :\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_globals.c", "*A\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_strings.c", "Plea", True),
+        (f"{BASE_DIR}/tests-runtime/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!", True),
+        (f"{BASE_DIR}/tests-runtime/test_add.c", "Y\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_array_decl.c", "123\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_while_simple.c", "YY\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_hello.c", "Hello\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_simple_putchar.c", "AB\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_address_of.c", "OK\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_struct_basic.c", "Y\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_array_init.c", "1234\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_pointers_comprehensive.c", "12345\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_while_debug.c", "ABL0L1L2C\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_sizeof.c", "123456\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_sizeof_final.c", "YYYYYYYYY\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_strings_addr.c", "A", True),
+        (f"{BASE_DIR}/tests-runtime/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_struct_inline.c", "YY\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_struct_simple.c", "12345\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_puts_debug.c", "ABC\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_puts_string_literal.c", "XYZ\n", True),
+        (f"{BASE_DIR}/tests-runtime/test-cond.c", "T", True),
+        (f"{BASE_DIR}/tests-runtime/test_pointer_gritty.c", "7", True),
     ]
     
     # If single test specified, filter the test list
     if single_test:
-        # Find the test in the list
+        # Normalize the test name - remove .c extension if present, remove path if present
+        test_name = os.path.basename(single_test)
+        if test_name.endswith('.c'):
+            test_name = test_name[:-2]
+        
+        # Find the test in the list by matching the basename without extension
         matching_test = None
         for test in tests:
-            if test[0] == single_test:
+            test_file_basename = os.path.basename(test[0])
+            if test_file_basename.endswith('.c'):
+                test_file_basename = test_file_basename[:-2]
+            if test_file_basename == test_name:
                 matching_test = test
                 break
         
         if not matching_test:
-            # If not found in tests list, try to run it anyway
-            # Check if file exists
-            if not os.path.exists(single_test):
-                print(f"Error: Test file '{single_test}' not found")
+            # If not found in tests list, search for the file in test directories
+            possible_paths = [
+                f"{BASE_DIR}/tests/{test_name}.c",
+                f"{BASE_DIR}/tests-runtime/{test_name}.c",
+                f"{BASE_DIR}/tests-known-failures/{test_name}.c",
+            ]
+            
+            found_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    found_path = path
+                    break
+            
+            if not found_path:
+                print(f"Error: Test '{test_name}' not found in any test directory")
+                print(f"Searched in: tests/, tests-runtime/, tests-known-failures/")
                 return 1
             
-            # Determine if it should use runtime based on directory or content
-            # Check if file uses putchar or other runtime functions
-            use_runtime = True  # Default to using runtime for safety
+            # Determine if it should use runtime based on directory
+            use_runtime = "tests-runtime" in found_path or "tests-known-failures" in found_path
             
-            # You could also check file content if needed:
-            # with open(single_test, 'r') as f:
-            #     content = f.read()
-            #     use_runtime = 'putchar' in content or 'puts' in content
-            
-            print(f"Running single test: {single_test}")
+            print(f"Running single test: {found_path}")
             print(f"Note: Expected output not defined in test list, will show actual output")
             print("-" * 60)
             
-            success, message, has_provenance_warning = compile_and_run(single_test, None, use_runtime, timeout, verbose)
+            success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose)
             
             if success:
                 if has_provenance_warning:
-                    print(f"{YELLOW}✓ {single_test}: COMPILED WITH WARNINGS{NC} (pointer provenance unknown)")
+                    print(f"{YELLOW}✓ {found_path}: COMPILED WITH WARNINGS{NC} (pointer provenance unknown)")
                 else:
-                    print(f"{GREEN}✓ {single_test}: COMPILED AND RAN{NC}")
-                print(f"Output: {message}")
+                    print(f"{GREEN}✓ {found_path}: COMPILED AND RAN{NC}")
+                print(f"Output: {repr(message)}")
             else:
-                print(f"{RED}✗ {single_test}{NC}: {message}")
+                print(f"{RED}✗ {found_path}{NC}: {message}")
             
             if not no_cleanup:
                 cleanup_files()
@@ -337,7 +387,7 @@ def main():
         
         # Found in test list, run with expected output
         tests = [matching_test]
-        print(f"Running single test: {single_test}")
+        print(f"Running single test: {matching_test[0]}")
     
     # Sort tests alphabetically by filename
     tests.sort(key=lambda x: x[0])
@@ -403,15 +453,15 @@ def main():
     
     # Known failures section (tests that are expected to fail)
     known_failures = [
-        "tests-known-failures/test_typedef.c",  # Typedef support not implemented
-        "tests-known-failures/test_typedef_simple.c",  # Typedef support not implemented
-        "tests-known-failures/test_struct_simple2.c",  # Uses typedef struct
-        "tests-known-failures/test_struct_inline_simple.c",  # Inline struct definitions not supported
-        "tests-known-failures/test_puts.c",  # Complex puts with loops
-        "tests-known-failures/test_puts_simple.c",  # Stack pointer provenance issue
-        "tests-known-failures/test_puts_string.c",  # Uses while loops
-        "tests-known-failures/test_puts_global.c",  # Global array initializers not implemented
-        "tests-known-failures/test_strings_simple.c",  # Function redefinition error
+        f"{BASE_DIR}/tests-known-failures/test_typedef.c",  # Typedef support not implemented
+        f"{BASE_DIR}/tests-known-failures/test_typedef_simple.c",  # Typedef support not implemented
+        f"{BASE_DIR}/tests-known-failures/test_struct_simple2.c",  # Uses typedef struct
+        f"{BASE_DIR}/tests-known-failures/test_struct_inline_simple.c",  # Inline struct definitions not supported
+        f"{BASE_DIR}/tests-known-failures/test_puts.c",  # Complex puts with loops
+        f"{BASE_DIR}/tests-known-failures/test_puts_simple.c",  # Stack pointer provenance issue
+        f"{BASE_DIR}/tests-known-failures/test_puts_string.c",  # Uses while loops
+        f"{BASE_DIR}/tests-known-failures/test_puts_global.c",  # Global array initializers not implemented
+        f"{BASE_DIR}/tests-known-failures/test_strings_simple.c",  # Function redefinition error
     ]
     
     # Sort known failures alphabetically
