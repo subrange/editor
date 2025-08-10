@@ -14,19 +14,25 @@ int main() {
     *p = 20;
     if (x == 20) {
         putchar('1');  // Test 1 passed
+    } else {
+        putchar('N');  // Test 1 failed
     }
     
     // Test 3: Pointer to global
     int *gp = &global_val;
     if (*gp == 42) {
         putchar('2');  // Test 2 passed
+    } else {
+        putchar('N');  // Test 1 failed
     }
     
     // Test 4: Modify global through pointer
     *gp = 100;
     if (global_val == 100) {
         putchar('3');  // Test 3 passed
-    }
+    } else {
+         putchar('N');  // Test 1 failed
+     }
     
     // Test 5: Multiple levels of indirection
     int y = 5;
@@ -35,7 +41,9 @@ int main() {
     **ppy = 15;
     if (y == 15) {
         putchar('4');  // Test 4 passed
-    }
+    } else {
+             putchar('N');  // Test 1 failed
+         }
     
     // Test 6: Pointer arithmetic (basic)
     int a = 1;
@@ -51,8 +59,12 @@ int main() {
     if (a == 2) {
         if (b == 1) {
             putchar('5');  // Test 5 passed
-        }
-    }
+        } else {
+             putchar('N');  // Test 1 failed
+         }
+    } else {
+         putchar('N');  // Test 1 failed
+     }
     
     putchar('\n');
     return 0;

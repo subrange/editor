@@ -23,6 +23,10 @@ pub struct SimpleRegAlloc {
     
     /// Instructions to emit (for spill/reload code)
     instructions: Vec<AsmInst>,
+    
+    /// Set of values that are temporarily pinned and cannot be spilled
+    /// Used during binary operations to prevent spilling operands
+    pinned_values: std::collections::HashSet<String>,
 }
 
 impl SimpleRegAlloc {
@@ -36,6 +40,7 @@ impl SimpleRegAlloc {
             spill_slots: BTreeMap::new(),
             next_spill_offset: 0,
             instructions: Vec::new(),
+            pinned_values: std::collections::HashSet::new(),
         }
     }
     
@@ -71,8 +76,11 @@ impl SimpleRegAlloc {
             self.instructions.push(AsmInst::Comment(format!("    {} contains '{}'", reg_name, val)));
         }
         
-        // Pick the first register in reg_contents (simple LRU approximation)
-        let victim = *self.reg_contents.keys().next().unwrap();
+        // Pick the first non-pinned register in reg_contents
+        let victim = self.reg_contents.iter()
+            .find(|(_, val)| !self.pinned_values.contains(*val))
+            .map(|(reg, _)| *reg)
+            .expect("No spillable registers available!");
         let victim_value = self.reg_contents.remove(&victim).unwrap();
         
         let victim_name = match victim {
@@ -132,6 +140,21 @@ impl SimpleRegAlloc {
         self.reg_contents.insert(reg, value);
         // Remove from free list if it's there
         self.free_list.retain(|&r| r != reg);
+    }
+    
+    /// Pin a value so it cannot be spilled
+    pub fn pin_value(&mut self, value: String) {
+        self.pinned_values.insert(value);
+    }
+    
+    /// Unpin a value, allowing it to be spilled again
+    pub fn unpin_value(&mut self, value: &str) {
+        self.pinned_values.remove(value);
+    }
+    
+    /// Clear all pinned values
+    pub fn clear_pins(&mut self) {
+        self.pinned_values.clear();
     }
     
     /// Get two different registers for operations that need them
@@ -278,5 +301,6 @@ impl SimpleRegAlloc {
         self.spill_slots.clear();
         self.next_spill_offset = 0;
         self.instructions.clear();
+        self.pinned_values.clear();
     }
 }

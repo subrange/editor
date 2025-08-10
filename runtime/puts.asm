@@ -8,31 +8,46 @@ puts:
     ADDI R14, R14, 1
     ADD R15, R14, R0
 ; === Processing Binary t2 ===
+; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t0
 ; t0 already in register
 ;   t0 is now in R3
-    LI R4, 0
-; === ModuleLowerer::get_reg for 't2' ===
-; get_reg for 't2'
-;   Allocated free register for t2
-    SLTU R8, R3, R4
-    SLTU R7, R4, R3
-    OR R6, R8, R7
-    LI R7, 1
-    SUB R6, R7, R6
+; get_reg for 'const_0_0'
+;   Allocated free register for const_0_0
+    LI R6, 0
+; Reusing R3 for result t2
+; === ModuleLowerer::get_reg for 'eq_temp1_1' ===
+; get_reg for 'eq_temp1_1'
+;   Allocated free register for eq_temp1_1
+; === ModuleLowerer::get_reg for 'eq_temp2_1' ===
+; get_reg for 'eq_temp2_1'
+;   Allocated free register for eq_temp2_1
+    SLTU R7, R3, R6
+    SLTU R8, R6, R3
+    OR R3, R7, R8
+; === ModuleLowerer::get_reg for 'eq_inv_2' ===
+; get_reg for 'eq_inv_2'
+;   Allocated free register for eq_inv_2
+    LI R8, 1
+    SUB R3, R8, R3
+; Freeing right operand register R6
 ; Getting register for temp t2
 ; t2 already in register
-;   t2 is now in R6
-    BNE R6, R0, puts_L1
+;   t2 is now in R3
+    BNE R3, R0, puts_L1
     BEQ R0, R0, puts_L3
 puts_L1:
 ; === Processing Binary t3 ===
-    LI R3, 0
-    LI R4, 1
-; === ModuleLowerer::get_reg for 't3' ===
-; get_reg for 't3'
-;   Allocated free register for t3
-    SUB R5, R3, R4
+; Binary: need(lhs)=1, need(rhs)=1
+; get_reg for 'const_0_3'
+;   Allocated free register for const_0_3
+    LI R5, 0
+; get_reg for 'const_1_4'
+;   Allocated free register for const_1_4
+    LI R6, 1
+; Reusing R5 for result t3
+    SUB R5, R5, R6
+; Freeing right operand register R6
 ; Getting register for temp t3
 ; t3 already in register
 ;   t3 is now in R5
@@ -56,17 +71,17 @@ puts_L4:
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R6
-; === ModuleLowerer::get_reg for 'bank_select_2' ===
-; get_reg for 'bank_select_2'
-;   Allocated free register for bank_select_2
+; === ModuleLowerer::get_reg for 'bank_select_5' ===
+; get_reg for 'bank_select_5'
+;   Allocated free register for bank_select_5
 ; Select bank register based on tag
     LI R7, 1
-    BEQ R4, R7, bank_stack_3
+    BEQ R4, R7, bank_stack_6
     ADD R7, R0, R0
-    BEQ R0, R0, bank_done_3
-bank_stack_3:
+    BEQ R0, R0, bank_done_6
+bank_stack_6:
     ADD R7, R13, R0
-bank_done_3:
+bank_done_6:
     LOAD R5, R7, R6
 ; Getting register for temp t4
 ; t4 already in register
@@ -83,17 +98,17 @@ puts_L5:
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R6
-; === ModuleLowerer::get_reg for 'bank_select_4' ===
-; get_reg for 'bank_select_4'
-;   Allocated free register for bank_select_4
+; === ModuleLowerer::get_reg for 'bank_select_7' ===
+; get_reg for 'bank_select_7'
+;   Allocated free register for bank_select_7
 ; Select bank register based on tag
     LI R7, 1
-    BEQ R4, R7, bank_stack_5
+    BEQ R4, R7, bank_stack_8
     ADD R7, R0, R0
-    BEQ R0, R0, bank_done_5
-bank_stack_5:
+    BEQ R0, R0, bank_done_8
+bank_stack_8:
     ADD R7, R13, R0
-bank_done_5:
+bank_done_8:
     LOAD R5, R7, R6
 ; Getting register for temp t5
 ; t5 already in register
@@ -101,46 +116,48 @@ bank_done_5:
     ADD R3, R5, R0
     CALL putchar
 ; === Processing Binary t6 ===
+; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t0
 ; t0 not found, allocating new register
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R5
-    LI R4, 1
-; === ModuleLowerer::get_reg for 't6' ===
-; get_reg for 't6'
-;   Allocated free register for t6
-    ADD R6, R5, R4
+; get_reg for 'const_1_9'
+;   Allocated free register for const_1_9
+    LI R6, 1
+; Reusing R5 for result t6
+    ADD R5, R5, R6
+; Freeing right operand register R6
 ; Getting register for temp t0
 ; t0 not found, allocating new register
 ; get_reg for 't0'
 ;   Allocated free register for t0
-;   t0 is now in R7
-; === ModuleLowerer::get_reg for 'bank_select_6' ===
-; get_reg for 'bank_select_6'
-;   Allocated free register for bank_select_6
+;   t0 is now in R6
+; === ModuleLowerer::get_reg for 'bank_select_10' ===
+; get_reg for 'bank_select_10'
+;   Allocated free register for bank_select_10
 ; Select bank register based on tag
-    LI R8, 1
-    BEQ R4, R8, bank_stack_7
-    ADD R8, R0, R0
-    BEQ R0, R0, bank_done_7
-bank_stack_7:
-    ADD R8, R13, R0
-bank_done_7:
+    LI R7, 1
+    BEQ R4, R7, bank_stack_11
+    ADD R7, R0, R0
+    BEQ R0, R0, bank_done_11
+bank_stack_11:
+    ADD R7, R13, R0
+bank_done_11:
 ; Store t6 to [t0]
 ; Getting register for temp t6
 ; t6 already in register
-;   t6 is now in R6
-    STORE R6, R8, R7
+;   t6 is now in R5
+    STORE R5, R7, R6
     BEQ R0, R0, puts_L4
 puts_L6:
-; get_reg for 'const_10_8'
-;   Allocated free register for const_10_8
+; get_reg for 'const_10_12'
+;   Allocated free register for const_10_12
     LI R5, 10
     ADD R3, R5, R0
     CALL putchar
-; get_reg for 'const_0_9'
-;   Allocated free register for const_0_9
+; get_reg for 'const_0_13'
+;   Allocated free register for const_0_13
     LI R5, 0
     ADD R3, R5, R0
     ADD R14, R15, R0

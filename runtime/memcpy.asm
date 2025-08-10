@@ -33,7 +33,7 @@ memcpy_L1:
     ADDI R6, R15, 1
     LOAD R5, R13, R6
 ; === Processing Binary t7 ===
-; Binary op: t7 = t6 Slt t4
+; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t6
 ; t6 already in register
 ;   t6 is now in R5
@@ -42,14 +42,13 @@ memcpy_L1:
 ; get_reg for 't4'
 ;   Allocated free register for t4
 ;   t4 is now in R7
-; === ModuleLowerer::get_reg for 't7' ===
-; get_reg for 't7'
-;   Allocated free register for t7
-    SLTU R8, R5, R7
+; Reusing R5 for result t7
+    SLTU R5, R5, R7
+; Freeing right operand register R7
 ; Getting register for temp t7
 ; t7 already in register
-;   t7 is now in R8
-    BNE R8, R0, memcpy_L2
+;   t7 is now in R5
+    BNE R5, R0, memcpy_L2
     BEQ R0, R0, memcpy_L4
 memcpy_L2:
 ; Load from [t5] to t8
@@ -152,23 +151,25 @@ memcpy_L3:
     ADDI R6, R15, 1
     LOAD R5, R13, R6
 ; === Processing Binary t14 ===
+; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t13
 ; t13 already in register
 ;   t13 is now in R5
-    LI R4, 1
-; === ModuleLowerer::get_reg for 't14' ===
-; get_reg for 't14'
-;   Allocated free register for t14
-    ADD R7, R5, R4
-; === ModuleLowerer::get_reg for 'addr_t5_6' ===
-; get_reg for 'addr_t5_6'
-;   Allocated free register for addr_t5_6
-    ADDI R8, R15, 1
+; get_reg for 'const_1_6'
+;   Allocated free register for const_1_6
+    LI R7, 1
+; Reusing R5 for result t14
+    ADD R5, R5, R7
+; Freeing right operand register R7
+; === ModuleLowerer::get_reg for 'addr_t5_7' ===
+; get_reg for 'addr_t5_7'
+;   Allocated free register for addr_t5_7
+    ADDI R7, R15, 1
 ; Store t14 to [t5]
 ; Getting register for temp t14
 ; t14 already in register
-;   t14 is now in R7
-    STORE R7, R13, R8
+;   t14 is now in R5
+    STORE R5, R13, R7
     BEQ R0, R0, memcpy_L1
 memcpy_L4:
     ADD R14, R15, R0

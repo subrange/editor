@@ -83,6 +83,9 @@ pub struct ModuleLowerer {
     
     /// Next available spill slot offset
     next_spill_offset: i16,
+    
+    /// Cache for need() calculations to avoid recomputation
+    need_cache: HashMap<String, usize>,
 }
 
 /// Location of a value - either in a register or spilled to stack
@@ -93,6 +96,53 @@ enum Location {
 }
 
 impl ModuleLowerer {
+    /// Format a temp ID as a string (e.g., 42 -> "t42")
+    fn temp_name(id: u32) -> String {
+        format!("t{}", id)
+    }
+    
+    /// Format a constant as a string for tracking
+    fn const_name(value: i64) -> String {
+        format!("const_{}", value)
+    }
+    
+    /// Format a global name for tracking
+    fn global_name(name: &str) -> String {
+        format!("global_{}", name)
+    }
+    
+    /// Get a descriptive string for a value (used for register tracking)
+    fn describe_value(value: &Value) -> String {
+        match value {
+            Value::Temp(id) => Self::temp_name(*id),
+            Value::Constant(n) => Self::const_name(*n),
+            Value::Global(name) => Self::global_name(name),
+            Value::Function(name) => format!("func_{}", name),
+            Value::FatPtr(components) => format!("fatptr_{:?}", components),
+            Value::Undef => "undef".to_string(),
+        }
+    }
+    
+    /// Calculate the register need for an expression tree (Sethi-Ullman number)
+    /// This implements the need() function from the formalized algorithm
+    fn calculate_need(&mut self, value: &Value) -> usize {
+        // Check cache first
+        let value_key = Self::describe_value(value);
+        if let Some(&cached_need) = self.need_cache.get(&value_key) {
+            return cached_need;
+        }
+        
+        // Base cases: constants, loads, etc. need 1 register
+        let need = match value {
+            Value::Constant(_) | Value::Global(_) | Value::Temp(_) | Value::FatPtr(_) => 1,
+            Value::Function(_) | Value::Undef => 1,
+        };
+        
+        // Cache the result
+        self.need_cache.insert(value_key, need);
+        need
+    }
+    
     pub fn new() -> Self {
         eprintln!("Creating new ModuleLowerer");
         Self {
@@ -109,6 +159,7 @@ impl ModuleLowerer {
             ptr_region: HashMap::new(),
             fat_ptr_components: HashMap::new(),
             next_spill_offset: 0,
+            need_cache: HashMap::new(),
         }
     }
     
@@ -244,6 +295,7 @@ impl ModuleLowerer {
         self.local_offsets.clear(); // Clear local variable offsets
         self.fat_ptr_components.clear(); // Clear fat pointer components
         self.next_spill_offset = 0; // Reset spill offset
+        self.need_cache.clear(); // Clear need() cache for new function
         
         // Function label
         self.instructions.push(AsmInst::Comment(format!("Function: {}", function.name)));
@@ -704,77 +756,46 @@ impl ModuleLowerer {
                 eprintln!("=== Processing Binary t{} ===", result);
                 self.instructions.push(AsmInst::Comment(format!("=== Processing Binary t{} ===", result)));
                 
-                // For binary operations, ensure operands get different registers
-                // Use the centralized allocator for proper handling
+                // CRITICAL: Implement the algorithm from more-formalized-register-spilling.md
+                // 1. Calculate need() for both operands
+                // 2. Evaluate the operand with larger need() first
+                // 3. Reuse the first operand's register for the result (in-place operation)
+                // 4. Free the second operand's register immediately after the operation
                 
-                // Handle constants specially
-                // For simple constants, we can use R3 and R4 temporarily
-                let (left_reg, right_reg) = match (lhs, rhs) {
-                    (Value::Constant(lval), Value::Constant(rval)) => {
-                        // Both are constants - use R3 and R4 for simplicity
-                        // These are not in the allocatable pool so won't conflict
-                        self.instructions.push(AsmInst::LI(Reg::R3, *lval as i16));
-                        self.instructions.push(AsmInst::LI(Reg::R4, *rval as i16));
-                        (Reg::R3, Reg::R4)
-                    }
-                    (Value::Constant(val), _) => {
-                        // Left is constant, right is not
-                        // Use R3 for the constant
-                        self.instructions.push(AsmInst::LI(Reg::R3, *val as i16));
-                        let right = self.get_value_register(rhs)?;
-                        (Reg::R3, right)
-                    }
-                    (_, Value::Constant(val)) => {
-                        // Right is constant, left is not
-                        let left = self.get_value_register(lhs)?;
-                        // Use R4 for the constant
-                        self.instructions.push(AsmInst::LI(Reg::R4, *val as i16));
-                        (left, Reg::R4)
-                    }
-                    _ => {
-                        // Neither is constant
-                        // Add debug info for complex expressions
-                        if let (Value::Temp(lid), Value::Temp(rid)) = (lhs, rhs) {
-                            self.instructions.push(AsmInst::Comment(
-                                format!("Binary op: t{} = t{} {:?} t{}", result, lid, op, rid)
-                            ));
-                        }
-                        let left = self.get_value_register(lhs)?;
-                        let right = self.get_value_register(rhs)?;
-                        
-                        // CRITICAL: If left and right are the same register but different values,
-                        // we have a problem! We need to save one of them.
-                        if left == right && lhs != rhs {
-                            // This shouldn't happen if the allocator is working correctly
-                            self.instructions.push(AsmInst::Comment(
-                                format!("ERROR: Both operands in same register!")
-                            ));
-                            // Try to reload the right operand to a different register
-                            if let Value::Temp(rid) = rhs {
-                                let temp_reg = self.get_reg(format!("reload_t{}", rid));
-                                self.instructions.push(AsmInst::Add(temp_reg, right, Reg::R0));
-                                (left, temp_reg)
-                            } else {
-                                (left, right)
-                            }
-                        } else {
-                            (left, right)
-                        }
-                    }
-                };
+                // Calculate need() for operands
+                let lhs_need = self.calculate_need(lhs);
+                let rhs_need = self.calculate_need(rhs);
                 
-                // CRITICAL: Mark operand registers as in-use before allocating result
-                // This prevents them from being spilled when allocating the result register
-                self.reg_alloc.mark_in_use(left_reg, format!("binary_left_t{}", 
-                    if let Value::Temp(id) = lhs { *id } else { 999999u32 }));
-                self.reg_alloc.mark_in_use(right_reg, format!("binary_right_t{}", 
-                    if let Value::Temp(id) = rhs { *id } else { 999999u32 }));
+                self.instructions.push(AsmInst::Comment(
+                    format!("Binary: need(lhs)={}, need(rhs)={}", lhs_need, rhs_need)
+                ));
                 
-                // Allocate register for result
-                let result_key = format!("t{}", result);
-                let dest_reg = self.get_reg(result_key.clone());
+                // Simple implementation: always evaluate left first, then right
+                // Result goes in left's register (in-place on left operand)
+                // This matches the simple interpretation where swap() is not used
+                // for non-commutative operations.
+                
+                let left_reg = self.get_value_register(lhs)?;
+                let right_reg = self.get_value_register(rhs)?;
+                let dest_reg = left_reg;  // Result goes in left's register
+                
+                // Track the result in the first operand's register
+                let result_key = Self::temp_name(*result);
                 self.value_locations.insert(result_key.clone(), Location::Register(dest_reg));
+                // Update the register allocator to know this register now holds the result
+                self.reg_alloc.mark_in_use(dest_reg, result_key.clone());
                 
+                self.instructions.push(AsmInst::Comment(
+                    format!("Reusing {} for result t{}", 
+                        match dest_reg {
+                            Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+                            Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                            Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
+                            _ => "R?",
+                        }, result)
+                ));
+                
+                // Now execute the operation IN-PLACE on the destination register
                 match op {
                     IrBinaryOp::Add => {
                         self.instructions.push(AsmInst::Add(dest_reg, left_reg, right_reg));
@@ -783,22 +804,6 @@ impl ModuleLowerer {
                         self.instructions.push(AsmInst::Sub(dest_reg, left_reg, right_reg));
                     }
                     IrBinaryOp::Mul => {
-                        // Debug: log what we're multiplying
-                        if let (Value::Temp(lid), Value::Temp(rid)) = (lhs, rhs) {
-                            self.instructions.push(AsmInst::Comment(
-                                format!("MUL t{} = t{} * t{}", result, lid, rid)
-                            ));
-                        }
-                        if left_reg == right_reg && lhs != rhs {
-                            self.instructions.push(AsmInst::Comment(
-                                format!("WARNING: MUL using same register {} for different values!", 
-                                    match left_reg {
-                                        Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
-                                        Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
-                                        _ => "R?"
-                                    })
-                            ));
-                        }
                         self.instructions.push(AsmInst::Mul(dest_reg, left_reg, right_reg));
                     }
                     IrBinaryOp::SDiv | IrBinaryOp::UDiv => {
@@ -811,11 +816,13 @@ impl ModuleLowerer {
                         // Set dest_reg to 1 if equal, 0 otherwise
                         // Strategy: result = !(left != right)
                         
-                        // Get two different temporary registers
-                        let (temp1, temp2) = self.get_comparison_temps("eq");
+                        // Since dest_reg == left_reg, we need to be careful not to clobber left
+                        // before we use it. Get TWO temporary registers for the comparison.
+                        let temp1 = self.get_reg(format!("eq_temp1_{}", self.label_counter));
+                        let temp2 = self.get_reg(format!("eq_temp2_{}", self.label_counter));
                         self.label_counter += 1;
                         
-                        // Generate the comparison
+                        // Generate the comparison using temps to avoid clobbering
                         self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
                         self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
                         self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
@@ -825,7 +832,7 @@ impl ModuleLowerer {
                         self.reg_alloc.free_reg(temp2);
                         
                         // Now invert the result: dest = 1 - dest
-                        let temp3 = self.get_single_temp("eq_inv");
+                        let temp3 = self.get_reg(format!("eq_inv_{}", self.label_counter));
                         self.label_counter += 1;
                         self.instructions.push(AsmInst::LI(temp3, 1));
                         self.instructions.push(AsmInst::Sub(dest_reg, temp3, dest_reg));
@@ -834,32 +841,19 @@ impl ModuleLowerer {
                     IrBinaryOp::Ne => {
                         // Set dest_reg to 1 if not equal, 0 otherwise
                         
-                        // Special case: if comparing with 0 and dest_reg == left_reg
-                        // We can just check if the value is non-zero
-                        if matches!(rhs, Value::Constant(0)) && dest_reg == left_reg {
-                            // left_reg != 0 can be done with simple SLTU comparisons
-                            // Result = (0 < left_reg) 
-                            let temp = self.get_reg(format!("ne_zero_temp_{}", self.label_counter));
-                            self.instructions.append(&mut self.reg_alloc.take_instructions());
-                            self.label_counter += 1;
-                            
-                            self.instructions.push(AsmInst::LI(temp, 0));
-                            self.instructions.push(AsmInst::Sltu(dest_reg, temp, left_reg)); // dest = 0 < left
-                            self.reg_alloc.free_reg(temp);
-                        } else {
-                            // General case: need two temp registers for comparison
-                            let (temp1, temp2) = self.get_comparison_temps("ne");
-                            self.label_counter += 1;
-                            
-                            // Generate the comparison
-                            self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
-                            self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
-                            self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
-                            
-                            // Free temp registers
-                            self.reg_alloc.free_reg(temp1);
-                            self.reg_alloc.free_reg(temp2);
-                        }
+                        // Since dest_reg == left_reg, we need to be careful
+                        let temp1 = self.get_reg(format!("ne_temp1_{}", self.label_counter));
+                        let temp2 = self.get_reg(format!("ne_temp2_{}", self.label_counter));
+                        self.label_counter += 1;
+                        
+                        // Generate the comparison using temps
+                        self.instructions.push(AsmInst::Sltu(temp1, left_reg, right_reg)); // 1 if left < right
+                        self.instructions.push(AsmInst::Sltu(temp2, right_reg, left_reg)); // 1 if right < left
+                        self.instructions.push(AsmInst::Or(dest_reg, temp1, temp2)); // 1 if not equal
+                        
+                        // Free temp registers
+                        self.reg_alloc.free_reg(temp1);
+                        self.reg_alloc.free_reg(temp2);
                     }
                     IrBinaryOp::Slt => {
                         // Use SLTU instead of SLT since SLT might be buggy
@@ -868,9 +862,8 @@ impl ModuleLowerer {
                     IrBinaryOp::Sle => {
                         // a <= b is !(b < a)
                         self.instructions.push(AsmInst::Sltu(dest_reg, right_reg, left_reg));
-                        let temp = self.reg_alloc.get_reg(format!("sle_temp_{}", self.label_counter));
+                        let temp = self.get_reg(format!("sle_temp_{}", self.label_counter));
                         self.label_counter += 1;
-                        self.instructions.append(&mut self.reg_alloc.take_instructions());
                         self.instructions.push(AsmInst::LI(temp, 1));
                         self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
                         self.reg_alloc.free_reg(temp);
@@ -881,7 +874,7 @@ impl ModuleLowerer {
                     IrBinaryOp::Sge => {
                         // a >= b is !(a < b)
                         self.instructions.push(AsmInst::Sltu(dest_reg, left_reg, right_reg));
-                        let temp = self.get_single_temp("sge");
+                        let temp = self.get_reg(format!("sge_temp_{}", self.label_counter));
                         self.label_counter += 1;
                         self.instructions.push(AsmInst::LI(temp, 1));
                         self.instructions.push(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
@@ -916,8 +909,18 @@ impl ModuleLowerer {
                     }
                 }
                 
-                // No need to free R3/R4 as they're not in the allocatable pool
-                // They're scratch registers for immediate use
+                // CRITICAL: Free the RIGHT operand's register immediately after the operation
+                // This is a key part of the algorithm from more-formalized-register-spilling.md
+                self.instructions.push(AsmInst::Comment(
+                    format!("Freeing right operand register {}", 
+                        match right_reg {
+                            Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+                            Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                            Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
+                            _ => "R?",
+                        })
+                ));
+                self.reg_alloc.free_reg(right_reg);
             }
             
             Instruction::Call { result, function, args, .. } => {

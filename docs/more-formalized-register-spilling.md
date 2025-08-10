@@ -216,5 +216,3 @@ Correctness Guarantees
 •	Across branches, only memory persists—no reg mismatch at joins.
 
 ⸻
-
-If you want, I can turn this into a small C-ish skeleton (getReg, spill, EmitExp, etc.) with your exact opcodes (LI/ADD/LOAD/STORE/JAL/JALR) next.
