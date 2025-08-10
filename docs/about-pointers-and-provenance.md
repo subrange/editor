@@ -130,7 +130,7 @@ Represent pointer values as a pair (addr, bank_tag) in SSA:
 •	PHI/Select merge both fields independently (no information loss).
 •	Calls pass both values.
 •	LOAD/STORE use the bank field directly.
-•	If you store pointers in memory, store both fields (or pack bank into a spare bit if your addr space allows).
+•	If you store pointers in memory, store both fields.
 
 This is the cleanest model.
 
@@ -232,3 +232,117 @@ Bottom line
 •	Next: choose one of (A) fat pointers, (B) hidden bank parameter, or (C) specialization. Any of these will make PHIs and parameters robust without fragile heuristics.
 
 If you want, point me at your phi and select lowerers plus your emit_load/store, and I’ll drop in the exact changes + diagnostics scaffolding.
+
+Now we are at M4.
+
+We want to:
+
+Why this wins
+•	Correct by construction: PHI/Select/GEP/calls always carry the bank; deref is always correct.
+•	Interprocedural safety: parameters/returns are precise; no Unknown/Mixed cases to error on.
+•	Pointers in memory: you can store/load pointers and still keep the bank—no shadow tables, no heuristics.
+•	Future-proof: adding heap or mmio banks later is just new tag values.
+
+Costs (they’re manageable)
+•	Pointers are now 2 words in memory/ABI.
+•	A few more moves/loads in codegen.
+•	Some rewiring in your front-end layout + backend CC.
+
+Given your VM and the BF substrate, the extra word is peanuts compared to the cost of wrong-bank bugs and special cases.
+
+⸻
+
+M4 implementation checklist (fat pointers)
+1.	Decide the tag values
+
+	•	0 = Global (.rodata/.data)
+	•	1 = Stack (frame/alloca)
+	•	Reserve 2 = Heap (later)
+	•	Keep tag in a full word for simplicity right now.
+
+	2.	IR type & value model
+
+	•	Make IR ptr<T> physically {addr: word, bank: word}.
+	•	GEP: addr' = addr + index*eltsize; bank' = bank.
+	•	Addr-of global/label: bank=Global, addr=label_addr.
+	•	Alloca: bank=Stack, addr=FP+offset (addr is a normal SSA temp computed in prologue or on demand).
+
+	3.	SSA ops
+
+	•	PHI/Select on pointers = PHI/Select both fields independently.
+	•	Bitcast/Copy = copy both fields.
+
+	4.	ABI (calls/returns)
+
+	•	Pass pointer params as two args: (addr, bank) (choose order and stick to it).
+	•	Return pointer as two regs.
+	•	In your prologue/epilogue, no special casing beyond spill/restore of the extra arg if needed.
+
+	5.	Memory layout
+
+	•	Structs/arrays containing pointers allocate 2 words per pointer.
+	•	Emitting a pointer constant to .data: two consecutive words {addr, bank}.
+	•	Loading/storing a pointer variable uses two LOAD/STOREs.
+
+	6.	Codegen rules
+
+	•	Deref load: LOAD rd, bankReg, addrReg.
+	•	Deref store: STORE rs, bankReg, addrReg.
+	•	GEP: arithmetic on addrReg only; keep bankReg unchanged.
+	•	Passing/returning: move both regs; for spills, spill both.
+
+	7.	Front-end lowering
+
+	•	Alloca produces {addr=(FP + k), bank=STACK_TAG} (emit addr as an SSA temp).
+	•	&global_symbol produces {addr=imm(label), bank=GLOBAL_TAG} (load imm as needed).
+	•	String literals: same as global.
+
+	8.	Assembler/linker
+
+	•	No ISA changes! Just ensure your assembler supports emitting two words for pointer initializers in .data.
+	•	Linker keeps labels intact; you already have banks at runtime.
+
+	9.	Delete the “Unknown/Mixed” pain
+
+	•	You can drop the provenance lattice for codegen. (It’s still useful for diagnostics, but no longer required for correctness.)
+	•	Loading pointers from memory is now precise—no shadow maps.
+
+	10.	Tests to close the loop
+
+	•	Param: int f(int *p){return *p;} called with &local and with &global (both must work).
+	•	Store/load pointer: int *p = &local; int *q = p; *q = 7;
+	•	PHI/Select mixing stack/global pointers → now legal (bank flows with the value).
+	•	Arrays of pointers; struct with pointer fields; pointer to pointer.
+
+⸻
+
+If you want the lightest step first (alternate)
+
+If you truly don’t want to change memory layout yet, the next-best is:
+
+Hidden bank parameter (ABI tweak), same-width pointers in memory
+•	Keep pointer = single word addr in memory.
+•	For function parameters/returns, pass an extra hidden bank arg/result alongside the addr.
+•	Inside the function, thread bank SSA next to the pointer SSA (PHI/Select bank with the pointer).
+•	Deref uses the bank SSA.
+•	BUT: pointers loaded from memory have no bank → you must either
+•	reject deref on such pointers in M4, or
+•	add a tiny shadow provenance table (runtime tagging) just for loads/stores of pointers.
+
+This gets you interprocedural correctness fast, but you’ll hit a wall once you store pointers widely. It’s a good stepping stone if you plan to move to fat pointers later.
+
+⸻
+
+Performance notes (both approaches)
+•	Keep the bank value in a register as long as possible; don’t reload it.
+•	For tight loops over arrays: hoist the bank, then bump only the addr.
+•	Consider small macros for paired load/store of pointers (two words) so the assembler stays tidy.
+•	If you later add a MUL, precompute index<<log2(eltsize) for GEPs.
+
+⸻
+
+My vote
+
+Since you’re at M4 (and already broke far more complex ground): do fat pointers now. It’s the simplest mental model, the most robust long-term, and it eliminates an entire class of bugs and “Unknown/Mixed” diagnostics. The ABI/data layout change is a one-time chore; everything after that becomes straightforward.
+
+If you want, paste a small struct-with-pointer + function-parameter example, and I’ll show the exact fat-pointer IR and the Ripple sequence you’d emit for GEP, load/store, and call/return.
