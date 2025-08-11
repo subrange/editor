@@ -42,11 +42,18 @@ cargo run --release -- program.bin
 
 ### Debug Mode Commands
 
-When running with `-d`, the following commands are available:
+When running with `-d` (simple debugger), the following commands are available:
 - **Enter** - Step one instruction
 - **r** - Run to completion
 - **c** - Continue from breakpoint (after BRK)
 - **q** - Quit debugger
+
+When running with `-t` (TUI debugger), additional commands are available:
+- **Space/s** - Step one instruction
+- **b** - Toggle breakpoint at cursor
+- **R** - Restart execution from beginning
+- **?** - Show help with all keybindings
+- And many more professional debugging features!
 
 ## Testing
 

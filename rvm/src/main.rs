@@ -1,5 +1,6 @@
 mod constants;
 mod debug;
+mod tui_debugger;
 mod vm;
 
 use std::env;
@@ -20,6 +21,7 @@ fn print_usage() {
     eprintln!("  -b, --bank-size <size>   Set bank size (default: {})", DEFAULT_BANK_SIZE);
     eprintln!("  -m, --memory <size>      Set memory size in words (default: {})", DEFAULT_MEMORY_SIZE);
     eprintln!("  -d, --debug              Enable debug mode (step through execution)");
+    eprintln!("  -t, --tui                Enable TUI debugger (professional interface)");
     eprintln!("  -v, --verbose            Show VM state during execution");
     eprintln!("  -h, --help               Show this help message");
 }
@@ -35,6 +37,7 @@ fn main() {
     let mut bank_size = DEFAULT_BANK_SIZE;
     let mut memory_size: Option<usize> = None;
     let mut debug_mode = false;
+    let mut tui_mode = false;
     let mut verbose = false;
     let mut file_path = None;
     
@@ -69,6 +72,9 @@ fn main() {
             },
             "-d" | "--debug" => {
                 debug_mode = true;
+            },
+            "-t" | "--tui" => {
+                tui_mode = true;
             },
             "-v" | "--verbose" => {
                 verbose = true;
@@ -122,7 +128,15 @@ fn main() {
     }
     
     // Run the VM
-    if debug_mode {
+    if tui_mode {
+        // Use the TUI debugger
+        vm.debug_mode = true;
+        let mut tui = tui_debugger::TuiDebugger::new();
+        if let Err(e) = tui.run(&mut vm) {
+            eprintln!("TUI error: {}", e);
+            process::exit(1);
+        }
+    } else if debug_mode {
         vm.debug_mode = true;  // Enable debug mode in VM
         Debugger::print_welcome();
         

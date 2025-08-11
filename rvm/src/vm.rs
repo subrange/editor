@@ -30,6 +30,11 @@ impl Instr {
             word3: u16::from_le_bytes([bytes[6], bytes[7]]),
         })
     }
+    
+    #[allow(dead_code)]
+    pub fn is_halt(&self) -> bool {
+        self.opcode == 0x00 && self.word1 == 0 && self.word2 == 0 && self.word3 == 0
+    }
 }
 
 #[derive(Debug)]
@@ -662,14 +667,26 @@ impl VM {
         }
     }
     
-    #[allow(dead_code)]
     pub fn reset(&mut self) {
+        // Clear registers but preserve bank size
         self.registers = [0; 18];
-        self.state = VMState::Setup;
+        
+        // Reset to entry point (instruction 0)
+        self.registers[Register::Pc as usize] = 0;
+        self.registers[Register::Pcb as usize] = 0;
+        
+        // Reset state to running (ready to execute)
+        self.state = VMState::Running;
         self.skip_pc_increment = false;
+        
+        // Clear output
         self.output_buffer.clear();
         self.output_ready = true;
+        
+        // Reset memory I/O registers
         self.memory[0] = 0;
         self.memory[1] = 1;
+        
+        // Note: We keep the loaded instructions and data intact
     }
 }

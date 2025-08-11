@@ -183,6 +183,9 @@ impl Debugger {
         println!("  {}       Continue from breakpoint", "c".bright_green().bold());
         println!("  {}       Quit debugger", "q".bright_green().bold());
         println!();
+        println!("Note: To restart after HALT, quit (q) and run again.");
+        println!("      Or use TUI mode (-t) which supports restart with 'R'.");
+        println!();
     }
     
     fn format_state(state: &crate::vm::VMState) -> ColoredString {
