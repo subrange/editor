@@ -190,6 +190,10 @@ impl TuiDebugger {
     fn draw_ui(&self, frame: &mut Frame, vm: &VM) {
         let size = frame.size();
         
+        // Reserve bottom line for status/input
+        let main_area = Rect::new(0, 0, size.width, size.height - 1);
+        let status_area = Rect::new(0, size.height - 1, size.width, 1);
+        
         // Main layout: 3 columns
         let main_chunks = Layout::default()
             .direction(Direction::Horizontal)
@@ -198,7 +202,7 @@ impl TuiDebugger {
                 Constraint::Percentage(35), // Middle: Registers + Stack
                 Constraint::Percentage(25), // Right: Memory + Watches
             ])
-            .split(size);
+            .split(main_area);
         
         // Left column: Disassembly + Output
         let left_chunks = Layout::default()
@@ -235,9 +239,14 @@ impl TuiDebugger {
         self.draw_memory(frame, right_chunks[0], vm);
         self.draw_watches(frame, right_chunks[1], vm);
         
-        // Draw command line at bottom if in command mode
-        if self.mode == DebuggerMode::Command {
-            self.draw_command_line(frame, size);
+        // Draw status/input line at bottom
+        match self.mode {
+            DebuggerMode::Command => self.draw_input_line(frame, status_area, "Command"),
+            DebuggerMode::GotoAddress => self.draw_input_line(frame, status_area, "Go to address (hex)"),
+            DebuggerMode::AddWatch => self.draw_input_line(frame, status_area, "Add watch (name:addr[:format])"),
+            DebuggerMode::SetBreakpoint => self.draw_input_line(frame, status_area, "Set breakpoint (hex)"),
+            DebuggerMode::MemoryEdit => self.draw_input_line(frame, status_area, "Edit memory (addr:value)"),
+            DebuggerMode::Normal => self.draw_status_line(frame, status_area, vm),
         }
         
         // Draw help overlay if enabled
@@ -587,20 +596,103 @@ impl TuiDebugger {
         frame.render_widget(paragraph, area);
     }
     
-    fn draw_command_line(&self, frame: &mut Frame, area: Rect) {
-        let command_area = Rect::new(0, area.height - 1, area.width, 1);
+    fn draw_status_line(&self, frame: &mut Frame, area: Rect, vm: &VM) {
+        let mut spans = vec![];
         
-        let mut spans = vec![
-            Span::styled(":", Style::default().fg(Color::Yellow)),
-            Span::raw(&self.command_buffer),
-        ];
+        // Show VM state
+        let state_color = match vm.state {
+            VMState::Running => Color::Green,
+            VMState::Halted => Color::Red,
+            VMState::Breakpoint => Color::Yellow,
+            VMState::Error(_) => Color::Red,
+            VMState::Setup => Color::Gray,
+        };
         
-        // Add cursor
-        spans.push(Span::styled("█", Style::default().fg(Color::White).add_modifier(Modifier::SLOW_BLINK)));
+        spans.push(Span::styled(
+            format!(" {} ", match vm.state {
+                VMState::Running => "RUNNING",
+                VMState::Halted => "HALTED",
+                VMState::Breakpoint => "BREAKPOINT",
+                VMState::Error(_) => "ERROR",
+                VMState::Setup => "SETUP",
+            }),
+            Style::default().bg(state_color).fg(Color::Black).add_modifier(Modifier::BOLD)
+        ));
+        
+        spans.push(Span::raw(" "));
+        
+        // Show active pane
+        spans.push(Span::styled(
+            format!("Active: {}", match self.focused_pane {
+                FocusedPane::Disassembly => "Disassembly",
+                FocusedPane::Registers => "Registers",
+                FocusedPane::Memory => "Memory",
+                FocusedPane::Stack => "Stack",
+                FocusedPane::Watches => "Watches",
+                FocusedPane::Output => "Output",
+                _ => "Unknown",
+            }),
+            Style::default().fg(Color::Cyan)
+        ));
+        
+        // Show hints based on context
+        let hints = match self.focused_pane {
+            FocusedPane::Disassembly => " | Space:step b:breakpoint r:run",
+            FocusedPane::Memory => " | g:goto e:edit",
+            FocusedPane::Watches => " | w:add W:remove",
+            _ => " | ?:help q:quit",
+        };
+        spans.push(Span::styled(hints, Style::default().fg(Color::DarkGray)));
+        
+        // Right-align some info
+        let breakpoint_count = self.breakpoints.len();
+        if breakpoint_count > 0 {
+            let bp_text = format!(" {} BP ", breakpoint_count);
+            let used_width = spans.iter().map(|s| s.content.len()).sum::<usize>();
+            let padding = (area.width as usize).saturating_sub(used_width + bp_text.len());
+            if padding > 0 {
+                spans.push(Span::raw(" ".repeat(padding)));
+            }
+            spans.push(Span::styled(bp_text, Style::default().fg(Color::Red)));
+        }
         
         let paragraph = Paragraph::new(Line::from(spans));
-        frame.render_widget(Clear, command_area);
-        frame.render_widget(paragraph, command_area);
+        frame.render_widget(paragraph, area);
+    }
+    
+    fn draw_input_line(&self, frame: &mut Frame, area: Rect, prompt: &str) {
+        let input_area = area;  // Use the provided area directly
+        
+        // Clear the line first
+        frame.render_widget(Clear, input_area);
+        
+        // Create the input line with prompt
+        let mut spans = vec![];
+        
+        // Add prompt with appropriate styling
+        let prompt_text = format!("[{}] ", prompt);
+        spans.push(Span::styled(prompt_text, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+        
+        // Show what the user is typing
+        if self.mode == DebuggerMode::Command {
+            spans.push(Span::styled(":", Style::default().fg(Color::Yellow)));
+        }
+        spans.push(Span::styled(&self.command_buffer, Style::default().fg(Color::White)));
+        
+        // Add blinking cursor
+        spans.push(Span::styled("█", Style::default().fg(Color::White).add_modifier(Modifier::SLOW_BLINK)));
+        
+        // Add hint on the right side
+        let hint = " (ESC to cancel)";
+        let used_width = prompt.len() + 3 + self.command_buffer.len() + 1 + hint.len();
+        let padding_len = (area.width as usize).saturating_sub(used_width);
+        if padding_len > 0 {
+            spans.push(Span::raw(" ".repeat(padding_len)));
+            spans.push(Span::styled(hint, Style::default().fg(Color::DarkGray)));
+        }
+        
+        let paragraph = Paragraph::new(Line::from(spans));
+        frame.render_widget(paragraph, input_area);
     }
     
     fn draw_help(&self, frame: &mut Frame, area: Rect) {
