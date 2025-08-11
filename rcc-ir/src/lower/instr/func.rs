@@ -278,11 +278,7 @@ impl ModuleLowerer {
             
             // Always allocate a register for the result and move R3 to it
             // This ensures the value is properly tracked in the allocator
-            let dest_reg = self.reg_alloc.get_reg(result_key.clone());
-            
-            // Get any spill/reload instructions that were generated
-            let instrs = self.reg_alloc.take_instructions();
-            self.emit_many(instrs);
+            let dest_reg = self.get_reg(result_key.clone());
             
             // Move result from R3 to the allocated register (may be R3 itself if free)
             if dest_reg != Reg::R3 {

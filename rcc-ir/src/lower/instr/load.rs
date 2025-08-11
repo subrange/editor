@@ -77,40 +77,42 @@ impl ModuleLowerer {
             } else {
                 // Get pointer address and bank
                 let ptr_reg = self.get_value_register(ptr)?;
+                
+                // Pin ptr_reg to prevent it from being spilled during get_bank_for_pointer
+                // Get the actual value name that's in the register
+                let ptr_value_name = if let Some(name) = self.reg_alloc.get_register_value(ptr_reg) {
+                    name
+                } else {
+                    // This shouldn't happen, but handle it gracefully
+                    format!("ptr_reg_{}", self.label_counter)
+                };
+                
+                self.emit(AsmInst::Comment(format!("Pinning {} in register to prevent spilling", ptr_value_name)));
+                self.reg_alloc.pin_value(ptr_value_name.clone());
                 let bank = self.get_bank_for_pointer(ptr)?;
+                // Don't unpin yet - we still need ptr_reg for the LOAD instruction!
+                
+                // ptr_reg should still be valid now since we pinned it
+                let final_ptr_reg = ptr_reg;
 
                 if is_loading_pointer {
                     // Loading a fat pointer - load address and bank tag
                     self.emit(AsmInst::Comment("Loading fat pointer".to_string()));
 
-                    // Pin the ptr_reg to ensure it's not overwritten when allocating dest_reg
-                    let ptr_pin_key = self.generate_temp_name("ptr_addr_preserve");
-                    self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key.clone());
-                    self.reg_alloc.pin_value(ptr_pin_key.clone());
+                    // Note: ptr_value_name is already pinned from above
                     
-                    // Allocate destination register AFTER we have ptr_reg and bank
+                    // Allocate destination register AFTER we have final_ptr_reg and bank
                     let result_key = Self::temp_name(*result);
                     let dest_reg = self.get_reg(result_key.clone());
                     self.value_locations.insert(result_key, Location::Register(dest_reg));
-                    
-                    // Unpin ptr_reg now that we have dest_reg
-                    self.reg_alloc.unpin_value(&ptr_pin_key);
 
                     // Load address part
-                    self.emit(AsmInst::Load(dest_reg, bank.clone(), ptr_reg));
-
-                    // Pin ptr_reg to prevent it from being spilled when allocating next_addr
-                    let ptr_pin_key = self.generate_temp_name("ptr_load_preserve");
-                    self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key.clone());
-                    self.reg_alloc.pin_value(ptr_pin_key.clone());
+                    self.emit(AsmInst::Load(dest_reg, bank.clone(), final_ptr_reg));
 
                     // Load bank tag from next word
                     let next_addr_name = self.generate_temp_name("next_addr");
                     let next_addr = self.get_reg(next_addr_name);
-                    self.emit(AsmInst::AddI(next_addr, ptr_reg, 1));
-                    
-                    // Unpin ptr_reg now that we're done with it
-                    self.reg_alloc.unpin_value(&ptr_pin_key);
+                    self.emit(AsmInst::AddI(next_addr, final_ptr_reg, 1));
                     
                     // Get bank_reg AFTER using next_addr to avoid spilling next_addr before use
                     let bank_name = self.generate_temp_name("load_bank");
@@ -123,14 +125,20 @@ impl ModuleLowerer {
                     self.reg_alloc.mark_in_use(bank_reg, bank_temp_key);
 
                     // Mark as having unknown bank since it's runtime-determined
+                    
+                    // Now safe to unpin the pointer value after LOAD instructions
+                    self.reg_alloc.unpin_value(&ptr_value_name);
                 } else {
                     // Regular load
-                    // Allocate destination register AFTER we have ptr_reg and bank
+                    // Allocate destination register AFTER we have final_ptr_reg and bank
                     let result_key = Self::temp_name(*result);
                     let dest_reg = self.get_reg(result_key.clone());
                     self.value_locations.insert(result_key, Location::Register(dest_reg));
                     
-                    self.emit(AsmInst::Load(dest_reg, bank, ptr_reg));
+                    self.emit(AsmInst::Load(dest_reg, bank, final_ptr_reg));
+                    
+                    // Now safe to unpin the pointer value after LOAD instruction
+                    self.reg_alloc.unpin_value(&ptr_value_name);
                 }
                 // Registers will be freed at statement boundary
                 

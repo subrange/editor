@@ -338,54 +338,57 @@ def main():
         (f"{BASE_DIR}/tests/test_inline_asm.c", "Y\n", False),
         
         # Tests with full runtime (crt0 + libruntime.par)
-        (f"{BASE_DIR}/tests-runtime/test_runtime_simple.c", "RT\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_runtime_full.c", "Hi!\nOK\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_external_putchar.c", "Hi\n", True),
-        
-        # Tests moved from tests/ directory (all use putchar)
-        (f"{BASE_DIR}/tests-runtime/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_sizeof_simple.c", "1 2 2 :\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_globals.c", "*A\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_strings.c", "Plea", True),
-        (f"{BASE_DIR}/tests-runtime/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_add.c", "Y\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_array_decl.c", "123\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_while_simple.c", "YY\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_hello.c", "Hello\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_simple_putchar.c", "AB\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_address_of.c", "OK\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_struct_basic.c", "Y\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_array_init.c", "1234\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_pointers_comprehensive.c", "12345\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_while_debug.c", "ABL0L1L2C\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_sizeof.c", "123456\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_sizeof_final.c", "YYYYYYYYY\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_strings_addr.c", "A", True),
-        (f"{BASE_DIR}/tests-runtime/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
+        (f"{BASE_DIR}/tests/test_runtime_simple.c", "RT\n", True),
+        (f"{BASE_DIR}/tests/test_runtime_full.c", "Hi!\nOK\n", True),
+        (f"{BASE_DIR}/tests/test_external_putchar.c", "Hi\n", True),
+        (f"{BASE_DIR}/tests/test_puts_simple.c", "ABC\n", True),  # Simple puts test without runtime
 
-        (f"{BASE_DIR}/tests-runtime/test_puts.c", "Hello, World!\n", True),
+        # Tests moved from tests/ directory (all use putchar)
+        (f"{BASE_DIR}/tests/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", True),
+        (f"{BASE_DIR}/tests/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", True),
+        (f"{BASE_DIR}/tests/test_sizeof_simple.c", "1 2 2 :\n", True),
+        (f"{BASE_DIR}/tests/test_globals.c", "*A\n", True),
+        (f"{BASE_DIR}/tests/test_strings.c", "Plea", True),
+        (f"{BASE_DIR}/tests/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!\n", True),
+        (f"{BASE_DIR}/tests/test_add.c", "Y\n", True),
+        (f"{BASE_DIR}/tests/test_array_decl.c", "123\n", True),
+        (f"{BASE_DIR}/tests/test_while_simple.c", "YY\n", True),
+        (f"{BASE_DIR}/tests/test_hello.c", "Hello\n", True),
+        (f"{BASE_DIR}/tests/test_simple_putchar.c", "AB\n", True),
+        (f"{BASE_DIR}/tests/test_address_of.c", "OK\n", True),
+        (f"{BASE_DIR}/tests/test_struct_basic.c", "Y\n", True),
+        (f"{BASE_DIR}/tests/test_array_init.c", "1234\n", True),
+        (f"{BASE_DIR}/tests/test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", True),
+        (f"{BASE_DIR}/tests/test_pointers_comprehensive.c", "12345\n", True),
+        (f"{BASE_DIR}/tests/test_while_debug.c", "ABL0L1L2C\n", True),
+        (f"{BASE_DIR}/tests/test_sizeof.c", "123456\n", True),
+        (f"{BASE_DIR}/tests/test_sizeof_final.c", "YYYYYYYYY\n", True),
+        (f"{BASE_DIR}/tests/test_strings_addr.c", "A", True),
+        (f"{BASE_DIR}/tests/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
+
+        (f"{BASE_DIR}/tests/test_puts.c", "Hello, World!\n", True),
 
 
         # Pointer provenance tests with fat pointers
         (f"{BASE_DIR}/tests/test_pointer_provenance.c", "GSSSS\n", True),
         (f"{BASE_DIR}/tests/test_pointer_phi.c", "1234\n", True),
         (f"{BASE_DIR}/tests/test_pointer_swap_simple.c", "21\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_struct_inline.c", "YY\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_struct_simple.c", "12345\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_puts_debug.c", "ABC\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_puts_string_literal.c", "XYZ\n", True),
-        (f"{BASE_DIR}/tests-runtime/test-cond.c", "T", True),
-        (f"{BASE_DIR}/tests-runtime/test_pointer_gritty.c", "7", True),
+        (f"{BASE_DIR}/tests/test_inline_swap_debug.c", "12 21\n", True),
+        (f"{BASE_DIR}/tests/test_struct_inline.c", "YY\n", True),
+        (f"{BASE_DIR}/tests/test_struct_simple.c", "12345\n", True),
+        (f"{BASE_DIR}/tests/test_puts_debug.c", "ABC\n", True),
+        (f"{BASE_DIR}/tests/test_puts_string_literal.c", "XYZ\n", True),
+        (f"{BASE_DIR}/tests/test-cond.c", "T", True),
+        (f"{BASE_DIR}/tests/test_pointer_gritty.c", "7", True),
 
-        (f"{BASE_DIR}/tests-runtime/test_bool.c", "12\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_bool_or.c", "Y\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_complex_bool.c", "12345\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_complex_simple.c", "123\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_mul.c", "Y", True),
-        (f"{BASE_DIR}/tests-runtime/test_puts_string.c", "Hello, World!\n", True),
-        (f"{BASE_DIR}/tests-runtime/test_pointer_swap.c", "AB\n", True),
+        (f"{BASE_DIR}/tests/test_bool.c", "12\n", True),
+        (f"{BASE_DIR}/tests/test_bool_or.c", "Y\n", True),
+        (f"{BASE_DIR}/tests/test_complex_bool.c", "12345\n", True),
+        (f"{BASE_DIR}/tests/test_complex_simple.c", "123\n", True),
+        (f"{BASE_DIR}/tests/test_mul.c", "Y", True),
+        (f"{BASE_DIR}/tests/test_puts_string.c", "Hello, World!\n", True),
+        (f"{BASE_DIR}/tests/test_pointer_swap.c", "AB\n", True),
+        (f"{BASE_DIR}/tests/test_strings_simple.c", "Hello!\n", True),
     ]
     
     # If single test specified, filter the test list
@@ -409,7 +412,7 @@ def main():
             # If not found in tests list, search for the file in test directories
             possible_paths = [
                 f"{BASE_DIR}/tests/{test_name}.c",
-                f"{BASE_DIR}/tests-runtime/{test_name}.c",
+                f"{BASE_DIR}/tests/{test_name}.c",
                 f"{BASE_DIR}/tests-known-failures/{test_name}.c",
             ]
             
@@ -421,11 +424,11 @@ def main():
             
             if not found_path:
                 print(f"Error: Test '{test_name}' not found in any test directory")
-                print(f"Searched in: tests/, tests-runtime/, tests-known-failures/")
+                print(f"Searched in: tests/, tests/, tests-known-failures/")
                 return 1
             
             # Determine if it should use runtime based on directory
-            use_runtime = "tests-runtime" in found_path or "tests-known-failures" in found_path
+            use_runtime = "tests" in found_path or "tests-known-failures" in found_path
             
             print(f"Running single test: {found_path}")
             print(f"Note: Expected output not defined in test list, will show actual output")
@@ -519,8 +522,6 @@ def main():
         f"{BASE_DIR}/tests-known-failures/test_typedef_simple.c",  # Typedef support not implemented
         f"{BASE_DIR}/tests-known-failures/test_struct_simple2.c",  # Uses typedef struct
         f"{BASE_DIR}/tests-known-failures/test_struct_inline_simple.c",  # Inline struct definitions not supported
-        f"{BASE_DIR}/tests-known-failures/test_puts_simple.c",  # Stack pointer provenance issue
-        f"{BASE_DIR}/tests-known-failures/test_strings_simple.c",  # Function redefinition error
         f"{BASE_DIR}/tests-known-failures/test_puts_global.c", # Inline assembly not fully implemented yet
 
     ]

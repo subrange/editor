@@ -1,0 +1,154 @@
+Compiling C99 file: c-test/tests/test_inline_swap_debug.c
+Successfully parsed C99 source...
+Found 2 top-level items
+  Global variable: putchar : void (int)
+  Function: main -> int
+
+💀 Attempting full compilation pipeline
+💫 Successfully generated IR
+🦄 Module contains 1 functions
+[DEBUG rcc_ir::module_lowering] Creating new ModuleLowerer
+=== Lowering function: main ===
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = ptr_preserve_1
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve_1'
+[DEBUG rcc_ir::lower::instr] Checking bank for t0, bank_temp_key=t100000, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve_1'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = ptr_preserve2_2
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve2_2'
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve2_2'
+[DEBUG rcc_ir::simple_regalloc] free_all called! Clearing temporaries (preserving parameters)
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = ptr_preserve_6
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve_6'
+[DEBUG rcc_ir::lower::instr] Checking bank for t1, bank_temp_key=t100001, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve_6'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = ptr_preserve2_7
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve2_7'
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve2_7'
+[DEBUG rcc_ir::simple_regalloc] free_all called! Clearing temporaries (preserving parameters)
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t0_10'
+[DEBUG rcc_ir::lower::instr] Checking bank for t0, bank_temp_key=t100000, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t0_10'
+=== Processing Binary t3 ===
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R7 = t3
+[DEBUG rcc_ir::simple_regalloc] clear_register: R5 (contained addr_t0_10)
+[DEBUG rcc_ir::simple_regalloc] clear_register: R7 (contained t3)
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t1_12'
+[DEBUG rcc_ir::lower::instr] Checking bank for t1, bank_temp_key=t100001, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t1_12'
+=== Processing Binary t5 ===
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = t5
+[DEBUG rcc_ir::simple_regalloc] clear_register: R6 (contained t5)
+[DEBUG rcc_ir::simple_regalloc] clear_register: R7 (contained addr_t1_12)
+[DEBUG rcc_ir::simple_regalloc] clear_register: R7 (contained const_32_14)
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = ptr_preserve_16
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve_16'
+[DEBUG rcc_ir::lower::instr] Checking bank for t6, bank_temp_key=t100006, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve_16'
+[DEBUG rcc_ir::lower::instr] Checking bank for t0, bank_temp_key=t100000, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] free_all called! Clearing temporaries (preserving parameters)
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = ptr_preserve_21
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve_21'
+[DEBUG rcc_ir::lower::instr] Checking bank for t7, bank_temp_key=t100007, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve_21'
+[DEBUG rcc_ir::lower::instr] Checking bank for t1, bank_temp_key=t100001, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] free_all called! Clearing temporaries (preserving parameters)
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t6_25'
+[DEBUG rcc_ir::lower::instr] Checking bank for t6, bank_temp_key=t100006, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R9 = t100009
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t6_25'
+[DEBUG rcc_ir::simple_regalloc] Pinning value 't9'
+[DEBUG rcc_ir::lower::instr] Checking bank for t9, bank_temp_key=t100009, has_bank_tag=true
+[DEBUG rcc_ir::simple_regalloc] Pinning value 't100009'
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 't100009'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R10 = bank_for_t9
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 't9'
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {}
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R5 = ptr_preserve_32
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve_32'
+[DEBUG rcc_ir::lower::instr] Checking bank for t8, bank_temp_key=t100008, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve_32'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R5 = ptr_preserve2_33
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve2_33'
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve2_33'
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {}
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t7_35'
+[DEBUG rcc_ir::lower::instr] Checking bank for t7, bank_temp_key=t100007, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"addr_t7_35"}
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"addr_t7_35"}
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"addr_t7_35"}
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = t100011
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t7_35'
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {}
+[DEBUG rcc_ir::simple_regalloc] Pinning value 't11'
+[DEBUG rcc_ir::lower::instr] Checking bank for t11, bank_temp_key=t100011, has_bank_tag=true
+[DEBUG rcc_ir::simple_regalloc] Pinning value 't100011'
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"t11", "t100011"}
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 't100011'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R7 = bank_for_t11
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"t11"}
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 't11'
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {}
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t6_41'
+[DEBUG rcc_ir::lower::instr] Checking bank for t6, bank_temp_key=t100006, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"addr_t6_41"}
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"addr_t6_41"}
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"addr_t6_41"}
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = t100013
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t6_41'
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {}
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R5 = ptr_preserve_44
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve_44'
+[DEBUG rcc_ir::lower::instr] Checking bank for t13, bank_temp_key=t100013, has_bank_tag=true
+[DEBUG rcc_ir::simple_regalloc] Pinning value 't100013'
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"t100013", "ptr_preserve_44"}
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 't100013'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R7 = bank_for_t13
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve_44'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R5 = ptr_preserve2_48
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve2_48'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R7 = bank_preserve_49
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'bank_preserve_49'
+[DEBUG rcc_ir::simple_regalloc]   Current pinned values: {"ptr_preserve2_48", "bank_preserve_49"}
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve2_48'
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'bank_preserve_49'
+[DEBUG rcc_ir::simple_regalloc] free_all called! Clearing temporaries (preserving parameters)
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t8_50'
+[DEBUG rcc_ir::lower::instr] Checking bank for t8, bank_temp_key=t100008, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t8_50'
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t7_51'
+[DEBUG rcc_ir::lower::instr] Checking bank for t7, bank_temp_key=t100007, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R10 = t100015
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t7_51'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R8 = ptr_preserve_54
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve_54'
+[DEBUG rcc_ir::lower::instr] Checking bank for t15, bank_temp_key=t100015, has_bank_tag=true
+[DEBUG rcc_ir::simple_regalloc] Pinning value 't100015'
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 't100015'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R11 = bank_for_t15
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve_54'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R8 = ptr_preserve2_58
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'ptr_preserve2_58'
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R11 = bank_preserve_59
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'bank_preserve_59'
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'ptr_preserve2_58'
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'bank_preserve_59'
+[DEBUG rcc_ir::simple_regalloc] free_all called! Clearing temporaries (preserving parameters)
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t0_60'
+[DEBUG rcc_ir::lower::instr] Checking bank for t0, bank_temp_key=t100000, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t0_60'
+=== Processing Binary t17 ===
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R7 = t17
+[DEBUG rcc_ir::simple_regalloc] clear_register: R5 (contained addr_t0_60)
+[DEBUG rcc_ir::simple_regalloc] clear_register: R7 (contained t17)
+[DEBUG rcc_ir::simple_regalloc] Pinning value 'addr_t1_62'
+[DEBUG rcc_ir::lower::instr] Checking bank for t1, bank_temp_key=t100001, has_bank_tag=false
+[DEBUG rcc_ir::simple_regalloc] Unpinning value 'addr_t1_62'
+=== Processing Binary t19 ===
+[DEBUG rcc_ir::simple_regalloc] mark_in_use: R6 = t19
+[DEBUG rcc_ir::simple_regalloc] clear_register: R6 (contained t19)
+[DEBUG rcc_ir::simple_regalloc] clear_register: R7 (contained addr_t1_62)
+[DEBUG rcc_ir::simple_regalloc] clear_register: R7 (contained const_10_64)
+[DEBUG rcc_ir::simple_regalloc] free_all called! Clearing temporaries (preserving parameters)
+[DEBUG rcc_ir::simple_regalloc] free_all called! Clearing temporaries (preserving parameters)
+💕 Successfully lowered to assembly
+Assembly written to: c-test/build/test_swap_debug_new.asm

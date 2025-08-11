@@ -63,6 +63,10 @@ enum Commands {
         /// Specify output path for IR file (used with --save-ir)
         #[arg(long)]
         ir_output: Option<PathBuf>,
+        
+        /// Debug level (0=none, 1=basic, 2=verbose, 3=trace)
+        #[arg(short, long, default_value = "0")]
+        debug: u8,
     },
 }
 
@@ -82,7 +86,22 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Compile { input, output, print_ir, save_ir, ir_output } => {
+        Commands::Compile { input, output, print_ir, save_ir, ir_output, debug } => {
+            // Initialize logger based on debug level
+            let log_level = match debug {
+                0 => "error",
+                1 => "warn",
+                2 => "info",
+                3 => "debug",
+                _ => "trace",
+            };
+            
+            env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level))
+                .format_timestamp(None)
+                .format_module_path(true)
+                .format_target(false)
+                .init();
+            
             if let Err(e) = compile_c99_file(&input, output.as_deref(), print_ir, save_ir, ir_output.as_deref()) {
                 eprintln!("Error compiling C99 file: {}", e);
                 std::process::exit(1);

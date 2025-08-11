@@ -7,7 +7,6 @@ This directory contains the test suite for the Ripple C compiler (rcc), which co
 ```
 c-test/
 ├── tests/                    # Main test cases that should pass
-├── tests-runtime/            # Tests requiring full runtime library
 ├── tests-known-failures/     # Tests expected to fail (unsupported features)
 ├── build/                    # Temporary build artifacts (auto-created)
 └── run_tests.py             # Test runner script
@@ -40,8 +39,7 @@ python3 run_tests.py --clean
 ### 1. Create a Test File
 
 Create a `.c` file in the appropriate directory:
-- `tests/` - For standard tests using only basic features
-- `tests-runtime/` - For tests requiring runtime library functions
+- `tests/` - For all tests
 - `tests-known-failures/` - For tests documenting unsupported features
 
 ### 2. Write Test Code

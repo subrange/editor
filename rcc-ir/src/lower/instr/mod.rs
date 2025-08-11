@@ -4,6 +4,7 @@ use crate::{Instruction, IrBinaryOp, IrType, Value};
 use crate::ir::BankTag;
 use crate::lower::instr::arithmetic::emit_ne;
 use crate::module_lowering::{Location, ModuleLowerer};
+use log::{debug, trace, warn};
 
 pub mod arithmetic;
 mod alloca;
@@ -58,7 +59,7 @@ impl ModuleLowerer {
     
 
     /// Get the size of a type in 16-bit words
-    fn get_type_size_in_words(&self, ir_type: &IrType) -> u64 {
+    pub(crate) fn get_type_size_in_words(&self, ir_type: &IrType) -> u64 {
         match ir_type {
             IrType::Void => 0,
             IrType::I1 => 1, // Boolean takes 1 word
@@ -84,13 +85,9 @@ impl ModuleLowerer {
     fn get_value_register_impl(&mut self, value: &Value) -> Result<Reg, CompilerError> {
         match value {
             Value::Constant(n) => {
-                // Use the centralized allocator for constants
+                // Use the centralized allocator for constants through the wrapper
                 let const_key = self.generate_temp_name(&format!("const_{}", n));
-                let reg = self.reg_alloc.get_reg(const_key);
-
-                // Append any spill/reload instructions generated
-                let instrs = self.reg_alloc.take_instructions();
-                self.emit_many(instrs);
+                let reg = self.get_reg(const_key);  // Use wrapper, not direct call!
 
                 self.emit(AsmInst::LI(reg, *n as i16));
                 Ok(reg)
@@ -114,10 +111,8 @@ impl ModuleLowerer {
 
                     self.emit(AsmInst::Comment(format!("Getting register for temp {}", key)));
 
-                    // Use SimpleRegAlloc's reload which knows about spilled values
-                    let reg = self.reg_alloc.reload(key.clone());
-                    let instrs = self.reg_alloc.take_instructions();
-                    self.emit_many(instrs);
+                    // Use wrapper's reload which handles spill/reload instructions
+                    let reg = self.reload(key.clone());
 
                     let reg_name = match reg {
                         Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
@@ -127,8 +122,7 @@ impl ModuleLowerer {
                     };
                     self.emit(AsmInst::Comment(format!("  {} is now in {}", key, reg_name)));
 
-                    // Update our tracking
-                    self.value_locations.insert(key, Location::Register(reg));
+                    // The wrapper already updates value_locations
                     Ok(reg)
                 }
             }
@@ -185,14 +179,15 @@ impl ModuleLowerer {
                 // Check if we have a bank tag for this pointer
                 // It might be in a register or might have been spilled
                 let has_bank_tag = self.reg_alloc.is_tracked(&bank_temp_key);
-                eprintln!("DEBUG: Checking bank for t{}, bank_temp_key={}, has_bank_tag={}", tid, bank_temp_key, has_bank_tag);
+                debug!("Checking bank for t{}, bank_temp_key={}, has_bank_tag={}", tid, bank_temp_key, has_bank_tag);
                 
                 if has_bank_tag {
                     // Reload the bank tag (will get from register if already there, or reload from spill)
                     self.emit(AsmInst::Comment(format!("Getting bank tag for t{}", tid)));
-                    let bank_reg = self.reg_alloc.reload(bank_temp_key.clone());
-                    let instrs = self.reg_alloc.take_instructions();
-                    self.emit_many(instrs);
+                    let bank_reg = self.reload(bank_temp_key.clone());
+                    
+                    // Pin the bank register so it doesn't get spilled when we allocate result_reg
+                    self.reg_alloc.pin_value(bank_temp_key.clone());
                     
                     // We have the bank tag in a register - need to convert to bank register
                     // Generate runtime check to select R0 or R13 based on tag
@@ -219,6 +214,8 @@ impl ModuleLowerer {
                         AsmInst::Label(done_label)
                     ]);
                    
+                    // Now safe to unpin the bank tag value
+                    self.reg_alloc.unpin_value(&bank_temp_key);
 
                     // Mark this register as containing the bank to prevent reuse
                     self.reg_alloc.mark_in_use(result_reg, format!("bank_for_t{}", tid));
@@ -239,11 +236,11 @@ impl ModuleLowerer {
                         Ok(Reg::R13)
                     } else {
                         // This should never happen with properly tracked fat pointers
-                        eprintln!("DEBUG: get_bank_for_pointer called for t{}", tid);
-                        eprintln!("  local_offsets: {:?}", self.local_offsets.contains_key(tid));
-                        eprintln!("  fat_ptr_components: {:?}", self.fat_ptr_components.contains_key(tid));
-                        eprintln!("  value_locations contains t{}: {:?}", tid, self.value_locations.contains_key(&format!("t{}", tid)));
-                        eprintln!("  value_locations contains t{}: {:?}", 100000 + tid, self.value_locations.contains_key(&format!("t{}", 100000 + tid)));
+                        warn!("get_bank_for_pointer called for t{}", tid);
+                        warn!("  local_offsets: {:?}", self.local_offsets.contains_key(tid));
+                        warn!("  fat_ptr_components: {:?}", self.fat_ptr_components.contains_key(tid));
+                        warn!("  value_locations contains t{}: {:?}", tid, self.value_locations.contains_key(&format!("t{}", tid)));
+                        warn!("  value_locations contains t{}: {:?}", 100000 + tid, self.value_locations.contains_key(&format!("t{}", 100000 + tid)));
                         Err(CompilerError::codegen_error(
                             format!("Missing bank information for pointer t{}. This is a compiler bug - all pointers should have bank tags.", tid),
                             rcc_common::SourceLocation::dummy(),

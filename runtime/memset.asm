@@ -19,6 +19,7 @@ memset:
 ;   Allocated free register for addr_t3_0
     ADDI R8, R15, 1
 ; Store 0 to [t3]
+; === ModuleLowerer::get_reg for 'const_0_4' ===
 ; get_reg for 'const_0_4'
 ;   Allocated free register for const_0_4
     LI R9, 0
@@ -33,6 +34,7 @@ memset_L1:
 ; get_reg for 'addr_t3_5'
 ;   Allocated free register for addr_t3_5
     ADDI R7, R15, 1
+; Pinning addr_t3_5 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 't4' ===
 ; get_reg for 't4'
 ;   Allocated free register for t4
@@ -82,6 +84,7 @@ memset_L2:
 ; get_reg for 'addr_t3_6'
 ;   Allocated free register for addr_t3_6
     ADDI R7, R15, 1
+; Pinning addr_t3_6 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 't6' ===
 ; get_reg for 't6'
 ;   Allocated free register for t6
@@ -166,6 +169,7 @@ memset_L3:
 ; get_reg for 'addr_t3_13'
 ;   Allocated free register for addr_t3_13
     ADDI R7, R15, 1
+; Pinning addr_t3_13 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 't8' ===
 ; get_reg for 't8'
 ;   Allocated free register for t8
@@ -182,6 +186,7 @@ memset_L3:
 ;   R8 contains t8
 ; t8 found in R8
 ;   t8 is now in R8
+; === ModuleLowerer::get_reg for 'const_1_14' ===
 ; get_reg for 'const_1_14'
 ;   Allocated free register for const_1_14
     LI R9, 1

@@ -147,6 +147,31 @@ impl ModuleLowerer {
             self.generate_prologue();
         }
 
+        // First, process all allocas to determine stack space needed
+        // This is necessary to set the spill base offset correctly
+        let mut max_stack_offset = 0i16;
+        for block in &function.blocks {
+            for instruction in &block.instructions {
+                if let Instruction::Alloca { result, alloc_type, count, .. } = instruction {
+                    // Calculate size for this alloca
+                    let base_size = self.get_type_size_in_words(alloc_type);
+                    let total_size = match count {
+                        Some(crate::Value::Constant(n)) => base_size * (*n as u64),
+                        _ => base_size,
+                    };
+                    
+                    // Update the maximum offset needed
+                    let start_offset = max_stack_offset + 1;
+                    max_stack_offset = start_offset + (total_size as i16) - 1;
+                }
+            }
+        }
+        
+        // Set the spill base in the register allocator to start after user variables
+        self.reg_alloc.set_spill_base(max_stack_offset + 1);
+        log::debug!("Stack layout: user variables use FP+1 to FP+{}, spills start at FP+{}", 
+                   max_stack_offset, max_stack_offset + 1);
+
         // Lower basic blocks
         for block in &function.blocks {
             self.lower_basic_block(block)?;

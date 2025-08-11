@@ -9,6 +9,7 @@ use rcc_codegen::{AsmInst, Reg};
 use rcc_common::CompilerError;
 use std::collections::HashMap;
 use crate::lower::instr::arithmetic::emit_ne;
+use log::{debug, trace, info};
 
 
 /// Fat pointer components tracking
@@ -163,7 +164,7 @@ impl ModuleLowerer {
 
     
     pub fn new() -> Self {
-        eprintln!("Creating new ModuleLowerer");
+        debug!("Creating new ModuleLowerer");
         Self {
             instructions: Vec::new(),
             reg_alloc: SimpleRegAlloc::new(),
@@ -212,7 +213,7 @@ impl ModuleLowerer {
     }
     
     pub(crate) fn get_reg(&mut self, for_value: String) -> Reg {
-        eprintln!("=== ModuleLowerer::get_reg for '{}' ===", for_value);
+        trace!("ModuleLowerer::get_reg for '{}'", for_value);
         self.instructions.push(AsmInst::Comment(format!("=== ModuleLowerer::get_reg for '{}' ===", for_value)));
         
         // Use the centralized allocator
@@ -223,6 +224,19 @@ impl ModuleLowerer {
         
         // Also track in value_locations for compatibility
         self.value_locations.insert(for_value, Location::Register(reg));
+        
+        reg
+    }
+    
+    /// Wrapper for reload to ensure spill/reload instructions are emitted
+    pub(crate) fn reload(&mut self, value: String) -> Reg {
+        let reg = self.reg_alloc.reload(value.clone());
+        
+        // Append any spill/reload instructions generated
+        self.instructions.append(&mut self.reg_alloc.take_instructions());
+        
+        // Also track in value_locations for compatibility
+        self.value_locations.insert(value, Location::Register(reg));
         
         reg
     }

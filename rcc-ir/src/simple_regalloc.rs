@@ -5,6 +5,7 @@
 
 use rcc_codegen::{AsmInst, Reg};
 use std::collections::BTreeMap;
+use log::{debug, trace};
 
 /// Simple register allocator with spill support
 pub struct SimpleRegAlloc {
@@ -51,13 +52,14 @@ impl SimpleRegAlloc {
     
     /// Mark a register as holding a parameter that should persist across statement boundaries
     pub fn mark_as_parameter(&mut self, reg: Reg) {
+        debug!("Marking {:?} as parameter register", reg);
         self.parameter_registers.insert(reg);
     }
     
     /// Get a register for a value
     /// If all registers are in use, spills the least recently used one
     pub fn get_reg(&mut self, for_value: String) -> Reg {
-        eprintln!("DEBUG get_reg called for '{}', reg_contents: {:?}", for_value, self.reg_contents);
+        trace!("get_reg called for '{}', reg_contents: {:?}", for_value, self.reg_contents);
         self.instructions.push(AsmInst::Comment(format!("get_reg for '{}'", for_value)));
         
         // Check if this value already has a register
@@ -88,8 +90,13 @@ impl SimpleRegAlloc {
         }
         
         // Pick the first non-pinned register in reg_contents
+        debug!("  Current pinned values: {:?}", self.pinned_values);
         let victim = self.reg_contents.iter()
-            .find(|(_, val)| !self.pinned_values.contains(*val))
+            .find(|(_, val)| {
+                let is_pinned = self.pinned_values.contains(*val);
+                trace!("    Checking '{}': pinned={}", val, is_pinned);
+                !is_pinned
+            })
             .map(|(reg, _)| *reg)
             .expect("No spillable registers available!");
         let victim_value = self.reg_contents.remove(&victim).unwrap();
@@ -153,9 +160,9 @@ impl SimpleRegAlloc {
     
     /// Check if a value is tracked (either in register or spilled)
     pub fn is_tracked(&self, value: &str) -> bool {
-        eprintln!("DEBUG is_tracked: Looking for '{}'", value);
-        eprintln!("  reg_contents: {:?}", self.reg_contents);
-        eprintln!("  spill_slots: {:?}", self.spill_slots.keys().collect::<Vec<_>>());
+        trace!("is_tracked: Looking for '{}'", value);
+        trace!("  reg_contents: {:?}", self.reg_contents);
+        trace!("  spill_slots: {:?}", self.spill_slots.keys().collect::<Vec<_>>());
         // Check if it's in a register
         if self.reg_contents.values().any(|v| v == value) {
             return true;
@@ -167,7 +174,7 @@ impl SimpleRegAlloc {
     /// Mark a register as containing a value without spilling
     /// This prevents the register from being chosen for spilling
     pub fn mark_in_use(&mut self, reg: Reg, value: String) {
-        eprintln!("DEBUG mark_in_use: {:?} = {}", reg, value);
+        debug!("mark_in_use: {:?} = {}", reg, value);
         self.reg_contents.insert(reg, value);
         // Remove from free list if it's there
         self.free_list.retain(|&r| r != reg);
@@ -175,11 +182,14 @@ impl SimpleRegAlloc {
     
     /// Pin a value so it cannot be spilled
     pub fn pin_value(&mut self, value: String) {
-        self.pinned_values.insert(value);
+        debug!("Pinning value '{}'", value);
+        self.pinned_values.insert(value.clone());
+        trace!("  Pinned values now: {:?}", self.pinned_values);
     }
     
     /// Unpin a value, allowing it to be spilled again
     pub fn unpin_value(&mut self, value: &str) {
+        debug!("Unpinning value '{}'" , value);
         self.pinned_values.remove(value);
     }
     
@@ -261,12 +271,12 @@ impl SimpleRegAlloc {
     pub fn clear_register(&mut self, reg: Reg) {
         // Don't clear parameter registers
         if self.parameter_registers.contains(&reg) {
-            eprintln!("DEBUG clear_register: Skipping parameter register {:?}", reg);
+            trace!("clear_register: Skipping parameter register {:?}", reg);
             return;
         }
         
         if let Some(val) = self.reg_contents.remove(&reg) {
-            eprintln!("DEBUG clear_register: {:?} (contained {})", reg, val);
+            debug!("clear_register: {:?} (contained {})", reg, val);
             self.instructions.push(AsmInst::Comment(format!("Clearing {:?} which contained {}", reg, val)));
         }
         // Add to free list if it's an allocatable register
@@ -344,14 +354,21 @@ impl SimpleRegAlloc {
             let offset = self.next_spill_offset;
             self.next_spill_offset += 1;
             self.spill_slots.insert(value.to_string(), offset);
+            debug!("Allocated spill slot for '{}' at FP+{}", value, offset);
             offset
         }
+    }
+    
+    /// Set the starting offset for spill slots (to avoid overlapping with user variables)
+    pub fn set_spill_base(&mut self, offset: i16) {
+        debug!("Setting spill base offset to {}", offset);
+        self.next_spill_offset = offset;
     }
     
     /// Free all temporaries (e.g., at statement boundaries)
     /// Parameters are preserved across statement boundaries
     pub fn free_all(&mut self) {
-        eprintln!("DEBUG free_all called! Clearing temporaries (preserving parameters)");
+        debug!("free_all called! Clearing temporaries (preserving parameters)");
         
         // Preserve parameter registers, free everything else
         let mut preserved = BTreeMap::new();

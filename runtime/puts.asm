@@ -16,6 +16,7 @@ puts:
 ;   R4 contains t100000
 ; t0 found in R3
 ;   t0 is now in R3
+; === ModuleLowerer::get_reg for 'const_0_0' ===
 ; get_reg for 'const_0_0'
 ;   Allocated free register for const_0_0
     LI R5, 0
@@ -42,9 +43,11 @@ puts_L1:
 ; === Processing instruction #0: Binary { result: 2, op: Sub, lhs: Constant(0), rhs: Constant(1), result_type: I16 } ===
 ; === Processing Binary t2 ===
 ; Binary: need(lhs)=1, need(rhs)=1
+; === ModuleLowerer::get_reg for 'const_0_4' ===
 ; get_reg for 'const_0_4'
 ;   Allocated free register for const_0_4
     LI R5, 0
+; === ModuleLowerer::get_reg for 'const_1_5' ===
 ; get_reg for 'const_1_5'
 ;   Allocated free register for const_1_5
     LI R6, 1
@@ -83,6 +86,7 @@ puts_L5:
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R5
+; Pinning t0 in register to prevent spilling
 ; Getting bank tag for t0
 ; Looking for t100000 in registers
 ;   R3 contains t1
@@ -127,6 +131,7 @@ puts_L6:
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R5
+; Pinning t0 in register to prevent spilling
 ; Getting bank tag for t0
 ; Looking for t100000 in registers
 ;   R3 contains t1
@@ -174,6 +179,7 @@ puts_bank_done_11:
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R7
+; === ModuleLowerer::get_reg for 'const_1_12' ===
 ; get_reg for 'const_1_12'
 ;   Allocated free register for const_1_12
     LI R6, 1
@@ -224,12 +230,14 @@ puts_bank_done_16:
     BEQ R0, R0, puts_L5
 puts_L7:
 ; === Processing instruction #0: Call { result: None, function: Global("putchar"), args: [Constant(10)], result_type: Void } ===
+; === ModuleLowerer::get_reg for 'const_10_19' ===
 ; get_reg for 'const_10_19'
 ;   Allocated free register for const_10_19
     LI R5, 10
     ADD R3, R5, R0
     CALL putchar
 ; === Processing instruction #1: Return(Some(Constant(0))) ===
+; === ModuleLowerer::get_reg for 'const_0_20' ===
 ; Clearing R5 which contained const_10_19
 ; get_reg for 'const_0_20'
 ;   Allocated free register for const_0_20
