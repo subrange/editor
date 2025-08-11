@@ -245,7 +245,21 @@ impl TuiDebugger {
             DebuggerMode::GotoAddress => self.draw_input_line(frame, status_area, "Go to address (hex)"),
             DebuggerMode::AddWatch => self.draw_input_line(frame, status_area, "Add watch (name:addr[:format])"),
             DebuggerMode::SetBreakpoint => self.draw_input_line(frame, status_area, "Set breakpoint (hex)"),
-            DebuggerMode::MemoryEdit => self.draw_input_line(frame, status_area, "Edit memory (addr:value)"),
+            DebuggerMode::MemoryEdit => {
+                // Try to show current value at address
+                let mut prompt = String::from("Edit memory (addr:value)");
+                if self.command_buffer.contains(':') {
+                    if let Some(colon_pos) = self.command_buffer.find(':') {
+                        let addr_str = &self.command_buffer[..colon_pos];
+                        if let Ok(addr) = usize::from_str_radix(addr_str.trim_start_matches("0x"), 16) {
+                            if addr < vm.memory.len() {
+                                prompt = format!("Edit memory @ 0x{:04X} (current: 0x{:04X})", addr, vm.memory[addr]);
+                            }
+                        }
+                    }
+                }
+                self.draw_input_line(frame, status_area, &prompt)
+            }
             DebuggerMode::Normal => self.draw_status_line(frame, status_area, vm),
         }
         
@@ -701,7 +715,8 @@ impl TuiDebugger {
             Line::from(""),
             Line::from(Span::styled("Navigation:", Style::default().fg(Color::Yellow))),
             Line::from("  F1-F6     Switch between panes"),
-            Line::from("  Tab       Cycle through panes"),
+            Line::from("  Tab       Cycle through panes forward"),
+            Line::from("  Shift+Tab Cycle through panes backward"),
             Line::from("  h/j/k/l   Vim-style navigation"),
             Line::from("  ↑/↓/←/→   Arrow key navigation"),
             Line::from(""),
@@ -709,8 +724,7 @@ impl TuiDebugger {
             Line::from("  Space/s   Step single instruction"),
             Line::from("  r         Run until breakpoint/halt"),
             Line::from("  c         Continue from breakpoint"),
-            Line::from("  n         Step over (skip calls)"),
-            Line::from("  o         Step out (finish function)"),
+            Line::from("  R         Restart execution from beginning"),
             Line::from(""),
             Line::from(Span::styled("Breakpoints:", Style::default().fg(Color::Yellow))),
             Line::from("  b         Toggle breakpoint at cursor"),
@@ -718,16 +732,19 @@ impl TuiDebugger {
             Line::from(""),
             Line::from(Span::styled("Memory:", Style::default().fg(Color::Yellow))),
             Line::from("  g         Go to address"),
+            Line::from("  e         Edit memory (formats below)"),
+            Line::from("    addr:0xFF      Hex value"),
+            Line::from("    addr:255       Decimal value"),
+            Line::from("    addr:'A'       Character"),
+            Line::from("    addr:\"Hello\"   String"),
+            Line::from("  0-9,a-f   Quick edit (in Memory pane)"),
             Line::from("  w         Add memory watch"),
             Line::from("  W         Remove selected watch"),
-            Line::from("  e         Edit memory at cursor"),
-            Line::from("  m         Change memory display format"),
             Line::from(""),
             Line::from(Span::styled("Other:", Style::default().fg(Color::Yellow))),
             Line::from("  :         Enter command mode"),
             Line::from("  ?         Toggle this help"),
             Line::from("  q         Quit debugger"),
-            Line::from("  R         Restart execution from beginning"),
             Line::from(""),
             Line::from(Span::styled("Press '?' to close help", Style::default().fg(Color::DarkGray))),
         ];
@@ -765,15 +782,30 @@ impl TuiDebugger {
             
             // Execution control
             KeyCode::Char(' ') | KeyCode::Char('s') => {
-                self.step_vm(vm);
+                // If we're at a breakpoint, clear the breakpoint state and step
+                if matches!(vm.state, VMState::Breakpoint) {
+                    vm.state = VMState::Running;
+                    self.step_vm_no_break_check(vm);
+                } else {
+                    self.step_vm(vm);
+                }
             }
             KeyCode::Char('r') => {
+                // If at breakpoint, clear state first
+                if matches!(vm.state, VMState::Breakpoint) {
+                    vm.state = VMState::Running;
+                }
                 self.run_until_break(vm);
             }
             KeyCode::Char('c') => {
                 if matches!(vm.state, VMState::Breakpoint) {
                     vm.state = VMState::Running;
-                    self.run_until_break(vm);
+                    // Step once to get past the current breakpoint
+                    self.step_vm_no_break_check(vm);
+                    // Then continue running
+                    if matches!(vm.state, VMState::Running) {
+                        self.run_until_break(vm);
+                    }
                 }
             }
             
@@ -784,7 +816,8 @@ impl TuiDebugger {
             KeyCode::F(4) => self.focused_pane = FocusedPane::Stack,
             KeyCode::F(5) => self.focused_pane = FocusedPane::Watches,
             KeyCode::F(6) => self.focused_pane = FocusedPane::Output,
-            KeyCode::Tab => self.cycle_pane(),
+            KeyCode::Tab if modifiers == KeyModifiers::NONE => self.cycle_pane(),
+            KeyCode::BackTab | KeyCode::Tab if modifiers == KeyModifiers::SHIFT => self.cycle_pane_reverse(),
             
             // Navigation based on focused pane
             KeyCode::Up | KeyCode::Char('k') => self.navigate_up(vm),
@@ -802,7 +835,16 @@ impl TuiDebugger {
             KeyCode::Char('g') => self.mode = DebuggerMode::GotoAddress,
             KeyCode::Char('w') => self.mode = DebuggerMode::AddWatch,
             KeyCode::Char('W') => self.remove_selected_watch(),
-            KeyCode::Char('e') => self.mode = DebuggerMode::MemoryEdit,
+            KeyCode::Char('e') => {
+                if self.focused_pane == FocusedPane::Memory {
+                    // Pre-fill with current cursor position
+                    let addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                    self.command_buffer = format!("{:04x}:", addr);
+                    self.mode = DebuggerMode::MemoryEdit;
+                } else {
+                    self.mode = DebuggerMode::MemoryEdit;
+                }
+            }
             
             // Command mode
             KeyCode::Char(':') => {
@@ -815,6 +857,13 @@ impl TuiDebugger {
                 vm.reset();
                 self.execution_history.clear();
                 self.register_changes.clear();
+            }
+            
+            // Quick memory edit - if in memory view and pressing hex digit
+            KeyCode::Char(c) if self.focused_pane == FocusedPane::Memory && c.is_ascii_hexdigit() => {
+                let addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                self.command_buffer = format!("{:04x}:{}", addr, c);
+                self.mode = DebuggerMode::MemoryEdit;
             }
             
             _ => {}
@@ -865,7 +914,15 @@ impl TuiDebugger {
                 self.command_buffer.clear();
             }
             KeyCode::Enter => {
-                if let Ok(addr) = usize::from_str_radix(&self.command_buffer.trim_start_matches("0x"), 16) {
+                // Parse address - handle both "0x" prefix and plain hex
+                let addr_str = self.command_buffer.trim();
+                let addr_result = if addr_str.starts_with("0x") || addr_str.starts_with("0X") {
+                    usize::from_str_radix(&addr_str[2..], 16)
+                } else {
+                    usize::from_str_radix(addr_str, 16)
+                };
+                
+                if let Ok(addr) = addr_result {
                     self.memory_base_addr = addr & !0xF; // Align to 16 bytes
                     self.memory_scroll = 0;
                 }
@@ -961,17 +1018,68 @@ impl TuiDebugger {
                 self.command_buffer.clear();
             }
             KeyCode::Enter => {
-                // Parse "address:value"
+                // Parse "address:value" or just "value" if address is pre-filled
                 let parts: Vec<&str> = self.command_buffer.split(':').collect();
-                if parts.len() == 2 {
-                    if let Ok(addr) = usize::from_str_radix(parts[0].trim_start_matches("0x"), 16) {
-                        if let Ok(value) = u16::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
+                
+                let (addr_str, value_str) = if parts.len() == 2 {
+                    (parts[0], parts[1])
+                } else if parts.len() == 1 && self.command_buffer.contains(':') {
+                    // Address pre-filled, just value after colon
+                    let colon_pos = self.command_buffer.find(':').unwrap();
+                    let (addr_part, value_part) = self.command_buffer.split_at(colon_pos);
+                    (addr_part, &value_part[1..])
+                } else {
+                    // Invalid format
+                    self.command_buffer.clear();
+                    self.mode = DebuggerMode::Normal;
+                    return;
+                };
+                
+                if let Ok(mut addr) = usize::from_str_radix(addr_str.trim_start_matches("0x"), 16) {
+                    // Check if it's a string literal
+                    if value_str.starts_with('"') && value_str.ends_with('"') {
+                        // String literal - write multiple bytes
+                        let string_content = &value_str[1..value_str.len()-1];
+                        for ch in string_content.chars() {
                             if addr < vm.memory.len() {
-                                vm.memory[addr] = value;
+                                vm.memory[addr] = ch as u16;
+                                addr += 1;
+                            }
+                        }
+                        // Jump to the modified address for visual feedback
+                        if let Ok(start_addr) = usize::from_str_radix(addr_str.trim_start_matches("0x"), 16) {
+                            self.memory_base_addr = start_addr & !0xF;
+                            self.memory_scroll = 0;
+                        }
+                    } else {
+                        // Parse single value - support multiple formats
+                        let value = if value_str.starts_with("'") && value_str.ends_with("'") && value_str.len() == 3 {
+                            // Character literal
+                            value_str.chars().nth(1).map(|c| c as u16)
+                        } else if value_str.starts_with("0x") {
+                            // Hexadecimal
+                            u16::from_str_radix(&value_str[2..], 16).ok()
+                        } else if value_str.starts_with("0b") {
+                            // Binary
+                            u16::from_str_radix(&value_str[2..], 2).ok()
+                        } else if value_str.chars().all(|c| c.is_ascii_hexdigit()) {
+                            // Assume hex without 0x prefix
+                            u16::from_str_radix(value_str, 16).ok()
+                        } else {
+                            // Decimal
+                            value_str.parse::<u16>().ok()
+                        };
+                        
+                        if let Some(val) = value {
+                            if addr < vm.memory.len() {
+                                vm.memory[addr] = val;
+                                // Don't change the memory view position when editing
+                                // User can manually navigate if needed
                             }
                         }
                     }
                 }
+                
                 self.command_buffer.clear();
                 self.mode = DebuggerMode::Normal;
             }
@@ -986,14 +1094,30 @@ impl TuiDebugger {
     }
     
     fn step_vm(&mut self, vm: &mut VM) {
-        // Save current registers for change detection
-        let old_registers = vm.registers.clone();
-        
-        // Record execution history
+        // Check for breakpoint BEFORE executing
         let pc = vm.registers[Register::Pc as usize] as usize;
         let pcb = vm.registers[Register::Pcb as usize] as usize;
         let addr = pcb * vm.bank_size as usize + pc;
         
+        // Only stop at breakpoint if we're in Running state (not already at a breakpoint)
+        if self.breakpoints.contains(&addr) && matches!(vm.state, VMState::Running) {
+            vm.state = VMState::Breakpoint;
+            return;
+        }
+        
+        self.step_vm_no_break_check(vm);
+    }
+    
+    fn step_vm_no_break_check(&mut self, vm: &mut VM) {
+        // Save current registers for change detection
+        let old_registers = vm.registers.clone();
+        
+        // Get current PC for history
+        let pc = vm.registers[Register::Pc as usize] as usize;
+        let pcb = vm.registers[Register::Pcb as usize] as usize;
+        let addr = pcb * vm.bank_size as usize + pc;
+        
+        // Record execution history
         self.execution_history.push(addr);
         if self.execution_history.len() > self.max_history {
             self.execution_history.remove(0);
@@ -1021,17 +1145,10 @@ impl TuiDebugger {
     
     fn run_until_break(&mut self, vm: &mut VM) {
         while matches!(vm.state, VMState::Running) {
-            let pc = vm.registers[Register::Pc as usize] as usize;
-            let pcb = vm.registers[Register::Pcb as usize] as usize;
-            let addr = pcb * vm.bank_size as usize + pc;
-            
-            if self.breakpoints.contains(&addr) {
-                vm.state = VMState::Breakpoint;
-                break;
-            }
-            
+            // Step will check for breakpoint before executing
             self.step_vm(vm);
             
+            // If we hit a breakpoint or other state change, stop
             if !matches!(vm.state, VMState::Running) {
                 break;
             }
@@ -1070,13 +1187,36 @@ impl TuiDebugger {
         };
     }
     
+    fn cycle_pane_reverse(&mut self) {
+        self.focused_pane = match self.focused_pane {
+            FocusedPane::Disassembly => FocusedPane::Output,
+            FocusedPane::Registers => FocusedPane::Disassembly,
+            FocusedPane::Memory => FocusedPane::Registers,
+            FocusedPane::Stack => FocusedPane::Memory,
+            FocusedPane::Watches => FocusedPane::Stack,
+            FocusedPane::Output => FocusedPane::Watches,
+            _ => FocusedPane::Output,
+        };
+    }
+    
     fn navigate_up(&mut self, vm: &VM) {
         match self.focused_pane {
             FocusedPane::Disassembly => {
                 self.disasm_scroll = self.disasm_scroll.saturating_sub(1);
             }
             FocusedPane::Memory => {
-                self.memory_scroll = self.memory_scroll.saturating_sub(1);
+                // Calculate current absolute address
+                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                if current_addr >= self.memory_cols {
+                    // Move up by one row
+                    let new_addr = current_addr - self.memory_cols;
+                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                } else if current_addr > 0 {
+                    // At the top, just go to 0
+                    self.memory_base_addr = 0;
+                    self.memory_scroll = 0;
+                }
             }
             FocusedPane::Output => {
                 self.output_scroll = self.output_scroll.saturating_sub(1);
@@ -1098,9 +1238,12 @@ impl TuiDebugger {
                 }
             }
             FocusedPane::Memory => {
-                let max_scroll = (vm.memory.len() / self.memory_cols).saturating_sub(10);
-                if self.memory_scroll < max_scroll {
-                    self.memory_scroll += 1;
+                // Calculate current absolute address
+                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                let new_addr = current_addr + self.memory_cols;
+                if new_addr < vm.memory.len() {
+                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
                 }
             }
             FocusedPane::Output => {
@@ -1118,8 +1261,12 @@ impl TuiDebugger {
     fn navigate_left(&mut self, vm: &VM) {
         match self.focused_pane {
             FocusedPane::Memory => {
-                if self.memory_base_addr >= 16 {
-                    self.memory_base_addr -= 16;
+                // Move left by one column (1 byte)
+                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                if current_addr > 0 {
+                    let new_addr = current_addr - 1;
+                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
                 }
             }
             _ => {}
@@ -1129,8 +1276,12 @@ impl TuiDebugger {
     fn navigate_right(&mut self, vm: &VM) {
         match self.focused_pane {
             FocusedPane::Memory => {
-                if self.memory_base_addr + 16 < vm.memory.len() {
-                    self.memory_base_addr += 16;
+                // Move right by one column (1 byte)
+                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                if current_addr + 1 < vm.memory.len() {
+                    let new_addr = current_addr + 1;
+                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
                 }
             }
             _ => {}
@@ -1143,7 +1294,18 @@ impl TuiDebugger {
                 self.disasm_scroll = self.disasm_scroll.saturating_sub(20);
             }
             FocusedPane::Memory => {
-                self.memory_scroll = self.memory_scroll.saturating_sub(10);
+                // Calculate current absolute address
+                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                let rows_to_move = 10;
+                if current_addr >= rows_to_move * self.memory_cols {
+                    let new_addr = current_addr - (rows_to_move * self.memory_cols);
+                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                } else {
+                    // Jump to beginning
+                    self.memory_base_addr = 0;
+                    self.memory_scroll = 0;
+                }
             }
             _ => {}
         }
@@ -1155,8 +1317,14 @@ impl TuiDebugger {
                 self.disasm_scroll = (self.disasm_scroll + 20).min(vm.instructions.len().saturating_sub(1));
             }
             FocusedPane::Memory => {
-                let max_scroll = (vm.memory.len() / self.memory_cols).saturating_sub(10);
-                self.memory_scroll = (self.memory_scroll + 10).min(max_scroll);
+                // Calculate current absolute address
+                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                let rows_to_move = 10;
+                let new_addr = current_addr + (rows_to_move * self.memory_cols);
+                if new_addr < vm.memory.len() {
+                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                }
             }
             _ => {}
         }
