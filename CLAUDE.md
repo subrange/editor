@@ -317,3 +317,4 @@ OPTIONS:
 
 VERY IMPORTANT: ALWAYS read all files in full with READ tool, to fully understand the context. NEVER read in full expanded bf files.
 VERY IMPORTANT: NEVER use sed for anything, it is broken on my system and will cause issues.
+VERY IMPORTANT: If you can't find something, execute pwd to make sure you are in a correct directory

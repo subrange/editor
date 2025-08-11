@@ -69,15 +69,38 @@ impl ModuleLowerer {
                 // Set dest_reg to 1 if equal, 0 otherwise
                 // Strategy: result = !(left != right)
 
-                // Since dest_reg == left_reg, we need to be careful not to clobber left
-                // before we use it. Get TWO temporary registers for the comparison.
-                let temp1 = self.get_reg(format!("eq_temp1_{}", self.label_counter));
-                let temp2 = self.get_reg(format!("eq_temp2_{}", self.label_counter));
+                // CRITICAL: For emit_ne to work correctly, temp1 and temp2 must be
+                // different from both source registers. Since dest_reg == left_reg,
+                // we need to ensure temps are different from left_reg and right_reg.
+                
+                // Pin the operand registers so they can't be chosen for temps
+                let left_key = self.get_register_value_name(left_reg);
+                let right_key = self.get_register_value_name(right_reg);
+                if let Some(ref left_name) = left_key {
+                    self.reg_alloc.pin_value(left_name.clone());
+                }
+                if let Some(ref right_name) = right_key {
+                    self.reg_alloc.pin_value(right_name.clone());
+                }
+                
+                let ((temp1, temp2), spill_insts) = self.reg_alloc.get_two_regs(
+                    format!("eq_temp1_{}", self.label_counter),
+                    format!("eq_temp2_{}", self.label_counter)
+                );
+                self.emit_many(spill_insts);
                 self.label_counter += 1;
 
                 let eq = emit_ne(dest_reg, left_reg, right_reg, temp1, temp2);
                 self.emit_many(eq);
 
+                // Unpin the operand registers
+                if let Some(ref left_name) = left_key {
+                    self.reg_alloc.unpin_value(left_name);
+                }
+                if let Some(ref right_name) = right_key {
+                    self.reg_alloc.unpin_value(right_name);
+                }
+                
                 // Free temp registers
                 self.reg_alloc.free_reg(temp1);
                 self.reg_alloc.free_reg(temp2);
@@ -92,14 +115,38 @@ impl ModuleLowerer {
             IrBinaryOp::Ne => {
                 // Set dest_reg to 1 if not equal, 0 otherwise
 
-                // Since dest_reg == left_reg, we need to be careful
-                let temp1 = self.get_reg(format!("ne_temp1_{}", self.label_counter));
-                let temp2 = self.get_reg(format!("ne_temp2_{}", self.label_counter));
+                // CRITICAL: For emit_ne to work correctly, temp1 and temp2 must be
+                // different from both source registers. Since dest_reg == left_reg,
+                // we need to ensure temps are different from left_reg and right_reg.
+                
+                // Pin the operand registers so they can't be chosen for temps
+                let left_key = self.get_register_value_name(left_reg);
+                let right_key = self.get_register_value_name(right_reg);
+                if let Some(ref left_name) = left_key {
+                    self.reg_alloc.pin_value(left_name.clone());
+                }
+                if let Some(ref right_name) = right_key {
+                    self.reg_alloc.pin_value(right_name.clone());
+                }
+                
+                let ((temp1, temp2), spill_insts) = self.reg_alloc.get_two_regs(
+                    format!("ne_temp1_{}", self.label_counter),
+                    format!("ne_temp2_{}", self.label_counter)
+                );
+                self.emit_many(spill_insts);
                 self.label_counter += 1;
 
                 // Generate the comparison using temps
                 let ne = emit_ne(dest_reg, left_reg, right_reg, temp1, temp2);
                 self.emit_many(ne);
+
+                // Unpin the operand registers
+                if let Some(ref left_name) = left_key {
+                    self.reg_alloc.unpin_value(left_name);
+                }
+                if let Some(ref right_name) = right_key {
+                    self.reg_alloc.unpin_value(right_name);
+                }
 
                 // Free temp registers
                 self.reg_alloc.free_reg(temp1);

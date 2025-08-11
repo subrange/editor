@@ -195,6 +195,13 @@ impl ModuleLowerer {
         reg
     }
     
+    /// Get the value name stored in a register, if any
+    pub(crate) fn get_register_value_name(&self, reg: Reg) -> Option<String> {
+        // Check the reg_alloc's reg_contents to see what's in this register
+        // We need to make reg_contents accessible
+        self.reg_alloc.get_register_value(reg)
+    }
+    
     /// Convert a value to string for debug output
     pub(crate) fn value_to_string(&self, value: &Value) -> String {
         match value {

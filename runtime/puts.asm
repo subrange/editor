@@ -21,20 +21,14 @@ puts:
 ;   Allocated free register for const_0_0
     LI R6, 0
 ; Reusing R3 for result t2
-; === ModuleLowerer::get_reg for 'eq_temp1_1' ===
-; get_reg for 'eq_temp1_1'
-;   Allocated free register for eq_temp1_1
-; === ModuleLowerer::get_reg for 'eq_temp2_1' ===
-; get_reg for 'eq_temp2_1'
-;   Allocated free register for eq_temp2_1
-    SLTU R7, R3, R6
-    SLTU R8, R6, R3
-    OR R3, R7, R8
+    SLTU R8, R3, R6
+    SLTU R7, R6, R3
+    OR R3, R8, R7
 ; === ModuleLowerer::get_reg for 'eq_inv_2' ===
 ; get_reg for 'eq_inv_2'
 ;   Allocated free register for eq_inv_2
-    LI R8, 1
-    SUB R3, R8, R3
+    LI R7, 1
+    SUB R3, R7, R3
 ; Freeing right operand register R6
 ; === Processing instruction #1: BranchCond { condition: Temp(2), true_label: 1, false_label: 3 } ===
 ; Getting register for temp t2

@@ -375,7 +375,9 @@ def main():
         (f"{BASE_DIR}/tests-runtime/test_puts_string_literal.c", "XYZ\n", True),
         (f"{BASE_DIR}/tests-runtime/test-cond.c", "T", True),
         (f"{BASE_DIR}/tests-runtime/test_pointer_gritty.c", "7", True),
+
         (f"{BASE_DIR}/tests-runtime/test_bool.c", "12\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_bool_or.c", "Y\n", True),
         (f"{BASE_DIR}/tests-runtime/test_complex_bool.c", "12345\n", True),
         (f"{BASE_DIR}/tests-runtime/test_complex_simple.c", "123\n", True),
         (f"{BASE_DIR}/tests-runtime/test_mul.c", "Y", True),

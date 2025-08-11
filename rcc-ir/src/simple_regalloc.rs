@@ -191,10 +191,10 @@ impl SimpleRegAlloc {
         if let Some(reg1) = self.free_list.pop() {
             self.reg_contents.insert(reg1, value1.clone());
             
-            // Need to spill for reg2, but don't spill reg1
-            let victims: Vec<_> = self.reg_contents.keys()
-                .filter(|&&r| r != reg1)
-                .copied()
+            // Need to spill for reg2, but don't spill reg1 or pinned values
+            let victims: Vec<_> = self.reg_contents.iter()
+                .filter(|(reg, val)| **reg != reg1 && !self.pinned_values.contains(*val))
+                .map(|(reg, _)| *reg)
                 .collect();
             
             if let Some(&victim) = victims.first() {
@@ -208,8 +208,11 @@ impl SimpleRegAlloc {
             }
         }
         
-        // Need to spill for both
-        let victims: Vec<_> = self.reg_contents.keys().copied().collect();
+        // Need to spill for both - but don't spill pinned values
+        let victims: Vec<_> = self.reg_contents.iter()
+            .filter(|(_, val)| !self.pinned_values.contains(*val))
+            .map(|(reg, _)| *reg)
+            .collect();
         if victims.len() >= 2 {
             let reg1 = victims[0];
             let reg2 = victims[1];
@@ -332,6 +335,11 @@ impl SimpleRegAlloc {
     /// Check if a register is currently allocated
     pub fn is_allocated(&self, reg: Reg) -> bool {
         self.reg_contents.contains_key(&reg)
+    }
+    
+    /// Get the value name stored in a register, if any
+    pub fn get_register_value(&self, reg: Reg) -> Option<String> {
+        self.reg_contents.get(&reg).cloned()
     }
     
     /// Get and clear any generated instructions
