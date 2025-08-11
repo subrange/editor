@@ -17,7 +17,7 @@ impl TuiDebugger {
             .map(|line| Line::from(Span::raw(line)))
             .collect();
 
-        let title = format!(" Output [{}] ", if self.focused_pane == FocusedPane::Output { "ACTIVE" } else { "F6" });
+        let title = format!(" Output [{}] ", if self.focused_pane == FocusedPane::Output { "ACTIVE" } else { "F7" });
         let block = Block::default()
             .title(title)
             .borders(Borders::ALL)

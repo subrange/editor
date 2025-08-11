@@ -27,6 +27,7 @@ pub(crate) enum FocusedPane {
     Memory,
     Stack,
     Watches,
+    Breakpoints,
     Output,
     Command,
 }

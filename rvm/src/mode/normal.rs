@@ -47,7 +47,8 @@ impl TuiDebugger {
             KeyCode::F(3) => self.focused_pane = FocusedPane::Memory,
             KeyCode::F(4) => self.focused_pane = FocusedPane::Stack,
             KeyCode::F(5) => self.focused_pane = FocusedPane::Watches,
-            KeyCode::F(6) => self.focused_pane = FocusedPane::Output,
+            KeyCode::F(6) => self.focused_pane = FocusedPane::Breakpoints,
+            KeyCode::F(7) => self.focused_pane = FocusedPane::Output,
             KeyCode::Tab if modifiers == KeyModifiers::NONE => self.cycle_pane(),
             KeyCode::BackTab | KeyCode::Tab if modifiers == KeyModifiers::SHIFT => self.cycle_pane_reverse(),
 
@@ -141,7 +142,8 @@ impl TuiDebugger {
             FocusedPane::Registers => FocusedPane::Memory,
             FocusedPane::Memory => FocusedPane::Stack,
             FocusedPane::Stack => FocusedPane::Watches,
-            FocusedPane::Watches => FocusedPane::Output,
+            FocusedPane::Watches => FocusedPane::Breakpoints,
+            FocusedPane::Breakpoints => FocusedPane::Output,
             FocusedPane::Output => FocusedPane::Disassembly,
             _ => FocusedPane::Disassembly,
         };
@@ -154,7 +156,8 @@ impl TuiDebugger {
             FocusedPane::Memory => FocusedPane::Registers,
             FocusedPane::Stack => FocusedPane::Memory,
             FocusedPane::Watches => FocusedPane::Stack,
-            FocusedPane::Output => FocusedPane::Watches,
+            FocusedPane::Breakpoints => FocusedPane::Watches,
+            FocusedPane::Output => FocusedPane::Breakpoints,
             _ => FocusedPane::Output,
         };
     }

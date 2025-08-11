@@ -57,13 +57,18 @@ impl TuiDebugger {
             }
         }
         
-        let title = format!(" Breakpoints [{}] ", 
-            self.breakpoints.len()
+        let title = format!(" Breakpoints [{}] [{}] ", 
+            self.breakpoints.len(),
+            if self.focused_pane == FocusedPane::Breakpoints { "ACTIVE" } else { "F6" }
         );
         let block = Block::default()
             .title(title)
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Gray));
+            .border_style(if self.focused_pane == FocusedPane::Breakpoints {
+                Style::default().fg(Color::Cyan)
+            } else {
+                Style::default().fg(Color::Gray)
+            });
         
         let paragraph = Paragraph::new(text).block(block);
         frame.render_widget(paragraph, area);
