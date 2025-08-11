@@ -9,23 +9,8 @@ impl TuiDebugger {
     pub(crate) fn draw_memory(&self, frame: &mut Frame, area: Rect, vm: &VM) {
         let mut text = Vec::new();
 
-        // Calculate how many columns we can fit
-        // Format: "XXXX: " (6) + "XXXX " per column (5) + " | " (3) + 1 char per column for ASCII
-        let available_width = area.width as usize;
-        let addr_width = 6; // "XXXX: "
-        let hex_per_col = 5; // "XXXX "
-        let separator = if self.show_ascii { 3 } else { 0 }; // " | "
-        let ascii_per_col = if self.show_ascii { 1 } else { 0 };
-
-        // Calculate maximum columns that fit
-        let mut bytes_per_row = 8; // Start with 8 columns as default
-        if available_width > addr_width {
-            let remaining = available_width - addr_width - separator;
-            let per_column = hex_per_col + ascii_per_col;
-            if per_column > 0 {
-                bytes_per_row = (remaining / per_column).min(16).max(4); // Between 4 and 16 columns
-            }
-        }
+        // Fixed 8 columns for cognitive consistency
+        let bytes_per_row = 8;
 
         let visible_rows = area.height.saturating_sub(3) as usize;
 
