@@ -1,3 +1,4 @@
+use log::trace;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::{CompilerError, TempId};
 use crate::{IrBinaryOp, Value};
@@ -6,7 +7,7 @@ use crate::module_lowering::{Location, ModuleLowerer};
 
 impl ModuleLowerer {
     pub(crate) fn lower_binary(&mut self, result: &TempId, op: &IrBinaryOp, lhs: &Value, rhs: &Value) -> Result<(), CompilerError> {
-        eprintln!("=== Processing Binary t{} ===", result);
+        trace!("=== Processing Binary t{} ===", result);
         self.emit(AsmInst::Comment(format!("=== Processing Binary t{} ===", result)));
 
         // CRITICAL: Implement the algorithm from more-formalized-register-spilling.md

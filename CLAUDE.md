@@ -201,7 +201,7 @@ If ran with --backend bf, then instead of `.bin` you will have:
 
 You can then manually inspect or run individual compilation steps.
 
-IMPORTANT: Use `rcc compile file.c --verbose` to see detailed output of pointer provenance and other debug information. It is VERY helpful.
+IMPORTANT: Use `rcc compile file.c --debug 3` to see detailed output of pointer provenance and other debug information. It is VERY helpful.
 
 # RVM — Ripple Virtual Machine
 
