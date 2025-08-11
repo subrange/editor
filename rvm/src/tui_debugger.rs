@@ -201,50 +201,58 @@ impl TuiDebugger {
         let main_area = Rect::new(0, 0, size.width, size.height - 1);
         let status_area = Rect::new(0, size.height - 1, size.width, 1);
         
-        // Main layout: 2 columns - left smaller, right bigger for memory
+        // Main layout: 2 columns - left for disassembly/output, right for registers/memory/stack/watches
         let main_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(45), // Left: Disassembly + Registers
-                Constraint::Percentage(55), // Right: Memory + others
+                Constraint::Percentage(45), // Left: Disassembly + Output
+                Constraint::Percentage(55), // Right: Registers + Memory + Stack/Watches
             ])
             .split(main_area);
         
-        // Left column: Disassembly + Registers
+        // Left column: Disassembly + Output
         let left_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Min(15),     // Disassembly
-                Constraint::Length(10),  // Registers (same as bottom section)
+                Constraint::Length(10),  // Output
             ])
             .split(main_chunks[0]);
         
-        // Right column: Memory + Stack/Watches/Output
+        // Right column: Split horizontally for (Registers+Memory) and (Stack+Watches)
         let right_chunks = Layout::default()
-            .direction(Direction::Vertical)
+            .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Min(15),     // Memory (takes most space)
-                Constraint::Length(10),  // Bottom section (same as registers)
+                Constraint::Percentage(65), // Left: Registers + Memory
+                Constraint::Percentage(35), // Right: Stack + Watches
             ])
             .split(main_chunks[1]);
         
-        // Bottom right: Stack + Watches + Output
-        let bottom_right_chunks = Layout::default()
-            .direction(Direction::Horizontal)
+        // Left part of right side: Registers on top, Memory below
+        let registers_memory_chunks = Layout::default()
+            .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(33), // Stack
-                Constraint::Percentage(33), // Watches  
-                Constraint::Percentage(34), // Output
+                Constraint::Length(10),  // Registers
+                Constraint::Min(15),     // Memory
+            ])
+            .split(right_chunks[0]);
+        
+        // Right part: Stack + Watches (vertically stacked, full height)
+        let stack_watches_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(50), // Stack
+                Constraint::Percentage(50), // Watches
             ])
             .split(right_chunks[1]);
         
         // Draw each component
         self.draw_disassembly(frame, left_chunks[0], vm);
-        self.draw_registers(frame, left_chunks[1], vm);
-        self.draw_memory(frame, right_chunks[0], vm);
-        self.draw_stack(frame, bottom_right_chunks[0], vm);
-        self.draw_watches(frame, bottom_right_chunks[1], vm);
-        self.draw_output(frame, bottom_right_chunks[2], vm);
+        self.draw_output(frame, left_chunks[1], vm);
+        self.draw_registers(frame, registers_memory_chunks[0], vm);
+        self.draw_memory(frame, registers_memory_chunks[1], vm);
+        self.draw_stack(frame, stack_watches_chunks[0], vm);
+        self.draw_watches(frame, stack_watches_chunks[1], vm);
         
         // Draw status/input line at bottom
         match self.mode {
