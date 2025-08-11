@@ -12,12 +12,15 @@ impl TuiDebugger {
 
         // Special registers
         text.push(Line::from(vec![
-            Span::raw("PC: "),
+            Span::styled("PC", Style::default().fg(Color::Gray)),
+            Span::styled("=", Style::default().fg(Color::DarkGray)),
             Span::styled(
                 format!("{:04X}:{:04X}", vm.registers[Register::Pcb as usize], vm.registers[Register::Pc as usize]),
-                Style::default().fg(Color::Green)
+                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
             ),
-            Span::raw("  RA: "),
+            Span::raw("  "),
+            Span::styled("RA", Style::default().fg(Color::Gray)),
+            Span::styled("=", Style::default().fg(Color::DarkGray)),
             Span::styled(
                 format!("{:04X}:{:04X}", vm.registers[Register::Rab as usize], vm.registers[Register::Ra as usize]),
                 Style::default().fg(Color::Magenta)
@@ -25,27 +28,49 @@ impl TuiDebugger {
         ]));
 
         text.push(Line::from(""));
+        
+        // R0 (always zero) on its own line
+        text.push(Line::from(vec![
+            Span::styled("R0", Style::default().fg(Color::Gray)),
+            Span::styled("=", Style::default().fg(Color::DarkGray)),
+            Span::styled("0000", Style::default().fg(Color::DarkGray)),
+            Span::styled(" (always zero)", Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
+        ]));
+        
+        text.push(Line::from(""));
 
-        // General purpose registers in grid
+        // General purpose registers in grid (R3-R15)
         for row in 0..3 {
             let mut spans = Vec::new();
             for col in 0..5 {
                 let reg_idx = 5 + row * 5 + col;
                 if reg_idx <= 17 {
                     let value = vm.registers[reg_idx];
-                    let name = format!("R{:2}", reg_idx - 2);
+                    let name = format!("R{:<2}", reg_idx - 2);
 
-                    // Check if changed
-                    let style = if self.register_changes.get(&reg_idx) == Some(&value) {
+                    // Check if register was recently changed
+                    let was_changed = self.register_changes.contains_key(&reg_idx);
+                    
+                    // Style for register name
+                    let name_style = if was_changed {
+                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::Gray)
+                    };
+                    
+                    // Style for value
+                    let value_style = if was_changed {
                         Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
                     } else if value != 0 {
-                        Style::default().fg(Color::White)
+                        Style::default().fg(Color::Cyan)
                     } else {
                         Style::default().fg(Color::DarkGray)
                     };
 
-                    spans.push(Span::raw(format!("{}=", name)));
-                    spans.push(Span::styled(format!("{:04X}", value), style));
+                    spans.push(Span::styled(name, name_style));
+                    spans.push(Span::styled("=", Style::default().fg(Color::DarkGray)));
+                    spans.push(Span::styled(format!("{:04X}", value), value_style));
+                    
                     if col < 4 && (5 + row * 5 + col + 1) <= 17 {
                         spans.push(Span::raw("  "));
                     }

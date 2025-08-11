@@ -85,7 +85,7 @@ impl TuiDebugger {
             KeyCode::Char('e') => {
                 if self.focused_pane == FocusedPane::Memory {
                     // Pre-fill with current cursor position
-                    let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
+                    let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS + self.memory_cursor_col;
                     self.command_buffer = format!("{:04x}:", addr);
                     self.mode = DebuggerMode::MemoryEdit;
                 } else {
@@ -113,7 +113,7 @@ impl TuiDebugger {
 
             // Quick memory edit - if in memory view and pressing hex digit
             KeyCode::Char(c) if self.focused_pane == FocusedPane::Memory && c.is_ascii_hexdigit() => {
-                let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
+                let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS + self.memory_cursor_col;
                 self.command_buffer = format!("{:04x}:{}", addr, c);
                 self.mode = DebuggerMode::MemoryEdit;
             }
@@ -211,17 +211,12 @@ impl TuiDebugger {
                 self.disasm_scroll = self.disasm_scroll.saturating_sub(1);
             }
             FocusedPane::Memory => {
-                // Calculate current absolute address
-                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
-                if current_addr >= MEMORY_NAV_COLS {
-                    // Move up by one row
-                    let new_addr = current_addr - MEMORY_NAV_COLS;
-                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
-                } else if current_addr > 0 {
-                    // At the top, just go to 0
-                    self.memory_base_addr = 0;
-                    self.memory_scroll = 0;
+                // Move up by one row
+                if self.memory_scroll > 0 {
+                    self.memory_scroll -= 1;
+                } else if self.memory_base_addr >= MEMORY_NAV_COLS {
+                    // Need to scroll the base address up
+                    self.memory_base_addr -= MEMORY_NAV_COLS;
                 }
             }
             FocusedPane::Output => {
@@ -254,12 +249,16 @@ impl TuiDebugger {
                 }
             }
             FocusedPane::Memory => {
-                // Calculate current absolute address
-                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
-                let new_addr = current_addr + MEMORY_NAV_COLS;
-                if new_addr < vm.memory.len() {
-                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
+                // Move down by one row
+                let next_row_addr = self.memory_base_addr + (self.memory_scroll + 1) * MEMORY_NAV_COLS;
+                if next_row_addr < vm.memory.len() {
+                    self.memory_scroll += 1;
+                    // Check if we need to scroll the view
+                    let visible_rows = 15; // Approximate visible rows
+                    if self.memory_scroll >= visible_rows {
+                        self.memory_base_addr += MEMORY_NAV_COLS;
+                        self.memory_scroll -= 1;
+                    }
                 }
             }
             FocusedPane::Output => {
@@ -292,12 +291,17 @@ impl TuiDebugger {
     pub(crate) fn navigate_left(&mut self, _vm: &VM) {
         match self.focused_pane {
             FocusedPane::Memory => {
-                // Move left by one column (1 byte)
-                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
-                if current_addr > 0 {
-                    let new_addr = current_addr - 1;
-                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
+                // Move left by one column within the row
+                if self.memory_cursor_col > 0 {
+                    self.memory_cursor_col -= 1;
+                } else if self.memory_scroll > 0 || self.memory_base_addr > 0 {
+                    // Wrap to end of previous row
+                    self.memory_cursor_col = MEMORY_NAV_COLS - 1;
+                    if self.memory_scroll > 0 {
+                        self.memory_scroll -= 1;
+                    } else if self.memory_base_addr >= MEMORY_NAV_COLS {
+                        self.memory_base_addr -= MEMORY_NAV_COLS;
+                    }
                 }
             }
             _ => {}
@@ -307,12 +311,25 @@ impl TuiDebugger {
     pub(crate) fn navigate_right(&mut self, vm: &VM) {
         match self.focused_pane {
             FocusedPane::Memory => {
-                // Move right by one column (1 byte)
-                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
-                if current_addr + 1 < vm.memory.len() {
-                    let new_addr = current_addr + 1;
-                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
+                // Move right by one column within the row
+                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS + self.memory_cursor_col;
+                if self.memory_cursor_col < MEMORY_NAV_COLS - 1 {
+                    if current_addr + 1 < vm.memory.len() {
+                        self.memory_cursor_col += 1;
+                    }
+                } else {
+                    // Wrap to beginning of next row
+                    let next_row_addr = self.memory_base_addr + (self.memory_scroll + 1) * MEMORY_NAV_COLS;
+                    if next_row_addr < vm.memory.len() {
+                        self.memory_cursor_col = 0;
+                        self.memory_scroll += 1;
+                        // Check if we need to scroll the view
+                        let visible_rows = 15; // Approximate visible rows
+                        if self.memory_scroll >= visible_rows {
+                            self.memory_base_addr += MEMORY_NAV_COLS;
+                            self.memory_scroll -= 1;
+                        }
+                    }
                 }
             }
             _ => {}
@@ -325,15 +342,11 @@ impl TuiDebugger {
                 self.disasm_scroll = self.disasm_scroll.saturating_sub(20);
             }
             FocusedPane::Memory => {
-                // Calculate current absolute address
-                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
+                // Page up in memory view
                 let rows_to_move = 10;
-                if current_addr >= rows_to_move * MEMORY_NAV_COLS {
-                    let new_addr = current_addr - (rows_to_move * MEMORY_NAV_COLS);
-                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
+                if self.memory_base_addr >= rows_to_move * MEMORY_NAV_COLS {
+                    self.memory_base_addr -= rows_to_move * MEMORY_NAV_COLS;
                 } else {
-                    // Jump to beginning
                     self.memory_base_addr = 0;
                     self.memory_scroll = 0;
                 }
@@ -351,13 +364,11 @@ impl TuiDebugger {
                 self.disasm_scroll = (self.disasm_scroll + 20).min(vm.instructions.len().saturating_sub(1));
             }
             FocusedPane::Memory => {
-                // Calculate current absolute address
-                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
+                // Page down in memory view
                 let rows_to_move = 10;
-                let new_addr = current_addr + (rows_to_move * MEMORY_NAV_COLS);
-                if new_addr < vm.memory.len() {
-                    self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
+                let new_base = self.memory_base_addr + rows_to_move * MEMORY_NAV_COLS;
+                if new_base < vm.memory.len() {
+                    self.memory_base_addr = new_base;
                 }
             }
             FocusedPane::Stack => {

@@ -66,6 +66,7 @@ pub struct TuiDebugger {
     pub(crate) disasm_scroll: usize,
     pub(crate) memory_scroll: usize,
     pub(crate) memory_base_addr: usize,
+    pub(crate) memory_cursor_col: usize,  // Column position within the row (0-7)
     pub(crate) stack_scroll: usize,
     pub(crate) output_scroll: usize,
     pub(crate) watches_scroll: usize,
@@ -107,6 +108,7 @@ impl TuiDebugger {
             disasm_scroll: 0,
             memory_scroll: 0,
             memory_base_addr: 0,
+            memory_cursor_col: 0,
             stack_scroll: 0,
             output_scroll: 0,
             watches_scroll: 0,

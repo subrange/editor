@@ -39,7 +39,9 @@ impl TuiDebugger {
                 FocusedPane::Memory => "Memory",
                 FocusedPane::Stack => "Stack",
                 FocusedPane::Watches => "Watches",
+                FocusedPane::Breakpoints => "Breakpoints",
                 FocusedPane::Output => "Output",
+                FocusedPane::Command => "Command",
                 _ => "Unknown",
             }),
             Style::default().fg(Color::Cyan)
@@ -47,23 +49,26 @@ impl TuiDebugger {
 
         // Show hints based on context
         let hints = match self.focused_pane {
-            FocusedPane::Disassembly => " | Space:step b:breakpoint.rs r:run",
+            FocusedPane::Disassembly => " | Space:step b:breakpoint r:run",
             FocusedPane::Memory => " | g:goto e:edit",
             FocusedPane::Watches => " | w:add W:remove",
+            FocusedPane::Breakpoints => " | Space:toggle d:delete",
             _ => " | ?:help q:quit",
         };
         spans.push(Span::styled(hints, Style::default().fg(Color::DarkGray)));
 
         // Right-align some info
-        let breakpoint_count = self.breakpoints.len();
-        if breakpoint_count > 0 {
-            let bp_text = format!(" {} BP ", breakpoint_count);
+        let total_breakpoints = self.breakpoints.len();
+        if total_breakpoints > 0 {
+            let active_breakpoints = self.breakpoints.values().filter(|&&enabled| enabled).count();
+            let bp_text = format!(" {}/{} BP ", active_breakpoints, total_breakpoints);
             let used_width = spans.iter().map(|s| s.content.len()).sum::<usize>();
             let padding = (area.width as usize).saturating_sub(used_width + bp_text.len());
             if padding > 0 {
                 spans.push(Span::raw(" ".repeat(padding)));
             }
-            spans.push(Span::styled(bp_text, Style::default().fg(Color::Red)));
+            let bp_color = if active_breakpoints > 0 { Color::Red } else { Color::Yellow };
+            spans.push(Span::styled(bp_text, Style::default().fg(bp_color)));
         }
 
         let paragraph = Paragraph::new(Line::from(spans));

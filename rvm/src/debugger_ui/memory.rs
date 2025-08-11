@@ -14,7 +14,10 @@ impl TuiDebugger {
 
         let visible_rows = area.height.saturating_sub(3) as usize;
 
-        let start_addr = self.memory_base_addr + self.memory_scroll * bytes_per_row;
+        let start_addr = self.memory_base_addr;
+        
+        // Calculate the cursor's absolute address
+        let cursor_addr = self.memory_base_addr + self.memory_scroll * bytes_per_row + self.memory_cursor_col;
 
         for row in 0..visible_rows {
             let addr = start_addr + row * bytes_per_row;
@@ -31,7 +34,14 @@ impl TuiDebugger {
                 let idx = addr + col;
                 if idx < vm.memory.len() {
                     let value = vm.memory[idx];
-                    let style = if idx < 2 {
+                    
+                    // Check if this is the cursor position
+                    let is_cursor = idx == cursor_addr && self.focused_pane == FocusedPane::Memory;
+                    
+                    let style = if is_cursor {
+                        // Highlight cursor position
+                        Style::default().bg(Color::Yellow).fg(Color::Black)
+                    } else if idx < 2 {
                         // Special I/O registers
                         Style::default().fg(Color::Magenta)
                     } else if value != 0 {
@@ -39,7 +49,10 @@ impl TuiDebugger {
                     } else {
                         Style::default().fg(Color::DarkGray)
                     };
-                    spans.push(Span::styled(format!("{:04X} ", value), style));
+                    
+                    // Apply style only to the hex value, not the space
+                    spans.push(Span::styled(format!("{:04X}", value), style));
+                    spans.push(Span::raw(" ")); // Add space separately
                 } else {
                     spans.push(Span::raw("     "));
                 }
@@ -58,7 +71,13 @@ impl TuiDebugger {
                         } else {
                             '.'
                         };
-                        let style = if idx < 2 {
+                        
+                        // Check if this is the cursor position
+                        let is_cursor = idx == cursor_addr && self.focused_pane == FocusedPane::Memory;
+                        
+                        let style = if is_cursor {
+                            Style::default().bg(Color::Yellow).fg(Color::Black)
+                        } else if idx < 2 {
                             Style::default().fg(Color::Magenta)
                         } else if value != 0 {
                             Style::default().fg(Color::Cyan)
@@ -75,7 +94,6 @@ impl TuiDebugger {
             text.push(Line::from(spans));
         }
 
-        let cursor_addr = self.memory_base_addr + self.memory_scroll * crate::tui_debugger::MEMORY_NAV_COLS;
         let ascii_indicator = if self.show_ascii { " [ASCII]" } else { "" };
         let title = format!(" Memory @ {:04X}{} (cursor: {:04X}) [{}] ",
                             self.memory_base_addr,

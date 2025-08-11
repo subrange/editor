@@ -104,16 +104,20 @@ impl TuiDebugger {
         let active_count = self.breakpoints.values().filter(|&&enabled| enabled).count();
         let total_count = self.breakpoints.len();
         
-        let scroll_indicator = if total_count > 0 {
-            format!(" [{}/{}]", self.selected_breakpoint + 1, total_count)
+        // Show active/total and position only if there are breakpoints
+        let status = if total_count > 0 {
+            format!(" {}/{} active, #{}/{}", 
+                active_count, 
+                total_count,
+                self.selected_breakpoint + 1,
+                total_count
+            )
         } else {
             String::new()
         };
         
-        let title = format!(" Breakpoints [{}/{}]{} [{}] ", 
-            active_count,
-            total_count,
-            scroll_indicator,
+        let title = format!(" Breakpoints{} [{}] ", 
+            status,
             if self.focused_pane == FocusedPane::Breakpoints { "ACTIVE" } else { "F6" }
         );
         let block = Block::default()
