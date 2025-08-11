@@ -6,4 +6,5 @@ npm run build:native && \
   cp src/ripple-asm/target/release/rlink /usr/local/bin && \
   cp rbt/target/release/rbt /usr/local/bin && \
   cp target/release/rcc /usr/local/bin && \
+  cp target/release/rvm /usr/local/bin && \
   cp src/bf-macro-expander/target/release/bfm /usr/local/bin

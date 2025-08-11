@@ -4,7 +4,8 @@ members = [
     "rcc-common",
     "rcc-ir",
     "rcc-driver",
-    "rcc-frontend", "golden-impl",
+    "rcc-frontend",
+    "rvm",
 ]
 exclude = [
     'src/rust-bf',
