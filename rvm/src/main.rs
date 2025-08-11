@@ -21,9 +21,25 @@ fn print_usage() {
     eprintln!("  -b, --bank-size <size>   Set bank size (default: {})", DEFAULT_BANK_SIZE);
     eprintln!("  -m, --memory <size>      Set memory size in words (default: {})", DEFAULT_MEMORY_SIZE);
     eprintln!("  -d, --debug              Enable debug mode (step through execution)");
-    eprintln!("  -t, --tui                Enable TUI debugger (professional interface)");
+    eprintln!("  -t, --tui                Enable TUI debugger mode");
     eprintln!("  -v, --verbose            Show VM state during execution");
     eprintln!("  -h, --help               Show this help message");
+    eprintln!();
+    eprintln!("TUI DEBUGGER MODE (-t):");
+    eprintln!("  Professional terminal-based debugger with multiple panes:");
+    eprintln!("  - Disassembly view with breakpoints and execution tracking");
+    eprintln!("  - Register display with change highlighting");
+    eprintln!("  - Memory viewer with hex/ASCII display and editing");
+    eprintln!("  - Stack trace and memory watches");
+    eprintln!("  - Output buffer display");
+    eprintln!();
+    eprintln!("  Key features:");
+    eprintln!("  • Set breakpoints at cursor or by instruction number");
+    eprintln!("  • Step, run, and continue execution");
+    eprintln!("  • Edit memory and registers on-the-fly");
+    eprintln!("  • Navigate with vim-style keys or arrows");
+    eprintln!("  • Command mode for advanced operations");
+    eprintln!("  • Press '?' in TUI for complete keyboard shortcuts");
 }
 
 fn main() {

@@ -77,6 +77,7 @@ pub struct TuiDebugger {
     
     // Display preferences
     show_help: bool,
+    show_ascii: bool,
     memory_cols: usize,
     
     // Performance
@@ -112,6 +113,7 @@ impl TuiDebugger {
             command_history_idx: 0,
             
             show_help: false,
+            show_ascii: true,
             memory_cols: 16,
             
             last_step_time: Instant::now(),
@@ -151,7 +153,7 @@ impl TuiDebugger {
     }
     
     fn run_app<B: Backend>(&mut self, terminal: &mut Terminal<B>, vm: &mut VM) -> io::Result<()> {
-        loop {
+        'main: loop {
             // Draw UI
             terminal.draw(|f| self.draw_ui(f, vm))?;
             
@@ -161,11 +163,13 @@ impl TuiDebugger {
                     match self.mode {
                         DebuggerMode::Normal => {
                             if !self.handle_normal_mode(key.code, key.modifiers, vm) {
-                                break; // Exit requested
+                                break 'main; // Exit requested
                             }
                         }
                         DebuggerMode::Command => {
-                            self.handle_command_mode(key.code, vm);
+                            if !self.handle_command_mode(key.code, vm) {
+                                break 'main; // Exit the debugger
+                            }
                         }
                         DebuggerMode::GotoAddress => {
                             self.handle_goto_mode(key.code);
@@ -417,7 +421,7 @@ impl TuiDebugger {
     
     fn draw_memory(&self, frame: &mut Frame, area: Rect, vm: &VM) {
         let mut text = Vec::new();
-        let bytes_per_row = self.memory_cols;
+        let bytes_per_row = if self.show_ascii { 16 } else { 16 }; // Keep at 16 for consistency
         let visible_rows = area.height.saturating_sub(3) as usize;
         
         let start_addr = self.memory_base_addr + self.memory_scroll * bytes_per_row;
@@ -451,26 +455,42 @@ impl TuiDebugger {
                 }
             }
             
-            spans.push(Span::raw(" | "));
-            
-            // ASCII representation
-            for col in 0..bytes_per_row {
-                let idx = addr + col;
-                if idx < vm.memory.len() {
-                    let value = (vm.memory[idx] & 0xFF) as u8;
-                    let ch = if value >= 0x20 && value < 0x7F {
-                        value as char
+            // ASCII representation if enabled
+            if self.show_ascii {
+                spans.push(Span::raw(" | "));
+                
+                for col in 0..bytes_per_row {
+                    let idx = addr + col;
+                    if idx < vm.memory.len() {
+                        let value = (vm.memory[idx] & 0xFF) as u8;
+                        let ch = if value >= 0x20 && value < 0x7F {
+                            value as char
+                        } else {
+                            '.'
+                        };
+                        let style = if idx < 2 {
+                            Style::default().fg(Color::Magenta)
+                        } else if value != 0 {
+                            Style::default().fg(Color::Cyan)
+                        } else {
+                            Style::default().fg(Color::DarkGray)
+                        };
+                        spans.push(Span::styled(ch.to_string(), style));
                     } else {
-                        '.'
-                    };
-                    spans.push(Span::styled(ch.to_string(), Style::default().fg(Color::Cyan)));
+                        spans.push(Span::raw(" "));
+                    }
                 }
             }
             
             text.push(Line::from(spans));
         }
         
-        let title = format!(" Memory @ {:04X} [{}] ", self.memory_base_addr, if self.focused_pane == FocusedPane::Memory { "ACTIVE" } else { "F3" });
+        let ascii_indicator = if self.show_ascii { " [ASCII]" } else { "" };
+        let title = format!(" Memory @ {:04X}{} [{}] ", 
+            self.memory_base_addr, 
+            ascii_indicator,
+            if self.focused_pane == FocusedPane::Memory { "ACTIVE" } else { "F3" }
+        );
         let block = Block::default()
             .title(title)
             .borders(Borders::ALL)
@@ -733,6 +753,7 @@ impl TuiDebugger {
             Line::from(""),
             Line::from(Span::styled("Memory:", Style::default().fg(Color::Yellow))),
             Line::from("  g         Go to address"),
+            Line::from("  a         Toggle ASCII display (in Memory pane)"),
             Line::from("  e         Edit memory (formats below)"),
             Line::from("    addr:0xFF      Hex value"),
             Line::from("    addr:255       Decimal value"),
@@ -741,6 +762,15 @@ impl TuiDebugger {
             Line::from("  0-9,a-f   Quick edit (in Memory pane)"),
             Line::from("  w         Add memory watch"),
             Line::from("  W         Remove selected watch"),
+            Line::from(""),
+            Line::from(Span::styled("Command Mode (:):", Style::default().fg(Color::Yellow))),
+            Line::from("  :break <addr>    Set breakpoint"),
+            Line::from("  :delete <addr>   Remove breakpoint"),
+            Line::from("  :watch <name> <addr>  Add memory watch"),
+            Line::from("  :mem <addr> <val>     Write to memory"),
+            Line::from("  :reg <#> <val>        Set register"),
+            Line::from("  :help            Show this help"),
+            Line::from("  :quit/:q         Quit debugger"),
             Line::from(""),
             Line::from(Span::styled("Other:", Style::default().fg(Color::Yellow))),
             Line::from("  :         Enter command mode"),
@@ -865,6 +895,11 @@ impl TuiDebugger {
                 self.register_changes.clear();
             }
             
+            // Toggle ASCII display in memory view
+            KeyCode::Char('a') if self.focused_pane == FocusedPane::Memory => {
+                self.show_ascii = !self.show_ascii;
+            }
+            
             // Quick memory edit - if in memory view and pressing hex digit
             KeyCode::Char(c) if self.focused_pane == FocusedPane::Memory && c.is_ascii_hexdigit() => {
                 let addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
@@ -878,7 +913,7 @@ impl TuiDebugger {
         true
     }
     
-    fn handle_command_mode(&mut self, key: KeyCode, vm: &mut VM) {
+    fn handle_command_mode(&mut self, key: KeyCode, vm: &mut VM) -> bool {
         match key {
             KeyCode::Esc => {
                 self.mode = DebuggerMode::Normal;
@@ -886,7 +921,10 @@ impl TuiDebugger {
             }
             KeyCode::Enter => {
                 let command = self.command_buffer.clone();
-                self.execute_command(&command, vm);
+                let should_continue = self.execute_command(&command, vm);
+                if !should_continue {
+                    return false; // Quit the debugger
+                }
                 self.command_history.push(command);
                 self.command_buffer.clear();
                 self.mode = DebuggerMode::Normal;
@@ -911,6 +949,7 @@ impl TuiDebugger {
             }
             _ => {}
         }
+        true // Continue unless quit command was entered
     }
     
     fn handle_goto_mode(&mut self, key: KeyCode) {
@@ -1353,14 +1392,16 @@ impl TuiDebugger {
         }
     }
     
-    fn execute_command(&mut self, command: &str, vm: &mut VM) {
+    fn execute_command(&mut self, command: &str, vm: &mut VM) -> bool {
         let parts: Vec<&str> = command.split_whitespace().collect();
         if parts.is_empty() {
-            return;
+            return true;
         }
         
         match parts[0] {
+            // Breakpoint commands
             "b" | "break" => {
+                // Usage: break <addr>  - Set breakpoint at address
                 if parts.len() > 1 {
                     if let Ok(addr) = usize::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
                         self.breakpoints.insert(addr);
@@ -1368,13 +1409,17 @@ impl TuiDebugger {
                 }
             }
             "d" | "delete" => {
+                // Usage: delete <addr> - Remove breakpoint at address
                 if parts.len() > 1 {
                     if let Ok(addr) = usize::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
                         self.breakpoints.remove(&addr);
                     }
                 }
             }
+            
+            // Watch commands
             "w" | "watch" => {
+                // Usage: watch <name> <addr> - Add memory watch
                 if parts.len() > 2 {
                     let name = parts[1].to_string();
                     if let Ok(addr) = usize::from_str_radix(parts[2].trim_start_matches("0x"), 16) {
@@ -1387,7 +1432,10 @@ impl TuiDebugger {
                     }
                 }
             }
+            
+            // Memory commands
             "m" | "mem" => {
+                // Usage: mem <addr> <value> - Write value to memory
                 if parts.len() > 2 {
                     if let Ok(addr) = usize::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
                         if let Ok(value) = u16::from_str_radix(parts[2].trim_start_matches("0x"), 16) {
@@ -1398,7 +1446,10 @@ impl TuiDebugger {
                     }
                 }
             }
+            
+            // Register commands
             "reg" => {
+                // Usage: reg <reg#> <value> - Set register value
                 if parts.len() > 2 {
                     if let Ok(reg) = parts[1].parse::<usize>() {
                         if let Ok(value) = u16::from_str_radix(parts[2].trim_start_matches("0x"), 16) {
@@ -1409,8 +1460,21 @@ impl TuiDebugger {
                     }
                 }
             }
+            
+            // Help command
+            "help" | "h" | "?" => {
+                self.show_help = true;
+            }
+            
+            // Quit command
+            "q" | "quit" | "exit" => {
+                return false; // Signal to quit
+            }
+            
             _ => {}
         }
+        
+        true // Continue running
     }
     
     fn format_instruction(&self, instr: &Instr) -> String {
