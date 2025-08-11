@@ -1,0 +1,15 @@
+define test {
+  param %0: Ptr(I8)
+L0:
+  %1 = eq i16 %0, 0
+  br %1 %1, label %1, label %3
+L1:
+  %2 = sub i16 0, 1
+  ret %2
+L4:
+  br label %3
+L3:
+  ret 0
+L5:
+  ret void
+}

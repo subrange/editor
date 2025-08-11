@@ -27,6 +27,10 @@ pub struct SimpleRegAlloc {
     /// Set of values that are temporarily pinned and cannot be spilled
     /// Used during binary operations to prevent spilling operands
     pinned_values: std::collections::HashSet<String>,
+    
+    /// Set of registers that hold function parameters and should not be freed at statement boundaries
+    /// These persist throughout the function
+    parameter_registers: std::collections::HashSet<Reg>,
 }
 
 impl SimpleRegAlloc {
@@ -41,12 +45,19 @@ impl SimpleRegAlloc {
             next_spill_offset: 0,
             instructions: Vec::new(),
             pinned_values: std::collections::HashSet::new(),
+            parameter_registers: std::collections::HashSet::new(),
         }
+    }
+    
+    /// Mark a register as holding a parameter that should persist across statement boundaries
+    pub fn mark_as_parameter(&mut self, reg: Reg) {
+        self.parameter_registers.insert(reg);
     }
     
     /// Get a register for a value
     /// If all registers are in use, spills the least recently used one
     pub fn get_reg(&mut self, for_value: String) -> Reg {
+        eprintln!("DEBUG get_reg called for '{}', reg_contents: {:?}", for_value, self.reg_contents);
         self.instructions.push(AsmInst::Comment(format!("get_reg for '{}'", for_value)));
         
         // Check if this value already has a register
@@ -142,6 +153,9 @@ impl SimpleRegAlloc {
     
     /// Check if a value is tracked (either in register or spilled)
     pub fn is_tracked(&self, value: &str) -> bool {
+        eprintln!("DEBUG is_tracked: Looking for '{}'", value);
+        eprintln!("  reg_contents: {:?}", self.reg_contents);
+        eprintln!("  spill_slots: {:?}", self.spill_slots.keys().collect::<Vec<_>>());
         // Check if it's in a register
         if self.reg_contents.values().any(|v| v == value) {
             return true;
@@ -153,6 +167,7 @@ impl SimpleRegAlloc {
     /// Mark a register as containing a value without spilling
     /// This prevents the register from being chosen for spilling
     pub fn mark_in_use(&mut self, reg: Reg, value: String) {
+        eprintln!("DEBUG mark_in_use: {:?} = {}", reg, value);
         self.reg_contents.insert(reg, value);
         // Remove from free list if it's there
         self.free_list.retain(|&r| r != reg);
@@ -242,8 +257,16 @@ impl SimpleRegAlloc {
     
     /// Clear a register - mark it as not containing any value
     /// This is used after function calls where registers may be clobbered
+    /// Parameter registers are preserved and not cleared
     pub fn clear_register(&mut self, reg: Reg) {
+        // Don't clear parameter registers
+        if self.parameter_registers.contains(&reg) {
+            eprintln!("DEBUG clear_register: Skipping parameter register {:?}", reg);
+            return;
+        }
+        
         if let Some(val) = self.reg_contents.remove(&reg) {
+            eprintln!("DEBUG clear_register: {:?} (contained {})", reg, val);
             self.instructions.push(AsmInst::Comment(format!("Clearing {:?} which contained {}", reg, val)));
         }
         // Add to free list if it's an allocatable register
@@ -325,11 +348,26 @@ impl SimpleRegAlloc {
         }
     }
     
-    /// Free all registers (e.g., at statement boundaries)
+    /// Free all temporaries (e.g., at statement boundaries)
+    /// Parameters are preserved across statement boundaries
     pub fn free_all(&mut self) {
-        self.reg_contents.clear();
-        // Reset to R5-R11 as per formalized doc
-        self.free_list = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5];
+        eprintln!("DEBUG free_all called! Clearing temporaries (preserving parameters)");
+        
+        // Preserve parameter registers, free everything else
+        let mut preserved = BTreeMap::new();
+        for (reg, val) in &self.reg_contents {
+            if self.parameter_registers.contains(reg) {
+                preserved.insert(*reg, val.clone());
+            }
+        }
+        
+        self.reg_contents = preserved;
+        
+        // Reset free list but exclude parameter registers
+        self.free_list = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5]
+            .into_iter()
+            .filter(|r| !self.parameter_registers.contains(r))
+            .collect();
     }
     
     /// Check if a register is currently allocated
@@ -356,5 +394,6 @@ impl SimpleRegAlloc {
         self.next_spill_offset = 0;
         self.instructions.clear();
         self.pinned_values.clear();
+        self.parameter_registers.clear();
     }
 }

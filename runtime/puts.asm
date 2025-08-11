@@ -7,58 +7,58 @@ puts:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
-; === Processing instruction #0: Binary { result: 2, op: Eq, lhs: Temp(0), rhs: Constant(0), result_type: I1 } ===
-; === Processing Binary t2 ===
+; === Processing instruction #0: Binary { result: 1, op: Eq, lhs: Temp(0), rhs: Constant(0), result_type: I1 } ===
+; === Processing Binary t1 ===
 ; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t0
 ; Looking for t0 in registers
 ;   R3 contains t0
-;   R4 contains param_0_bank
-;   R5 contains t1
+;   R4 contains t100000
 ; t0 found in R3
 ;   t0 is now in R3
 ; get_reg for 'const_0_0'
 ;   Allocated free register for const_0_0
-    LI R6, 0
-; Reusing R3 for result t2
-    SLTU R8, R3, R6
-    SLTU R7, R6, R3
-    OR R3, R8, R7
-; === ModuleLowerer::get_reg for 'eq_inv_2' ===
-; get_reg for 'eq_inv_2'
-;   Allocated free register for eq_inv_2
-    LI R7, 1
-    SUB R3, R7, R3
-; Freeing right operand register R6
-; === Processing instruction #1: BranchCond { condition: Temp(2), true_label: 1, false_label: 3 } ===
-; Getting register for temp t2
-; Looking for t2 in registers
-;   R3 contains t2
-;   R4 contains param_0_bank
-;   R5 contains t1
-; t2 found in R3
-;   t2 is now in R3
+    LI R5, 0
+; Reusing R3 for result t1
+    SLTU R7, R3, R5
+    SLTU R6, R5, R3
+    OR R3, R7, R6
+; === ModuleLowerer::get_reg for 'eq_inv_3' ===
+; get_reg for 'eq_inv_3'
+;   Allocated free register for eq_inv_3
+    LI R6, 1
+    SUB R3, R6, R3
+; Freeing right operand register R5
+; === Processing instruction #1: BranchCond { condition: Temp(1), true_label: 1, false_label: 3 } ===
+; Getting register for temp t1
+; Looking for t1 in registers
+;   R3 contains t1
+;   R4 contains t100000
+; t1 found in R3
+;   t1 is now in R3
     BNE R3, R0, puts_L1
     BEQ R0, R0, puts_L3
 puts_L1:
-; === Processing instruction #0: Binary { result: 3, op: Sub, lhs: Constant(0), rhs: Constant(1), result_type: I16 } ===
-; === Processing Binary t3 ===
+; === Processing instruction #0: Binary { result: 2, op: Sub, lhs: Constant(0), rhs: Constant(1), result_type: I16 } ===
+; === Processing Binary t2 ===
 ; Binary: need(lhs)=1, need(rhs)=1
-; get_reg for 'const_0_3'
-;   Allocated free register for const_0_3
+; get_reg for 'const_0_4'
+;   Allocated free register for const_0_4
     LI R5, 0
-; get_reg for 'const_1_4'
-;   Allocated free register for const_1_4
+; get_reg for 'const_1_5'
+;   Allocated free register for const_1_5
     LI R6, 1
-; Reusing R5 for result t3
+; Reusing R5 for result t2
     SUB R5, R5, R6
 ; Freeing right operand register R6
-; === Processing instruction #1: Return(Some(Temp(3))) ===
-; Getting register for temp t3
-; Looking for t3 in registers
-;   R5 contains t3
-; t3 found in R5
-;   t3 is now in R5
+; === Processing instruction #1: Return(Some(Temp(2))) ===
+; Getting register for temp t2
+; Looking for t2 in registers
+;   R3 contains t1
+;   R4 contains t100000
+;   R5 contains t2
+; t2 found in R5
+;   t2 is now in R5
     ADD R3, R5, R0
     ADD R14, R15, R0
     ADDI R14, R14, -1
@@ -73,99 +73,166 @@ puts_L3:
 ; === Processing instruction #0: Branch(5) ===
     BEQ R0, R0, puts_L5
 puts_L5:
+; === Processing instruction #0: Load { result: 3, ptr: Temp(0), result_type: I8 } ===
+; Load from [t0] to t3
+; Getting register for temp t0
+; Looking for t0 in registers
+;   R3 contains t1
+;   R4 contains t100000
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   Allocated free register for t0
+;   t0 is now in R5
+; Getting bank tag for t0
+; Looking for t100000 in registers
+;   R3 contains t1
+;   R4 contains t100000
+;   R5 contains t0
+; t100000 found in R4
+; === ModuleLowerer::get_reg for 'bank_select_6' ===
+; get_reg for 'bank_select_6'
+;   Allocated free register for bank_select_6
+; Select bank register based on tag
+    LI R6, 1
+    BEQ R4, R6, puts_bank_stack_7
+    ADD R6, R0, R0
+    BEQ R0, R0, puts_bank_done_8
+puts_bank_stack_7:
+    ADD R6, R13, R0
+puts_bank_done_8:
+; === ModuleLowerer::get_reg for 't3' ===
+; get_reg for 't3'
+;   Allocated free register for t3
+    LOAD R7, R6, R5
+; === Processing instruction #1: BranchCond { condition: Temp(3), true_label: 6, false_label: 7 } ===
+; Getting register for temp t3
+; Looking for t3 in registers
+;   R3 contains t1
+;   R4 contains t100000
+;   R5 contains t0
+;   R6 contains bank_for_t0
+;   R7 contains t3
+; t3 found in R7
+;   t3 is now in R7
+    BNE R7, R0, puts_L6
+    BEQ R0, R0, puts_L7
+puts_L6:
 ; === Processing instruction #0: Load { result: 4, ptr: Temp(0), result_type: I8 } ===
 ; Load from [t0] to t4
 ; Getting register for temp t0
 ; Looking for t0 in registers
+;   R3 contains t1
+;   R4 contains t100000
 ; t0 not found, allocating new register
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R5
-; WARNING: Unknown pointer bank, defaulting to global
+; Getting bank tag for t0
+; Looking for t100000 in registers
+;   R3 contains t1
+;   R4 contains t100000
+;   R5 contains t0
+; t100000 found in R4
+; === ModuleLowerer::get_reg for 'bank_select_9' ===
+; get_reg for 'bank_select_9'
+;   Allocated free register for bank_select_9
+; Select bank register based on tag
+    LI R6, 1
+    BEQ R4, R6, puts_bank_stack_10
+    ADD R6, R0, R0
+    BEQ R0, R0, puts_bank_done_11
+puts_bank_stack_10:
+    ADD R6, R13, R0
+puts_bank_done_11:
 ; === ModuleLowerer::get_reg for 't4' ===
 ; get_reg for 't4'
 ;   Allocated free register for t4
-    LOAD R6, R0, R5
-; === Processing instruction #1: BranchCond { condition: Temp(4), true_label: 6, false_label: 7 } ===
+    LOAD R7, R6, R5
+; === Processing instruction #1: Call { result: None, function: Global("putchar"), args: [Temp(4)], result_type: Void } ===
 ; Getting register for temp t4
 ; Looking for t4 in registers
+;   R3 contains t1
+;   R4 contains t100000
 ;   R5 contains t0
-;   R6 contains t4
-; t4 found in R6
-;   t4 is now in R6
-    BNE R6, R0, puts_L6
-    BEQ R0, R0, puts_L7
-puts_L6:
-; === Processing instruction #0: Load { result: 5, ptr: Temp(0), result_type: I8 } ===
-; Load from [t0] to t5
-; Getting register for temp t0
-; Looking for t0 in registers
-; t0 not found, allocating new register
-; get_reg for 't0'
-;   Allocated free register for t0
-;   t0 is now in R5
-; WARNING: Unknown pointer bank, defaulting to global
-; === ModuleLowerer::get_reg for 't5' ===
-; get_reg for 't5'
-;   Allocated free register for t5
-    LOAD R6, R0, R5
-; === Processing instruction #1: Call { result: None, function: Global("putchar"), args: [Temp(5)], result_type: Void } ===
-; Getting register for temp t5
-; Looking for t5 in registers
-;   R5 contains t0
-;   R6 contains t5
-; t5 found in R6
-;   t5 is now in R6
-    ADD R3, R6, R0
+;   R6 contains bank_for_t0
+;   R7 contains t4
+; t4 found in R7
+;   t4 is now in R7
+    ADD R3, R7, R0
     CALL putchar
-; === Processing instruction #2: Binary { result: 6, op: Add, lhs: Temp(0), rhs: Constant(1), result_type: I16 } ===
-; === Processing Binary t6 ===
+; === Processing instruction #2: Binary { result: 5, op: Add, lhs: Temp(0), rhs: Constant(1), result_type: I16 } ===
+; === Processing Binary t5 ===
 ; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t0
 ; Clearing R5 which contained t0
-; Clearing R6 which contained t5
+; Clearing R6 which contained bank_for_t0
+; Clearing R7 which contained t4
 ; Looking for t0 in registers
+;   R3 contains t1
+;   R4 contains t100000
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   Allocated free register for t0
+;   t0 is now in R7
+; get_reg for 'const_1_12'
+;   Allocated free register for const_1_12
+    LI R6, 1
+; Reusing R7 for result t5
+    ADD R7, R7, R6
+; Freeing right operand register R6
+; === Processing instruction #3: Store { value: Temp(5), ptr: Temp(0) } ===
+; Getting register for temp t0
+; Looking for t0 in registers
+;   R3 contains t1
+;   R4 contains t100000
+;   R7 contains t5
 ; t0 not found, allocating new register
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R6
-; get_reg for 'const_1_5'
-;   Allocated free register for const_1_5
+; Getting bank tag for t0
+; Looking for t100000 in registers
+;   R3 contains t1
+;   R4 contains t100000
+;   R6 contains ptr_preserve_13
+;   R7 contains t5
+; t100000 found in R4
+; === ModuleLowerer::get_reg for 'bank_select_14' ===
+; get_reg for 'bank_select_14'
+;   Allocated free register for bank_select_14
+; Select bank register based on tag
     LI R5, 1
-; Reusing R6 for result t6
-    ADD R6, R6, R5
-; Freeing right operand register R5
-; === Processing instruction #3: Store { value: Temp(6), ptr: Temp(0) } ===
-; Getting register for temp t0
-; Looking for t0 in registers
-;   R6 contains t6
-; t0 not found, allocating new register
-; get_reg for 't0'
-;   Allocated free register for t0
-;   t0 is now in R5
-; WARNING: Unknown pointer bank, defaulting to global
-; Store t6 to [t0]
-; Getting register for temp t6
-; Looking for t6 in registers
-;   R5 contains ptr_preserve2_7
-;   R6 contains t6
-; t6 found in R6
-;   t6 is now in R6
-    STORE R6, R0, R5
-; >>> Preserving registers: storing t6 from previous instruction
+    BEQ R4, R5, puts_bank_stack_15
+    ADD R5, R0, R0
+    BEQ R0, R0, puts_bank_done_16
+puts_bank_stack_15:
+    ADD R5, R13, R0
+puts_bank_done_16:
+; Store t5 to [t0]
+; Getting register for temp t5
+; Looking for t5 in registers
+;   R3 contains t1
+;   R4 contains t100000
+;   R5 contains bank_preserve_18
+;   R6 contains ptr_preserve2_17
+;   R7 contains t5
+; t5 found in R7
+;   t5 is now in R7
+    STORE R7, R5, R6
+; >>> Preserving registers: storing t5 from previous instruction
 ; === Processing instruction #4: Branch(5) ===
     BEQ R0, R0, puts_L5
 puts_L7:
 ; === Processing instruction #0: Call { result: None, function: Global("putchar"), args: [Constant(10)], result_type: Void } ===
-; get_reg for 'const_10_8'
-;   Allocated free register for const_10_8
+; get_reg for 'const_10_19'
+;   Allocated free register for const_10_19
     LI R5, 10
     ADD R3, R5, R0
     CALL putchar
 ; === Processing instruction #1: Return(Some(Constant(0))) ===
-; Clearing R5 which contained const_10_8
-; get_reg for 'const_0_9'
-;   Allocated free register for const_0_9
+; Clearing R5 which contained const_10_19
+; get_reg for 'const_0_20'
+;   Allocated free register for const_0_20
     LI R5, 0
     ADD R3, R5, R0
     ADD R14, R15, R0

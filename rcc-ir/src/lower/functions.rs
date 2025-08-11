@@ -46,9 +46,7 @@ impl ModuleLowerer {
                     };
 
                     // Map parameter temp ID to its register location (address)
-                    self.value_locations.insert(format!("t{}", param_id), crate::module_lowering::Location::Register(addr_reg));
-                    // Inform the centralized allocator that this register is in use
-                    self.reg_alloc.mark_in_use(addr_reg, format!("t{}", param_id));
+                    self.value_locations.insert(Self::temp_name(*param_id), crate::module_lowering::Location::Register(addr_reg));
                     next_param_reg_idx += 1;
 
                     // Bank tag is in next register
@@ -61,29 +59,34 @@ impl ModuleLowerer {
                         _ => unreachable!(),
                     };
 
+                    eprintln!("DEBUG: Setting up pointer parameter {} - address in {:?}, bank in {:?}", param_id, addr_reg, bank_reg);
+                    
+                    // Inform the centralized allocator that the address register is in use
+                    self.reg_alloc.mark_in_use(addr_reg, Self::temp_name(*param_id));
+                    self.reg_alloc.mark_as_parameter(addr_reg);
+
                     // Store the bank tag in a temporary for later use
                     // We'll need to check the bank value and set up fat pointer components
-                    // Create a temp to hold the bank value
-                    let bank_temp_key = format!("param_{}_bank", param_id);
-                    self.reg_alloc.mark_in_use(bank_reg, bank_temp_key.clone());
-
                     // For fat pointers, we need to use the bank register at runtime
                     // Store it in a temp that we can track
-                    let bank_temp_id = 100000 + param_id; // Use high temp IDs for bank tags
-                    self.value_locations.insert(Self::temp_name(bank_temp_id), crate::module_lowering::Location::Register(bank_reg));
-                    // Already marked in use via reg_alloc.mark_in_use above
+                    let bank_temp_key = Self::bank_temp_key(*param_id);
+                    eprintln!("DEBUG: Marking bank register {:?} with key {}", bank_reg, bank_temp_key);
+                    self.value_locations.insert(bank_temp_key.clone(), crate::module_lowering::Location::Register(bank_reg));
+                    self.reg_alloc.mark_in_use(bank_reg, bank_temp_key);
+                    self.reg_alloc.mark_as_parameter(bank_reg);
 
                     // The bank is in a register, tracked above
                     next_param_reg_idx += 1;
                 } else if next_param_reg_idx == 5 {
                     // Address in R8, bank on stack
                     self.value_locations.insert(Self::temp_name(*param_id), crate::module_lowering::Location::Register(Reg::R8));
-                    self.reg_alloc.mark_in_use(Reg::R8, format!("t{}", param_id));
+                    self.reg_alloc.mark_in_use(Reg::R8, Self::temp_name(*param_id));
+                    self.reg_alloc.mark_as_parameter(Reg::R8);
                     next_param_reg_idx += 1;
 
                     // Bank tag is on stack - will be loaded by caller
-                    let bank_temp_id = 100000 + param_id;
-                    self.value_locations.insert(Self::temp_name(bank_temp_id), crate::module_lowering::Location::Spilled(stack_param_offset));
+                    let bank_temp_key = Self::bank_temp_key(*param_id);
+                    self.value_locations.insert(bank_temp_key, crate::module_lowering::Location::Spilled(stack_param_offset));
                     stack_param_offset += 1;
                     self.needs_frame = true;
                 } else {
@@ -91,8 +94,8 @@ impl ModuleLowerer {
                     self.value_locations.insert(Self::temp_name(*param_id), crate::module_lowering::Location::Spilled(stack_param_offset));
                     stack_param_offset += 1;
 
-                    let bank_temp_id = 100000 + param_id;
-                    self.value_locations.insert(Self::temp_name(bank_temp_id), crate::module_lowering::Location::Spilled(stack_param_offset));
+                    let bank_temp_key = Self::bank_temp_key(*param_id);
+                    self.value_locations.insert(bank_temp_key, crate::module_lowering::Location::Spilled(stack_param_offset));
                     stack_param_offset += 1;
                     self.needs_frame = true;
                 }
@@ -112,6 +115,7 @@ impl ModuleLowerer {
 
                     self.value_locations.insert(Self::temp_name(*param_id), crate::module_lowering::Location::Register(param_reg));
                     self.reg_alloc.mark_in_use(param_reg, Self::temp_name(*param_id));
+                    self.reg_alloc.mark_as_parameter(param_reg);
                     next_param_reg_idx += 1;
                 } else {
                     // Goes on stack

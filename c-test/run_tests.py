@@ -171,6 +171,8 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
             if verbose and stdout:
                 print(f"    Partial output before timeout: {repr(stdout)}")
             return False, stderr, has_provenance_warning
+
+        run_command(f"{RASM} disassemble {bin_file} -o {BUILD_DIR}/{basename}.disassembly.asm")  # Save disassembly for debugging
     else:
         # For BF backend, link to macro format
         if use_full_runtime:
@@ -369,6 +371,7 @@ def main():
         # Pointer provenance tests with fat pointers
         (f"{BASE_DIR}/tests/test_pointer_provenance.c", "GSSSS\n", True),
         (f"{BASE_DIR}/tests/test_pointer_phi.c", "1234\n", True),
+        (f"{BASE_DIR}/tests/test_pointer_swap_simple.c", "21\n", True),
         (f"{BASE_DIR}/tests-runtime/test_struct_inline.c", "YY\n", True),
         (f"{BASE_DIR}/tests-runtime/test_struct_simple.c", "12345\n", True),
         (f"{BASE_DIR}/tests-runtime/test_puts_debug.c", "ABC\n", True),
@@ -382,6 +385,7 @@ def main():
         (f"{BASE_DIR}/tests-runtime/test_complex_simple.c", "123\n", True),
         (f"{BASE_DIR}/tests-runtime/test_mul.c", "Y", True),
         (f"{BASE_DIR}/tests-runtime/test_puts_string.c", "Hello, World!\n", True),
+        (f"{BASE_DIR}/tests-runtime/test_pointer_swap.c", "AB\n", True),
     ]
     
     # If single test specified, filter the test list

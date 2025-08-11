@@ -85,8 +85,7 @@ impl ModuleLowerer {
         match value {
             Value::Constant(n) => {
                 // Use the centralized allocator for constants
-                let const_key = format!("const_{}_{}", n, self.label_counter);
-                self.label_counter += 1;
+                let const_key = self.generate_temp_name(&format!("const_{}", n));
                 let reg = self.reg_alloc.get_reg(const_key);
 
                 // Append any spill/reload instructions generated
@@ -101,8 +100,8 @@ impl ModuleLowerer {
                 if let Some(&offset) = self.local_offsets.get(id) {
                     // This is a stack variable - return its address
                     // Use a unique key to avoid conflicts
-                    let reg = self.get_reg(format!("addr_t{}_{}", id, self.label_counter));
-                    self.label_counter += 1;
+                    let temp_name = self.generate_temp_name(&format!("addr_t{}", id));
+                    let reg = self.get_reg(temp_name);
                     if offset > 0 {
                         self.emit(AsmInst::AddI(reg, Reg::R15, offset));
                     } else {
@@ -143,8 +142,8 @@ impl ModuleLowerer {
             Value::Global(name) => {
                 // Load global address into a register
                 if let Some(&addr) = self.global_addresses.get(name) {
-                    let reg = self.get_reg(format!("global_{}_{}", name, self.label_counter));
-                    self.label_counter += 1;
+                    let temp_name = self.generate_temp_name(&format!("global_{}", name));
+                    let reg = self.get_reg(temp_name);
                     self.emit(AsmInst::LI(reg, addr as i16));
                     Ok(reg)
                 } else {
@@ -181,12 +180,12 @@ impl ModuleLowerer {
             }
             Value::Temp(tid) => {
                 // Check if this is a pointer parameter with a bank register
-                let bank_temp_id = 100000 + tid;
-                let bank_temp_key = Self::temp_name(bank_temp_id);
+                let bank_temp_key = Self::bank_temp_key(*tid);
                 
                 // Check if we have a bank tag for this pointer
                 // It might be in a register or might have been spilled
                 let has_bank_tag = self.reg_alloc.is_tracked(&bank_temp_key);
+                eprintln!("DEBUG: Checking bank for t{}, bank_temp_key={}, has_bank_tag={}", tid, bank_temp_key, has_bank_tag);
                 
                 if has_bank_tag {
                     // Reload the bank tag (will get from register if already there, or reload from spill)
@@ -197,12 +196,10 @@ impl ModuleLowerer {
                     
                     // We have the bank tag in a register - need to convert to bank register
                     // Generate runtime check to select R0 or R13 based on tag
-                    let result_reg = self.get_reg(format!("bank_select_{}", self.label_counter));
-                    self.label_counter += 1;
+                    let temp_name = self.generate_temp_name("bank_select");
+                    let result_reg = self.get_reg(temp_name);
 
-                    let stack_label = format!("bank_stack_{}", self.label_counter);
-                    let done_label = format!("bank_done_{}", self.label_counter);
-                    self.label_counter += 1;
+                    let (stack_label, done_label) = self.generate_bank_labels();
 
                     // Check if bank_reg == 1 (stack)
                     self.emit_comment("Select bank register based on tag".to_string());
@@ -241,11 +238,16 @@ impl ModuleLowerer {
                     if self.local_offsets.contains_key(tid) {
                         Ok(Reg::R13)
                     } else {
-                        // Default to global for unknown pointers
-                        self.emit(AsmInst::Comment(
-                            "WARNING: Unknown pointer bank, defaulting to global".to_string()
-                        ));
-                        Ok(Reg::R0)
+                        // This should never happen with properly tracked fat pointers
+                        eprintln!("DEBUG: get_bank_for_pointer called for t{}", tid);
+                        eprintln!("  local_offsets: {:?}", self.local_offsets.contains_key(tid));
+                        eprintln!("  fat_ptr_components: {:?}", self.fat_ptr_components.contains_key(tid));
+                        eprintln!("  value_locations contains t{}: {:?}", tid, self.value_locations.contains_key(&format!("t{}", tid)));
+                        eprintln!("  value_locations contains t{}: {:?}", 100000 + tid, self.value_locations.contains_key(&format!("t{}", 100000 + tid)));
+                        Err(CompilerError::codegen_error(
+                            format!("Missing bank information for pointer t{}. This is a compiler bug - all pointers should have bank tags.", tid),
+                            rcc_common::SourceLocation::dummy(),
+                        ))
                     }
                 }
             }

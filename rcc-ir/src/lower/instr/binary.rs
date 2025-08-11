@@ -83,12 +83,10 @@ impl ModuleLowerer {
                     self.reg_alloc.pin_value(right_name.clone());
                 }
                 
-                let ((temp1, temp2), spill_insts) = self.reg_alloc.get_two_regs(
-                    format!("eq_temp1_{}", self.label_counter),
-                    format!("eq_temp2_{}", self.label_counter)
-                );
+                let temp1_name = self.generate_temp_name("eq_temp1");
+                let temp2_name = self.generate_temp_name("eq_temp2");
+                let ((temp1, temp2), spill_insts) = self.reg_alloc.get_two_regs(temp1_name, temp2_name);
                 self.emit_many(spill_insts);
-                self.label_counter += 1;
 
                 let eq = emit_ne(dest_reg, left_reg, right_reg, temp1, temp2);
                 self.emit_many(eq);
@@ -106,8 +104,8 @@ impl ModuleLowerer {
                 self.reg_alloc.free_reg(temp2);
 
                 // Now invert the result: dest = 1 - dest
-                let temp3 = self.get_reg(format!("eq_inv_{}", self.label_counter));
-                self.label_counter += 1;
+                let temp_name = self.generate_temp_name("eq_inv");
+                let temp3 = self.get_reg(temp_name);
                 self.emit(AsmInst::LI(temp3, 1));
                 self.emit(AsmInst::Sub(dest_reg, temp3, dest_reg));
                 self.reg_alloc.free_reg(temp3);
@@ -129,12 +127,10 @@ impl ModuleLowerer {
                     self.reg_alloc.pin_value(right_name.clone());
                 }
                 
-                let ((temp1, temp2), spill_insts) = self.reg_alloc.get_two_regs(
-                    format!("ne_temp1_{}", self.label_counter),
-                    format!("ne_temp2_{}", self.label_counter)
-                );
+                let temp1_name = self.generate_temp_name("ne_temp1");
+                let temp2_name = self.generate_temp_name("ne_temp2");
+                let ((temp1, temp2), spill_insts) = self.reg_alloc.get_two_regs(temp1_name, temp2_name);
                 self.emit_many(spill_insts);
-                self.label_counter += 1;
 
                 // Generate the comparison using temps
                 let ne = emit_ne(dest_reg, left_reg, right_reg, temp1, temp2);
@@ -158,8 +154,8 @@ impl ModuleLowerer {
             }
             IrBinaryOp::Sle => {
                 // a <= b is !(b < a)
-                let temp = self.get_reg(format!("sle_temp_{}", self.label_counter));
-                self.label_counter += 1;
+                let temp_name = self.generate_temp_name("sle_temp");
+                let temp = self.get_reg(temp_name);
 
                 self.emit(AsmInst::Sltu(dest_reg, right_reg, left_reg));
                 self.emit(AsmInst::LI(temp, 1));
@@ -172,8 +168,8 @@ impl ModuleLowerer {
             IrBinaryOp::Sge => {
                 // a >= b is !(a < b)
                 self.emit(AsmInst::Sltu(dest_reg, left_reg, right_reg));
-                let temp = self.get_reg(format!("sge_temp_{}", self.label_counter));
-                self.label_counter += 1;
+                let temp_name = self.generate_temp_name("sge_temp");
+                let temp = self.get_reg(temp_name);
                 self.emit(AsmInst::LI(temp, 1));
                 self.emit(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
                 self.reg_alloc.free_reg(temp);

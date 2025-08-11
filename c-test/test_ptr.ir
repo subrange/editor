@@ -1,0 +1,8 @@
+define test {
+  param %0: Ptr(I8)
+L0:
+  %1 = add i16 %0, 1
+  ret %1
+L1:
+  ret void
+}

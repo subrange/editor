@@ -19,8 +19,8 @@ memcpy:
 ;   Allocated free register for addr_t5_0
     ADDI R10, R15, 1
 ; Store 0 to [t5]
-; get_reg for 'const_0_3'
-;   Allocated free register for const_0_3
+; get_reg for 'const_0_4'
+;   Allocated free register for const_0_4
     LI R11, 0
     STORE R11, R13, R10
 ; >>> Freeing all registers at Store statement boundary
@@ -29,225 +29,435 @@ memcpy:
 memcpy_L1:
 ; === Processing instruction #0: Load { result: 6, ptr: Temp(5), result_type: I16 } ===
 ; Load from [t5] to t6
-; === ModuleLowerer::get_reg for 'addr_t5_4' ===
-; get_reg for 'addr_t5_4'
-;   Allocated free register for addr_t5_4
-    ADDI R5, R15, 1
+; === ModuleLowerer::get_reg for 'addr_t5_5' ===
+; get_reg for 'addr_t5_5'
+;   Allocated free register for addr_t5_5
+    ADDI R9, R15, 1
 ; === ModuleLowerer::get_reg for 't6' ===
 ; get_reg for 't6'
 ;   Allocated free register for t6
-    LOAD R6, R13, R5
+    LOAD R10, R13, R9
 ; === Processing instruction #1: Binary { result: 7, op: Slt, lhs: Temp(6), rhs: Temp(4), result_type: I16 } ===
 ; === Processing Binary t7 ===
 ; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t6
 ; Looking for t6 in registers
-;   R5 contains addr_t5_4
-;   R6 contains t6
-; t6 found in R6
-;   t6 is now in R6
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100002
+;   R8 contains t3
+;   R? contains addr_t5_5
+;   R? contains t6
+; t6 found in R?
+;   t6 is now in R10
 ; Getting register for temp t4
 ; Looking for t4 in registers
-;   R5 contains addr_t5_4
-;   R6 contains t6
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100002
+;   R8 contains t3
+;   R? contains addr_t5_5
+;   R? contains t6
 ; t4 not found, allocating new register
 ; get_reg for 't4'
 ;   Allocated free register for t4
-;   t4 is now in R7
-; Reusing R6 for result t7
-    SLTU R6, R6, R7
-; Freeing right operand register R7
+;   t4 is now in R11
+; Reusing R10 for result t7
+    SLTU R10, R10, R11
+; Freeing right operand register R11
 ; === Processing instruction #2: BranchCond { condition: Temp(7), true_label: 2, false_label: 4 } ===
 ; Getting register for temp t7
 ; Looking for t7 in registers
-;   R5 contains addr_t5_4
-;   R6 contains t7
-; t7 found in R6
-;   t7 is now in R6
-    BNE R6, R0, memcpy_L2
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100002
+;   R8 contains t3
+;   R? contains addr_t5_5
+;   R? contains t7
+; t7 found in R?
+;   t7 is now in R10
+    BNE R10, R0, memcpy_L2
     BEQ R0, R0, memcpy_L4
 memcpy_L2:
 ; === Processing instruction #0: Load { result: 8, ptr: Temp(5), result_type: I16 } ===
 ; Load from [t5] to t8
-; === ModuleLowerer::get_reg for 'addr_t5_5' ===
-; get_reg for 'addr_t5_5'
-;   Allocated free register for addr_t5_5
-    ADDI R5, R15, 1
+; === ModuleLowerer::get_reg for 'addr_t5_6' ===
+; get_reg for 'addr_t5_6'
+;   Allocated free register for addr_t5_6
+    ADDI R9, R15, 1
 ; === ModuleLowerer::get_reg for 't8' ===
 ; get_reg for 't8'
 ;   Allocated free register for t8
-    LOAD R6, R13, R5
+    LOAD R10, R13, R9
 ; === Processing instruction #1: GetElementPtr { result: 9, ptr: Temp(2), indices: [Temp(8)], result_type: Ptr(I8) } ===
 ; GetElementPtr t9 = t2 + offsets
 ; Getting register for temp t2
 ; Looking for t2 in registers
-;   R5 contains addr_t5_5
-;   R6 contains t8
-; t2 not found, allocating new register
-; get_reg for 't2'
-;   Allocated free register for t2
-;   t2 is now in R7
-;   Base t2 in R7
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100002
+;   R8 contains t3
+;   R? contains addr_t5_6
+;   R? contains t8
+; t2 found in R6
+;   t2 is now in R6
+;   Base t2 in R6
 ; Getting register for temp t8
 ; Looking for t8 in registers
-;   R5 contains addr_t5_5
-;   R6 contains t8
-;   R7 contains t2
-; t8 found in R6
-;   t8 is now in R6
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100002
+;   R8 contains t3
+;   R? contains addr_t5_6
+;   R? contains t8
+; t8 found in R?
+;   t8 is now in R10
 ; === ModuleLowerer::get_reg for 't9' ===
 ; get_reg for 't9'
 ;   Allocated free register for t9
-    ADD R8, R7, R6
+    ADD R11, R6, R10
+;   Propagating bank tag from t100002 to t100009
 ; === Processing instruction #2: Load { result: 10, ptr: Temp(9), result_type: I8 } ===
 ; Load from [t9] to t10
 ; Getting register for temp t9
 ; Looking for t9 in registers
-;   R5 contains addr_t5_5
-;   R6 contains t8
-;   R7 contains t2
-;   R8 contains t9
-; t9 found in R8
-;   t9 is now in R8
-; WARNING: Unknown pointer bank, defaulting to global
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
+;   R? contains addr_t5_6
+;   R? contains t8
+;   R? contains t9
+; t9 found in R?
+;   t9 is now in R11
+; Getting bank tag for t9
+; Looking for t100009 in registers
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
+;   R? contains addr_t5_6
+;   R? contains t8
+;   R? contains t9
+; t100009 found in R7
+; === ModuleLowerer::get_reg for 'bank_select_7' ===
+; get_reg for 'bank_select_7'
+;   No free registers, need to spill for bank_select_7
+;     R3 contains 't0'
+;     R4 contains 't100000'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill t0 from R3
+; Spilling t0 to FP+0
+    ADDI R12, R15, 0
+    STORE R3, R13, R12
+;   Now R3 will contain bank_select_7
+; Select bank register based on tag
+    LI R3, 1
+    BEQ R7, R3, memcpy_bank_stack_8
+    ADD R3, R0, R0
+    BEQ R0, R0, memcpy_bank_done_9
+memcpy_bank_stack_8:
+    ADD R3, R13, R0
+memcpy_bank_done_9:
 ; === ModuleLowerer::get_reg for 't10' ===
 ; get_reg for 't10'
-;   Allocated free register for t10
-    LOAD R9, R0, R8
+;   No free registers, need to spill for t10
+;     R3 contains 'bank_for_t9'
+;     R4 contains 't100000'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill bank_for_t9 from R3
+; Spilling bank_for_t9 to FP+1
+    ADDI R12, R15, 1
+    STORE R3, R13, R12
+;   Now R3 will contain t10
+    LOAD R3, R3, R11
 ; === Processing instruction #3: Load { result: 11, ptr: Temp(5), result_type: I16 } ===
 ; Load from [t5] to t11
-; === ModuleLowerer::get_reg for 'addr_t5_6' ===
-; get_reg for 'addr_t5_6'
-;   Allocated free register for addr_t5_6
-    ADDI R10, R15, 1
+; === ModuleLowerer::get_reg for 'addr_t5_10' ===
+; get_reg for 'addr_t5_10'
+;   No free registers, need to spill for addr_t5_10
+;     R3 contains 't10'
+;     R4 contains 't100000'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill t10 from R3
+; Spilling t10 to FP+2
+    ADDI R12, R15, 2
+    STORE R3, R13, R12
+;   Now R3 will contain addr_t5_10
+    ADDI R3, R15, 1
 ; === ModuleLowerer::get_reg for 't11' ===
 ; get_reg for 't11'
-;   Allocated free register for t11
-    LOAD R11, R13, R10
+;   No free registers, need to spill for t11
+;     R3 contains 'addr_t5_10'
+;     R4 contains 't100000'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill addr_t5_10 from R3
+; Spilling addr_t5_10 to FP+3
+    ADDI R12, R15, 3
+    STORE R3, R13, R12
+;   Now R3 will contain t11
+    LOAD R3, R13, R3
 ; === Processing instruction #4: GetElementPtr { result: 12, ptr: Temp(0), indices: [Temp(11)], result_type: Ptr(I8) } ===
 ; GetElementPtr t12 = t0 + offsets
 ; Getting register for temp t0
 ; Looking for t0 in registers
-;   R5 contains addr_t5_5
-;   R6 contains t8
-;   R7 contains t2
-;   R8 contains t9
-;   R? contains t10
+;   R3 contains t11
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
 ;   R? contains addr_t5_6
-;   R? contains t11
-; t0 not found, allocating new register
+;   R? contains t8
+;   R? contains t9
 ; get_reg for 't0'
 ;   No free registers, need to spill for t0
-;     R5 contains 'addr_t5_5'
-;     R6 contains 't8'
-;     R7 contains 't2'
-;     R8 contains 't9'
-;     R9 contains 't10'
-;     R10 contains 'addr_t5_6'
-;     R11 contains 't11'
-;   Chose to spill addr_t5_5 from R5
-; Spilling addr_t5_5 to FP+0
+;     R3 contains 't11'
+;     R4 contains 't100000'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill t11 from R3
+; Spilling t11 to FP+4
+    ADDI R12, R15, 4
+    STORE R3, R13, R12
+;   Now R3 will contain t0
+; Reloading t0 from FP+0
     ADDI R12, R15, 0
-    STORE R5, R13, R12
-;   Now R5 will contain t0
-;   t0 is now in R5
-;   Base t0 in R5
+    LOAD R3, R13, R12
+;   t0 is now in R3
+;   Base t0 in R3
 ; Getting register for temp t11
 ; Looking for t11 in registers
-;   R5 contains t0
-;   R6 contains t8
-;   R7 contains t2
-;   R8 contains t9
-;   R? contains t10
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
 ;   R? contains addr_t5_6
-;   R? contains t11
-; t11 found in R?
-;   t11 is now in R11
+;   R? contains t8
+;   R? contains t9
+; get_reg for 't11'
+;   No free registers, need to spill for t11
+;     R3 contains 't0'
+;     R4 contains 't100000'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill t0 from R3
+; Spilling t0 to FP+0
+    ADDI R12, R15, 0
+    STORE R3, R13, R12
+;   Now R3 will contain t11
+; Reloading t11 from FP+4
+    ADDI R12, R15, 4
+    LOAD R3, R13, R12
+;   t11 is now in R3
 ; === ModuleLowerer::get_reg for 't12' ===
 ; get_reg for 't12'
 ;   No free registers, need to spill for t12
-;     R5 contains 't0'
-;     R6 contains 't8'
-;     R7 contains 't2'
-;     R8 contains 't9'
-;     R9 contains 't10'
-;     R10 contains 'addr_t5_6'
-;     R11 contains 't11'
-;   Chose to spill t0 from R5
-; Spilling t0 to FP+1
-    ADDI R12, R15, 1
-    STORE R5, R13, R12
-;   Now R5 will contain t12
-    ADD R5, R5, R11
+;     R3 contains 't11'
+;     R4 contains 't100000'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill t11 from R3
+; Spilling t11 to FP+4
+    ADDI R12, R15, 4
+    STORE R3, R13, R12
+;   Now R3 will contain t12
+    ADD R3, R3, R3
+;   Propagating bank tag from t100000 to t100012
 ; === Processing instruction #5: Store { value: Temp(10), ptr: Temp(12) } ===
 ; Getting register for temp t12
 ; Looking for t12 in registers
-;   R5 contains t12
-;   R6 contains t8
-;   R7 contains t2
-;   R8 contains t9
-;   R? contains t10
+;   R3 contains t12
+;   R4 contains t100012
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
 ;   R? contains addr_t5_6
-;   R? contains t11
-; t12 found in R5
-;   t12 is now in R5
-; WARNING: Unknown pointer bank, defaulting to global
+;   R? contains t8
+;   R? contains t9
+; t12 found in R3
+;   t12 is now in R3
+; Getting bank tag for t12
+; Looking for t100012 in registers
+;   R3 contains ptr_preserve_11
+;   R4 contains t100012
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
+;   R? contains addr_t5_6
+;   R? contains t8
+;   R? contains t9
+; t100012 found in R4
+; === ModuleLowerer::get_reg for 'bank_select_12' ===
+; get_reg for 'bank_select_12'
+;   No free registers, need to spill for bank_select_12
+;     R3 contains 'ptr_preserve_11'
+;     R4 contains 't100012'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill t100012 from R4
+; Spilling t100012 to FP+5
+    ADDI R12, R15, 5
+    STORE R4, R13, R12
+;   Now R4 will contain bank_select_12
+; Select bank register based on tag
+    LI R4, 1
+    BEQ R4, R4, memcpy_bank_stack_13
+    ADD R4, R0, R0
+    BEQ R0, R0, memcpy_bank_done_14
+memcpy_bank_stack_13:
+    ADD R4, R13, R0
+memcpy_bank_done_14:
 ; Store t10 to [t12]
 ; Getting register for temp t10
 ; Looking for t10 in registers
-;   R5 contains ptr_preserve2_8
-;   R6 contains t8
-;   R7 contains t2
-;   R8 contains t9
-;   R? contains t10
+;   R3 contains ptr_preserve2_15
+;   R4 contains bank_preserve_16
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
 ;   R? contains addr_t5_6
-;   R? contains t11
-; t10 found in R?
-;   t10 is now in R9
-    STORE R9, R0, R5
+;   R? contains t8
+;   R? contains t9
+; get_reg for 't10'
+;   No free registers, need to spill for t10
+;     R3 contains 'ptr_preserve2_15'
+;     R4 contains 'bank_preserve_16'
+;     R5 contains 't1'
+;     R6 contains 't2'
+;     R7 contains 't100009'
+;     R8 contains 't3'
+;     R9 contains 'addr_t5_6'
+;     R10 contains 't8'
+;     R11 contains 't9'
+;   Chose to spill t1 from R5
+; Spilling t1 to FP+6
+    ADDI R12, R15, 6
+    STORE R5, R13, R12
+;   Now R5 will contain t10
+; Reloading t10 from FP+2
+    ADDI R12, R15, 2
+    LOAD R5, R13, R12
+;   t10 is now in R5
+    STORE R5, R4, R3
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #6: Branch(3) ===
     BEQ R0, R0, memcpy_L3
 memcpy_L3:
 ; === Processing instruction #0: Load { result: 13, ptr: Temp(5), result_type: I16 } ===
 ; Load from [t5] to t13
-; === ModuleLowerer::get_reg for 'addr_t5_9' ===
-; get_reg for 'addr_t5_9'
-;   Allocated free register for addr_t5_9
-    ADDI R5, R15, 1
+; === ModuleLowerer::get_reg for 'addr_t5_17' ===
+; get_reg for 'addr_t5_17'
+;   Allocated free register for addr_t5_17
+    ADDI R9, R15, 1
 ; === ModuleLowerer::get_reg for 't13' ===
 ; get_reg for 't13'
 ;   Allocated free register for t13
-    LOAD R6, R13, R5
+    LOAD R10, R13, R9
 ; === Processing instruction #1: Binary { result: 14, op: Add, lhs: Temp(13), rhs: Constant(1), result_type: I16 } ===
 ; === Processing Binary t14 ===
 ; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t13
 ; Looking for t13 in registers
-;   R5 contains addr_t5_9
-;   R6 contains t13
-; t13 found in R6
-;   t13 is now in R6
-; get_reg for 'const_1_10'
-;   Allocated free register for const_1_10
-    LI R7, 1
-; Reusing R6 for result t14
-    ADD R6, R6, R7
-; Freeing right operand register R7
+;   R3 contains ptr_preserve2_15
+;   R4 contains bank_preserve_16
+;   R5 contains t10
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
+;   R? contains addr_t5_17
+;   R? contains t13
+; t13 found in R?
+;   t13 is now in R10
+; get_reg for 'const_1_18'
+;   Allocated free register for const_1_18
+    LI R11, 1
+; Reusing R10 for result t14
+    ADD R10, R10, R11
+; Freeing right operand register R11
 ; === Processing instruction #2: Store { value: Temp(14), ptr: Temp(5) } ===
-; === ModuleLowerer::get_reg for 'addr_t5_11' ===
-; get_reg for 'addr_t5_11'
-;   Allocated free register for addr_t5_11
-    ADDI R7, R15, 1
+; === ModuleLowerer::get_reg for 'addr_t5_19' ===
+; get_reg for 'addr_t5_19'
+;   Allocated free register for addr_t5_19
+    ADDI R11, R15, 1
 ; Store t14 to [t5]
 ; Getting register for temp t14
 ; Looking for t14 in registers
-;   R5 contains addr_t5_9
-;   R6 contains t14
-;   R7 contains ptr_preserve2_13
-; t14 found in R6
-;   t14 is now in R6
-    STORE R6, R13, R7
+;   R3 contains ptr_preserve2_15
+;   R4 contains bank_preserve_16
+;   R5 contains t10
+;   R6 contains t2
+;   R7 contains t100009
+;   R8 contains t3
+;   R? contains addr_t5_17
+;   R? contains t14
+;   R? contains ptr_preserve2_21
+; t14 found in R?
+;   t14 is now in R10
+    STORE R10, R13, R11
 ; >>> Preserving registers: storing t14 from previous instruction
 ; === Processing instruction #3: Branch(1) ===
     BEQ R0, R0, memcpy_L1

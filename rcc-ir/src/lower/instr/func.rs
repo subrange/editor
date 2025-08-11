@@ -69,8 +69,7 @@ impl ModuleLowerer {
 
                 // Check if we have a loaded pointer with bank tag stored
                 let bank_val_reg = if let Value::Temp(tid) = arg {
-                    let bank_temp_id = 100000 + tid;
-                    let bank_temp_key = Self::temp_name(bank_temp_id);
+                    let bank_temp_key = Self::bank_temp_key(*tid);
                     if let Some(&Location::Register(stored_bank_reg)) =
                         self.value_locations.get(&bank_temp_key)
                     {
@@ -81,16 +80,14 @@ impl ModuleLowerer {
                         let bank_reg = self.get_bank_for_pointer(arg)?;
                         if bank_reg == Reg::R0 {
                             // Global bank = 0
-                            let temp_reg =
-                                self.get_reg(format!("bank_global_{}", self.label_counter));
-                            self.label_counter += 1;
+                            let temp_name = self.generate_temp_name("bank_global");
+                            let temp_reg = self.get_reg(temp_name);
                             self.emit(AsmInst::LI(temp_reg, 0));
                             temp_reg
                         } else if bank_reg == Reg::R13 {
                             // Stack bank = 1
-                            let temp_reg =
-                                self.get_reg(format!("bank_stack_{}", self.label_counter));
-                            self.label_counter += 1;
+                            let temp_name = self.generate_temp_name("bank_tag_stack");
+                            let temp_reg = self.get_reg(temp_name);
                             self.emit(AsmInst::LI(temp_reg, 1));
                             temp_reg
                         } else {
@@ -102,14 +99,14 @@ impl ModuleLowerer {
                     let bank_reg = self.get_bank_for_pointer(arg)?;
                     if bank_reg == Reg::R0 {
                         // Global bank = 0
-                        let temp_reg = self.get_reg(format!("bank_global_{}", self.label_counter));
-                        self.label_counter += 1;
+                        let temp_name = self.generate_temp_name("bank_global");
+                        let temp_reg = self.get_reg(temp_name);
                         self.emit(AsmInst::LI(temp_reg, 0));
                         temp_reg
                     } else if bank_reg == Reg::R13 {
                         // Stack bank = 1
-                        let temp_reg = self.get_reg(format!("bank_stack_{}", self.label_counter));
-                        self.label_counter += 1;
+                        let temp_name = self.generate_temp_name("bank_tag_stack");
+                        let temp_reg = self.get_reg(temp_name);
                         self.emit(AsmInst::LI(temp_reg, 1));
                         temp_reg
                     } else {
@@ -128,8 +125,7 @@ impl ModuleLowerer {
 
                     // Get bank tag value
                     let bank_val = if let Value::Temp(tid) = arg {
-                        let bank_temp_id = 100000 + tid;
-                        let bank_temp_key = Self::temp_name(bank_temp_id);
+                        let bank_temp_key = Self::bank_temp_key(*tid);
                         if let Some(&Location::Register(stored_bank_reg)) =
                             self.value_locations.get(&bank_temp_key)
                         {
@@ -137,8 +133,8 @@ impl ModuleLowerer {
                         } else {
                             // Get bank and convert to value
                             let bank_reg = self.get_bank_for_pointer(arg)?;
-                            let temp_reg = self.get_reg(format!("bank_val_{}", self.label_counter));
-                            self.label_counter += 1;
+                            let temp_name = self.generate_temp_name("bank_val");
+                            let temp_reg = self.get_reg(temp_name);
                             if bank_reg == Reg::R0 {
                                 self.emit(AsmInst::LI(temp_reg, 0));
                             } else if bank_reg == Reg::R13 {
@@ -150,8 +146,8 @@ impl ModuleLowerer {
                         }
                     } else {
                         let bank_reg = self.get_bank_for_pointer(arg)?;
-                        let temp_reg = self.get_reg(format!("bank_val_{}", self.label_counter));
-                        self.label_counter += 1;
+                        let temp_name = self.generate_temp_name("bank_val");
+                        let temp_reg = self.get_reg(temp_name);
                         if bank_reg == Reg::R0 {
                             self.emit(AsmInst::LI(temp_reg, 0));
                         } else if bank_reg == Reg::R13 {

@@ -27,8 +27,8 @@ impl ModuleLowerer {
                 if is_pointer_value {
                     // Storing a fat pointer - need to store both address and bank tag
                     let value_reg = self.get_value_register(value)?;
-                    let addr_reg = self.get_reg(format!("store_addr_{}", self.label_counter));
-                    self.label_counter += 1;
+                    let temp_name = self.generate_temp_name("store_addr");
+                    let addr_reg = self.get_reg(temp_name);
 
                     // Store address part
                     self.emit(AsmInst::LI(addr_reg, addr as i16));
@@ -48,8 +48,8 @@ impl ModuleLowerer {
                     };
 
                     // Store bank tag at next word
-                    let bank_reg = self.get_reg(format!("store_bank_{}", self.label_counter));
-                    self.label_counter += 1;
+                    let temp_name = self.generate_temp_name("store_bank");
+                    let bank_reg = self.get_reg(temp_name);
                     self.emit(AsmInst::LI(bank_reg, bank_tag));
                     self.emit(AsmInst::LI(addr_reg, (addr + 1) as i16));
                     self.emit(AsmInst::Store(bank_reg, Reg::R0, addr_reg));
@@ -58,8 +58,8 @@ impl ModuleLowerer {
                 } else {
                     // Regular value store
                     let value_reg = self.get_value_register(value)?;
-                    let addr_reg = self.get_reg(format!("store_addr_{}", self.label_counter));
-                    self.label_counter += 1;
+                    let temp_name = self.generate_temp_name("store_addr");
+                    let addr_reg = self.get_reg(temp_name);
                     self.emit(AsmInst::LI(addr_reg, addr as i16));
                     self.emit(AsmInst::Store(value_reg, Reg::R0, addr_reg));
                     
@@ -76,10 +76,9 @@ impl ModuleLowerer {
             
             // IMPORTANT: Pin the pointer register to prevent it from being spilled
             // when we call get_bank_for_pointer
-            let ptr_pin_key = format!("ptr_preserve_{}", self.label_counter);
+            let ptr_pin_key = self.generate_temp_name("ptr_preserve");
             self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key.clone());
             self.reg_alloc.pin_value(ptr_pin_key.clone());
-            self.label_counter += 1;
 
             // Get the memory bank for the pointer BEFORE getting value register
             // This ensures the bank register is allocated and preserved
@@ -104,13 +103,12 @@ impl ModuleLowerer {
                                                    self.value_to_string(value), self.value_to_string(ptr))));
 
                 // Pin the bank register to prevent it from being spilled when getting value
-                let bank_pin_key = format!("bank_preserve_{}", self.label_counter);
+                let bank_pin_key = self.generate_temp_name("bank_preserve");
                 if bank_needs_preservation {
                     self.reg_alloc.mark_in_use(preserved_bank, bank_pin_key.clone());
                     self.reg_alloc.pin_value(bank_pin_key.clone());
                 }
-                self.label_counter += 1;
-
+    
                 // Get address part of value
                 let value_reg = self.get_value_register(value)?;
                 
@@ -145,14 +143,13 @@ impl ModuleLowerer {
                 // Store bank tag at next word
                 // Get register for bank value first
                 let bank_reg = self.get_reg(format!("store_bank_{}", self.label_counter));
-                self.label_counter += 1;
-                self.emit(AsmInst::LI(bank_reg, bank_tag_val));
+                    self.emit(AsmInst::LI(bank_reg, bank_tag_val));
 
                 // Then calculate the address for next word
                 // Do this after loading bank value to avoid register conflicts
-                let next_addr = self.get_reg(format!("next_addr_{}", self.label_counter));
-                self.label_counter += 1;
-                self.emit(AsmInst::AddI(next_addr, ptr_reg, 1));
+                let temp_name = self.generate_temp_name("next_addr");
+                let next_addr = self.get_reg(temp_name);
+                    self.emit(AsmInst::AddI(next_addr, ptr_reg, 1));
 
                 // Store the bank tag
                 self.emit(AsmInst::Store(bank_reg, preserved_bank.clone(), next_addr));
@@ -164,17 +161,16 @@ impl ModuleLowerer {
                                                    self.value_to_string(value), self.value_to_string(ptr))));
 
                 // Pin both ptr_reg and bank to prevent them from being spilled when getting value
-                let ptr_pin_key2 = format!("ptr_preserve2_{}", self.label_counter);
+                let ptr_pin_key2 = self.generate_temp_name("ptr_preserve2");
                 self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key2.clone());
                 self.reg_alloc.pin_value(ptr_pin_key2.clone());
                 
-                let bank_pin_key = format!("bank_preserve_{}", self.label_counter);
+                let bank_pin_key = self.generate_temp_name("bank_preserve");
                 if bank_needs_preservation {
                     self.reg_alloc.mark_in_use(preserved_bank, bank_pin_key.clone());
                     self.reg_alloc.pin_value(bank_pin_key.clone());
                 }
-                self.label_counter += 1;
-
+    
                 let value_reg = self.get_value_register(value)?;
                 
                 // Unpin registers

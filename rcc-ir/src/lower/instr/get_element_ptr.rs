@@ -59,6 +59,22 @@ impl ModuleLowerer {
                     bank_tag: base_components.bank_tag,  // Keep same bank
                 });
             }
+            
+            // Also propagate the bank tag through the value_locations map
+            // This is critical for fat pointers passed as parameters
+            let base_bank_key = Self::bank_temp_key(*base_tid);
+            let result_bank_key = Self::bank_temp_key(*result);
+            
+            // Check if the base pointer has a bank tag in value_locations
+            if let Some(bank_location) = self.value_locations.get(&base_bank_key).cloned() {
+                self.emit(AsmInst::Comment(format!("  Propagating bank tag from {} to {}", base_bank_key, result_bank_key)));
+                self.value_locations.insert(result_bank_key.clone(), bank_location.clone());
+                
+                // If the bank is in a register, mark it as in use for the result too
+                if let Location::Register(bank_reg) = bank_location {
+                    self.reg_alloc.mark_in_use(bank_reg, result_bank_key);
+                }
+            }
 
         } else if let Value::FatPtr(fat_ptr) = ptr {
             // If the base is already a fat pointer, propagate its bank

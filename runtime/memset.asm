@@ -7,164 +7,205 @@ memset:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
-; === Processing instruction #0: Alloca { result: 4, alloc_type: I16, count: None, result_type: Ptr(I16) } ===
-; === ModuleLowerer::get_reg for 't4' ===
-; get_reg for 't4'
-;   Allocated free register for t4
-; Alloca for t4 at FP+1 (fat ptr: stack bank)
+; === Processing instruction #0: Alloca { result: 3, alloc_type: I16, count: None, result_type: Ptr(I16) } ===
+; === ModuleLowerer::get_reg for 't3' ===
+; get_reg for 't3'
+;   Allocated free register for t3
+; Alloca for t3 at FP+1 (fat ptr: stack bank)
+    ADDI R7, R15, 1
+; === Processing instruction #1: Store { value: Constant(0), ptr: Temp(3) } ===
+; === ModuleLowerer::get_reg for 'addr_t3_0' ===
+; get_reg for 'addr_t3_0'
+;   Allocated free register for addr_t3_0
     ADDI R8, R15, 1
-; === Processing instruction #1: Store { value: Constant(0), ptr: Temp(4) } ===
-; === ModuleLowerer::get_reg for 'addr_t4_0' ===
-; get_reg for 'addr_t4_0'
-;   Allocated free register for addr_t4_0
-    ADDI R9, R15, 1
-; Store 0 to [t4]
-; get_reg for 'const_0_3'
-;   Allocated free register for const_0_3
-    LI R10, 0
-    STORE R10, R13, R9
+; Store 0 to [t3]
+; get_reg for 'const_0_4'
+;   Allocated free register for const_0_4
+    LI R9, 0
+    STORE R9, R13, R8
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #2: Branch(1) ===
     BEQ R0, R0, memset_L1
 memset_L1:
-; === Processing instruction #0: Load { result: 5, ptr: Temp(4), result_type: I16 } ===
-; Load from [t4] to t5
-; === ModuleLowerer::get_reg for 'addr_t4_4' ===
-; get_reg for 'addr_t4_4'
-;   Allocated free register for addr_t4_4
-    ADDI R5, R15, 1
-; === ModuleLowerer::get_reg for 't5' ===
-; get_reg for 't5'
-;   Allocated free register for t5
-    LOAD R6, R13, R5
-; === Processing instruction #1: Binary { result: 6, op: Slt, lhs: Temp(5), rhs: Temp(3), result_type: I16 } ===
-; === Processing Binary t6 ===
+; === Processing instruction #0: Load { result: 4, ptr: Temp(3), result_type: I16 } ===
+; Load from [t3] to t4
+; === ModuleLowerer::get_reg for 'addr_t3_5' ===
+; get_reg for 'addr_t3_5'
+;   Allocated free register for addr_t3_5
+    ADDI R7, R15, 1
+; === ModuleLowerer::get_reg for 't4' ===
+; get_reg for 't4'
+;   Allocated free register for t4
+    LOAD R8, R13, R7
+; === Processing instruction #1: Binary { result: 5, op: Slt, lhs: Temp(4), rhs: Temp(2), result_type: I16 } ===
+; === Processing Binary t5 ===
 ; Binary: need(lhs)=1, need(rhs)=1
+; Getting register for temp t4
+; Looking for t4 in registers
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains addr_t3_5
+;   R8 contains t4
+; t4 found in R8
+;   t4 is now in R8
+; Getting register for temp t2
+; Looking for t2 in registers
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R6 contains t2
+;   R7 contains addr_t3_5
+;   R8 contains t4
+; t2 found in R6
+;   t2 is now in R6
+; Reusing R8 for result t5
+    SLTU R8, R8, R6
+; Freeing right operand register R6
+; === Processing instruction #2: BranchCond { condition: Temp(5), true_label: 2, false_label: 4 } ===
 ; Getting register for temp t5
 ; Looking for t5 in registers
-;   R5 contains addr_t4_4
-;   R6 contains t5
-; t5 found in R6
-;   t5 is now in R6
-; Getting register for temp t3
-; Looking for t3 in registers
-;   R5 contains addr_t4_4
-;   R6 contains t5
-; t3 not found, allocating new register
-; get_reg for 't3'
-;   Allocated free register for t3
-;   t3 is now in R7
-; Reusing R6 for result t6
-    SLTU R6, R6, R7
-; Freeing right operand register R7
-; === Processing instruction #2: BranchCond { condition: Temp(6), true_label: 2, false_label: 4 } ===
-; Getting register for temp t6
-; Looking for t6 in registers
-;   R5 contains addr_t4_4
-;   R6 contains t6
-; t6 found in R6
-;   t6 is now in R6
-    BNE R6, R0, memset_L2
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R7 contains addr_t3_5
+;   R8 contains t5
+; t5 found in R8
+;   t5 is now in R8
+    BNE R8, R0, memset_L2
     BEQ R0, R0, memset_L4
 memset_L2:
-; === Processing instruction #0: Load { result: 7, ptr: Temp(4), result_type: I16 } ===
-; Load from [t4] to t7
-; === ModuleLowerer::get_reg for 'addr_t4_5' ===
-; get_reg for 'addr_t4_5'
-;   Allocated free register for addr_t4_5
-    ADDI R5, R15, 1
+; === Processing instruction #0: Load { result: 6, ptr: Temp(3), result_type: I16 } ===
+; Load from [t3] to t6
+; === ModuleLowerer::get_reg for 'addr_t3_6' ===
+; get_reg for 'addr_t3_6'
+;   Allocated free register for addr_t3_6
+    ADDI R7, R15, 1
+; === ModuleLowerer::get_reg for 't6' ===
+; get_reg for 't6'
+;   Allocated free register for t6
+    LOAD R8, R13, R7
+; === Processing instruction #1: GetElementPtr { result: 7, ptr: Temp(0), indices: [Temp(6)], result_type: Ptr(I8) } ===
+; GetElementPtr t7 = t0 + offsets
+; Getting register for temp t0
+; Looking for t0 in registers
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R7 contains addr_t3_6
+;   R8 contains t6
+; t0 found in R3
+;   t0 is now in R3
+;   Base t0 in R3
+; Getting register for temp t6
+; Looking for t6 in registers
+;   R3 contains t0
+;   R4 contains t100000
+;   R5 contains t1
+;   R7 contains addr_t3_6
+;   R8 contains t6
+; t6 found in R8
+;   t6 is now in R8
 ; === ModuleLowerer::get_reg for 't7' ===
 ; get_reg for 't7'
 ;   Allocated free register for t7
-    LOAD R6, R13, R5
-; === Processing instruction #1: GetElementPtr { result: 8, ptr: Temp(0), indices: [Temp(7)], result_type: Ptr(I8) } ===
-; GetElementPtr t8 = t0 + offsets
-; Getting register for temp t0
-; Looking for t0 in registers
-;   R5 contains addr_t4_5
-;   R6 contains t7
-; t0 not found, allocating new register
-; get_reg for 't0'
-;   Allocated free register for t0
-;   t0 is now in R7
-;   Base t0 in R7
+    ADD R9, R3, R8
+;   Propagating bank tag from t100000 to t100007
+; === Processing instruction #2: Store { value: Temp(1), ptr: Temp(7) } ===
 ; Getting register for temp t7
 ; Looking for t7 in registers
-;   R5 contains addr_t4_5
-;   R6 contains t7
-;   R7 contains t0
-; t7 found in R6
-;   t7 is now in R6
-; === ModuleLowerer::get_reg for 't8' ===
-; get_reg for 't8'
-;   Allocated free register for t8
-    ADD R8, R7, R6
-; === Processing instruction #2: Store { value: Temp(2), ptr: Temp(8) } ===
-; Getting register for temp t8
-; Looking for t8 in registers
-;   R5 contains addr_t4_5
-;   R6 contains t7
-;   R7 contains t0
-;   R8 contains t8
-; t8 found in R8
-;   t8 is now in R8
-; WARNING: Unknown pointer bank, defaulting to global
-; Store t2 to [t8]
-; Getting register for temp t2
-; Looking for t2 in registers
-;   R5 contains addr_t4_5
-;   R6 contains t7
-;   R7 contains t0
-;   R8 contains ptr_preserve2_7
-; t2 not found, allocating new register
-; get_reg for 't2'
-;   Allocated free register for t2
-;   t2 is now in R9
-    STORE R9, R0, R8
+;   R3 contains t0
+;   R4 contains t100007
+;   R5 contains t1
+;   R7 contains addr_t3_6
+;   R8 contains t6
+;   R? contains t7
+; t7 found in R?
+;   t7 is now in R9
+; Getting bank tag for t7
+; Looking for t100007 in registers
+;   R3 contains t0
+;   R4 contains t100007
+;   R5 contains t1
+;   R7 contains addr_t3_6
+;   R8 contains t6
+;   R? contains ptr_preserve_7
+; t100007 found in R4
+; === ModuleLowerer::get_reg for 'bank_select_8' ===
+; get_reg for 'bank_select_8'
+;   Allocated free register for bank_select_8
+; Select bank register based on tag
+    LI R10, 1
+    BEQ R4, R10, memset_bank_stack_9
+    ADD R10, R0, R0
+    BEQ R0, R0, memset_bank_done_10
+memset_bank_stack_9:
+    ADD R10, R13, R0
+memset_bank_done_10:
+; Store t1 to [t7]
+; Getting register for temp t1
+; Looking for t1 in registers
+;   R3 contains t0
+;   R4 contains t100007
+;   R5 contains t1
+;   R7 contains addr_t3_6
+;   R8 contains t6
+;   R? contains ptr_preserve2_11
+;   R? contains bank_preserve_12
+; t1 found in R5
+;   t1 is now in R5
+    STORE R5, R10, R9
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #3: Branch(3) ===
     BEQ R0, R0, memset_L3
 memset_L3:
-; === Processing instruction #0: Load { result: 9, ptr: Temp(4), result_type: I16 } ===
-; Load from [t4] to t9
-; === ModuleLowerer::get_reg for 'addr_t4_8' ===
-; get_reg for 'addr_t4_8'
-;   Allocated free register for addr_t4_8
-    ADDI R5, R15, 1
-; === ModuleLowerer::get_reg for 't9' ===
-; get_reg for 't9'
-;   Allocated free register for t9
-    LOAD R6, R13, R5
-; === Processing instruction #1: Binary { result: 10, op: Add, lhs: Temp(9), rhs: Constant(1), result_type: I16 } ===
-; === Processing Binary t10 ===
+; === Processing instruction #0: Load { result: 8, ptr: Temp(3), result_type: I16 } ===
+; Load from [t3] to t8
+; === ModuleLowerer::get_reg for 'addr_t3_13' ===
+; get_reg for 'addr_t3_13'
+;   Allocated free register for addr_t3_13
+    ADDI R7, R15, 1
+; === ModuleLowerer::get_reg for 't8' ===
+; get_reg for 't8'
+;   Allocated free register for t8
+    LOAD R8, R13, R7
+; === Processing instruction #1: Binary { result: 9, op: Add, lhs: Temp(8), rhs: Constant(1), result_type: I16 } ===
+; === Processing Binary t9 ===
 ; Binary: need(lhs)=1, need(rhs)=1
+; Getting register for temp t8
+; Looking for t8 in registers
+;   R3 contains t0
+;   R4 contains t100007
+;   R5 contains t1
+;   R7 contains addr_t3_13
+;   R8 contains t8
+; t8 found in R8
+;   t8 is now in R8
+; get_reg for 'const_1_14'
+;   Allocated free register for const_1_14
+    LI R9, 1
+; Reusing R8 for result t9
+    ADD R8, R8, R9
+; Freeing right operand register R9
+; === Processing instruction #2: Store { value: Temp(9), ptr: Temp(3) } ===
+; === ModuleLowerer::get_reg for 'addr_t3_15' ===
+; get_reg for 'addr_t3_15'
+;   Allocated free register for addr_t3_15
+    ADDI R9, R15, 1
+; Store t9 to [t3]
 ; Getting register for temp t9
 ; Looking for t9 in registers
-;   R5 contains addr_t4_8
-;   R6 contains t9
-; t9 found in R6
-;   t9 is now in R6
-; get_reg for 'const_1_9'
-;   Allocated free register for const_1_9
-    LI R7, 1
-; Reusing R6 for result t10
-    ADD R6, R6, R7
-; Freeing right operand register R7
-; === Processing instruction #2: Store { value: Temp(10), ptr: Temp(4) } ===
-; === ModuleLowerer::get_reg for 'addr_t4_10' ===
-; get_reg for 'addr_t4_10'
-;   Allocated free register for addr_t4_10
-    ADDI R7, R15, 1
-; Store t10 to [t4]
-; Getting register for temp t10
-; Looking for t10 in registers
-;   R5 contains addr_t4_8
-;   R6 contains t10
-;   R7 contains ptr_preserve2_12
-; t10 found in R6
-;   t10 is now in R6
-    STORE R6, R13, R7
-; >>> Preserving registers: storing t10 from previous instruction
+;   R3 contains t0
+;   R4 contains t100007
+;   R5 contains t1
+;   R7 contains addr_t3_13
+;   R8 contains t9
+;   R? contains ptr_preserve2_17
+; t9 found in R8
+;   t9 is now in R8
+    STORE R8, R13, R9
+; >>> Preserving registers: storing t9 from previous instruction
 ; === Processing instruction #3: Branch(1) ===
     BEQ R0, R0, memset_L1
 memset_L4:

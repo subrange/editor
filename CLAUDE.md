@@ -160,10 +160,8 @@ rlink -f macro program.pobj
 - `src/services/ripple-assembler/assembler.ts` - TypeScript wrapper with automatic linking
 
 ### Important Notes
-- The assembler automatically runs the linker when unresolved references are detected
 - JAL uses absolute instruction indices, branches use relative offsets
 - Label references are properly categorized as branch/absolute/data based on instruction type
-- The UI integration uses WASM through `src/services/ripple-assembler/`
 - Browser caching can be an issue - hard refresh (Cmd+Shift+R) after rebuilding WASM
 
 ## Development Guidelines
@@ -296,6 +294,7 @@ This preserves in `build/`:
 - `.asm` - Generated assembly
 - `.pobj` - Assembled object files
 - `.bin` - Final binary output
+- `.disassembly.asm` - Disassembled output of the binary, used rasm for disassembly
 
 If ran with --backend bf, then instead of `.bin` you will have:
 - `.bfm` - Linked Brainfuck macro output
@@ -309,12 +308,9 @@ Usage: rvm [OPTIONS] <binary-file>
 
 Run a Ripple VM binary program
 
-OPTIONS:
--b, --bank-size <size>   Set bank size (default: 4096)
--d, --debug              Enable debug mode (step through execution)
--v, --verbose            Show VM state during execution
--h, --help               Show this help message
+You can use `rvm file.bin --verbose` to run the binary with verbose output, which will show you the VM commands executed, and additional information about the state of the VM during execution. Use it for debugging purposes to understand how the binary behaves.
 
 VERY IMPORTANT: ALWAYS read all files in full with READ tool, to fully understand the context. NEVER read in full expanded bf files.
+VERY IMPORTANT: Just read the full file. JUST. READ. THE. FULL. FILE.
 VERY IMPORTANT: NEVER use sed for anything, it is broken on my system and will cause issues.
 VERY IMPORTANT: If you can't find something, execute pwd to make sure you are in a correct directory

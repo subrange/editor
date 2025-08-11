@@ -88,16 +88,49 @@ impl ModuleLowerer {
         // Use centralized allocator's free_all method
         self.reg_alloc.free_all();
     }
-    pub(crate) fn label(&mut self, prefix: &str) -> String {
-        let s = format!("{}_{}", prefix, self.label_counter);
+    /// Generate a unique label with the given prefix
+    /// Automatically increments the label counter and includes function context
+    pub(crate) fn generate_label(&mut self, prefix: &str) -> String {
+        let func_prefix = self.current_function.as_ref()
+            .map(|f| format!("{}_", f))
+            .unwrap_or_default();
+        let label = format!("{}{}_{}", func_prefix, prefix, self.label_counter);
         self.label_counter += 1;
-        s
+        label
     }
     
+    /// Generate a unique temporary name for register allocation
+    /// This is different from labels - it's for tracking values in registers
+    pub(crate) fn generate_temp_name(&mut self, prefix: &str) -> String {
+        let name = format!("{}_{}", prefix, self.label_counter);
+        self.label_counter += 1;
+        name
+    }
     
+    /// Generate a pair of labels for branching (e.g., for if/else)
+    pub(crate) fn generate_branch_labels(&mut self, prefix: &str) -> (String, String) {
+        let true_label = self.generate_label(&format!("{}_true", prefix));
+        let false_label = self.generate_label(&format!("{}_false", prefix));
+        (true_label, false_label)
+    }
+    
+    /// Generate labels for bank selection
+    pub(crate) fn generate_bank_labels(&mut self) -> (String, String) {
+        let stack_label = self.generate_label("bank_stack");
+        let done_label = self.generate_label("bank_done");
+        (stack_label, done_label)
+    }
+    
+    // Keep these as static methods since they don't need the counter
     /// Format a temp ID as a string (e.g., 42 -> "t42")
     pub(crate) fn temp_name(id: u32) -> String {
         format!("t{}", id)
+    }
+    
+    /// Get the bank temp key for a pointer temp ID
+    /// This is used to track the bank tag for fat pointers
+    pub(crate) fn bank_temp_key(tid: u32) -> String {
+        Self::temp_name(100000 + tid)
     }
     
     /// Format a constant as a string for tracking
@@ -110,10 +143,9 @@ impl ModuleLowerer {
         format!("global_{}", name)
     }
     
-    fn get_label_num(&mut self) -> u32 {
-        let c = self.label_counter;
-        self.label_counter += 1;
-        c
+    // Deprecated - use generate_label instead
+    pub(crate) fn label(&mut self, prefix: &str) -> String {
+        self.generate_label(prefix)
     }
     
     /// Get a descriptive string for a value (used for register tracking)
