@@ -12,6 +12,7 @@ Options:
   --clean       Only clean the build directory and exit
   --timeout N   Set timeout in seconds for test execution (default: 2)
   --verbose     Show output from test programs as they run
+  --backend B   Execution backend: 'bf' (default) or 'rvm' for Ripple VM
   test_name     Optional: Name of a single test to run (without path or .c extension)
 
 Examples:
@@ -21,10 +22,12 @@ Examples:
   python3 c-test/run_tests.py --no-cleanup test_add  # Run single test, keep artifacts
   python3 c-test/run_tests.py --timeout 10       # Run with 10 second timeout
   python3 c-test/run_tests.py --verbose          # Show test program output
+  python3 c-test/run_tests.py --backend rvm      # Run tests on Ripple VM instead of BF
 
 Prerequisites:
 - Build the compiler: cargo build --release (in project root)
 - Build the assembler: cargo build --release (in src/ripple-asm)
+- Build the RVM: cargo build --release (in rvm directory)
 - Install required tools: rbt, gtimeout (brew install coreutils), bfm, bf
 
 The script will:
@@ -72,6 +75,7 @@ else:
 RCC = f"{PROJECT_ROOT}/target/release/rcc"
 RASM = f"{PROJECT_ROOT}/src/ripple-asm/target/release/rasm"
 RLINK = f"{PROJECT_ROOT}/src/ripple-asm/target/release/rlink"
+RVM = f"{PROJECT_ROOT}/target/release/rvm"
 RBT = "rbt"  # Global binary
 
 # Runtime files
@@ -100,7 +104,7 @@ def run_command(cmd, timeout=2):
             timeout_msg = f"{timeout_msg}\nStderr: {stderr}"
         return -1, stdout, timeout_msg
 
-def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False):
+def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False, backend='bf'):
     """Compile a C file and run it, checking output
     
     Args:
@@ -110,6 +114,7 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
                          If False, link with crt0 only (for stack setup)
         timeout: Timeout in seconds for execution
         verbose: If True, show program output
+        backend: Execution backend - 'bf' for Brainfuck or 'rvm' for Ripple VM
     
     Returns:
         tuple: (success, message, has_provenance_warning)
@@ -143,31 +148,47 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
     if ret != 0:
         return False, f"Assembly failed: {stderr}", has_provenance_warning
     
-    # Always link with at least crt0 for stack setup
-    if use_full_runtime:
-        # Link with full runtime (crt0 + libruntime.par + user code)
-        link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f macro --standalone -o {bf_file}"
+    # Link the program
+    if backend == 'rvm':
+        # For RVM, link to binary format
+        bin_file = f"{BUILD_DIR}/{basename}.bin"
+        if use_full_runtime:
+            link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f binary -o {bin_file}"
+        else:
+            link_cmd = f"{RLINK} {CRT0} {pobj_file} -f binary -o {bin_file}"
+        
+        ret, stdout, stderr = run_command(link_cmd)
+        if ret != 0:
+            return False, f"Linking failed: {stderr}", has_provenance_warning
+        
+        # Run on RVM
+        ret, stdout, stderr = run_command(f"{RVM} {bin_file}", timeout=timeout)
+        if ret == -1:
+            if verbose and stdout:
+                print(f"    Partial output before timeout: {repr(stdout)}")
+            return False, stderr, has_provenance_warning
     else:
-        # Link with crt0 only (provides stack setup but no runtime functions)
-        link_cmd = f"{RLINK} {CRT0} {pobj_file} -f macro --standalone -o {bf_file}"
-    
-    ret, stdout, stderr = run_command(link_cmd)
-    
-    if ret != 0:
-        return False, f"Linking failed: {stderr}", has_provenance_warning
-    
-    # Expand and run
-    expanded_file = f"{BUILD_DIR}/{basename}_expanded.bf"
-    ret, stdout, stderr = run_command(f"bfm expand {bf_file} -o {expanded_file}")
-    if ret != 0:
-        return False, f"Macro expansion failed: {stderr}", has_provenance_warning
-    
-    ret, stdout, stderr = run_command(f"bf {expanded_file} --cell-size 16 --tape-size 150000000", timeout=timeout)
-    if ret == -1:
-        # Show partial output if verbose mode is enabled and timeout occurred
-        if verbose and stdout:
-            print(f"    Partial output before timeout: {repr(stdout)}")
-        return False, stderr, has_provenance_warning
+        # For BF backend, link to macro format
+        if use_full_runtime:
+            link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f macro --standalone -o {bf_file}"
+        else:
+            link_cmd = f"{RLINK} {CRT0} {pobj_file} -f macro --standalone -o {bf_file}"
+        
+        ret, stdout, stderr = run_command(link_cmd)
+        if ret != 0:
+            return False, f"Linking failed: {stderr}", has_provenance_warning
+        
+        # Expand and run
+        expanded_file = f"{BUILD_DIR}/{basename}_expanded.bf"
+        ret, stdout, stderr = run_command(f"bfm expand {bf_file} -o {expanded_file}")
+        if ret != 0:
+            return False, f"Macro expansion failed: {stderr}", has_provenance_warning
+        
+        ret, stdout, stderr = run_command(f"bf {expanded_file} --cell-size 16 --tape-size 150000000", timeout=timeout)
+        if ret == -1:
+            if verbose and stdout:
+                print(f"    Partial output before timeout: {repr(stdout)}")
+            return False, stderr, has_provenance_warning
     
     if verbose and stdout:
         print(f"    Output: {repr(stdout)}")
@@ -190,6 +211,7 @@ def cleanup_test_files(basename):
         f"{BUILD_DIR}/{basename}.ir",
         f"{BUILD_DIR}/{basename}.pobj",
         f"{BUILD_DIR}/{basename}.bfm",
+        f"{BUILD_DIR}/{basename}.bin",
         f"{BUILD_DIR}/{basename}_expanded.bf"
     ]
     
@@ -212,6 +234,7 @@ def cleanup_files():
         f"{BUILD_DIR}/*.ir",
         f"{BUILD_DIR}/*.pobj", 
         f"{BUILD_DIR}/*.bfm",
+        f"{BUILD_DIR}/*.bin",
         f"{BUILD_DIR}/*_expanded.bf"
     ]
     
@@ -245,6 +268,7 @@ def main():
     verbose = "--verbose" in sys.argv
     single_test = None
     timeout = 10  # Default timeout in seconds
+    backend = 'rvm'  # Default backend
     
     # Parse arguments
     i = 1
@@ -261,6 +285,18 @@ def main():
             else:
                 print("Error: --timeout requires a value")
                 return 1
+        elif arg == "--backend":
+            if i + 1 < len(sys.argv):
+                backend_val = sys.argv[i + 1].lower()
+                if backend_val in ['bf', 'rvm']:
+                    backend = backend_val
+                    i += 1  # Skip the backend value
+                else:
+                    print(f"Error: Invalid backend '{sys.argv[i + 1]}'. Must be 'bf' or 'rvm'")
+                    return 1
+            else:
+                print("Error: --backend requires a value ('bf' or 'rvm')")
+                return 1
         elif not arg.startswith("--"):
             # Accept test names with or without .c extension
             single_test = arg
@@ -274,8 +310,9 @@ def main():
         return 0
     
     # Ensure runtime is built
+    backend_msg = f", backend: {backend.upper()}" if backend != 'bf' else ""
     verbose_msg = ", verbose" if verbose else ""
-    print(f"Building runtime library (timeout: {timeout}s{verbose_msg})...")
+    print(f"Building runtime library (timeout: {timeout}s{backend_msg}{verbose_msg})...")
     ret, _, stderr = run_command(f"cd {RUNTIME_DIR} && make clean && make all")
     if ret != 0:
         print(f"Failed to build runtime: {stderr}")
@@ -338,6 +375,7 @@ def main():
         (f"{BASE_DIR}/tests-runtime/test_complex_bool.c", "12345\n", True),
         (f"{BASE_DIR}/tests-runtime/test_complex_simple.c", "123\n", True),
         (f"{BASE_DIR}/tests-runtime/test_mul.c", "Y", True),
+        (f"{BASE_DIR}/tests-runtime/test_puts_string.c", "Hello, World!\n", True),
     ]
     
     # If single test specified, filter the test list
@@ -383,7 +421,7 @@ def main():
             print(f"Note: Expected output not defined in test list, will show actual output")
             print("-" * 60)
             
-            success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose)
+            success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose, backend)
             
             if success:
                 if has_provenance_warning:
@@ -423,7 +461,7 @@ def main():
                 print(f"SKIP {test_file}: File not found")
                 continue
                 
-            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose)
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend)
             
             if success:
                 if has_provenance_warning:
@@ -445,7 +483,7 @@ def main():
                 print(f"SKIP {test_file}: File not found")
                 continue
                 
-            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose)
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend)
             
             if success:
                 if has_provenance_warning:
@@ -472,9 +510,9 @@ def main():
         f"{BASE_DIR}/tests-known-failures/test_struct_simple2.c",  # Uses typedef struct
         f"{BASE_DIR}/tests-known-failures/test_struct_inline_simple.c",  # Inline struct definitions not supported
         f"{BASE_DIR}/tests-known-failures/test_puts_simple.c",  # Stack pointer provenance issue
-        f"{BASE_DIR}/tests-known-failures/test_puts_string.c",  # Uses while loops
-        f"{BASE_DIR}/tests-known-failures/test_puts_global.c",  # Global array initializers not implemented
         f"{BASE_DIR}/tests-known-failures/test_strings_simple.c",  # Function redefinition error
+        f"{BASE_DIR}/tests-known-failures/test_puts_global.c", # Inline assembly not fully implemented yet
+
     ]
     
     # Sort known failures alphabetically

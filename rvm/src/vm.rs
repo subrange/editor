@@ -182,8 +182,9 @@ impl VM {
         let instr_idx = (pcb as usize * self.bank_size as usize) + pc as usize;
         
         if instr_idx >= self.instructions.len() {
-            self.state = VMState::Error(format!("PC out of bounds: bank={}, offset={}", pcb, pc));
-            return Err(format!("PC out of bounds"));
+            self.state = VMState::Error(format!("PC out of bounds: bank={}, offset={}, idx={}, total_instructions={}", 
+                                               pcb, pc, instr_idx, self.instructions.len()));
+            return Err(format!("PC out of bounds: idx={} >= len={}", instr_idx, self.instructions.len()));
         }
         
         let instr = self.instructions[instr_idx];
@@ -359,12 +360,17 @@ impl VM {
             },
             
             // Memory operations
-            0x11 => { // LOAD
+            0x11 => { // LOAD - rd = memory[bank_reg][addr_reg]
                 let rd = instr.word1 as usize;
-                let bank = instr.word2;
-                let addr = instr.word3;
-                if rd < 18 {
-                    let mem_addr = (bank as usize * self.bank_size as usize * 4) + addr as usize;
+                let bank_reg = instr.word2 as usize;
+                let addr_reg = instr.word3 as usize;
+                if rd < 18 && bank_reg < 18 && addr_reg < 18 {
+                    let bank_val = self.registers[bank_reg];
+                    let addr_val = self.registers[addr_reg];
+                    
+                    // Memory is separate from instructions
+                    // BANK_SIZE refers to memory cells, not instructions
+                    let mem_addr = (bank_val as usize * self.bank_size as usize) + addr_val as usize;
                     if mem_addr < self.memory.len() {
                         self.registers[rd] = self.memory[mem_addr];
                     } else {
@@ -372,14 +378,19 @@ impl VM {
                     }
                 }
             },
-            0x12 => { // STORE
-                let rd = instr.word1 as usize;
-                let bank = instr.word2;
-                let addr = instr.word3;
-                if rd < 18 {
-                    let mem_addr = (bank as usize * self.bank_size as usize * 4) + addr as usize;
+            0x12 => { // STORE - memory[bank_reg][addr_reg] = rs
+                let rs = instr.word1 as usize;
+                let bank_reg = instr.word2 as usize;
+                let addr_reg = instr.word3 as usize;
+                if rs < 18 && bank_reg < 18 && addr_reg < 18 {
+                    let bank_val = self.registers[bank_reg];
+                    let addr_val = self.registers[addr_reg];
+                    
+                    // Memory is separate from instructions
+                    // BANK_SIZE refers to memory cells, not instructions
+                    let mem_addr = (bank_val as usize * self.bank_size as usize) + addr_val as usize;
                     if mem_addr < self.memory.len() {
-                        let value = self.registers[rd];
+                        let value = self.registers[rs];
                         self.memory[mem_addr] = value;
                         
                         // Handle memory-mapped I/O

@@ -4,6 +4,11 @@ void putchar(int c);
 // Global array 
 char message[4] = {'A', 'B', 'C', '\0'};
 
+void putchar(int c) {
+  __asm__("LI R3, %0\n"
+          "STORE R3, R0, R0" : : "r"(c));
+}
+
 int puts(char *str) {
     int i = 0;
     while (str[i] != '\0') {
