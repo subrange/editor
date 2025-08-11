@@ -12,11 +12,6 @@ impl ModuleLowerer {
             // Check if we're loading a pointer type
             let is_loading_pointer = matches!(result_type, IrType::Ptr(_));
 
-            // Allocate register for result
-            let result_key = Self::temp_name(*result);
-            let dest_reg = self.get_reg(result_key.clone());
-            self.value_locations.insert(result_key, Location::Register(dest_reg));
-
             // Check if ptr is a global address
             if let Value::Global(name) = ptr {
                 if let Some(&addr) = self.global_addresses.get(name) {
@@ -28,6 +23,12 @@ impl ModuleLowerer {
                         let addr_reg = self.get_reg(format!("load_addr_{}", self.label_counter));
                         self.label_counter += 1;
                         self.emit(AsmInst::LI(addr_reg, addr as i16));
+                        
+                        // Now allocate the destination register
+                        let result_key = Self::temp_name(*result);
+                        let dest_reg = self.get_reg(result_key.clone());
+                        self.value_locations.insert(result_key, Location::Register(dest_reg));
+                        
                         self.emit(AsmInst::Load(dest_reg, Reg::R0, addr_reg));
 
                         // Load bank tag from next word
@@ -50,12 +51,24 @@ impl ModuleLowerer {
                         let addr_reg = self.get_reg(format!("load_addr_{}", self.label_counter));
                         self.label_counter += 1;
                         self.emit(AsmInst::LI(addr_reg, addr as i16));
+                        
+                        // Now allocate the destination register
+                        let result_key = Self::temp_name(*result);
+                        let dest_reg = self.get_reg(result_key.clone());
+                        self.value_locations.insert(result_key, Location::Register(dest_reg));
+                        
                         self.emit(AsmInst::Load(dest_reg, Reg::R0, addr_reg));
                     }
                     // Registers will be freed at statement boundary
                 } else {
                     // Uninitialized global
                     self.emit(AsmInst::Comment(format!("Load from @{} (uninitialized)", name)));
+                    
+                    // Allocate the destination register
+                    let result_key = Self::temp_name(*result);
+                    let dest_reg = self.get_reg(result_key.clone());
+                    self.value_locations.insert(result_key, Location::Register(dest_reg));
+                    
                     self.emit(AsmInst::LI(dest_reg, 0));
                     
                 }
@@ -69,12 +82,34 @@ impl ModuleLowerer {
                     // Loading a fat pointer - load address and bank tag
                     self.emit(AsmInst::Comment("Loading fat pointer".to_string()));
 
+                    // Pin the ptr_reg to ensure it's not overwritten when allocating dest_reg
+                    let ptr_pin_key = format!("ptr_addr_preserve_{}", self.label_counter);
+                    self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key.clone());
+                    self.reg_alloc.pin_value(ptr_pin_key.clone());
+                    
+                    // Allocate destination register AFTER we have ptr_reg and bank
+                    let result_key = Self::temp_name(*result);
+                    let dest_reg = self.get_reg(result_key.clone());
+                    self.value_locations.insert(result_key, Location::Register(dest_reg));
+                    
+                    // Unpin ptr_reg now that we have dest_reg
+                    self.reg_alloc.unpin_value(&ptr_pin_key);
+
                     // Load address part
                     self.emit(AsmInst::Load(dest_reg, bank.clone(), ptr_reg));
+
+                    // Pin ptr_reg to prevent it from being spilled when allocating next_addr
+                    let ptr_pin_key = format!("ptr_load_preserve_{}", self.label_counter);
+                    self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key.clone());
+                    self.reg_alloc.pin_value(ptr_pin_key.clone());
 
                     // Load bank tag from next word
                     let next_addr = self.get_reg(format!("next_addr_{}", self.label_counter));
                     self.emit(AsmInst::AddI(next_addr, ptr_reg, 1));
+                    
+                    // Unpin ptr_reg now that we're done with it
+                    self.reg_alloc.unpin_value(&ptr_pin_key);
+                    
                     // Get bank_reg AFTER using next_addr to avoid spilling next_addr before use
                     let bank_reg = self.get_reg(format!("load_bank_{}", self.label_counter));
                     self.label_counter += 1;
@@ -88,6 +123,11 @@ impl ModuleLowerer {
                     // Mark as having unknown bank since it's runtime-determined
                 } else {
                     // Regular load
+                    // Allocate destination register AFTER we have ptr_reg and bank
+                    let result_key = Self::temp_name(*result);
+                    let dest_reg = self.get_reg(result_key.clone());
+                    self.value_locations.insert(result_key, Location::Register(dest_reg));
+                    
                     self.emit(AsmInst::Load(dest_reg, bank, ptr_reg));
                 }
                 // Registers will be freed at statement boundary

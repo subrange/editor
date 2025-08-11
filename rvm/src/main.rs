@@ -127,6 +127,9 @@ fn main() {
         VM::new(bank_size) // Default 64K memory
     };
     
+    // Set verbose mode if requested
+    vm.verbose = verbose;
+    
     // Load the binary
     if let Err(e) = vm.load_binary(&binary) {
         eprintln!("Error loading binary: {}", e);

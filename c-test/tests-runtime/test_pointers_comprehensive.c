@@ -60,10 +60,10 @@ int main() {
         if (b == 1) {
             putchar('5');  // Test 5 passed
         } else {
-             putchar('N');  // Test 1 failed
-         }
+            putchar('N1');  // Test 5 failed
+        }
     } else {
-         putchar('N');  // Test 1 failed
+         putchar('N2');  // Test 5 failed
      }
     
     putchar('\n');

@@ -73,6 +73,13 @@ impl ModuleLowerer {
         } else {
             // Get ptr register first
             let ptr_reg = self.get_value_register(ptr)?;
+            
+            // IMPORTANT: Pin the pointer register to prevent it from being spilled
+            // when we call get_bank_for_pointer
+            let ptr_pin_key = format!("ptr_preserve_{}", self.label_counter);
+            self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key.clone());
+            self.reg_alloc.pin_value(ptr_pin_key.clone());
+            self.label_counter += 1;
 
             // Get the memory bank for the pointer BEFORE getting value register
             // This ensures the bank register is allocated and preserved
@@ -87,14 +94,30 @@ impl ModuleLowerer {
             } else {
                 bank
             };
+            
+            // Unpin the pointer register
+            self.reg_alloc.unpin_value(&ptr_pin_key);
 
             if is_pointer_value {
                 // Storing a fat pointer - need to store both address and bank tag
                 self.emit(AsmInst::Comment(format!("Store fat pointer {} to [{}]",
                                                    self.value_to_string(value), self.value_to_string(ptr))));
 
+                // Pin the bank register to prevent it from being spilled when getting value
+                let bank_pin_key = format!("bank_preserve_{}", self.label_counter);
+                if bank_needs_preservation {
+                    self.reg_alloc.mark_in_use(preserved_bank, bank_pin_key.clone());
+                    self.reg_alloc.pin_value(bank_pin_key.clone());
+                }
+                self.label_counter += 1;
+
                 // Get address part of value
                 let value_reg = self.get_value_register(value)?;
+                
+                // Unpin the bank register
+                if bank_needs_preservation {
+                    self.reg_alloc.unpin_value(&bank_pin_key);
+                }
 
                 // Store address
                 self.emit(AsmInst::Store(value_reg, preserved_bank.clone(), ptr_reg));
@@ -140,7 +163,26 @@ impl ModuleLowerer {
                 self.emit(AsmInst::Comment(format!("Store {} to [{}]",
                                                    self.value_to_string(value), self.value_to_string(ptr))));
 
+                // Pin both ptr_reg and bank to prevent them from being spilled when getting value
+                let ptr_pin_key2 = format!("ptr_preserve2_{}", self.label_counter);
+                self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key2.clone());
+                self.reg_alloc.pin_value(ptr_pin_key2.clone());
+                
+                let bank_pin_key = format!("bank_preserve_{}", self.label_counter);
+                if bank_needs_preservation {
+                    self.reg_alloc.mark_in_use(preserved_bank, bank_pin_key.clone());
+                    self.reg_alloc.pin_value(bank_pin_key.clone());
+                }
+                self.label_counter += 1;
+
                 let value_reg = self.get_value_register(value)?;
+                
+                // Unpin registers
+                self.reg_alloc.unpin_value(&ptr_pin_key2);
+                if bank_needs_preservation {
+                    self.reg_alloc.unpin_value(&bank_pin_key);
+                }
+                
                 self.emit(AsmInst::Store(value_reg, preserved_bank, ptr_reg));
                 
                 Ok(())

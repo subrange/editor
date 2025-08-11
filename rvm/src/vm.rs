@@ -65,6 +65,9 @@ pub struct VM {
     // Debug mode flag
     pub debug_mode: bool,
     
+    // Verbose mode flag
+    pub verbose: bool,
+    
     // Do not increment PC flag (set by jump/branch instructions)
     skip_pc_increment: bool,
     
@@ -88,6 +91,7 @@ impl VM {
             state: VMState::Setup,
             bank_size,
             debug_mode: false,
+            verbose: false,
             skip_pc_increment: false,
             output_buffer: VecDeque::new(),
             output_ready: true,
@@ -203,6 +207,12 @@ impl VM {
         
         let instr = self.instructions[instr_idx];
         self.skip_pc_increment = false;
+        
+        // Print instruction in verbose mode
+        if self.verbose {
+            eprint!("[{:04X}] ", instr_idx);
+            self.print_instruction(&instr);
+        }
         
         // Execute instruction
         self.execute_instruction(instr)?;
@@ -688,5 +698,77 @@ impl VM {
         self.memory[1] = 1;
         
         // Note: We keep the loaded instructions and data intact
+    }
+    
+    fn print_instruction(&self, instr: &Instr) {
+        match instr.opcode {
+            0x00 => {
+                if instr.word0 == 0 && instr.word1 == 0 && instr.word2 == 0 && instr.word3 == 0 {
+                    eprintln!("HALT");
+                } else {
+                    eprintln!("NOP");
+                }
+            },
+            0x01 => eprintln!("ADD R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x02 => eprintln!("SUB R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x03 => eprintln!("AND R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x04 => eprintln!("OR R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x05 => eprintln!("XOR R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x06 => eprintln!("SLL R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x07 => eprintln!("SRL R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x08 => eprintln!("SLT R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x09 => eprintln!("SLTU R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x0A => eprintln!("ADDI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            0x0B => eprintln!("ANDI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            0x0C => eprintln!("ORI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            0x0D => eprintln!("XORI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            0x0E => eprintln!("LI R{}, {}", instr.word1, instr.word2),
+            0x0F => eprintln!("SLLI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            0x10 => eprintln!("SRLI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            0x11 => {
+                eprintln!("LOAD R{}, R{}, R{} ; R{}=mem[R{}*{}+R{}]={}", 
+                    instr.word1, instr.word2, instr.word3,
+                    instr.word1, instr.word2, self.bank_size, instr.word3,
+                    if instr.word1 < 18 && instr.word2 < 18 && instr.word3 < 18 {
+                        let addr = (self.registers[instr.word2 as usize] as usize * self.bank_size as usize) 
+                                 + self.registers[instr.word3 as usize] as usize;
+                        if addr < self.memory.len() {
+                            self.memory[addr]
+                        } else {
+                            0
+                        }
+                    } else {
+                        0
+                    });
+            },
+            0x12 => {
+                eprintln!("STORE R{}, R{}, R{} ; mem[R{}*{}+R{}]=R{}={}", 
+                    instr.word1, instr.word2, instr.word3,
+                    instr.word2, self.bank_size, instr.word3, instr.word1,
+                    if instr.word1 < 18 {
+                        self.registers[instr.word1 as usize]
+                    } else {
+                        0
+                    });
+            },
+            0x13 => eprintln!("JAL R{}, {}", instr.word1, instr.word3),
+            0x14 => eprintln!("JALR R{}, R{}", instr.word1, instr.word3),
+            0x15 => eprintln!("BEQ R{}, R{}, {} ; if R{}==R{} goto PC+{}", 
+                instr.word1, instr.word2, instr.word3 as i16,
+                instr.word1, instr.word2, instr.word3 as i16),
+            0x16 => eprintln!("BNE R{}, R{}, {} ; if R{}!=R{} goto PC+{}", 
+                instr.word1, instr.word2, instr.word3 as i16,
+                instr.word1, instr.word2, instr.word3 as i16),
+            0x17 => eprintln!("BLT R{}, R{}, {}", instr.word1, instr.word2, instr.word3 as i16),
+            0x18 => eprintln!("BGE R{}, R{}, {}", instr.word1, instr.word2, instr.word3 as i16),
+            0x19 => eprintln!("BRK"),
+            0x1A => eprintln!("MUL R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x1B => eprintln!("DIV R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x1C => eprintln!("MOD R{}, R{}, R{}", instr.word1, instr.word2, instr.word3),
+            0x1D => eprintln!("MULI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            0x1E => eprintln!("DIVI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            0x1F => eprintln!("MODI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
+            _ => eprintln!("UNKNOWN 0x{:02X}", instr.opcode),
+        }
     }
 }

@@ -183,7 +183,18 @@ impl ModuleLowerer {
                 // Check if this is a pointer parameter with a bank register
                 let bank_temp_id = 100000 + tid;
                 let bank_temp_key = Self::temp_name(bank_temp_id);
-                if let Some(&Location::Register(bank_reg)) = self.value_locations.get(&bank_temp_key) {
+                
+                // Check if we have a bank tag for this pointer
+                // It might be in a register or might have been spilled
+                let has_bank_tag = self.reg_alloc.is_tracked(&bank_temp_key);
+                
+                if has_bank_tag {
+                    // Reload the bank tag (will get from register if already there, or reload from spill)
+                    self.emit(AsmInst::Comment(format!("Getting bank tag for t{}", tid)));
+                    let bank_reg = self.reg_alloc.reload(bank_temp_key.clone());
+                    let instrs = self.reg_alloc.take_instructions();
+                    self.emit_many(instrs);
+                    
                     // We have the bank tag in a register - need to convert to bank register
                     // Generate runtime check to select R0 or R13 based on tag
                     let result_reg = self.get_reg(format!("bank_select_{}", self.label_counter));

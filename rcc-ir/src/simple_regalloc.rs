@@ -140,6 +140,16 @@ impl SimpleRegAlloc {
         !self.reg_contents.contains_key(&reg)
     }
     
+    /// Check if a value is tracked (either in register or spilled)
+    pub fn is_tracked(&self, value: &str) -> bool {
+        // Check if it's in a register
+        if self.reg_contents.values().any(|v| v == value) {
+            return true;
+        }
+        // Check if it's been spilled
+        self.spill_slots.contains_key(value)
+    }
+    
     /// Mark a register as containing a value without spilling
     /// This prevents the register from being chosen for spilling
     pub fn mark_in_use(&mut self, reg: Reg, value: String) {

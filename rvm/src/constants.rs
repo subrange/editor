@@ -2,7 +2,7 @@
 
 // Default VM configuration
 pub const DEFAULT_BANK_SIZE: u16 = 4096;
-pub const DEFAULT_MEMORY_SIZE: usize = 65536; // 64K words
+pub const DEFAULT_MEMORY_SIZE: usize = 65536 * 65536; // 64K words in 64K banks
 
 // Memory-mapped I/O addresses
 pub const MMIO_OUT: usize = 0;       // Output register

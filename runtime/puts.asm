@@ -81,133 +81,97 @@ puts_L3:
 puts_L5:
 ; === Processing instruction #0: Load { result: 4, ptr: Temp(0), result_type: I8 } ===
 ; Load from [t0] to t4
-; === ModuleLowerer::get_reg for 't4' ===
-; get_reg for 't4'
-;   Allocated free register for t4
 ; Getting register for temp t0
 ; Looking for t0 in registers
-;   R5 contains t4
 ; t0 not found, allocating new register
 ; get_reg for 't0'
 ;   Allocated free register for t0
-;   t0 is now in R6
-; === ModuleLowerer::get_reg for 'bank_select_5' ===
-; get_reg for 'bank_select_5'
-;   Allocated free register for bank_select_5
-; Select bank register based on tag
-    LI R7, 1
-    BEQ R4, R7, bank_stack_6
-    ADD R7, R0, R0
-    BEQ R0, R0, bank_done_6
-bank_stack_6:
-    ADD R7, R13, R0
-bank_done_6:
-    LOAD R5, R7, R6
+;   t0 is now in R5
+; WARNING: Unknown pointer bank, defaulting to global
+; === ModuleLowerer::get_reg for 't4' ===
+; get_reg for 't4'
+;   Allocated free register for t4
+    LOAD R6, R0, R5
 ; === Processing instruction #1: BranchCond { condition: Temp(4), true_label: 6, false_label: 7 } ===
 ; Getting register for temp t4
 ; Looking for t4 in registers
-;   R5 contains t4
-;   R6 contains t0
-;   R7 contains bank_for_t0
-; t4 found in R5
-;   t4 is now in R5
-    BNE R5, R0, puts_L6
+;   R5 contains t0
+;   R6 contains t4
+; t4 found in R6
+;   t4 is now in R6
+    BNE R6, R0, puts_L6
     BEQ R0, R0, puts_L7
 puts_L6:
 ; === Processing instruction #0: Load { result: 5, ptr: Temp(0), result_type: I8 } ===
 ; Load from [t0] to t5
-; === ModuleLowerer::get_reg for 't5' ===
-; get_reg for 't5'
-;   Allocated free register for t5
 ; Getting register for temp t0
 ; Looking for t0 in registers
-;   R5 contains t5
 ; t0 not found, allocating new register
 ; get_reg for 't0'
 ;   Allocated free register for t0
-;   t0 is now in R6
-; === ModuleLowerer::get_reg for 'bank_select_7' ===
-; get_reg for 'bank_select_7'
-;   Allocated free register for bank_select_7
-; Select bank register based on tag
-    LI R7, 1
-    BEQ R4, R7, bank_stack_8
-    ADD R7, R0, R0
-    BEQ R0, R0, bank_done_8
-bank_stack_8:
-    ADD R7, R13, R0
-bank_done_8:
-    LOAD R5, R7, R6
+;   t0 is now in R5
+; WARNING: Unknown pointer bank, defaulting to global
+; === ModuleLowerer::get_reg for 't5' ===
+; get_reg for 't5'
+;   Allocated free register for t5
+    LOAD R6, R0, R5
 ; === Processing instruction #1: Call { result: None, function: Global("putchar"), args: [Temp(5)], result_type: Void } ===
 ; Getting register for temp t5
 ; Looking for t5 in registers
-;   R5 contains t5
-;   R6 contains t0
-;   R7 contains bank_for_t0
-; t5 found in R5
-;   t5 is now in R5
-    ADD R3, R5, R0
+;   R5 contains t0
+;   R6 contains t5
+; t5 found in R6
+;   t5 is now in R6
+    ADD R3, R6, R0
     CALL putchar
 ; === Processing instruction #2: Binary { result: 6, op: Add, lhs: Temp(0), rhs: Constant(1), result_type: I16 } ===
 ; === Processing Binary t6 ===
 ; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t0
-; Clearing R5 which contained t5
-; Clearing R6 which contained t0
-; Clearing R7 which contained bank_for_t0
+; Clearing R5 which contained t0
+; Clearing R6 which contained t5
 ; Looking for t0 in registers
-; t0 not found, allocating new register
-; get_reg for 't0'
-;   Allocated free register for t0
-;   t0 is now in R7
-; get_reg for 'const_1_9'
-;   Allocated free register for const_1_9
-    LI R6, 1
-; Reusing R7 for result t6
-    ADD R7, R7, R6
-; Freeing right operand register R6
-; === Processing instruction #3: Store { value: Temp(6), ptr: Temp(0) } ===
-; Getting register for temp t0
-; Looking for t0 in registers
-;   R7 contains t6
 ; t0 not found, allocating new register
 ; get_reg for 't0'
 ;   Allocated free register for t0
 ;   t0 is now in R6
-; === ModuleLowerer::get_reg for 'bank_select_10' ===
-; get_reg for 'bank_select_10'
-;   Allocated free register for bank_select_10
-; Select bank register based on tag
+; get_reg for 'const_1_5'
+;   Allocated free register for const_1_5
     LI R5, 1
-    BEQ R4, R5, bank_stack_11
-    ADD R5, R0, R0
-    BEQ R0, R0, bank_done_11
-bank_stack_11:
-    ADD R5, R13, R0
-bank_done_11:
+; Reusing R6 for result t6
+    ADD R6, R6, R5
+; Freeing right operand register R5
+; === Processing instruction #3: Store { value: Temp(6), ptr: Temp(0) } ===
+; Getting register for temp t0
+; Looking for t0 in registers
+;   R6 contains t6
+; t0 not found, allocating new register
+; get_reg for 't0'
+;   Allocated free register for t0
+;   t0 is now in R5
+; WARNING: Unknown pointer bank, defaulting to global
 ; Store t6 to [t0]
 ; Getting register for temp t6
 ; Looking for t6 in registers
-;   R5 contains bank_for_t0
-;   R6 contains t0
-;   R7 contains t6
-; t6 found in R7
-;   t6 is now in R7
-    STORE R7, R5, R6
+;   R5 contains ptr_preserve2_7
+;   R6 contains t6
+; t6 found in R6
+;   t6 is now in R6
+    STORE R6, R0, R5
 ; >>> Preserving registers: storing t6 from previous instruction
 ; === Processing instruction #4: Branch(5) ===
     BEQ R0, R0, puts_L5
 puts_L7:
 ; === Processing instruction #0: Call { result: None, function: Global("putchar"), args: [Constant(10)], result_type: Void } ===
-; get_reg for 'const_10_12'
-;   Allocated free register for const_10_12
+; get_reg for 'const_10_8'
+;   Allocated free register for const_10_8
     LI R5, 10
     ADD R3, R5, R0
     CALL putchar
 ; === Processing instruction #1: Return(Some(Constant(0))) ===
-; Clearing R5 which contained const_10_12
-; get_reg for 'const_0_13'
-;   Allocated free register for const_0_13
+; Clearing R5 which contained const_10_8
+; get_reg for 'const_0_9'
+;   Allocated free register for const_0_9
     LI R5, 0
     ADD R3, R5, R0
     ADD R14, R15, R0

@@ -93,12 +93,16 @@ MAX_IMMEDIATE = 65535
 def run_command(cmd, timeout=2):
     """Run a command with timeout"""
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
-        return result.returncode, result.stdout, result.stderr
+        # Use binary mode to avoid UTF-8 decoding errors
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=False, timeout=timeout)
+        # Try to decode as UTF-8, but replace invalid characters
+        stdout = result.stdout.decode('utf-8', errors='replace') if result.stdout else ""
+        stderr = result.stderr.decode('utf-8', errors='replace') if result.stderr else ""
+        return result.returncode, stdout, stderr
     except subprocess.TimeoutExpired as e:
         # Capture any partial output that was produced before timeout
-        stdout = e.stdout if e.stdout else ""
-        stderr = e.stderr if e.stderr else ""
+        stdout = e.stdout.decode('utf-8', errors='replace') if e.stdout else ""
+        stderr = e.stderr.decode('utf-8', errors='replace') if e.stderr else ""
         timeout_msg = f"Timeout after {timeout}s"
         if stderr:
             timeout_msg = f"{timeout_msg}\nStderr: {stderr}"
