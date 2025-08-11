@@ -235,11 +235,6 @@ fn main() {
     if !output.is_empty() {
         io::stdout().write_all(&output).unwrap();
         io::stdout().flush().unwrap();
-        
-        // Ensure we end with a newline if the output didn't include one
-        if !output.ends_with(&[b'\n']) {
-            println!();
-        }
     }
     
     if verbose {
