@@ -73,9 +73,7 @@ impl ModuleLowerer {
                     self.value_locations.insert(Self::temp_name(bank_temp_id), crate::module_lowering::Location::Register(bank_reg));
                     // Already marked in use via reg_alloc.mark_in_use above
 
-                    // Mark the parameter as having unknown region since it's runtime-determined
-                    // But track that we have the bank in a register
-                    self.ptr_region.insert(*param_id, crate::module_lowering::PtrRegion::Unknown);
+                    // The bank is in a register, tracked above
                     next_param_reg_idx += 1;
                 } else if next_param_reg_idx == 5 {
                     // Address in R8, bank on stack
@@ -86,7 +84,6 @@ impl ModuleLowerer {
                     // Bank tag is on stack - will be loaded by caller
                     let bank_temp_id = 100000 + param_id;
                     self.value_locations.insert(Self::temp_name(bank_temp_id), crate::module_lowering::Location::Spilled(stack_param_offset));
-                    self.ptr_region.insert(*param_id, crate::module_lowering::PtrRegion::Unknown);
                     stack_param_offset += 1;
                     self.needs_frame = true;
                 } else {
@@ -96,7 +93,6 @@ impl ModuleLowerer {
 
                     let bank_temp_id = 100000 + param_id;
                     self.value_locations.insert(Self::temp_name(bank_temp_id), crate::module_lowering::Location::Spilled(stack_param_offset));
-                    self.ptr_region.insert(*param_id, crate::module_lowering::PtrRegion::Unknown);
                     stack_param_offset += 1;
                     self.needs_frame = true;
                 }
@@ -159,11 +155,15 @@ impl ModuleLowerer {
     }
 
     fn generate_prologue(&mut self) {
-        // Save RA
+        // The STORE instruction format is: STORE src_reg, bank_reg, addr_reg
+        // where addr_reg contains the address to store to
+        // R14 is the stack pointer, R13 is the stack bank
+        
+        // Save RA at current stack pointer location
         self.emit(AsmInst::Store(Reg::RA, Reg::R13, Reg::R14));
         self.emit(AsmInst::AddI(Reg::R14, Reg::R14, 1));
 
-        // Save old FP
+        // Save old FP at new stack pointer location
         self.emit(AsmInst::Store(Reg::R15, Reg::R13, Reg::R14));
         self.emit(AsmInst::AddI(Reg::R14, Reg::R14, 1));
 

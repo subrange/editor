@@ -1,6 +1,6 @@
 use rcc_codegen::AsmInst;
 use rcc_common::CompilerError;
-use crate::{BasicBlock, Instruction};
+use crate::{BasicBlock, Instruction, Value};
 use crate::module_lowering::ModuleLowerer;
 
 impl ModuleLowerer {
@@ -16,15 +16,41 @@ impl ModuleLowerer {
         }
 
         for (idx, instruction) in block.instructions.iter().enumerate() {
+            // Log the instruction being processed
+            self.emit(AsmInst::Comment(format!("=== Processing instruction #{}: {:?} ===", idx, instruction)));
+            
             self.lower_instruction(instruction)?;
 
             // Only free registers at statement boundaries
             // Statement boundaries are between different high-level statements,
             // not between every IR instruction
-            // For now, we free after stores, calls, and branches
             match instruction {
-                Instruction::Store { .. } |
-                Instruction::Call { .. } |
+                Instruction::Store { value, .. } => {
+                    // For stores that immediately follow a value-producing instruction,
+                    // we want to preserve the value being stored
+                    // Check if this is storing a recently computed value
+                    if idx > 0 {
+                        if let Some(prev_instr) = block.instructions.get(idx - 1) {
+                            match prev_instr {
+                                Instruction::Call { result: Some(res), .. } |
+                                Instruction::Binary { result: res, .. } |
+                                Instruction::Load { result: res, .. } => {
+                                    // If we're storing the result of the previous instruction,
+                                    // don't free registers yet
+                                    if value == &Value::Temp(*res) {
+                                        // Keep registers for now
+                                        self.emit(AsmInst::Comment(format!(">>> Preserving registers: storing t{} from previous instruction", res)));
+                                        continue;
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    // Otherwise, free all temps
+                    self.emit(AsmInst::Comment(">>> Freeing all registers at Store statement boundary".to_string()));
+                    self.free_all();
+                }
                 Instruction::Branch(_) |
                 Instruction::BranchCond { .. } |
                 Instruction::Return { .. } => {

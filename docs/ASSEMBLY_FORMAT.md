@@ -1,8 +1,5 @@
 Below is the full, up-to-date specification with a new § 11 Output-format examples that shows exactly how machine programs and data blobs are represented with the current macro set.
 
-Save the whole file as ripple-vm-spec.md and treat it as canonical until the next change.
-
-⸻
 
 Ripple VM — Instruction-Set & System Specification
 
@@ -15,7 +12,7 @@ revision 2025-08-07-b
 item	value	notes
 Cell width	16-bit unsigned (0 … 65 535)
 Instruction length	4 consecutive cells
-Bank size	16 instructions (64 cells) — PC ∈ 0…15
+Bank size	4096 instructions
 Arithmetic	wrap-around modulo 65 536
 Boolean	0 = false, 1 = true
 R0	reads 0, writes are ignored
@@ -91,18 +88,29 @@ hex	mnemonic	effect
 5.3 Memory (I)
 
 hex	mnemonic	effect
-11	LOAD	rd ← MEM[rs + imm]
-12	STORE	MEM[rs + imm] ← rd
+11	LOAD rd, bank, addr 	rd ← MEM[bank * BANK_SIZE + addr]
+12	STORE rd, bank, addr	MEM[bank * BANK_SIZE + addr] ← rd
 
 5.4 Control flow
 
 hex	form	effect
-13	JAL addr	RA ← PC+1, RAB ← PCB, PC ← addr
-14	JALR rd, 0, rs(assembler: JALR rd, rs)	rd ← PC+1, RAB ← PCB, PC ← rs
-15	BEQ rs, rt, imm	if equal → PC+=imm
-16	BNE rs, rt, imm	if not-equal
-17	BLT rs, rt, imm	if signed less
-18	BGE rs, rt, imm	if signed ≥
+13	JAL addr	RA ← PC+1, RAB ← PCB, PC ← addr, Do Not Increment PC flag set
+14	JALR rd, 0, rs(assembler: JALR rd, rs)	rd ← PC+1, RAB ← PCB, PC ← rs, Do Not Increment PC flag set
+15	BEQ rs, rt, imm	if equal → PC+=imm, Do Not Increment PC flag set
+16	BNE rs, rt, imm	if not-equal, PC+=imm, Do Not Increment PC flag set
+17	BLT rs, rt, imm	if signed less, PC+=imm, Do Not Increment PC flag set
+18	BGE rs, rt, imm	if signed ≥, PC+=imm, Do Not Increment PC flag set
+
+19 BRK debugger breakpoint
+
+1A MUL rd, rs, rt	rd ← rs * rt
+1B DIV rd, rs, rt	rd ← rs / rt
+1C MOD rd, rs, rt	rd ← rs % rt
+
+1D	MULI rd, rs, imm	rd ← rs * imm
+1E	DIVI rd, rs, imm	rd ← rs / imm
+1F	MODI rd, rs, imm	rd ← rs % imm
+
 00	HALT	enter HALT state
 
 All branch targets are bank-local; assembler emits a far jump as:
@@ -128,7 +136,9 @@ SETUP → RUNNING
 while RUNNING:
 fetch 4 words @ (PCB,PC)
 execute
-PC ← (PC+1) & 0xF
+PC = PC + 1, if PC = 65536 then
+  PCB = PCB + 1, PC = 0
+UNLESS the instruction set a "Do Not Increment PC" flag
 HALT ⇒ stop
 
 
@@ -142,70 +152,10 @@ HALT ⇒ stop
 
 ⸻
 
-9. Reserved opcodes
 
-0x19 … 0x1F are unused.
 
 ⸻
 
-10. Change log
-    •	2025-08-07-b – spec section 11 added, LI shift rule deleted, bank-local rule clarified.
 
-⸻
-
-11. Output-format examples
-
-The custom pre-processor emits code with helper macros like @program_start, @cmd, @lane, etc.
-These examples compile without manual bank management.
-
-11.1 Simple countdown loop
-
-@program_start(@OP_LI,     @R3, 5,   0)        // R3 ← 5
-@cmd(          @OP_LI,     @R4, 3,   0)        // R4 ← 3  (loop entry)
-@cmd(          @OP_JALR,   @R4, 0,   @R4)      // call loop
-
-// ---- LOOP BODY (bank-local addr 3) ----
-@cmd(          @OP_LI,     @R6, 1,   0)        // R6 ← 1
-@cmd(          @OP_SUB,    @R3, @R3, @R6)      // R3 -= 1
-@cmd(          @OP_ADD,    @R8, @R8, @R6)      // R8 += 1
-@cmd(          @OP_BNE,    @R3, @R0, 1)        // skip HALT if R3 ≠ 0
-@cmd(          @OP_HALT,   0,   0,   0)        // stop when done
-@cmd(          @OP_JALR,   @RA, 0,   @R4)      // recurse
-@cmd(          @OP_LI,     @R6, 42,  0)        // never executed
-@program_end
-
-11.2 Hello-world streamer
-
-// Compile-time constant blob
-#define HELLO {'H','e','l','l','o',',',' ','R','i','p','p','l','e',#ENDL}
-
-// Data segment
-@lane(#L_MEM,
-{for(c in #HELLO, @set(c) @nextword)}
-)
-
-// Program
-@program_start(@OP_LI,  #R3, 0, 0)        // loader
-@cmd(          @OP_LI,  #R4, 4, 0)        // loop addr
-@cmd(          @OP_LI,  #R5, 2, 0)        // mem pointer
-
-@cmd(          @OP_JALR,#R4, 0, #R4)      // jump to body
-
-// ---- BODY (addr 4) ----
-@cmd(          @OP_LOAD, #R3, 0, #R5)     // R3 ← *R5
-@cmd(          @OP_BNE,  #R3, 0, 1)       // EOF? -> halt
-@cmd(          @OP_HALT, 0,   0,   0)
-
-@cmd(          @OP_ADDI, #R5, #R5, 1)     // ++R5
-@cmd(          @OP_STOR, #R3, 0,   0)     // OUT ← R3
-@cmd(          @OP_JALR, #R4, 0, #R4)     // repeat
-@program_end
-
-Assembler responsibilities
-•	Expand macro calls into the 4-word layout.
-•	Ensure labels used by @program_start, @cmd, or branch pseudo-ops stay inside a bank, emitting auto-patches (LI PCB, imm) when necessary.
-•	Pack literal blobs (HELLO) into consecutive @lane(#L_MEM, …) fragments.
-
-⸻
 
 End of document

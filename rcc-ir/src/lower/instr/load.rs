@@ -1,6 +1,6 @@
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::{CompilerError, TempId};
-use crate::module_lowering::{Location, ModuleLowerer, PtrRegion};
+use crate::module_lowering::{Location, ModuleLowerer};
 use crate::{IrType, Value};
 
 impl ModuleLowerer {
@@ -43,8 +43,7 @@ impl ModuleLowerer {
                         self.reg_alloc.mark_in_use(bank_reg, format!("t{}_bank", result));
 
                         // Set up fat pointer components based on loaded bank
-                        // For now mark as Unknown since it's runtime-determined
-                        self.ptr_region.insert(*result, PtrRegion::Unknown);
+                        // Mark as Unknown since it's runtime-determined
                         
                     } else {
                         // Regular load from global address
@@ -86,8 +85,7 @@ impl ModuleLowerer {
                     self.value_locations.insert(Self::temp_name(bank_temp_id), Location::Register(bank_reg));
                     self.reg_alloc.mark_in_use(bank_reg, format!("t{}_bank", result));
 
-                    // Mark as having unknown region since it's runtime-determined
-                    self.ptr_region.insert(*result, PtrRegion::Unknown);
+                    // Mark as having unknown bank since it's runtime-determined
                 } else {
                     // Regular load
                     self.emit(AsmInst::Load(dest_reg, bank, ptr_reg));

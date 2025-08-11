@@ -35,7 +35,6 @@ impl ModuleLowerer {
                 Value::Temp(tid) => {
                     // Check if this temp has fat pointer components
                     self.fat_ptr_components.contains_key(tid)
-                        || self.ptr_region.contains_key(tid)
                         || self.local_offsets.contains_key(tid)
                 }
                 Value::Global(_) => true, // Globals are always pointers
@@ -266,19 +265,37 @@ impl ModuleLowerer {
             let stack_space = stack_args.len() as i16;
             self.emit(AsmInst::AddI(Reg::R14, Reg::R14, stack_space));
         }
+        
+        // After the call, argument registers R3-R8 can be clobbered
+        // Clear them from the allocator's tracking
+        // Note: R3 will contain the return value if any
+        self.reg_alloc.clear_register(Reg::R3);
+        self.reg_alloc.clear_register(Reg::R4);
+        self.reg_alloc.clear_register(Reg::R5);
+        self.reg_alloc.clear_register(Reg::R6);
+        self.reg_alloc.clear_register(Reg::R7);
+        self.reg_alloc.clear_register(Reg::R8);
 
         if let Some(dest) = result {
             // Result is in R3 by convention
-            // Allocate register for result
             let result_key = Self::temp_name(*dest);
-            let dest_reg = self.get_reg(result_key.clone());
-            self.value_locations
-                .insert(result_key, Location::Register(dest_reg));
-
-            // Move result from R3 to allocated register if different
+            
+            // Always allocate a register for the result and move R3 to it
+            // This ensures the value is properly tracked in the allocator
+            let dest_reg = self.reg_alloc.get_reg(result_key.clone());
+            
+            // Get any spill/reload instructions that were generated
+            let instrs = self.reg_alloc.take_instructions();
+            self.emit_many(instrs);
+            
+            // Move result from R3 to the allocated register (may be R3 itself if free)
             if dest_reg != Reg::R3 {
                 self.emit(AsmInst::Add(dest_reg, Reg::R3, Reg::R0));
             }
+            
+            // Update our local tracking
+            self.value_locations
+                .insert(result_key, Location::Register(dest_reg));
         }
 
         Ok(())

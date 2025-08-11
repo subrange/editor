@@ -10,7 +10,6 @@ impl ModuleLowerer {
         let is_pointer_value = match value {
             Value::Temp(tid) => {
                 self.fat_ptr_components.contains_key(tid) ||
-                    self.ptr_region.contains_key(tid) ||
                     self.local_offsets.contains_key(tid)
             }
             Value::Global(_) => true,

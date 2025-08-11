@@ -134,6 +134,12 @@ impl SimpleRegAlloc {
         self.free_list.pop()
     }
     
+    /// Check if a register is free
+    pub fn is_free(&self, reg: Reg) -> bool {
+        // A register is free if it's not tracking any value
+        !self.reg_contents.contains_key(&reg)
+    }
+    
     /// Mark a register as containing a value without spilling
     /// This prevents the register from being chosen for spilling
     pub fn mark_in_use(&mut self, reg: Reg, value: String) {
@@ -221,6 +227,20 @@ impl SimpleRegAlloc {
         panic!("Cannot allocate two registers");
     }
     
+    /// Clear a register - mark it as not containing any value
+    /// This is used after function calls where registers may be clobbered
+    pub fn clear_register(&mut self, reg: Reg) {
+        if let Some(val) = self.reg_contents.remove(&reg) {
+            self.instructions.push(AsmInst::Comment(format!("Clearing {:?} which contained {}", reg, val)));
+        }
+        // Add to free list if it's an allocatable register
+        if matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11) {
+            if !self.free_list.contains(&reg) {
+                self.free_list.push(reg);
+            }
+        }
+    }
+    
     /// Free a register, returning it to the free list
     pub fn free_reg(&mut self, reg: Reg) {
         // Only free allocatable registers (R5-R11)
@@ -244,9 +264,25 @@ impl SimpleRegAlloc {
     
     /// Reload a spilled value into a register
     pub fn reload(&mut self, value: String) -> Reg {
+        // Debug: show what we're looking for and what's in registers
+        self.instructions.push(AsmInst::Comment(format!("Looking for {} in registers", value)));
+        for (reg, val) in &self.reg_contents {
+            let reg_name = match reg {
+                Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+                Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                _ => "R?",
+            };
+            self.instructions.push(AsmInst::Comment(format!("  {} contains {}", reg_name, val)));
+        }
+        
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &value) {
-            self.instructions.push(AsmInst::Comment(format!("{} already in register", value)));
+            let reg_name = match reg {
+                Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
+                Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                _ => "R?",
+            };
+            self.instructions.push(AsmInst::Comment(format!("{} found in {}", value, reg_name)));
             return reg;
         }
         

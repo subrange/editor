@@ -6,7 +6,7 @@
 //! 
 //! For M2+, we provide a full IR that can represent complete C99 programs.
 
-pub mod simple;
+pub mod ir_commands;
 pub mod lowering;
 pub mod ir;
 pub mod module_lowering;
@@ -15,7 +15,7 @@ pub mod simple_regalloc;
 mod module_lowering_tests;
 mod simple_regalloc_tests;
 
-pub use simple::{SimpleIR, SimpleProgram};
+pub use ir_commands::{SimpleIR, SimpleProgram};
 pub use lowering::{lower_to_assembly, LoweringError};
 pub use ir::{
     Module, Function, BasicBlock, Instruction, Value, IrType,

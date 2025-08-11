@@ -182,9 +182,10 @@ When working on the C compiler, follow these steps:
 1. Create a new test file in `c-test/tests/` or `c-test/tests-runtime/`.
 2. Add the test to a proper section of `c-test/run_tests.py` with expected output.
 3. Implement compiler logic
-4. Run the test suite with `python3 c-test/run_tests.py` to verify changes.
-5. If a test fails, use `--no-cleanup` to keep intermediate files for debugging.
-6. Ensure all tests pass.
+4. Run the test suite with `python3 c-test/run_tests.py --no-cleanup` to verify changes.
+5. Ensure all tests pass.
+6. If tests fail, debug using the generated files in `c-test/build/`.
+7. Once all tests pass, run `python3 c-test/run_tests.py --clean` to remove build artifacts.
 
 ## Directory Structure
 
@@ -298,3 +299,5 @@ This preserves in `build/`:
 - `_expanded.bf` - Expanded macro code
 
 You can then manually inspect or run individual compilation steps.
+
+VERY IMPORTANT: ALWAYS read files in full with READ, to fully understand the context

@@ -1,6 +1,6 @@
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::{CompilerError, TempId};
-use crate::module_lowering::{FatPtrComponents, Location, ModuleLowerer, PtrRegion};
+use crate::module_lowering::{FatPtrComponents, Location, ModuleLowerer};
 use crate::Value;
 
 impl ModuleLowerer {
@@ -60,21 +60,6 @@ impl ModuleLowerer {
                 });
             }
 
-            // Also propagate legacy region tracking (for compatibility)
-            let region = self.ptr_region.get(base_tid)
-                .copied()
-                .or_else(|| {
-                    // If base is an alloca, it's a stack pointer
-                    if self.local_offsets.contains_key(base_tid) {
-                        Some(PtrRegion::Stack)
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or(PtrRegion::Unknown);
-
-            // Propagate the region to the result
-            self.ptr_region.insert(*result, region);
         } else if let Value::FatPtr(fat_ptr) = ptr {
             // If the base is already a fat pointer, propagate its bank
             self.fat_ptr_components.insert(*result, FatPtrComponents {

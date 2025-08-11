@@ -3,7 +3,7 @@
 //! This module handles the translation from simple IR to Ripple assembly
 //! instructions. It includes register assignment and instruction selection.
 
-use crate::simple::{SimpleIR, SimpleProgram};
+use crate::ir_commands::{SimpleIR, SimpleProgram};
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
 use std::collections::HashMap;
@@ -176,7 +176,7 @@ impl IRLowerer {
 /// Helper functions for creating test IR programs
 pub mod test_helpers {
     use super::*;
-    use crate::simple::{SimpleIRBuilder, SimpleProgram};
+    use crate::ir_commands::{SimpleIRBuilder, SimpleProgram};
     
     /// Create a simple "hello world" IR program
     pub fn create_hello_world_ir() -> SimpleProgram {

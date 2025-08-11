@@ -10,28 +10,6 @@ use rcc_common::CompilerError;
 use std::collections::HashMap;
 use crate::lower::instr::arithmetic::emit_ne;
 
-/// Pointer region - tracks which memory bank a pointer points into
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PtrRegion {
-    Stack,   // Points to stack memory (bank R13)
-    Global,  // Points to global memory (bank R0)
-    Unknown, // Unknown provenance (e.g., parameters)
-    Mixed,   // Can be Stack on some paths and Global on others (from PHI/Select)
-}
-
-impl PtrRegion {
-    /// Join two regions for PHI/Select nodes
-    fn join(self, other: PtrRegion) -> PtrRegion {
-        use PtrRegion::*;
-        match (self, other) {
-            (Unknown, x) | (x, Unknown) => x,
-            (Stack, Stack) => Stack,
-            (Global, Global) => Global,
-            (Mixed, _) | (_, Mixed) => Mixed,
-            _ => Mixed, // Stack + Global = Mixed
-        }
-    }
-}
 
 /// Fat pointer components tracking
 #[derive(Debug, Clone)]
@@ -76,8 +54,6 @@ pub struct ModuleLowerer {
     /// Map from temp IDs to stack offsets (ONLY for direct Alloca results)
     pub(crate) local_offsets: HashMap<u32, i16>,
     
-    /// Provenance tracking for pointer-valued temps (legacy - will be replaced by fat pointers)
-    pub(crate) ptr_region: HashMap<u32, PtrRegion>,
     
     /// Fat pointer components for pointer-typed temporaries
     pub(crate) fat_ptr_components: HashMap<u32, FatPtrComponents>,
@@ -167,7 +143,6 @@ impl ModuleLowerer {
             label_counter: 0,
             local_stack_offset: 0,
             local_offsets: HashMap::new(),
-            ptr_region: HashMap::new(),
             fat_ptr_components: HashMap::new(),
             need_cache: HashMap::new(),
         }

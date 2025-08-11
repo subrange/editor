@@ -2,5 +2,7 @@
 
 ; Function: putchar
 putchar:
+; === Processing instruction #0: InlineAsm { assembly: "STORE R3, R0, R0" } ===
     STORE R3, R0, R0
+; === Processing instruction #1: Return(None) ===
     RET

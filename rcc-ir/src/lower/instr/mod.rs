@@ -3,7 +3,7 @@ use rcc_common::{CompilerError, TempId};
 use crate::{Instruction, IrBinaryOp, IrType, Value};
 use crate::ir::BankTag;
 use crate::lower::instr::arithmetic::emit_ne;
-use crate::module_lowering::{FatPtrComponents, Location, ModuleLowerer, PtrRegion};
+use crate::module_lowering::{Location, ModuleLowerer};
 
 pub mod arithmetic;
 mod alloca;
@@ -226,28 +226,15 @@ impl ModuleLowerer {
                         BankTag::Stack => Ok(Reg::R13),
                     }
                 } else {
-                    // Fall back to old provenance tracking (for migration)
-                    match self.ptr_region.get(tid).copied().unwrap_or(PtrRegion::Unknown) {
-                        PtrRegion::Stack => Ok(Reg::R13),
-                        PtrRegion::Global => Ok(Reg::R0),
-                        PtrRegion::Unknown => {
-                            // Check if it's a direct alloca
-                            if self.local_offsets.contains_key(tid) {
-                                Ok(Reg::R13)
-                            } else {
-                                // Default to global for now (will be fixed as we migrate to fat pointers)
-                                self.emit(AsmInst::Comment(
-                                    "WARNING: Unknown pointer bank, defaulting to global".to_string()
-                                ));
-                                Ok(Reg::R0)
-                            }
-                        }
-                        PtrRegion::Mixed => {
-                            Err(CompilerError::codegen_error(
-                                "Cannot handle pointer with mixed provenance".to_string(),
-                                rcc_common::SourceLocation::new_simple(0, 0),
-                            ))
-                        }
+                    // Check if it's a direct alloca
+                    if self.local_offsets.contains_key(tid) {
+                        Ok(Reg::R13)
+                    } else {
+                        // Default to global for unknown pointers
+                        self.emit(AsmInst::Comment(
+                            "WARNING: Unknown pointer bank, defaulting to global".to_string()
+                        ));
+                        Ok(Reg::R0)
                     }
                 }
             }

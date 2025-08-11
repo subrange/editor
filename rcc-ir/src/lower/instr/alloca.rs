@@ -2,7 +2,7 @@ use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
 use crate::{IrType, Value};
 use crate::ir::BankTag;
-use crate::module_lowering::{FatPtrComponents, Location, ModuleLowerer, PtrRegion};
+use crate::module_lowering::{FatPtrComponents, Location, ModuleLowerer};
 
 impl ModuleLowerer {
     pub fn lower_alloca(&mut self, result: &TempId, alloc_type: &IrType, count: &Option<Value>) {
@@ -24,8 +24,6 @@ impl ModuleLowerer {
         // Store the offset for this temp (frame slot)
         self.local_offsets.insert(*result, offset);
 
-        // Mark this temp as a stack pointer (legacy provenance tracking)
-        self.ptr_region.insert(*result, PtrRegion::Stack);
 
         // Store fat pointer components - alloca produces stack pointers
         self.fat_ptr_components.insert(*result, FatPtrComponents {

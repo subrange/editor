@@ -33,11 +33,17 @@ impl<'a> StatementGenerator<'a> {
                 } else {
                     self.builder.build_return(None)?;
                 }
+                // Create an unreachable block for any subsequent code in same scope
+                let unreachable_label = self.builder.new_label();
+                self.builder.create_block(unreachable_label)?;
             }
             
             StatementKind::Break => {
                 if let Some(&break_label) = self.break_labels.last() {
                     self.builder.build_branch(break_label)?;
+                    // Create an unreachable block for any subsequent code in same scope
+                    let unreachable_label = self.builder.new_label();
+                    self.builder.create_block(unreachable_label)?;
                 } else {
                     return Err(CodegenError::UnsupportedConstruct {
                         construct: "break outside of loop".to_string(),
@@ -49,6 +55,9 @@ impl<'a> StatementGenerator<'a> {
             StatementKind::Continue => {
                 if let Some(&continue_label) = self.continue_labels.last() {
                     self.builder.build_branch(continue_label)?;
+                    // Create an unreachable block for any subsequent code in same scope
+                    let unreachable_label = self.builder.new_label();
+                    self.builder.create_block(unreachable_label)?;
                 } else {
                     return Err(CodegenError::UnsupportedConstruct {
                         construct: "continue outside of loop".to_string(),
