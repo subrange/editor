@@ -96,6 +96,26 @@ impl Linker {
                     errors.push(format!("File {}, instruction {}: {}", file_idx, local_idx, e));
                 }
             }
+            
+            // ALSO adjust already-resolved local JAL instructions
+            // These were resolved during assembly but need adjustment after linking
+            for (local_idx, instruction) in obj.instructions.iter().enumerate() {
+                let global_idx = file_instruction_start + local_idx;
+                
+                // Check if this is a JAL instruction (opcode 0x13 = 19)
+                if instruction.opcode == 0x13 {
+                    // JAL stores the target address in word3
+                    // This address was valid in the local file but needs adjustment in the linked file
+                    let local_target = instruction.word3 as usize;
+                    
+                    // Skip if this was an unresolved reference (already handled above)
+                    if !obj.unresolved_references.contains_key(&local_idx) {
+                        // This was a resolved local reference, adjust it
+                        let global_target = file_instruction_start + local_target;
+                        resolved_instructions[global_idx].word3 = global_target as u16;
+                    }
+                }
+            }
         }
 
         if !errors.is_empty() {

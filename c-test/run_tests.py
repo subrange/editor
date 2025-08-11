@@ -162,7 +162,7 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
             return False, f"Linking failed: {stderr}", has_provenance_warning
         
         # Run on RVM
-        ret, stdout, stderr = run_command(f"{RVM} {bin_file}", timeout=timeout)
+        ret, stdout, stderr = run_command(f"{RVM} {bin_file} --memory 4294967296", timeout=timeout)
         if ret == -1:
             if verbose and stdout:
                 print(f"    Partial output before timeout: {repr(stdout)}")
@@ -267,7 +267,7 @@ def main():
     clean_only = "--clean" in sys.argv
     verbose = "--verbose" in sys.argv
     single_test = None
-    timeout = 10  # Default timeout in seconds
+    timeout = 2  # Default timeout in seconds
     backend = 'rvm'  # Default backend
     
     # Parse arguments
