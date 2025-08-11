@@ -4,6 +4,7 @@ mod memory;
 mod stack;
 mod watches;
 mod output;
+mod breakpoints;
 mod status_line;
 mod input_line;
 mod help;

@@ -237,12 +237,13 @@ impl TuiDebugger {
             ])
             .split(right_chunks[0]);
         
-        // Right part: Stack + Watches (vertically stacked, full height)
+        // Right part: Stack + Watches + Breakpoints (vertically stacked, full height)
         let stack_watches_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(50), // Stack
-                Constraint::Percentage(50), // Watches
+                Constraint::Percentage(33), // Stack
+                Constraint::Percentage(33), // Watches
+                Constraint::Percentage(34), // Breakpoints
             ])
             .split(right_chunks[1]);
         
@@ -253,6 +254,7 @@ impl TuiDebugger {
         self.draw_memory(frame, registers_memory_chunks[1], vm);
         self.draw_stack(frame, stack_watches_chunks[0], vm);
         self.draw_watches(frame, stack_watches_chunks[1], vm);
+        self.draw_breakpoints(frame, stack_watches_chunks[2], vm);
         
         // Draw status/input line at bottom
         match self.mode {

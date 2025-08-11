@@ -76,7 +76,7 @@ impl TuiDebugger {
         frame.render_widget(list, area);
     }
 
-    fn format_instruction(&self, instr: &Instr) -> String {
+    pub(crate) fn format_instruction(&self, instr: &Instr) -> String {
         let opcode_str = Self::opcode_name(instr.opcode);
 
         match instr.opcode {
