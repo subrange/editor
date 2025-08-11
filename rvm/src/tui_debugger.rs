@@ -17,6 +17,9 @@ use ratatui::{
 use ripple_asm::Register;
 use crate::vm::{VM, VMState, Instr};
 
+// Fixed memory columns for navigation (actual display adjusts dynamically)
+const MEMORY_NAV_COLS: usize = 8;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum FocusedPane {
     Disassembly,
@@ -78,7 +81,6 @@ pub struct TuiDebugger {
     // Display preferences
     show_help: bool,
     show_ascii: bool,
-    memory_cols: usize,
     
     // Performance
     last_step_time: Instant,
@@ -114,7 +116,6 @@ impl TuiDebugger {
             
             show_help: false,
             show_ascii: true,
-            memory_cols: 16,
             
             last_step_time: Instant::now(),
             step_frequency: Duration::from_millis(100),
@@ -198,50 +199,50 @@ impl TuiDebugger {
         let main_area = Rect::new(0, 0, size.width, size.height - 1);
         let status_area = Rect::new(0, size.height - 1, size.width, 1);
         
-        // Main layout: 3 columns
+        // Main layout: 2 columns - left smaller, right bigger for memory
         let main_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(40), // Left: Disassembly
-                Constraint::Percentage(35), // Middle: Registers + Stack
-                Constraint::Percentage(25), // Right: Memory + Watches
+                Constraint::Percentage(45), // Left: Disassembly + Registers
+                Constraint::Percentage(55), // Right: Memory + others
             ])
             .split(main_area);
         
-        // Left column: Disassembly + Output
+        // Left column: Disassembly + Registers
         let left_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(70), // Disassembly
-                Constraint::Percentage(30), // Output
+                Constraint::Min(15),     // Disassembly
+                Constraint::Length(10),  // Registers (same as bottom section)
             ])
             .split(main_chunks[0]);
         
-        // Middle column: Registers + Stack
-        let middle_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(12), // Registers
-                Constraint::Min(10),    // Stack
-            ])
-            .split(main_chunks[1]);
-        
-        // Right column: Memory + Watches
+        // Right column: Memory + Stack/Watches/Output
         let right_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(60), // Memory
-                Constraint::Percentage(40), // Watches
+                Constraint::Min(15),     // Memory (takes most space)
+                Constraint::Length(10),  // Bottom section (same as registers)
             ])
-            .split(main_chunks[2]);
+            .split(main_chunks[1]);
+        
+        // Bottom right: Stack + Watches + Output
+        let bottom_right_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(33), // Stack
+                Constraint::Percentage(33), // Watches  
+                Constraint::Percentage(34), // Output
+            ])
+            .split(right_chunks[1]);
         
         // Draw each component
         self.draw_disassembly(frame, left_chunks[0], vm);
-        self.draw_output(frame, left_chunks[1], vm);
-        self.draw_registers(frame, middle_chunks[0], vm);
-        self.draw_stack(frame, middle_chunks[1], vm);
+        self.draw_registers(frame, left_chunks[1], vm);
         self.draw_memory(frame, right_chunks[0], vm);
-        self.draw_watches(frame, right_chunks[1], vm);
+        self.draw_stack(frame, bottom_right_chunks[0], vm);
+        self.draw_watches(frame, bottom_right_chunks[1], vm);
+        self.draw_output(frame, bottom_right_chunks[2], vm);
         
         // Draw status/input line at bottom
         match self.mode {
@@ -421,7 +422,25 @@ impl TuiDebugger {
     
     fn draw_memory(&self, frame: &mut Frame, area: Rect, vm: &VM) {
         let mut text = Vec::new();
-        let bytes_per_row = if self.show_ascii { 16 } else { 16 }; // Keep at 16 for consistency
+        
+        // Calculate how many columns we can fit
+        // Format: "XXXX: " (6) + "XXXX " per column (5) + " | " (3) + 1 char per column for ASCII
+        let available_width = area.width as usize;
+        let addr_width = 6; // "XXXX: "
+        let hex_per_col = 5; // "XXXX "
+        let separator = if self.show_ascii { 3 } else { 0 }; // " | "
+        let ascii_per_col = if self.show_ascii { 1 } else { 0 };
+        
+        // Calculate maximum columns that fit
+        let mut bytes_per_row = 8; // Start with 8 columns as default
+        if available_width > addr_width {
+            let remaining = available_width - addr_width - separator;
+            let per_column = hex_per_col + ascii_per_col;
+            if per_column > 0 {
+                bytes_per_row = (remaining / per_column).min(16).max(4); // Between 4 and 16 columns
+            }
+        }
+        
         let visible_rows = area.height.saturating_sub(3) as usize;
         
         let start_addr = self.memory_base_addr + self.memory_scroll * bytes_per_row;
@@ -485,10 +504,12 @@ impl TuiDebugger {
             text.push(Line::from(spans));
         }
         
+        let cursor_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
         let ascii_indicator = if self.show_ascii { " [ASCII]" } else { "" };
-        let title = format!(" Memory @ {:04X}{} [{}] ", 
-            self.memory_base_addr, 
+        let title = format!(" Memory @ {:04X}{} (cursor: {:04X}) [{}] ", 
+            self.memory_base_addr,
             ascii_indicator,
+            cursor_addr,
             if self.focused_pane == FocusedPane::Memory { "ACTIVE" } else { "F3" }
         );
         let block = Block::default()
@@ -874,7 +895,7 @@ impl TuiDebugger {
             KeyCode::Char('e') => {
                 if self.focused_pane == FocusedPane::Memory {
                     // Pre-fill with current cursor position
-                    let addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                    let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
                     self.command_buffer = format!("{:04x}:", addr);
                     self.mode = DebuggerMode::MemoryEdit;
                 } else {
@@ -902,7 +923,7 @@ impl TuiDebugger {
             
             // Quick memory edit - if in memory view and pressing hex digit
             KeyCode::Char(c) if self.focused_pane == FocusedPane::Memory && c.is_ascii_hexdigit() => {
-                let addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
                 self.command_buffer = format!("{:04x}:{}", addr, c);
                 self.mode = DebuggerMode::MemoryEdit;
             }
@@ -1268,12 +1289,12 @@ impl TuiDebugger {
             }
             FocusedPane::Memory => {
                 // Calculate current absolute address
-                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
-                if current_addr >= self.memory_cols {
+                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
+                if current_addr >= MEMORY_NAV_COLS {
                     // Move up by one row
-                    let new_addr = current_addr - self.memory_cols;
+                    let new_addr = current_addr - MEMORY_NAV_COLS;
                     self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
                 } else if current_addr > 0 {
                     // At the top, just go to 0
                     self.memory_base_addr = 0;
@@ -1301,11 +1322,11 @@ impl TuiDebugger {
             }
             FocusedPane::Memory => {
                 // Calculate current absolute address
-                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
-                let new_addr = current_addr + self.memory_cols;
+                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
+                let new_addr = current_addr + MEMORY_NAV_COLS;
                 if new_addr < vm.memory.len() {
                     self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
                 }
             }
             FocusedPane::Output => {
@@ -1324,11 +1345,11 @@ impl TuiDebugger {
         match self.focused_pane {
             FocusedPane::Memory => {
                 // Move left by one column (1 byte)
-                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
                 if current_addr > 0 {
                     let new_addr = current_addr - 1;
                     self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
                 }
             }
             _ => {}
@@ -1339,11 +1360,11 @@ impl TuiDebugger {
         match self.focused_pane {
             FocusedPane::Memory => {
                 // Move right by one column (1 byte)
-                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
                 if current_addr + 1 < vm.memory.len() {
                     let new_addr = current_addr + 1;
                     self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
                 }
             }
             _ => {}
@@ -1357,12 +1378,12 @@ impl TuiDebugger {
             }
             FocusedPane::Memory => {
                 // Calculate current absolute address
-                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
                 let rows_to_move = 10;
-                if current_addr >= rows_to_move * self.memory_cols {
-                    let new_addr = current_addr - (rows_to_move * self.memory_cols);
+                if current_addr >= rows_to_move * MEMORY_NAV_COLS {
+                    let new_addr = current_addr - (rows_to_move * MEMORY_NAV_COLS);
                     self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
                 } else {
                     // Jump to beginning
                     self.memory_base_addr = 0;
@@ -1380,12 +1401,12 @@ impl TuiDebugger {
             }
             FocusedPane::Memory => {
                 // Calculate current absolute address
-                let current_addr = self.memory_base_addr + self.memory_scroll * self.memory_cols;
+                let current_addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS;
                 let rows_to_move = 10;
-                let new_addr = current_addr + (rows_to_move * self.memory_cols);
+                let new_addr = current_addr + (rows_to_move * MEMORY_NAV_COLS);
                 if new_addr < vm.memory.len() {
                     self.memory_base_addr = new_addr & !0xF; // Align to 16 bytes
-                    self.memory_scroll = (new_addr - self.memory_base_addr) / self.memory_cols;
+                    self.memory_scroll = (new_addr - self.memory_base_addr) / MEMORY_NAV_COLS;
                 }
             }
             _ => {}
