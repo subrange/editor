@@ -20,7 +20,7 @@ import {settingsStore} from "./stores/settings.store";
 import {useStoreSubscribe} from "./hooks/use-store-subscribe";
 import {WorkerTokenizer} from "./services/tokenizer/worker-tokenizer-adapter.ts";
 import {interpreterStore} from "./components/debugger/interpreter.store.ts";
-// import {MacroContextPanel} from "./components/debugger/macro-context-panel.tsx";
+// import {MacroContextPanel} from "./components/debugger_ui/macro-context-panel.tsx";
 import {DraggableVSep} from "./components/ui/draggable-vsep.tsx";
 import {outputStore} from "./stores/output.store.ts";
 import {vmOutputService} from "./services/vm-output.service.ts";

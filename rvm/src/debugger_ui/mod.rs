@@ -1,0 +1,9 @@
+mod disassembly;
+mod registers;
+mod memory;
+mod stack;
+mod watches;
+mod output;
+mod status_line;
+mod input_line;
+mod help;

@@ -180,8 +180,8 @@ impl Debugger {
         println!("Commands:");
         println!("  {}  Step one instruction", "Enter".bright_green().bold());
         println!("  {}       Run to completion", "r".bright_green().bold());
-        println!("  {}       Continue from breakpoint", "c".bright_green().bold());
-        println!("  {}       Quit debugger", "q".bright_green().bold());
+        println!("  {}       Continue from breakpoint.rs", "c".bright_green().bold());
+        println!("  {}       Quit debugger_ui", "q".bright_green().bold());
         println!();
         println!("Note: To restart after HALT, quit (q) and run again.");
         println!("      Or use TUI mode (-t) which supports restart with 'R'.");

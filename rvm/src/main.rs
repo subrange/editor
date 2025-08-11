@@ -2,6 +2,8 @@ mod constants;
 mod debug;
 mod tui_debugger;
 mod vm;
+mod debugger_ui;
+mod mode;
 
 use std::env;
 use std::fs;
@@ -21,12 +23,12 @@ fn print_usage() {
     eprintln!("  -b, --bank-size <size>   Set bank size (default: {})", DEFAULT_BANK_SIZE);
     eprintln!("  -m, --memory <size>      Set memory size in words (default: {})", DEFAULT_MEMORY_SIZE);
     eprintln!("  -d, --debug              Enable debug mode (step through execution)");
-    eprintln!("  -t, --tui                Enable TUI debugger mode");
+    eprintln!("  -t, --tui                Enable TUI debugger_ui mode");
     eprintln!("  -v, --verbose            Show VM state during execution");
     eprintln!("  -h, --help               Show this help message");
     eprintln!();
     eprintln!("TUI DEBUGGER MODE (-t):");
-    eprintln!("  Professional terminal-based debugger with multiple panes:");
+    eprintln!("  Professional terminal-based debugger_ui with multiple panes:");
     eprintln!("  - Disassembly view with breakpoints and execution tracking");
     eprintln!("  - Register display with change highlighting");
     eprintln!("  - Memory viewer with hex/ASCII display and editing");
@@ -145,7 +147,7 @@ fn main() {
     
     // Run the VM
     if tui_mode {
-        // Use the TUI debugger
+        // Use the TUI debugger_ui
         vm.debug_mode = true;
         let mut tui = tui_debugger::TuiDebugger::new();
         if let Err(e) = tui.run(&mut vm) {
@@ -195,7 +197,7 @@ fn main() {
                     break;
                 },
                 "c" if matches!(vm.state, vm::VMState::Breakpoint) => {
-                    // Continue from breakpoint
+                    // Continue from breakpoint.rs
                     vm.state = vm::VMState::Running;
                     // Continue stepping
                 },

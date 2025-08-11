@@ -128,7 +128,7 @@ class InterpreterStore {
     
     constructor() {
         // Always subscribe to the main editor, not the active editor
-        // This ensures debugger always runs code from main editor
+        // This ensures debugger_ui always runs code from main editor
         const checkMainEditor = () => {
             const mainEditor = editorManager.getEditor('main');
             if (mainEditor) {
@@ -393,10 +393,10 @@ class InterpreterStore {
 
         const index = breakpoints.findIndex(bp => bp.line === position.line && bp.column === position.column);
         if (index !== -1) {
-            // Remove breakpoint
+            // Remove breakpoint.rs
             breakpoints.splice(index, 1);
         } else {
-            // Add breakpoint
+            // Add breakpoint.rs
             breakpoints.push(position);
         }
 
@@ -412,10 +412,10 @@ class InterpreterStore {
         const index = sourceBreakpoints.findIndex((bp: Position) => bp.line === sourcePosition.line && bp.column === sourcePosition.column);
         
         if (index !== -1) {
-            // Remove source breakpoint
+            // Remove source breakpoint.rs
             sourceBreakpoints.splice(index, 1);
         } else {
-            // Add source breakpoint
+            // Add source breakpoint.rs
             sourceBreakpoints.push(sourcePosition);
         }
         
@@ -458,11 +458,11 @@ class InterpreterStore {
                 expandedEntries = lineEntries;
             } else {
                 // Still no entries found. This might be a comment line or empty line.
-                // We'll allow the breakpoint but warn the user
+                // We'll allow the breakpoint.rs but warn the user
                 console.warn('No expanded positions found for source position:', sourcePosition);
                 console.warn('This line may not contain executable code (e.g., comment or empty line)');
                 
-                // Don't set a breakpoint that can't be hit
+                // Don't set a breakpoint.rs that can't be hit
                 return;
             }
         }
@@ -498,7 +498,7 @@ class InterpreterStore {
             });
         }
         
-        // Check if any expanded position already has a breakpoint
+        // Check if any expanded position already has a breakpoint.rs
         let hasBreakpoint = false;
         for (const expandedPos of expandedPositions) {
             if (breakpoints.some(bp => bp.line === expandedPos.line && bp.column === expandedPos.column)) {
@@ -536,7 +536,7 @@ class InterpreterStore {
             breakpoints: [],
             sourceBreakpoints: []
         });
-        this.lastPausedBreakpoint = null; // Clear last paused breakpoint as well
+        this.lastPausedBreakpoint = null; // Clear last paused breakpoint.rs as well
     }
 
     private shouldPauseAtBreakpoint(position: Position): boolean {
@@ -554,7 +554,7 @@ class InterpreterStore {
         const char = this.getCurrentChar();
         const currentPos = this.currentChar.getValue();
 
-        // Check for $ in-code breakpoint
+        // Check for $ in-code breakpoint.rs
         if (char === '$') {
             console.log(`Hit in-code breakpoint $ at line ${currentPos.line}, column ${currentPos.column}`);
             this.pause();
@@ -567,8 +567,8 @@ class InterpreterStore {
             return true;
         }
 
-        // Check for breakpoint BEFORE executing the instruction
-        // But skip if this is the same breakpoint we just paused at
+        // Check for breakpoint.rs BEFORE executing the instruction
+        // But skip if this is the same breakpoint.rs we just paused at
         if (char && '><+-[].,'.includes(char) && this.shouldPauseAtBreakpoint(currentPos)) {
             const isSameBreakpoint = this.lastPausedBreakpoint &&
                 this.lastPausedBreakpoint.line === currentPos.line &&
@@ -582,7 +582,7 @@ class InterpreterStore {
             }
         }
 
-        // Clear the last paused breakpoint if we've moved away from it
+        // Clear the last paused breakpoint.rs if we've moved away from it
         if (this.lastPausedBreakpoint &&
             (this.lastPausedBreakpoint.line !== currentPos.line ||
                 this.lastPausedBreakpoint.column !== currentPos.column)) {
@@ -705,7 +705,7 @@ class InterpreterStore {
             return;
         }
 
-        // Clear the last paused breakpoint so we don't immediately break again
+        // Clear the last paused breakpoint.rs so we don't immediately break again
         this.lastPausedBreakpoint = null;
 
         this.state.next({
@@ -713,9 +713,9 @@ class InterpreterStore {
             isPaused: false
         });
 
-        // If there's no active execution loop (e.g., after turbo mode breakpoint), start one
+        // If there's no active execution loop (e.g., after turbo mode breakpoint.rs), start one
         if (!this.runInterval && !this.runAnimationFrameId) {
-            // After turbo mode breakpoint, we must continue in normal mode
+            // After turbo mode breakpoint.rs, we must continue in normal mode
             // because turbo mode can't resume from a specific position
             this.runSmooth();
         }
@@ -834,7 +834,7 @@ class InterpreterStore {
             const char = this.getCurrentChar();
             const currentPos = this.currentChar.getValue();
 
-            // Check for $ in-code breakpoint
+            // Check for $ in-code breakpoint.rs
             if (char === '$') {
                 console.log(`Hit in-code breakpoint $ at line ${currentPos.line}, column ${currentPos.column}`);
                 this.pause();
@@ -1068,7 +1068,7 @@ class InterpreterStore {
                 case '.': output += String.fromCharCode(tape[pointer]); break;
                 case ',': tape[pointer] = 0; break;
                 case '$': {
-                    // Hit in-code breakpoint
+                    // Hit in-code breakpoint.rs
                     console.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
                     
                     // Update position for next resume
@@ -1086,7 +1086,7 @@ class InterpreterStore {
                         isRunning: true
                     });
                     
-                    console.log('Pausing turbo mode at breakpoint.');
+                    console.log('Pausing turbo mode at breakpoint.rs.');
                     return;
                 }
             }
@@ -1170,7 +1170,7 @@ class InterpreterStore {
     }
 
     public async resumeTurbo() {
-        // Clear the last paused breakpoint first
+        // Clear the last paused breakpoint.rs first
         this.lastPausedBreakpoint = null;
         
         // Mark as running and unpaused
@@ -1258,7 +1258,7 @@ class InterpreterStore {
                 case '.': output += String.fromCharCode(tape[pointer]); break;
                 case ',': tape[pointer] = 0; break;
                 case '$': {
-                    // Hit in-code breakpoint - update state and pause
+                    // Hit in-code breakpoint.rs - update state and pause
                     console.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
                     
                     // Update currentChar to the position after the $ so step works correctly
@@ -1285,7 +1285,7 @@ class InterpreterStore {
                     output = '';
                     
                     // Exit turbo mode and return to normal execution
-                    console.log('Exiting turbo mode due to breakpoint. Use step or resume to continue.');
+                    console.log('Exiting turbo mode due to breakpoint.rs. Use step or resume to continue.');
                     return;
                 }
             }
@@ -1382,7 +1382,7 @@ class InterpreterStore {
         const currentState = this.state.getValue();
         const sourceBreakpoints = currentState.sourceBreakpoints || [];
         
-        // Check if there's a source breakpoint at this exact position
+        // Check if there's a source breakpoint.rs at this exact position
         return sourceBreakpoints.some(
             bp => bp.line === sourcePosition.line && bp.column === sourcePosition.column
         );
@@ -1483,20 +1483,20 @@ class InterpreterStore {
         const currentPos = this.currentChar.getValue();
         let entry: SourceMapEntry | null = null;
         
-        // If we're at a breakpoint position, try to find the source map entry
-        // that corresponds to the outermost macro (where user likely set the breakpoint)
+        // If we're at a breakpoint.rs position, try to find the source map entry
+        // that corresponds to the outermost macro (where user likely set the breakpoint.rs)
         const currentState = this.state.getValue();
         const isAtBreakpoint = currentState.breakpoints.some(
             bp => bp.line === currentPos.line && bp.column === currentPos.column
         );
         
         if (isAtBreakpoint && this.sourceMapLookup) {
-            // When at a breakpoint, try to use the outermost macro context
+            // When at a breakpoint.rs, try to use the outermost macro context
             // This will be handled by our updated getMacroContext method
             // which should return the full call stack
         }
         
-        // Fall back to normal lookup if not at breakpoint or no entries found
+        // Fall back to normal lookup if not at breakpoint.rs or no entries found
         if (!entry) {
             entry = this.sourceMapLookup.getSourcePosition(
                 currentPos.line + 1,

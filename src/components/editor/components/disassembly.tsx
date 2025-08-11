@@ -201,7 +201,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   
   // Function to scroll tape to a specific index
   const scrollToTapeIndex = (index: number) => {
-    // Find the canvas element in the debugger
+    // Find the canvas element in the debugger_ui
     const canvas = document.querySelector('.tape-canvas-renderer canvas') || 
                    document.querySelector('canvas');
     if (canvas) {

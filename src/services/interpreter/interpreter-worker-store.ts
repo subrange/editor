@@ -426,7 +426,7 @@ export class InterpreterWorkerStore {
   }
 
   public resume() {
-    // Clear last paused breakpoint and resume turbo
+    // Clear last paused breakpoint.rs and resume turbo
     this.resumeTurbo();
   }
 
@@ -482,7 +482,7 @@ export class InterpreterWorkerStore {
       sourceBreakpoints
     });
     
-    // For now, also add regular breakpoint
+    // For now, also add regular breakpoint.rs
     // TODO: Implement source map lookup for breakpoints
     this.toggleBreakpoint(position);
   }

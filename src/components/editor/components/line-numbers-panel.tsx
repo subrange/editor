@@ -28,7 +28,7 @@ export function LineNumbersPanel({store}: LineNumbersPanelProps) {
             // For macro editor, allow setting breakpoints on any non-empty line
             const trimmed = line.text.trim();
             if (trimmed.length > 0 && !trimmed.startsWith('//')) {
-                // Set breakpoint at first non-whitespace character
+                // Set breakpoint.rs at first non-whitespace character
                 const firstNonWhitespace = line.text.search(/\S/);
                 if (firstNonWhitespace >= 0) {
                     interpreterStore.toggleSourceBreakpoint({line: lineIndex, column: firstNonWhitespace});
@@ -52,7 +52,7 @@ export function LineNumbersPanel({store}: LineNumbersPanelProps) {
                 let hasBreakpoint = false;
                 
                 if (isMacroEditor) {
-                    // For macro editor, check if there's a breakpoint on any non-empty, non-comment line
+                    // For macro editor, check if there's a breakpoint.rs on any non-empty, non-comment line
                     const trimmed = line.text.trim();
                     if (trimmed.length > 0 && !trimmed.startsWith('//')) {
                         // Check at the first non-whitespace position

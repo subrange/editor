@@ -295,7 +295,7 @@ class WorkerInterpreter {
     const char = this.getCurrentChar();
     const currentPos = this.currentChar;
 
-    // Check for $ in-code breakpoint
+    // Check for $ in-code breakpoint.rs
     if (char === '$') {
       this.log(`Hit in-code breakpoint $ at line ${currentPos.line}, column ${currentPos.column}`);
       this.pause();
@@ -307,7 +307,7 @@ class WorkerInterpreter {
       return true;
     }
 
-    // Check for breakpoint
+    // Check for breakpoint.rs
     if (char && '><+-[].,'.includes(char) && this.shouldPauseAtBreakpoint(currentPos)) {
       const isSameBreakpoint = this.lastPausedBreakpoint &&
         this.lastPausedBreakpoint.line === currentPos.line &&
@@ -694,7 +694,7 @@ class WorkerInterpreter {
           this.currentChar = nextOp.position;
           this.lastPausedBreakpoint = { ...nextOp.position };
           this.isPaused = true;
-          // Always send tape data when hitting a breakpoint
+          // Always send tape data when hitting a breakpoint.rs
           this.sendStateUpdate(true);
           return;
         }

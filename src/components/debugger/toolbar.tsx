@@ -305,7 +305,7 @@ export function Toolbar() {
 
                 {/* Status indicator */}
                 <div className="ml-auto flex items-center gap-2 text-xs">
-                    {/* Regular debugger running status */}
+                    {/* Regular debugger_ui running status */}
                     {isRunning && (
                         <div className="flex items-center gap-1">
                             <div className={`w-2 h-2 rounded-full ${

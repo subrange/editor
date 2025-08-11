@@ -183,8 +183,8 @@ impl VM {
             VMState::Running => {},
             VMState::Halted => return Ok(()),
             VMState::Breakpoint => {
-                // In debug mode at breakpoint, allow single stepping
-                // State will be reset to Running by the debugger
+                // In debug mode at breakpoint.rs, allow single stepping
+                // State will be reset to Running by the debugger_ui
             },
             VMState::Error(ref e) => return Err(e.clone()),
             VMState::Setup => return Err("VM not initialized".to_string()),
@@ -503,11 +503,11 @@ impl VM {
                 }
             },
             
-            0x19 => { // BRK - debugger breakpoint
+            0x19 => { // BRK - debugger_ui breakpoint.rs
                 if self.debug_mode {
                     // In debug mode, just pause execution
                     self.state = VMState::Breakpoint;
-                    // Don't print here - the debugger will handle it
+                    // Don't print here - the debugger_ui will handle it
                 } else {
                     // In normal mode, dump state and halt
                     eprintln!("\n=== BRK: VM State Dump ===");
@@ -643,7 +643,7 @@ impl VM {
     pub fn run(&mut self) -> Result<(), String> {
         while matches!(self.state, VMState::Running) {
             self.step()?;
-            // Stop if we hit a breakpoint in debug mode
+            // Stop if we hit a breakpoint.rs in debug mode
             if matches!(self.state, VMState::Breakpoint) {
                 break;
             }
