@@ -174,7 +174,7 @@ impl TuiDebugger {
                             self.handle_add_watch_mode(key.code);
                         }
                         DebuggerMode::SetBreakpoint => {
-                            self.handle_breakpoint_mode(key.code);
+                            self.handle_breakpoint_mode(key.code, vm);
                         }
                         DebuggerMode::MemoryEdit => {
                             self.handle_memory_edit_mode(key.code, vm);
@@ -244,7 +244,7 @@ impl TuiDebugger {
             DebuggerMode::Command => self.draw_input_line(frame, status_area, "Command"),
             DebuggerMode::GotoAddress => self.draw_input_line(frame, status_area, "Go to address (hex)"),
             DebuggerMode::AddWatch => self.draw_input_line(frame, status_area, "Add watch (name:addr[:format])"),
-            DebuggerMode::SetBreakpoint => self.draw_input_line(frame, status_area, "Set breakpoint (hex)"),
+            DebuggerMode::SetBreakpoint => self.draw_input_line(frame, status_area, "Set breakpoint (instr# or 0xAddr)"),
             DebuggerMode::MemoryEdit => {
                 // Try to show current value at address
                 let mut prompt = String::from("Edit memory (addr:value)");
@@ -728,6 +728,7 @@ impl TuiDebugger {
             Line::from(""),
             Line::from(Span::styled("Breakpoints:", Style::default().fg(Color::Yellow))),
             Line::from("  b         Toggle breakpoint at cursor"),
+            Line::from("  Shift+B   Set/toggle breakpoint by number"),
             Line::from("  B         Clear all breakpoints"),
             Line::from(""),
             Line::from(Span::styled("Memory:", Style::default().fg(Color::Yellow))),
@@ -828,8 +829,13 @@ impl TuiDebugger {
             KeyCode::PageDown => self.page_down(vm),
             
             // Breakpoints
-            KeyCode::Char('b') => self.toggle_breakpoint_at_cursor(vm),
-            KeyCode::Char('B') => self.breakpoints.clear(),
+            KeyCode::Char('b') if modifiers == KeyModifiers::NONE => self.toggle_breakpoint_at_cursor(vm),
+            KeyCode::Char('B') if modifiers == KeyModifiers::SHIFT => {
+                // Enter breakpoint mode to set/toggle breakpoint by instruction number
+                self.mode = DebuggerMode::SetBreakpoint;
+                self.command_buffer.clear();
+            },
+            KeyCode::Char('B') if modifiers == KeyModifiers::NONE => self.breakpoints.clear(),
             
             // Memory operations
             KeyCode::Char('g') => self.mode = DebuggerMode::GotoAddress,
@@ -984,27 +990,44 @@ impl TuiDebugger {
         }
     }
     
-    fn handle_breakpoint_mode(&mut self, key: KeyCode) {
+    fn handle_breakpoint_mode(&mut self, key: KeyCode, vm: &VM) {
         match key {
             KeyCode::Esc => {
                 self.mode = DebuggerMode::Normal;
                 self.command_buffer.clear();
             }
             KeyCode::Enter => {
-                if let Ok(addr) = usize::from_str_radix(&self.command_buffer.trim_start_matches("0x"), 16) {
-                    if self.breakpoints.contains(&addr) {
-                        self.breakpoints.remove(&addr);
-                    } else {
-                        self.breakpoints.insert(addr);
+                let input = self.command_buffer.trim();
+                
+                // Try to parse as instruction number first (decimal)
+                if let Ok(instr_num) = input.parse::<usize>() {
+                    // Convert instruction number to address
+                    if instr_num < vm.instructions.len() {
+                        let addr = instr_num; // Instruction number is the address
+                        if self.breakpoints.contains(&addr) {
+                            self.breakpoints.remove(&addr);
+                        } else {
+                            self.breakpoints.insert(addr);
+                        }
+                    }
+                } else if input.starts_with("0x") {
+                    // Parse as hex address
+                    if let Ok(addr) = usize::from_str_radix(&input[2..], 16) {
+                        if self.breakpoints.contains(&addr) {
+                            self.breakpoints.remove(&addr);
+                        } else {
+                            self.breakpoints.insert(addr);
+                        }
                     }
                 }
+                
                 self.command_buffer.clear();
                 self.mode = DebuggerMode::Normal;
             }
             KeyCode::Backspace => {
                 self.command_buffer.pop();
             }
-            KeyCode::Char(c) if c.is_ascii_hexdigit() || c == 'x' => {
+            KeyCode::Char(c) if c.is_ascii_alphanumeric() || c == 'x' => {
                 self.command_buffer.push(c);
             }
             _ => {}
