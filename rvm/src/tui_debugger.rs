@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use std::io;
 use std::time::{Duration, Instant};
 use crossterm::{
@@ -69,9 +69,11 @@ pub struct TuiDebugger {
     pub(crate) stack_scroll: usize,
     pub(crate) output_scroll: usize,
     pub(crate) watches_scroll: usize,
+    pub(crate) breakpoints_scroll: usize,
     
     // Debugging state
-    pub(crate) breakpoints: HashSet<usize>,
+    pub(crate) breakpoints: HashMap<usize, bool>, // address -> enabled
+    pub(crate) selected_breakpoint: usize, // index in sorted breakpoints list
     pub(crate) memory_watches: Vec<MemoryWatch>,
     pub(crate) selected_watch: usize,
     
@@ -108,8 +110,10 @@ impl TuiDebugger {
             stack_scroll: 0,
             output_scroll: 0,
             watches_scroll: 0,
+            breakpoints_scroll: 0,
             
-            breakpoints: HashSet::new(),
+            breakpoints: HashMap::new(),
+            selected_breakpoint: 0,
             memory_watches: Vec::new(),
             selected_watch: 0,
             
@@ -293,10 +297,12 @@ impl TuiDebugger {
         let pcb = vm.registers[Register::Pcb as usize] as usize;
         let addr = pcb * vm.bank_size as usize + pc;
         
-        // Only stop at breakpoint.rs if we're in Running state (not already at a breakpoint.rs)
-        if self.breakpoints.contains(&addr) && matches!(vm.state, VMState::Running) {
-            vm.state = VMState::Breakpoint;
-            return;
+        // Only stop at enabled breakpoints if we're in Running state (not already at a breakpoint)
+        if let Some(&enabled) = self.breakpoints.get(&addr) {
+            if enabled && matches!(vm.state, VMState::Running) {
+                vm.state = VMState::Breakpoint;
+                return;
+            }
         }
         
         self.step_vm_no_break_check(vm);

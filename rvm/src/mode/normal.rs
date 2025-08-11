@@ -14,12 +14,16 @@ impl TuiDebugger {
 
             // Execution control
             KeyCode::Char(' ') | KeyCode::Char('s') => {
-                // If we're at a breakpoint.rs, clear the breakpoint.rs state and step
-                if matches!(vm.state, VMState::Breakpoint) {
-                    vm.state = VMState::Running;
-                    self.step_vm_no_break_check(vm);
+                // Special handling for Breakpoints panel - toggle enable/disable
+                if self.focused_pane == FocusedPane::Breakpoints {
+                    self.toggle_selected_breakpoint();
                 } else {
-                    self.step_vm(vm);
+                    // When stepping manually, we don't need to check for breakpoints
+                    // If we're at a breakpoint state, clear it first
+                    if matches!(vm.state, VMState::Breakpoint) {
+                        vm.state = VMState::Running;
+                    }
+                    self.step_vm_no_break_check(vm);
                 }
             }
             KeyCode::Char('r') => {
@@ -68,6 +72,11 @@ impl TuiDebugger {
                 self.command_buffer.clear();
             },
             KeyCode::Char('B') if modifiers == KeyModifiers::NONE => self.breakpoints.clear(),
+            
+            // Breakpoint panel operations when focused
+            KeyCode::Char('d') | KeyCode::Delete if self.focused_pane == FocusedPane::Breakpoints => {
+                self.delete_selected_breakpoint();
+            },
 
             // Memory operations
             KeyCode::Char('g') => self.mode = DebuggerMode::GotoAddress,
@@ -116,13 +125,13 @@ impl TuiDebugger {
     }
 
 
-    pub(crate) fn toggle_breakpoint_at_cursor(&mut self, vm: &VM) {
+    pub(crate) fn toggle_breakpoint_at_cursor(&mut self, _vm: &VM) {
         if self.focused_pane == FocusedPane::Disassembly {
             let addr = self.disasm_scroll;
-            if self.breakpoints.contains(&addr) {
+            if self.breakpoints.contains_key(&addr) {
                 self.breakpoints.remove(&addr);
             } else {
-                self.breakpoints.insert(addr);
+                self.breakpoints.insert(addr, true); // New breakpoints are enabled by default
             }
         }
     }
@@ -132,6 +141,40 @@ impl TuiDebugger {
             self.memory_watches.remove(self.selected_watch);
             if self.selected_watch > 0 && self.selected_watch >= self.memory_watches.len() {
                 self.selected_watch -= 1;
+            }
+        }
+    }
+    
+    pub(crate) fn toggle_selected_breakpoint(&mut self) {
+        if !self.breakpoints.is_empty() {
+            // Get sorted breakpoints to find the selected one
+            let mut sorted_breakpoints: Vec<_> = self.breakpoints.keys().cloned().collect();
+            sorted_breakpoints.sort();
+            
+            if self.selected_breakpoint < sorted_breakpoints.len() {
+                let addr = sorted_breakpoints[self.selected_breakpoint];
+                // Toggle the enabled state
+                if let Some(enabled) = self.breakpoints.get_mut(&addr) {
+                    *enabled = !*enabled;
+                }
+            }
+        }
+    }
+    
+    pub(crate) fn delete_selected_breakpoint(&mut self) {
+        if !self.breakpoints.is_empty() {
+            // Get sorted breakpoints to find the selected one
+            let mut sorted_breakpoints: Vec<_> = self.breakpoints.keys().cloned().collect();
+            sorted_breakpoints.sort();
+            
+            if self.selected_breakpoint < sorted_breakpoints.len() {
+                let addr = sorted_breakpoints[self.selected_breakpoint];
+                self.breakpoints.remove(&addr);
+                
+                // Adjust selected index if needed
+                if self.selected_breakpoint > 0 && self.selected_breakpoint >= self.breakpoints.len() {
+                    self.selected_breakpoint -= 1;
+                }
             }
         }
     }
@@ -162,7 +205,7 @@ impl TuiDebugger {
         };
     }
 
-    pub(crate) fn navigate_up(&mut self, vm: &VM) {
+    pub(crate) fn navigate_up(&mut self, _vm: &VM) {
         match self.focused_pane {
             FocusedPane::Disassembly => {
                 self.disasm_scroll = self.disasm_scroll.saturating_sub(1);
@@ -191,6 +234,12 @@ impl TuiDebugger {
                 if self.selected_watch > 0 {
                     self.selected_watch -= 1;
                     // Auto-scroll will happen in draw_watches
+                }
+            }
+            FocusedPane::Breakpoints => {
+                if self.selected_breakpoint > 0 {
+                    self.selected_breakpoint -= 1;
+                    // Auto-scroll will happen in draw_breakpoints
                 }
             }
             _ => {}
@@ -228,11 +277,19 @@ impl TuiDebugger {
                     // Auto-scroll will happen in draw_watches
                 }
             }
+            FocusedPane::Breakpoints => {
+                // Get sorted breakpoints count
+                let breakpoint_count = self.breakpoints.len();
+                if self.selected_breakpoint < breakpoint_count.saturating_sub(1) {
+                    self.selected_breakpoint += 1;
+                    // Auto-scroll will happen in draw_breakpoints
+                }
+            }
             _ => {}
         }
     }
 
-    pub(crate) fn navigate_left(&mut self, vm: &VM) {
+    pub(crate) fn navigate_left(&mut self, _vm: &VM) {
         match self.focused_pane {
             FocusedPane::Memory => {
                 // Move left by one column (1 byte)
@@ -262,7 +319,7 @@ impl TuiDebugger {
         }
     }
 
-    pub(crate) fn page_up(&mut self, vm: &VM) {
+    pub(crate) fn page_up(&mut self, _vm: &VM) {
         match self.focused_pane {
             FocusedPane::Disassembly => {
                 self.disasm_scroll = self.disasm_scroll.saturating_sub(20);

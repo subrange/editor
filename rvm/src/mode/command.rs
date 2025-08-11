@@ -54,7 +54,7 @@ impl TuiDebugger {
                 // Usage: break <addr>  - Set breakpoint.rs at address
                 if parts.len() > 1 {
                     if let Ok(addr) = usize::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
-                        self.breakpoints.insert(addr);
+                        self.breakpoints.insert(addr, true); // New breakpoints are enabled by default
                     }
                 }
             }

@@ -77,6 +77,44 @@ impl Opcode {
         }
     }
 
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0x00 => Some(Opcode::Nop),
+            0x01 => Some(Opcode::Add),
+            0x02 => Some(Opcode::Sub),
+            0x03 => Some(Opcode::And),
+            0x04 => Some(Opcode::Or),
+            0x05 => Some(Opcode::Xor),
+            0x06 => Some(Opcode::Sll),
+            0x07 => Some(Opcode::Srl),
+            0x08 => Some(Opcode::Slt),
+            0x09 => Some(Opcode::Sltu),
+            0x0A => Some(Opcode::Addi),
+            0x0B => Some(Opcode::Andi),
+            0x0C => Some(Opcode::Ori),
+            0x0D => Some(Opcode::Xori),
+            0x0E => Some(Opcode::Li),
+            0x0F => Some(Opcode::Slli),
+            0x10 => Some(Opcode::Srli),
+            0x11 => Some(Opcode::Load),
+            0x12 => Some(Opcode::Store),
+            0x13 => Some(Opcode::Jal),
+            0x14 => Some(Opcode::Jalr),
+            0x15 => Some(Opcode::Beq),
+            0x16 => Some(Opcode::Bne),
+            0x17 => Some(Opcode::Blt),
+            0x18 => Some(Opcode::Bge),
+            0x19 => Some(Opcode::Brk),
+            0x1A => Some(Opcode::Mul),
+            0x1B => Some(Opcode::Div),
+            0x1C => Some(Opcode::Mod),
+            0x1D => Some(Opcode::Muli),
+            0x1E => Some(Opcode::Divi),
+            0x1F => Some(Opcode::Modi),
+            _ => None,
+        }
+    }
+
     pub fn to_str(&self) -> &'static str {
         match self {
             Opcode::Nop => "NOP",
@@ -162,6 +200,30 @@ pub enum Register {
 }
 
 impl Register {
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(Register::R0),
+            1 => Some(Register::Pc),
+            2 => Some(Register::Pcb),
+            3 => Some(Register::Ra),
+            4 => Some(Register::Rab),
+            5 => Some(Register::R3),
+            6 => Some(Register::R4),
+            7 => Some(Register::R5),
+            8 => Some(Register::R6),
+            9 => Some(Register::R7),
+            10 => Some(Register::R8),
+            11 => Some(Register::R9),
+            12 => Some(Register::R10),
+            13 => Some(Register::R11),
+            14 => Some(Register::R12),
+            15 => Some(Register::R13),
+            16 => Some(Register::R14),
+            17 => Some(Register::R15),
+            _ => None,
+        }
+    }
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_uppercase().as_str() {
             "R0" => Some(Register::R0),
@@ -183,6 +245,29 @@ impl Register {
             "R14" => Some(Register::R14),
             "R15" => Some(Register::R15),
             _ => None,
+        }
+    }
+    
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Register::R0 => "R0",
+            Register::Pc => "PC",
+            Register::Pcb => "PCB",
+            Register::Ra => "RA",
+            Register::Rab => "RAB",
+            Register::R3 => "R3",
+            Register::R4 => "R4",
+            Register::R5 => "R5",
+            Register::R6 => "R6",
+            Register::R7 => "R7",
+            Register::R8 => "R8",
+            Register::R9 => "R9",
+            Register::R10 => "R10",
+            Register::R11 => "R11",
+            Register::R12 => "R12",
+            Register::R13 => "R13",
+            Register::R14 => "R14",
+            Register::R15 => "R15",
         }
     }
 

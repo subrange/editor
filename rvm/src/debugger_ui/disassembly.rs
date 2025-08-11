@@ -2,7 +2,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::prelude::{Color, Line, Modifier, Span, Style};
 use ratatui::widgets::{Block, Borders, List, ListItem};
-use ripple_asm::Register;
+use ripple_asm::{Register, Opcode};
 use crate::tui_debugger::TuiDebugger;
 use crate::vm::{Instr, VM};
 
@@ -22,25 +22,45 @@ impl TuiDebugger {
         for idx in start_idx..end_idx {
             let instr = &vm.instructions[idx];
             let is_current = idx == current_idx;
-            let has_breakpoint = self.breakpoints.contains(&idx);
+            let breakpoint_state = self.breakpoints.get(&idx).copied();
             let in_history = self.execution_history.contains(&idx);
 
             // Format the instruction
             let addr = format!("{:04X}", idx);
-            let mnemonic = self.format_instruction(instr);
+            let instr_spans = self.format_instruction_spans(instr);
 
             // Build the line with appropriate styling
             let mut spans = vec![];
 
-            // Breakpoint indicator
-            if has_breakpoint {
-                spans.push(Span::styled("● ", Style::default().fg(Color::Red)));
-            } else if is_current {
-                spans.push(Span::styled("→ ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)));
-            } else if in_history {
-                spans.push(Span::styled("· ", Style::default().fg(Color::Gray)));
+            // Breakpoint/current/history indicator (2 character width)
+            // First character: breakpoint status
+            // Second character: current position or space
+            
+            // First show breakpoint indicator if present
+            match breakpoint_state {
+                Some(true) => {
+                    // Active breakpoint
+                    spans.push(Span::styled("●", Style::default().fg(Color::Red)));
+                }
+                Some(false) => {
+                    // Inactive/disabled breakpoint - use yellow for better visibility
+                    spans.push(Span::styled("○", Style::default().fg(Color::Yellow)));
+                }
+                None => {
+                    // No breakpoint
+                    if in_history {
+                        spans.push(Span::styled("·", Style::default().fg(Color::Gray)));
+                    } else {
+                        spans.push(Span::raw(" "));
+                    }
+                }
+            }
+            
+            // Then show current position indicator
+            if is_current {
+                spans.push(Span::styled("→", Style::default().fg(Color::Rgb(0, 200, 0)).add_modifier(Modifier::BOLD)));
             } else {
-                spans.push(Span::raw("  "));
+                spans.push(Span::raw(" "));
             }
 
             // Address
@@ -55,9 +75,8 @@ impl TuiDebugger {
 
             spans.push(Span::raw("  "));
 
-            // Instruction
-            let instr_style = self.get_instruction_style(instr);
-            spans.push(Span::styled(mnemonic, instr_style));
+            // Add instruction spans with syntax highlighting
+            spans.extend(instr_spans);
 
             items.push(ListItem::new(Line::from(spans)));
         }
@@ -76,130 +95,205 @@ impl TuiDebugger {
         frame.render_widget(list, area);
     }
 
+    fn format_instruction_spans(&self, instr: &Instr) -> Vec<Span<'static>> {
+        let mut spans = vec![];
+        
+        // Get opcode name and style
+        let opcode_str = Self::opcode_name(instr.opcode);
+        let opcode_style = self.get_instruction_style(instr);
+        
+        // Convert u8 to Opcode enum for cleaner matching
+        let opcode = Opcode::from_u8(instr.opcode);
+        
+        match opcode {
+            Some(Opcode::Nop) => {
+                if instr.word0 == 0 && instr.word1 == 0 && instr.word2 == 0 && instr.word3 == 0 {
+                    spans.push(Span::styled("HALT", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+                } else {
+                    spans.push(Span::styled("NOP", opcode_style));
+                }
+            },
+            Some(Opcode::Add) | Some(Opcode::Sub) | Some(Opcode::And) | Some(Opcode::Or) | 
+            Some(Opcode::Xor) | Some(Opcode::Sll) | Some(Opcode::Srl) | Some(Opcode::Slt) | 
+            Some(Opcode::Sltu) | Some(Opcode::Mul) | Some(Opcode::Div) | Some(Opcode::Mod) => {
+                // R-type: op rd, rs, rt
+                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0)))); // Dark green
+                spans.push(Span::raw(", "));
+                spans.push(Span::styled(Self::register_name(instr.word2 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                spans.push(Span::styled(Self::register_name(instr.word3 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+            },
+            Some(Opcode::Addi) | Some(Opcode::Andi) | Some(Opcode::Ori) | Some(Opcode::Xori) | 
+            Some(Opcode::Slli) | Some(Opcode::Srli) | Some(Opcode::Muli) | Some(Opcode::Divi) | Some(Opcode::Modi) => {
+                // I-type with immediate: op rd, rs, imm
+                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                spans.push(Span::styled(Self::register_name(instr.word2 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                spans.push(Span::styled(format!("0x{:X}", instr.word3), Style::default().fg(Color::Rgb(255, 140, 0)))); // Orange
+            },
+            Some(Opcode::Li) => {
+                // LI: li rd, imm
+                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                spans.push(Span::styled(format!("0x{:X}", instr.word2), Style::default().fg(Color::Rgb(255, 140, 0)))); // Orange
+            },
+            Some(Opcode::Load) | Some(Opcode::Store) => {
+                // LOAD/STORE: op r, bank, addr
+                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                
+                // Bank operand (could be register or immediate)
+                if instr.word2 < 18 {
+                    spans.push(Span::styled(Self::register_name(instr.word2 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                } else {
+                    spans.push(Span::styled(format!("0x{:X}", instr.word2), Style::default().fg(Color::Rgb(255, 140, 0))));
+                }
+                spans.push(Span::raw(", "));
+                
+                // Address operand (could be register or immediate)
+                if instr.word3 < 18 {
+                    spans.push(Span::styled(Self::register_name(instr.word3 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                } else {
+                    spans.push(Span::styled(format!("0x{:X}", instr.word3), Style::default().fg(Color::Rgb(255, 140, 0))));
+                }
+            },
+            Some(Opcode::Jal) => {
+                // JAL: jal rd, addr
+                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                spans.push(Span::styled(format!("0x{:04X}", instr.word3), Style::default().fg(Color::Rgb(255, 140, 0))));
+            },
+            Some(Opcode::Jalr) => {
+                // JALR: jalr rd, rs
+                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                spans.push(Span::styled(Self::register_name(instr.word3 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+            },
+            Some(Opcode::Beq) | Some(Opcode::Bne) | Some(Opcode::Blt) | Some(Opcode::Bge) => {
+                // Branch: beq/bne/blt/bge rs, rt, offset
+                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                spans.push(Span::styled(Self::register_name(instr.word2 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
+                spans.push(Span::raw(", "));
+                let offset = instr.word3 as i16;
+                spans.push(Span::styled(format!("{}", offset), Style::default().fg(Color::Rgb(255, 140, 0))));
+            },
+            Some(Opcode::Brk) => {
+                // BRK
+                spans.push(Span::styled("BRK", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+            },
+            None => {
+                spans.push(Span::styled(format!("??? 0x{:02X}", instr.opcode), Style::default().fg(Color::DarkGray)));
+            },
+        }
+        
+        spans
+    }
+    
     pub(crate) fn format_instruction(&self, instr: &Instr) -> String {
         let opcode_str = Self::opcode_name(instr.opcode);
+        let opcode = Opcode::from_u8(instr.opcode);
 
-        match instr.opcode {
-            0x00 => {
+        match opcode {
+            Some(Opcode::Nop) => {
                 if instr.word0 == 0 && instr.word1 == 0 && instr.word2 == 0 && instr.word3 == 0 {
                     "HALT".to_string()
                 } else {
                     "NOP".to_string()
                 }
             },
-            0x01..=0x09 | 0x1A..=0x1C => {
+            Some(Opcode::Add) | Some(Opcode::Sub) | Some(Opcode::And) | Some(Opcode::Or) | 
+            Some(Opcode::Xor) | Some(Opcode::Sll) | Some(Opcode::Srl) | Some(Opcode::Slt) | 
+            Some(Opcode::Sltu) | Some(Opcode::Mul) | Some(Opcode::Div) | Some(Opcode::Mod) => {
                 let rd = Self::register_name(instr.word1 as u8);
                 let rs = Self::register_name(instr.word2 as u8);
                 let rt = Self::register_name(instr.word3 as u8);
                 format!("{:<6} {}, {}, {}", opcode_str, rd, rs, rt)
             },
-            0x0A..=0x0D | 0x0F | 0x10 | 0x1D..=0x1F => {
+            Some(Opcode::Addi) | Some(Opcode::Andi) | Some(Opcode::Ori) | Some(Opcode::Xori) | 
+            Some(Opcode::Slli) | Some(Opcode::Srli) | Some(Opcode::Muli) | Some(Opcode::Divi) | Some(Opcode::Modi) => {
                 let rd = Self::register_name(instr.word1 as u8);
                 let rs = Self::register_name(instr.word2 as u8);
                 format!("{:<6} {}, {}, 0x{:X}", opcode_str, rd, rs, instr.word3)
             },
-            0x0E => {
+            Some(Opcode::Li) => {
                 let rd = Self::register_name(instr.word1 as u8);
                 format!("{:<6} {}, 0x{:X}", opcode_str, rd, instr.word2)
             },
-            0x11 | 0x12 => {
+            Some(Opcode::Load) | Some(Opcode::Store) => {
                 let r = Self::register_name(instr.word1 as u8);
                 let bank = Self::format_operand(instr.word2);
                 let addr = Self::format_operand(instr.word3);
                 format!("{:<6} {}, {}, {}", opcode_str, r, bank, addr)
             },
-            0x13 => {
+            Some(Opcode::Jal) => {
                 let rd = Self::register_name(instr.word1 as u8);
                 format!("{:<6} {}, 0x{:04X}", opcode_str, rd, instr.word3)
             },
-            0x14 => {
+            Some(Opcode::Jalr) => {
                 let rd = Self::register_name(instr.word1 as u8);
                 let rs = Self::register_name(instr.word3 as u8);
                 format!("{:<6} {}, {}", opcode_str, rd, rs)
             },
-            0x15..=0x18 => {
+            Some(Opcode::Beq) | Some(Opcode::Bne) | Some(Opcode::Blt) | Some(Opcode::Bge) => {
                 let rs = Self::register_name(instr.word1 as u8);
                 let rt = Self::register_name(instr.word2 as u8);
                 let offset = instr.word3 as i16;
                 format!("{:<6} {}, {}, {}", opcode_str, rs, rt, offset)
             },
-            0x19 => "BRK".to_string(),
-            _ => format!("??? 0x{:02X}", instr.opcode),
+            Some(Opcode::Brk) => "BRK".to_string(),
+            None => format!("??? 0x{:02X}", instr.opcode),
         }
     }
 
     fn get_instruction_style(&self, instr: &Instr) -> Style {
-        match instr.opcode {
-            0x00 if instr.word1 == 0 && instr.word2 == 0 && instr.word3 == 0 => {
+        let opcode = Opcode::from_u8(instr.opcode);
+        
+        match opcode {
+            Some(Opcode::Nop) if instr.word1 == 0 && instr.word2 == 0 && instr.word3 == 0 => {
+                // HALT instruction (all zeros)
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
             },
-            0x19 => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            0x13..=0x18 => Style::default().fg(Color::Yellow),
-            0x11 | 0x12 => Style::default().fg(Color::Blue),
-            0x01..=0x09 | 0x1A..=0x1C => Style::default().fg(Color::Green),
+            Some(Opcode::Brk) => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            Some(Opcode::Jal) | Some(Opcode::Jalr) | Some(Opcode::Beq) | 
+            Some(Opcode::Bne) | Some(Opcode::Blt) | Some(Opcode::Bge) => {
+                // Jump and branch instructions
+                Style::default().fg(Color::Yellow)
+            },
+            Some(Opcode::Load) | Some(Opcode::Store) => {
+                // Memory operations
+                Style::default().fg(Color::Blue)
+            },
+            Some(Opcode::Add) | Some(Opcode::Sub) | Some(Opcode::And) | Some(Opcode::Or) | 
+            Some(Opcode::Xor) | Some(Opcode::Sll) | Some(Opcode::Srl) | Some(Opcode::Slt) | 
+            Some(Opcode::Sltu) | Some(Opcode::Mul) | Some(Opcode::Div) | Some(Opcode::Mod) => {
+                // Arithmetic and logical operations
+                Style::default().fg(Color::Rgb(0, 200, 0))
+            },
             _ => Style::default().fg(Color::White),
         }
     }
 
     fn opcode_name(opcode: u8) -> &'static str {
-        match opcode {
-            0x00 => "NOP",
-            0x01 => "ADD",
-            0x02 => "SUB",
-            0x03 => "AND",
-            0x04 => "OR",
-            0x05 => "XOR",
-            0x06 => "SLL",
-            0x07 => "SRL",
-            0x08 => "SLT",
-            0x09 => "SLTU",
-            0x0A => "ADDI",
-            0x0B => "ANDI",
-            0x0C => "ORI",
-            0x0D => "XORI",
-            0x0E => "LI",
-            0x0F => "SLLI",
-            0x10 => "SRLI",
-            0x11 => "LOAD",
-            0x12 => "STORE",
-            0x13 => "JAL",
-            0x14 => "JALR",
-            0x15 => "BEQ",
-            0x16 => "BNE",
-            0x17 => "BLT",
-            0x18 => "BGE",
-            0x19 => "BRK",
-            0x1A => "MUL",
-            0x1B => "DIV",
-            0x1C => "MOD",
-            0x1D => "MULI",
-            0x1E => "DIVI",
-            0x1F => "MODI",
-            _ => "???",
+        // Use the from_u8 and to_str methods from Opcode
+        match Opcode::from_u8(opcode) {
+            Some(op) => op.to_str(),
+            None => "???",
         }
     }
 
     fn register_name(reg: u8) -> &'static str {
-        match reg {
-            0 => "R0",
-            1 => "PC",
-            2 => "PCB",
-            3 => "RA",
-            4 => "RAB",
-            5 => "R3",
-            6 => "R4",
-            7 => "R5",
-            8 => "R6",
-            9 => "R7",
-            10 => "R8",
-            11 => "R9",
-            12 => "R10",
-            13 => "R11",
-            14 => "R12",
-            15 => "R13",
-            16 => "R14",
-            17 => "R15",
-            _ => "??",
+        match Register::from_u8(reg) {
+            Some(r) => r.to_str(),
+            None => "??",
         }
     }
 
