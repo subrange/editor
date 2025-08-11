@@ -10,7 +10,7 @@ The macro system supports function-like macros with @-style invocation and built
 2.
 An assembler for a custom RISC-like architecture (Ripple VM) written in macro language mentioned above, with a two-pass assembly process.
 3.
-A Ripple C toolchain that compiles C99 code to Brainfuck, including a C compiler (rcc), assembler (rasm), linker (rlink), an rbt CLI tool for quick run, and a runtime library for standard C functions.
+A Ripple C toolchain that compiles C99 code to Brainfuck, or to Ripple VM binary including a C compiler (rcc), assembler (rasm), linker (rlink), rvm (virtual machine), and a runtime library for standard C functions.
 
 ## Development Commands
 
@@ -295,9 +295,24 @@ This preserves in `build/`:
 - `.ir` - Intermediate representation files
 - `.asm` - Generated assembly
 - `.pobj` - Assembled object files
+- `.bin` - Final binary output
+
+If ran with --backend bf, then instead of `.bin` you will have:
 - `.bfm` - Linked Brainfuck macro output
 - `_expanded.bf` - Expanded macro code
 
 You can then manually inspect or run individual compilation steps.
 
-VERY IMPORTANT: ALWAYS read files in full with READ, to fully understand the context
+# RVM — Ripple Virtual Machine
+
+Usage: rvm [OPTIONS] <binary-file>
+
+Run a Ripple VM binary program
+
+OPTIONS:
+-b, --bank-size <size>   Set bank size (default: 4096)
+-d, --debug              Enable debug mode (step through execution)
+-v, --verbose            Show VM state during execution
+-h, --help               Show this help message
+
+VERY IMPORTANT: ALWAYS read all files in full with READ tool, to fully understand the context. NEVER read in full expanded bf files.

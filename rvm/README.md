@@ -31,11 +31,22 @@ rvm -v program.bin
 rvm -d program.bin
 
 # Specify custom bank size
-rvm -b 32 program.bin
+rvm -b 4096 program.bin
+
+# Specify custom memory size (in words)
+rvm -m 32768 program.bin
 
 # Or use cargo run
 cargo run --release -- program.bin
 ```
+
+### Debug Mode Commands
+
+When running with `-d`, the following commands are available:
+- **Enter** - Step one instruction
+- **r** - Run to completion
+- **c** - Continue from breakpoint (after BRK)
+- **q** - Quit debugger
 
 ## Testing
 
@@ -80,6 +91,24 @@ All opcodes from 0x00 to 0x1F are implemented, including:
 - Control flow (JAL, JALR, BEQ, BNE, BLT, BGE)
 - Extended arithmetic (MUL, DIV, MOD and immediate versions)
 - Special (NOP, HALT, BRK)
+
+### BRK Instruction Behavior
+
+The BRK (breakpoint) instruction behaves differently depending on the execution mode:
+
+#### Normal Mode (without -d flag)
+- Dumps complete VM state to stderr including:
+  - All register values (hex and decimal)
+  - First 32 words of memory
+  - Current instruction details
+- **Halts execution immediately**
+- Useful for debugging crashes and inspecting state
+
+#### Debug Mode (with -d flag)
+- Prints breakpoint notification
+- **Pauses execution** without halting
+- Allows continuing with 'c' command or single-stepping
+- Acts as a traditional debugger breakpoint
 
 ## Program Format
 

@@ -4,3 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ripple-asm = { path = "../src/ripple-asm" }
+colored = "2.1"

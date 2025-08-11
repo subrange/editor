@@ -5,6 +5,7 @@ pub mod assembler;
 pub mod linker;
 pub mod macro_formatter;
 pub mod virtual_instructions;
+pub mod disassembler;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;
@@ -22,6 +23,7 @@ pub use assembler::RippleAssembler;
 pub use linker::{Linker, LinkedProgram};
 pub use macro_formatter::MacroFormatter;
 pub use virtual_instructions::{VirtualInstructionRegistry, create_custom_instruction};
+pub use disassembler::Disassembler;
 
 // Re-export for convenience
 pub fn assemble(source: &str) -> Result<ObjectFile, Vec<String>> {

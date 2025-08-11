@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use ripple_asm::{RippleAssembler, AssemblerOptions, MacroFormatter, Opcode, Register, InstructionFormat};
+use ripple_asm::{RippleAssembler, AssemblerOptions, MacroFormatter, Opcode, Register, InstructionFormat, Disassembler};
 use ripple_asm::virtual_instructions::VirtualInstructionRegistry;
 use std::fs;
 use std::path::PathBuf;
@@ -63,6 +63,16 @@ enum Commands {
     Check {
         /// Input assembly file
         input: PathBuf,
+    },
+    
+    /// Disassemble binary file to assembly
+    Disassemble {
+        /// Input binary file (.bin)
+        input: PathBuf,
+        
+        /// Output assembly file (.asm)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
     },
 }
 
@@ -414,6 +424,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for error in errors {
                         eprintln!("  - {}", error);
                     }
+                    std::process::exit(1);
+                }
+            }
+        }
+        
+        Commands::Disassemble { input, output } => {
+            let binary = fs::read(&input)?;
+            let mut disassembler = Disassembler::new();
+            
+            match disassembler.disassemble_binary(&binary) {
+                Ok(assembly) => {
+                    let output_path = output.unwrap_or_else(|| {
+                        let mut path = input.clone();
+                        path.set_extension("asm");
+                        path
+                    });
+                    
+                    fs::write(&output_path, assembly)?;
+                    println!("✓ Disassembled to {}", output_path.display());
+                }
+                Err(error) => {
+                    eprintln!("Disassembly failed: {}", error);
                     std::process::exit(1);
                 }
             }

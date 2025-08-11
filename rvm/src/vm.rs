@@ -1,4 +1,6 @@
 use std::collections::VecDeque;
+use ripple_asm::Register;
+use crate::constants::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instr {
@@ -35,6 +37,7 @@ pub enum VMState {
     Setup,
     Running,
     Halted,
+    Breakpoint,  // Hit a BRK instruction in debug mode
     Error(String),
 }
 
@@ -54,6 +57,9 @@ pub struct VM {
     // Configuration
     pub bank_size: u16,
     
+    // Debug mode flag
+    pub debug_mode: bool,
+    
     // Do not increment PC flag (set by jump/branch instructions)
     skip_pc_increment: bool,
     
@@ -62,22 +68,21 @@ pub struct VM {
     output_ready: bool,
 }
 
-// Register indices
-const R0: usize = 0;   // Always reads 0
-const PC: usize = 1;   // Program counter (offset within bank)
-const PCB: usize = 2;  // Program counter bank
-#[allow(dead_code)]
-const RA: usize = 3;   // Return address (low)
-const RAB: usize = 4;  // Return address bank (high)
 
 impl VM {
     pub fn new(bank_size: u16) -> Self {
+        Self::with_memory_size(bank_size, DEFAULT_MEMORY_SIZE)
+    }
+    
+    pub fn with_memory_size(bank_size: u16, memory_size: usize) -> Self {
+        let memory_size = memory_size.max(MIN_MEMORY_SIZE);
         VM {
             instructions: Vec::new(),
-            memory: vec![0; 65536], // 64K memory space
-            registers: [0; 18],
+            memory: vec![0; memory_size],
+            registers: [0; MAX_REGISTERS],
             state: VMState::Setup,
             bank_size,
+            debug_mode: false,
             skip_pc_increment: false,
             output_buffer: VecDeque::new(),
             output_ready: true,
@@ -86,12 +91,12 @@ impl VM {
     
     #[allow(dead_code)]
     pub fn new_default() -> Self {
-        Self::new(4096) // Default bank size
+        Self::new(DEFAULT_BANK_SIZE)
     }
     
     pub fn load_binary(&mut self, binary: &[u8]) -> Result<(), String> {
         // Check magic number
-        if binary.len() < 5 || &binary[0..5] != b"RLINK" {
+        if binary.len() < 5 || &binary[0..5] != MAGIC_RLINK {
             return Err("Invalid binary format: missing RLINK magic".to_string());
         }
         
@@ -118,7 +123,7 @@ impl VM {
         // Read instructions
         self.instructions.clear();
         for i in 0..instruction_count {
-            if pos + 8 > binary.len() {
+            if pos + INSTRUCTION_SIZE > binary.len() {
                 return Err(format!("Invalid binary: missing instruction {}", i));
             }
             
@@ -130,7 +135,7 @@ impl VM {
                 word3: u16::from_le_bytes([binary[pos + 6], binary[pos + 7]]),
             };
             self.instructions.push(instr);
-            pos += 8;
+            pos += INSTRUCTION_SIZE;
         }
         
         // Read data section size
@@ -149,20 +154,20 @@ impl VM {
         
         // Load data into memory starting at address 2 (after I/O registers)
         for (i, &byte) in binary[pos..pos + data_size].iter().enumerate() {
-            if i < self.memory.len() - 2 {
-                self.memory[i + 2] = byte as u16;
+            if i < self.memory.len() - DATA_SECTION_OFFSET {
+                self.memory[i + DATA_SECTION_OFFSET] = byte as u16;
             }
         }
         
         // Set entry point
         let entry_bank = (entry_point / (self.bank_size as u32 * 4)) as u16;
         let entry_offset = ((entry_point / 4) % (self.bank_size as u32)) as u16;
-        self.registers[PCB] = entry_bank;
-        self.registers[PC] = entry_offset;
+        self.registers[Register::Pcb as usize] = entry_bank;
+        self.registers[Register::Pc as usize] = entry_offset;
         
         // Initialize memory-mapped I/O
-        self.memory[0] = 0; // OUT register
-        self.memory[1] = 1; // OUT_FLAG (ready)
+        self.memory[MMIO_OUT] = 0;
+        self.memory[MMIO_OUT_FLAG] = OUTPUT_READY;
         
         self.state = VMState::Running;
         Ok(())
@@ -172,13 +177,17 @@ impl VM {
         match self.state {
             VMState::Running => {},
             VMState::Halted => return Ok(()),
+            VMState::Breakpoint => {
+                // In debug mode at breakpoint, allow single stepping
+                // State will be reset to Running by the debugger
+            },
             VMState::Error(ref e) => return Err(e.clone()),
             VMState::Setup => return Err("VM not initialized".to_string()),
         }
         
         // Calculate instruction address
-        let pc = self.registers[PC];
-        let pcb = self.registers[PCB];
+        let pc = self.registers[Register::Pc as usize];
+        let pcb = self.registers[Register::Pcb as usize];
         let instr_idx = (pcb as usize * self.bank_size as usize) + pc as usize;
         
         if instr_idx >= self.instructions.len() {
@@ -195,16 +204,16 @@ impl VM {
         
         // Increment PC unless instruction set the skip flag
         if !self.skip_pc_increment {
-            let mut new_pc = self.registers[PC] as u32 + 1;
-            let mut new_pcb = self.registers[PCB] as u32;
+            let mut new_pc = self.registers[Register::Pc as usize] as u32 + 1;
+            let mut new_pcb = self.registers[Register::Pcb as usize] as u32;
             
             if new_pc >= self.bank_size as u32 {
                 new_pc = 0;
                 new_pcb += 1;
             }
             
-            self.registers[PC] = (new_pc & 0xFFFF) as u16;
-            self.registers[PCB] = (new_pcb & 0xFFFF) as u16;
+            self.registers[Register::Pc as usize] = (new_pc & 0xFFFF) as u16;
+            self.registers[Register::Pcb as usize] = (new_pcb & 0xFFFF) as u16;
         }
         
         Ok(())
@@ -212,7 +221,7 @@ impl VM {
     
     fn execute_instruction(&mut self, instr: Instr) -> Result<(), String> {
         // R0 always reads as 0
-        self.registers[R0] = 0;
+        self.registers[Register::R0 as usize] = 0;
         
         match instr.opcode {
             0x00 => {
@@ -394,12 +403,12 @@ impl VM {
                         self.memory[mem_addr] = value;
                         
                         // Handle memory-mapped I/O
-                        if mem_addr == 0 {
+                        if mem_addr == MMIO_OUT {
                             // Output register
                             self.output_buffer.push_back((value & 0xFF) as u8);
                             self.output_ready = false;
                             // Simulate output delay
-                            self.memory[1] = 0;
+                            self.memory[MMIO_OUT_FLAG] = OUTPUT_BUSY;
                         }
                     } else {
                         return Err(format!("STORE: memory address out of bounds: {}", mem_addr));
@@ -416,12 +425,12 @@ impl VM {
                 
                 // Save return address in rd (typically RA)
                 if rd < 18 {
-                    self.registers[rd] = self.registers[PC].wrapping_add(1);
+                    self.registers[rd] = self.registers[Register::Pc as usize].wrapping_add(1);
                 }
-                self.registers[RAB] = self.registers[PCB];
+                self.registers[Register::Rab as usize] = self.registers[Register::Pcb as usize];
                 
                 // Jump to address
-                self.registers[PC] = addr;
+                self.registers[Register::Pc as usize] = addr;
                 self.skip_pc_increment = true;
             },
             0x14 => { // JALR
@@ -429,10 +438,10 @@ impl VM {
                 let rs = instr.word3 as usize; // Note: rs is in word3 for JALR
                 if rd < 18 && rs < 18 {
                     // Save return address
-                    self.registers[rd] = self.registers[PC].wrapping_add(1);
-                    self.registers[RAB] = self.registers[PCB];
+                    self.registers[rd] = self.registers[Register::Pc as usize].wrapping_add(1);
+                    self.registers[Register::Rab as usize] = self.registers[Register::Pcb as usize];
                     // Jump
-                    self.registers[PC] = self.registers[rs];
+                    self.registers[Register::Pc as usize] = self.registers[rs];
                     self.skip_pc_increment = true;
                 }
             },
@@ -442,8 +451,8 @@ impl VM {
                 let offset = instr.word3 as i16;
                 if rs < 18 && rt < 18 {
                     if self.registers[rs] == self.registers[rt] {
-                        let new_pc = (self.registers[PC] as i16).wrapping_add(offset);
-                        self.registers[PC] = new_pc as u16;
+                        let new_pc = (self.registers[Register::Pc as usize] as i16).wrapping_add(offset);
+                        self.registers[Register::Pc as usize] = new_pc as u16;
                         self.skip_pc_increment = true;
                     }
                 }
@@ -454,8 +463,8 @@ impl VM {
                 let offset = instr.word3 as i16;
                 if rs < 18 && rt < 18 {
                     if self.registers[rs] != self.registers[rt] {
-                        let new_pc = (self.registers[PC] as i16).wrapping_add(offset);
-                        self.registers[PC] = new_pc as u16;
+                        let new_pc = (self.registers[Register::Pc as usize] as i16).wrapping_add(offset);
+                        self.registers[Register::Pc as usize] = new_pc as u16;
                         self.skip_pc_increment = true;
                     }
                 }
@@ -468,8 +477,8 @@ impl VM {
                     let rs_val = self.registers[rs] as i16;
                     let rt_val = self.registers[rt] as i16;
                     if rs_val < rt_val {
-                        let new_pc = (self.registers[PC] as i16).wrapping_add(offset);
-                        self.registers[PC] = new_pc as u16;
+                        let new_pc = (self.registers[Register::Pc as usize] as i16).wrapping_add(offset);
+                        self.registers[Register::Pc as usize] = new_pc as u16;
                         self.skip_pc_increment = true;
                     }
                 }
@@ -482,15 +491,65 @@ impl VM {
                     let rs_val = self.registers[rs] as i16;
                     let rt_val = self.registers[rt] as i16;
                     if rs_val >= rt_val {
-                        let new_pc = (self.registers[PC] as i16).wrapping_add(offset);
-                        self.registers[PC] = new_pc as u16;
+                        let new_pc = (self.registers[Register::Pc as usize] as i16).wrapping_add(offset);
+                        self.registers[Register::Pc as usize] = new_pc as u16;
                         self.skip_pc_increment = true;
                     }
                 }
             },
             
             0x19 => { // BRK - debugger breakpoint
-                // For now, just continue
+                if self.debug_mode {
+                    // In debug mode, just pause execution
+                    self.state = VMState::Breakpoint;
+                    // Don't print here - the debugger will handle it
+                } else {
+                    // In normal mode, dump state and halt
+                    eprintln!("\n=== BRK: VM State Dump ===");
+                    eprintln!("PC: {} (bank: {})", self.registers[Register::Pc as usize], self.registers[Register::Pcb as usize]);
+                    eprintln!("RA: {} (bank: {})", self.registers[Register::Ra as usize], self.registers[Register::Rab as usize]);
+                    
+                    eprintln!("\nRegisters:");
+                    eprintln!("  R0:  0x{:04X} ({})", self.registers[Register::R0 as usize], self.registers[Register::R0 as usize]);
+                    eprintln!("  R3:  0x{:04X} ({})", self.registers[Register::R3 as usize], self.registers[Register::R3 as usize]);
+                    eprintln!("  R4:  0x{:04X} ({})", self.registers[Register::R4 as usize], self.registers[Register::R4 as usize]);
+                    eprintln!("  R5:  0x{:04X} ({})", self.registers[Register::R5 as usize], self.registers[Register::R5 as usize]);
+                    eprintln!("  R6:  0x{:04X} ({})", self.registers[Register::R6 as usize], self.registers[Register::R6 as usize]);
+                    eprintln!("  R7:  0x{:04X} ({})", self.registers[Register::R7 as usize], self.registers[Register::R7 as usize]);
+                    eprintln!("  R8:  0x{:04X} ({})", self.registers[Register::R8 as usize], self.registers[Register::R8 as usize]);
+                    eprintln!("  R9:  0x{:04X} ({})", self.registers[Register::R9 as usize], self.registers[Register::R9 as usize]);
+                    eprintln!("  R10: 0x{:04X} ({})", self.registers[Register::R10 as usize], self.registers[Register::R10 as usize]);
+                    eprintln!("  R11: 0x{:04X} ({})", self.registers[Register::R11 as usize], self.registers[Register::R11 as usize]);
+                    eprintln!("  R12: 0x{:04X} ({})", self.registers[Register::R12 as usize], self.registers[Register::R12 as usize]);
+                    eprintln!("  R13: 0x{:04X} ({})", self.registers[Register::R13 as usize], self.registers[Register::R13 as usize]);
+                    eprintln!("  R14: 0x{:04X} ({})", self.registers[Register::R14 as usize], self.registers[Register::R14 as usize]);
+                    eprintln!("  R15: 0x{:04X} ({})", self.registers[Register::R15 as usize], self.registers[Register::R15 as usize]);
+                    
+                    eprintln!("\nMemory (first {} words):", DEBUG_MEMORY_DISPLAY_WORDS);
+                    for i in (0..DEBUG_MEMORY_DISPLAY_WORDS.min(self.memory.len())).step_by(DEBUG_MEMORY_WORDS_PER_LINE) {
+                        eprint!("  {:04X}: ", i);
+                        for j in 0..DEBUG_MEMORY_WORDS_PER_LINE {
+                            if i + j < self.memory.len() {
+                                eprint!("{:04X} ", self.memory[i + j]);
+                            }
+                        }
+                        eprintln!();
+                    }
+                    
+                    eprintln!("\nInstruction at PC:");
+                    let pc_val = self.registers[Register::Pc as usize] as usize;
+                    if pc_val < self.instructions.len() {
+                        let inst = &self.instructions[pc_val];
+                        eprintln!("  [{:04X}] opcode: 0x{:02X}, w1: 0x{:04X}, w2: 0x{:04X}, w3: 0x{:04X}", 
+                            pc_val, inst.opcode, inst.word1, inst.word2, inst.word3);
+                    }
+                    
+                    eprintln!("=========================\n");
+                    
+                    // Halt execution
+                    self.state = VMState::Halted;
+                    return Ok(());
+                }
             },
             
             // Multiplication and division
@@ -565,7 +624,7 @@ impl VM {
         }
         
         // R0 always reads as 0 (enforce after every instruction)
-        self.registers[R0] = 0;
+        self.registers[Register::R0 as usize] = 0;
         
         // Simulate output ready after some cycles (instant for now)
         if !self.output_ready {
@@ -579,12 +638,28 @@ impl VM {
     pub fn run(&mut self) -> Result<(), String> {
         while matches!(self.state, VMState::Running) {
             self.step()?;
+            // Stop if we hit a breakpoint in debug mode
+            if matches!(self.state, VMState::Breakpoint) {
+                break;
+            }
         }
         Ok(())
     }
     
     pub fn get_output(&mut self) -> Vec<u8> {
         self.output_buffer.drain(..).collect()
+    }
+    
+    pub fn get_current_instruction(&self) -> Option<Instr> {
+        let pc = self.registers[Register::Pc as usize];
+        let pcb = self.registers[Register::Pcb as usize];
+        let idx = (pcb as usize * self.bank_size as usize) + pc as usize;
+        
+        if idx < self.instructions.len() {
+            Some(self.instructions[idx])
+        } else {
+            None
+        }
     }
     
     #[allow(dead_code)]
