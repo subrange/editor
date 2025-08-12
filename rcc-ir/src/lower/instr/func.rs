@@ -34,8 +34,13 @@ impl ModuleLowerer {
             let is_pointer = match arg {
                 Value::Temp(tid) => {
                     // Check if this temp has fat pointer components
+                    // This includes:
+                    // 1. Known fat pointers from GEP operations
+                    // 2. Local allocas (stack pointers)
+                    // 3. Loaded pointers that have bank tags tracked
                     self.fat_ptr_components.contains_key(tid)
                         || self.local_offsets.contains_key(tid)
+                        || self.reg_alloc.is_tracked(&Self::bank_temp_key(*tid))
                 }
                 Value::Global(_) => true, // Globals are always pointers
                 Value::FatPtr(_) => true,

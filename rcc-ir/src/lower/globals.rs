@@ -18,8 +18,8 @@ impl ModuleLowerer {
             IrType::I32 => 2, // 32-bit takes 2 words
             IrType::Ptr(_) => 1, // Pointers are 16-bit
             IrType::Array { size, .. } if is_string => {
-                // For strings, allocate space for all characters
-                (*size as u16 + 1) / 2 // Round up for 16-bit words
+                // For strings, allocate one word per character (including null terminator)
+                *size as u16  // Each character gets its own word
             }
             _ => 1, // Default to 1 word
         };
