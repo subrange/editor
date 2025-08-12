@@ -101,39 +101,100 @@ impl ModuleLowerer {
 
                     // Note: ptr_value_name is already pinned from above
                     
+                    // Pin the bank register before allocating dest_reg
+                    let bank_value = self.reg_alloc.get_register_value(bank);
+                    if let Some(bank_name) = bank_value {
+                        self.reg_alloc.pin_value(bank_name.clone());
+                    }
+                    
                     // Allocate destination register AFTER we have final_ptr_reg and bank
                     let result_key = Self::temp_name(*result);
                     let dest_reg = self.get_reg(result_key.clone());
                     self.value_locations.insert(result_key, Location::Register(dest_reg));
 
+                    // Unpin the bank register
+                    if let Some(bank_name) = self.reg_alloc.get_register_value(bank) {
+                        self.reg_alloc.unpin_value(&bank_name);
+                    }
+
                     // Load address part
                     self.emit(AsmInst::Load(dest_reg, bank.clone(), final_ptr_reg));
 
+                    // Capture the original bank value BEFORE any allocations
+                    let original_bank_value = self.reg_alloc.get_register_value(bank);
+                    
                     // Load bank tag from next word
                     let next_addr_name = self.generate_temp_name("next_addr");
-                    let next_addr = self.get_reg(next_addr_name);
+                    let next_addr = self.get_reg(next_addr_name.clone());
                     self.emit(AsmInst::AddI(next_addr, final_ptr_reg, 1));
                     
-                    // Get bank_reg AFTER using next_addr to avoid spilling next_addr before use
+                    // Pin next_addr to prevent it from being spilled
+                    self.reg_alloc.pin_value(next_addr_name.clone());
+                    
+                    // Get bank_reg for the result
                     let bank_name = self.generate_temp_name("load_bank");
                     let bank_reg = self.get_reg(bank_name);
-                    self.emit(AsmInst::Load(bank_reg, bank.clone(), next_addr));
+                    
+                    // Now we need to get the bank register for the load
+                    // The bank register tells us which memory bank the fat pointer is stored in
+                    // It might have been spilled when we allocated bank_reg
+                    // Use the ORIGINAL bank value we captured before allocations
+                    self.emit(AsmInst::Comment(format!("Checking bank register status for loading bank tag")));
+                    let load_bank = if let Some(ref bname) = original_bank_value {
+                        self.emit(AsmInst::Comment(format!("Bank value was: {}", bname)));
+                        // Check if the bank register is still valid
+                        if self.reg_alloc.get_register_value(bank) == Some(bname.clone()) {
+                            // Still valid, use it
+                            self.emit(AsmInst::Comment(format!("Bank register still valid in {:?}", bank)));
+                            bank
+                        } else {
+                            // Was spilled, try to reload it
+                            self.emit(AsmInst::Comment(format!("Bank register was spilled, reloading {}", bname)));
+                            let reloaded = self.reg_alloc.reload(bname.clone());
+                            let instructions = self.reg_alloc.take_instructions();
+                            self.emit_many(instructions);
+                            self.emit(AsmInst::Comment(format!("Reloaded bank to {:?}", reloaded)));
+                            reloaded
+                        }
+                    } else {
+                        // No bank value tracked, we need to regenerate it
+                        // Since we're loading from a pointer on the stack, it's bank 1
+                        self.emit(AsmInst::Comment(format!("No bank value tracked, generating stack bank")));
+                        let temp_bank_name = self.generate_temp_name("stack_bank_load");
+                        let temp_bank = self.get_reg(temp_bank_name);
+                        self.emit(AsmInst::LI(temp_bank, 1));
+                        temp_bank
+                    };
+                    
+                    // Unpin next_addr
+                    self.reg_alloc.unpin_value(&next_addr_name);
+                    
+                    self.emit(AsmInst::Load(bank_reg, load_bank, next_addr));
 
                     // Store bank tag for later use
                     let bank_temp_key = Self::bank_temp_key(*result);
                     self.value_locations.insert(bank_temp_key.clone(), Location::Register(bank_reg));
                     self.reg_alloc.mark_in_use(bank_reg, bank_temp_key);
 
-                    // Mark as having unknown bank since it's runtime-determined
-                    
                     // Now safe to unpin the pointer value after LOAD instructions
                     self.reg_alloc.unpin_value(&ptr_value_name);
                 } else {
                     // Regular load
+                    // Pin the bank register before allocating dest_reg
+                    let bank_value = self.reg_alloc.get_register_value(bank);
+                    if let Some(bank_name) = bank_value {
+                        self.reg_alloc.pin_value(bank_name.clone());
+                    }
+                    
                     // Allocate destination register AFTER we have final_ptr_reg and bank
                     let result_key = Self::temp_name(*result);
                     let dest_reg = self.get_reg(result_key.clone());
                     self.value_locations.insert(result_key, Location::Register(dest_reg));
+                    
+                    // Unpin the bank register
+                    if let Some(bank_name) = self.reg_alloc.get_register_value(bank) {
+                        self.reg_alloc.unpin_value(&bank_name);
+                    }
                     
                     self.emit(AsmInst::Load(dest_reg, bank, final_ptr_reg));
                     

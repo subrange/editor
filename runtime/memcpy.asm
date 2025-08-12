@@ -255,20 +255,20 @@ memcpy_bank_done_12:
 ;     R9 contains 'addr_t5_8'
 ;     R10 contains 'stack_bank_9'
 ;     R11 contains 't8'
-;   Chose to spill bank_for_t9 from R4
-; Spilling bank_for_t9 to FP+6
+;   Chose to spill t1 from R5
+; Spilling t1 to FP+6
     ADDI R12, R15, 6
-    STORE R4, R13, R12
-;   Now R4 will contain t10
-    LOAD R4, R4, R3
+    STORE R5, R13, R12
+;   Now R5 will contain t10
+    LOAD R5, R4, R3
 ; === Processing instruction #3: Load { result: 11, ptr: Temp(5), result_type: I16 } ===
 ; Load from [t5] to t11
 ; === ModuleLowerer::get_reg for 'addr_t5_13' ===
 ; get_reg for 'addr_t5_13'
 ;   No free registers, need to spill for addr_t5_13
 ;     R3 contains 't9'
-;     R4 contains 't10'
-;     R5 contains 't1'
+;     R4 contains 'bank_for_t9'
+;     R5 contains 't10'
 ;     R6 contains 't2'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
@@ -286,16 +286,16 @@ memcpy_bank_done_12:
 ; get_reg for 'stack_bank_14'
 ;   No free registers, need to spill for stack_bank_14
 ;     R3 contains 'addr_t5_13'
-;     R4 contains 't10'
-;     R5 contains 't1'
+;     R4 contains 'bank_for_t9'
+;     R5 contains 't10'
 ;     R6 contains 't2'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
 ;     R10 contains 'stack_bank_9'
 ;     R11 contains 't8'
-;   Chose to spill t10 from R4
-; Spilling t10 to FP+8
+;   Chose to spill bank_for_t9 from R4
+; Spilling bank_for_t9 to FP+8
     ADDI R12, R15, 8
     STORE R4, R13, R12
 ;   Now R4 will contain stack_bank_14
@@ -305,26 +305,26 @@ memcpy_bank_done_12:
 ;   No free registers, need to spill for t11
 ;     R3 contains 'addr_t5_13'
 ;     R4 contains 'stack_bank_14'
-;     R5 contains 't1'
+;     R5 contains 't10'
 ;     R6 contains 't2'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
 ;     R10 contains 'stack_bank_9'
 ;     R11 contains 't8'
-;   Chose to spill stack_bank_14 from R4
-; Spilling stack_bank_14 to FP+9
+;   Chose to spill t10 from R5
+; Spilling t10 to FP+9
     ADDI R12, R15, 9
-    STORE R4, R13, R12
-;   Now R4 will contain t11
-    LOAD R4, R4, R3
+    STORE R5, R13, R12
+;   Now R5 will contain t11
+    LOAD R5, R4, R3
 ; === Processing instruction #4: GetElementPtr { result: 12, ptr: Temp(0), indices: [Temp(11)], result_type: Ptr(I8) } ===
 ; GetElementPtr t12 = t0 + offsets
 ; Getting register for temp t0
 ; Looking for t0 in registers
 ;   R3 contains addr_t5_13
-;   R4 contains t11
-;   R5 contains t1
+;   R4 contains stack_bank_14
+;   R5 contains t11
 ;   R6 contains t2
 ;   R7 contains t100009
 ;   R8 contains t3
@@ -334,8 +334,8 @@ memcpy_bank_done_12:
 ; get_reg for 't0'
 ;   No free registers, need to spill for t0
 ;     R3 contains 'addr_t5_13'
-;     R4 contains 't11'
-;     R5 contains 't1'
+;     R4 contains 'stack_bank_14'
+;     R5 contains 't11'
 ;     R6 contains 't2'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
@@ -355,22 +355,22 @@ memcpy_bank_done_12:
 ; Getting register for temp t11
 ; Looking for t11 in registers
 ;   R3 contains t0
-;   R4 contains t11
-;   R5 contains t1
+;   R4 contains stack_bank_14
+;   R5 contains t11
 ;   R6 contains t2
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_8
 ;   R? contains stack_bank_9
 ;   R? contains t8
-; t11 found in R4
-;   t11 is now in R4
+; t11 found in R5
+;   t11 is now in R5
 ; === ModuleLowerer::get_reg for 't12' ===
 ; get_reg for 't12'
 ;   No free registers, need to spill for t12
 ;     R3 contains 't0'
-;     R4 contains 't11'
-;     R5 contains 't1'
+;     R4 contains 'stack_bank_14'
+;     R5 contains 't11'
 ;     R6 contains 't2'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
@@ -382,14 +382,14 @@ memcpy_bank_done_12:
     ADDI R12, R15, 2
     STORE R3, R13, R12
 ;   Now R3 will contain t12
-    ADD R3, R3, R4
+    ADD R3, R3, R5
 ;   Propagating bank tag from t100000 to t100012
 ; === Processing instruction #5: Store { value: Temp(10), ptr: Temp(12) } ===
 ; Getting register for temp t12
 ; Looking for t12 in registers
 ;   R3 contains t12
 ;   R4 contains t100012
-;   R5 contains t1
+;   R5 contains t11
 ;   R6 contains t2
 ;   R7 contains t100009
 ;   R8 contains t3
@@ -402,7 +402,7 @@ memcpy_bank_done_12:
 ; Looking for t100012 in registers
 ;   R3 contains ptr_preserve_15
 ;   R4 contains t100012
-;   R5 contains t1
+;   R5 contains t11
 ;   R6 contains t2
 ;   R7 contains t100009
 ;   R8 contains t3
@@ -415,15 +415,15 @@ memcpy_bank_done_12:
 ;   No free registers, need to spill for bank_select_16
 ;     R3 contains 'ptr_preserve_15'
 ;     R4 contains 't100012'
-;     R5 contains 't1'
+;     R5 contains 't11'
 ;     R6 contains 't2'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
 ;     R10 contains 'stack_bank_9'
 ;     R11 contains 't8'
-;   Chose to spill t1 from R5
-; Spilling t1 to FP+11
+;   Chose to spill t11 from R5
+; Spilling t11 to FP+11
     ADDI R12, R15, 11
     STORE R5, R13, R12
 ;   Now R5 will contain bank_select_16
@@ -463,8 +463,8 @@ memcpy_bank_done_18:
     ADDI R12, R15, 12
     STORE R4, R13, R12
 ;   Now R4 will contain t10
-; Reloading t10 from FP+8
-    ADDI R12, R15, 8
+; Reloading t10 from FP+9
+    ADDI R12, R15, 9
     LOAD R4, R13, R12
 ;   t10 is now in R4
     STORE R4, R5, R3
@@ -556,8 +556,8 @@ memcpy_L3:
 ;     R10 contains 'stack_bank_22'
 ;     R11 contains 't14'
 ;   Chose to spill t10 from R4
-; Spilling t10 to FP+8
-    ADDI R12, R15, 8
+; Spilling t10 to FP+9
+    ADDI R12, R15, 9
     STORE R4, R13, R12
 ;   Now R4 will contain stack_bank_26
     LI R4, 1
