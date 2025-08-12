@@ -43,7 +43,7 @@ pub(super) struct RegAllocV2 {
     
     /// Track fat pointer bank components
     /// Maps value name to its bank register or tag
-    pointer_banks: BTreeMap<String, BankInfo>,
+    pub(super) pointer_banks: BTreeMap<String, BankInfo>,
 }
 
 

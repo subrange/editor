@@ -121,6 +121,11 @@ impl RegisterPressureManager {
         self.allocator.set_pointer_bank(ptr_value, bank);
     }
     
+    /// Get pointer bank information
+    pub fn get_pointer_bank(&self, ptr_value: &str) -> Option<BankInfo> {
+        self.allocator.pointer_banks.get(ptr_value).cloned()
+    }
+    
     /// Get bank register for a pointer (internal use)
     pub(super) fn get_bank_register(&mut self, ptr_value: &str) -> Reg {
         self.ensure_r13_initialized();
@@ -364,7 +369,7 @@ impl RegisterPressureManager {
                           lhs: &Value, 
                           rhs: &Value,
                           result_temp: TempId) -> Vec<AsmInst> {
-        debug!("emit_binary_op({:?}, lhs={:?}, rhs={:?}) -> t{}", op, lhs, rhs, result_temp.0);
+        debug!("emit_binary_op({:?}, lhs={:?}, rhs={:?}) -> t{}", op, lhs, rhs, result_temp);
         let mut insts = Vec::new();
         
         // Calculate needs and determine evaluation order

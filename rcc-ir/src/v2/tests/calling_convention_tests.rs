@@ -1,5 +1,6 @@
 use crate::v2::calling_convention::{CallingConvention, CallArg};
 use crate::v2::regmgmt::RegisterPressureManager;
+use crate::v2::naming::new_function_naming;
 use rcc_codegen::{AsmInst, Reg};
 
 #[test]
@@ -13,7 +14,8 @@ fn test_stack_based_scalar_args() {
         CallArg::Scalar(Reg::R6),
     ];
     
-    let insts = cc.setup_call_args(&mut pm, args);
+    let mut naming = new_function_naming();
+    let insts = cc.setup_call_args(&mut pm, &mut naming, args);
     
     // Should push both args to stack
     let store_count = insts.iter().filter(|i| matches!(i, AsmInst::Store(_, Reg::R13, Reg::R14))).count();
@@ -34,7 +36,8 @@ fn test_stack_based_fat_pointer_arg() {
         CallArg::FatPointer { addr: Reg::R5, bank: Reg::R6 },
     ];
     
-    let insts = cc.setup_call_args(&mut pm, args);
+    let mut naming = new_function_naming();
+    let insts = cc.setup_call_args(&mut pm, &mut naming, args);
     
     // Fat pointer should push 2 values (bank then addr)
     let store_count = insts.iter().filter(|i| matches!(i, AsmInst::Store(_, Reg::R13, Reg::R14))).count();
@@ -65,11 +68,12 @@ fn test_load_param_from_stack() {
     pm.init();
     
     // Load parameter 0 (should be at FP-3)
-    let (insts, _reg) = cc.load_param(0, &mut pm);
+    let mut naming = new_function_naming();
+    let (insts, _reg) = cc.load_param(0, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::R12, Reg::R15, -3))));
     
     // Load parameter 2 (should be at FP-5)
-    let (insts, _reg) = cc.load_param(2, &mut pm);
+    let (insts, _reg) = cc.load_param(2, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::R12, Reg::R15, -5))));
 }
 
@@ -80,12 +84,13 @@ fn test_return_value_handling() {
     pm.init();
     
     // Test scalar return
-    let (insts, (_ret_reg, bank_reg)) = cc.handle_return_value(&mut pm, false);
+    let mut naming = new_function_naming();
+    let (insts, (_ret_reg, bank_reg)) = cc.handle_return_value(&mut pm, &mut naming, false);
     assert!(bank_reg.is_none());
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::R3, Reg::R0))));
     
     // Test fat pointer return
-    let (insts, (_addr_reg, bank_reg)) = cc.handle_return_value(&mut pm, true);
+    let (insts, (_addr_reg, bank_reg)) = cc.handle_return_value(&mut pm, &mut naming, true);
     assert!(bank_reg.is_some());
     // Should copy from both R3 and R4
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::R3, Reg::R0))));
@@ -124,7 +129,8 @@ fn test_multiple_args_pushed_in_order() {
         CallArg::Scalar(Reg::R7),
     ];
     
-    let insts = cc.setup_call_args(&mut pm, args);
+    let mut naming = new_function_naming();
+    let insts = cc.setup_call_args(&mut pm, &mut naming, args);
     
     // Should push all 3 args to stack
     let store_count = insts.iter().filter(|i| matches!(i, AsmInst::Store(_, Reg::R13, Reg::R14))).count();
@@ -144,7 +150,8 @@ fn test_mixed_args() {
         CallArg::Scalar(Reg::R8),
     ];
     
-    let insts = cc.setup_call_args(&mut pm, args);
+    let mut naming = new_function_naming();
+    let insts = cc.setup_call_args(&mut pm, &mut naming, args);
     
     // Should push 4 values total (1 + 2 + 1)
     let store_count = insts.iter().filter(|i| matches!(i, AsmInst::Store(_, Reg::R13, Reg::R14))).count();

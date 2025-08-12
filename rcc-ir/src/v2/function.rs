@@ -4,32 +4,62 @@
 //! - R13 initialized to 1 at function start
 //! - Proper stack frame management
 //! - Correct RA/FP save/restore
+//! 
+//! ## Architecture
+//! 
+//! `FunctionLowering` is the main orchestrator for compiling a function. It owns:
+//! - `RegisterPressureManager`: Manages register allocation for the function
+//! - `NameGenerator`: Ensures unique naming within the function
+//! 
+//! `CallingConvention` is a stateless utility that generates instruction sequences
+//! for calls, but uses the naming context from the function that's using it.
+//! 
+//! This separation allows:
+//! - Unit testing of calling convention logic in isolation
+//! - Consistent naming within a function's scope
+//! - Clear ownership of resources
 
 use rcc_codegen::{AsmInst, Reg};
 use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::v2::naming::{NameGenerator, new_function_naming};
 use log::debug;
 
 pub struct FunctionLowering {
     pub pressure_manager: RegisterPressureManager,
+    pub naming: NameGenerator,
     pub local_count: i16,
     pub spill_count: i16,
     pub instructions: Vec<AsmInst>,
 }
 
-impl Default for FunctionLowering {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl FunctionLowering {
+    /// Create a new function lowering with automatically generated unique naming
     pub fn new() -> Self {
         Self {
             pressure_manager: RegisterPressureManager::new(0),
+            naming: new_function_naming(),
             local_count: 0,
             spill_count: 0,
             instructions: Vec::new(),
         }
+    }
+    
+    /// Helper to setup call arguments using this function's context
+    pub fn setup_call(&mut self, args: Vec<crate::v2::calling_convention::CallArg>) -> Vec<AsmInst> {
+        let cc = crate::v2::calling_convention::CallingConvention::new();
+        cc.setup_call_args(&mut self.pressure_manager, &mut self.naming, args)
+    }
+    
+    /// Helper to handle return value using this function's context
+    pub fn handle_call_return(&mut self, is_pointer: bool) -> (Vec<AsmInst>, (Reg, Option<Reg>)) {
+        let cc = crate::v2::calling_convention::CallingConvention::new();
+        cc.handle_return_value(&mut self.pressure_manager, &mut self.naming, is_pointer)
+    }
+    
+    /// Helper to load a parameter using this function's context
+    pub fn load_param(&mut self, index: usize) -> (Vec<AsmInst>, Reg) {
+        let cc = crate::v2::calling_convention::CallingConvention::new();
+        cc.load_param(index, &mut self.pressure_manager, &mut self.naming)
     }
     
     /// Generate function prologue
@@ -143,7 +173,7 @@ impl FunctionLowering {
     /// Get local variable address
     pub fn get_local_addr(&mut self, offset: i16) -> Reg {
         // Use pressure manager for better register allocation
-        let reg = self.pressure_manager.get_register(format!("local_{offset}"));
+        let reg = self.pressure_manager.get_register(self.naming.local_name(offset));
         
         self.instructions.push(AsmInst::Comment(format!("Get address of local at FP+{offset}")));
         self.instructions.push(AsmInst::Add(reg, Reg::R15, Reg::R0));
@@ -153,7 +183,8 @@ impl FunctionLowering {
         self.instructions.extend(self.pressure_manager.take_instructions());
         
         // Mark this as a stack pointer
-        self.pressure_manager.set_pointer_bank(format!("local_{offset}"), 
+        let local_key = self.naming.local_name(offset);
+        self.pressure_manager.set_pointer_bank(local_key, 
                                         BankInfo::Stack);
         reg
     }
@@ -165,7 +196,7 @@ impl FunctionLowering {
         insts.push(AsmInst::Comment(format!("Load from local at FP+{offset}")));
         
         // Calculate address using pressure manager
-        let addr_reg = self.pressure_manager.get_register(format!("local_addr_{offset}"));
+        let addr_reg = self.pressure_manager.get_register(self.naming.local_addr_name(offset));
         insts.extend(self.pressure_manager.take_instructions());
         
         insts.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
@@ -185,7 +216,7 @@ impl FunctionLowering {
         insts.push(AsmInst::Comment(format!("Store to local at FP+{offset}")));
         
         // Calculate address using pressure manager
-        let addr_reg = self.pressure_manager.get_register(format!("local_addr_{offset}"));
+        let addr_reg = self.pressure_manager.get_register(self.naming.local_addr_name(offset));
         insts.extend(self.pressure_manager.take_instructions());
         
         insts.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));

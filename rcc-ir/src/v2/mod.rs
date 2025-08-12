@@ -11,6 +11,8 @@
 pub mod regmgmt;
 pub mod function;
 pub mod calling_convention;
+pub mod naming;
+pub mod instr;
 
 #[cfg(test)]
 mod tests;
@@ -18,6 +20,7 @@ mod tests;
 pub use regmgmt::{RegisterPressureManager, BankInfo};
 pub use function::FunctionLowering;
 pub use calling_convention::CallingConvention;
+pub use instr::{lower_load, lower_store};
 
 /// Bank size in instructions (from ASSEMBLY_FORMAT.md)
 /// Each bank holds 4096 instructions

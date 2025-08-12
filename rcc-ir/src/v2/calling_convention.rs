@@ -8,6 +8,7 @@
 
 use rcc_codegen::{AsmInst, Reg};
 use crate::v2::regmgmt::RegisterPressureManager;
+use crate::v2::naming::NameGenerator;
 use log::debug;
 
 pub struct CallingConvention {}
@@ -27,6 +28,7 @@ impl CallingConvention {
     /// All parameters are passed on the stack according to the calling convention
     pub fn setup_call_args(&self, 
                            pressure_manager: &mut RegisterPressureManager,
+                           _naming: &mut NameGenerator,
                            args: Vec<CallArg>) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         let mut stack_offset = 0i16;
@@ -93,6 +95,7 @@ impl CallingConvention {
     /// Handle return value after call
     pub fn handle_return_value(&self, 
                               pressure_manager: &mut RegisterPressureManager,
+                              naming: &mut NameGenerator,
                               is_pointer: bool) -> (Vec<AsmInst>, (Reg, Option<Reg>)) {
         let mut insts = Vec::new();
         
@@ -101,8 +104,8 @@ impl CallingConvention {
             debug!("Handling fat pointer return");
             
             // Allocate registers for the return value
-            let addr_reg = pressure_manager.get_register("ret_addr".to_string());
-            let bank_reg = pressure_manager.get_register("ret_bank".to_string());
+            let addr_reg = pressure_manager.get_register(naming.ret_addr_name());
+            let bank_reg = pressure_manager.get_register(naming.ret_bank_name());
             insts.extend(pressure_manager.take_instructions());
             
             // Copy from R3/R4
@@ -115,7 +118,7 @@ impl CallingConvention {
             // Scalar return in R3
             debug!("Handling scalar return");
             
-            let ret_reg = pressure_manager.get_register("ret_val".to_string());
+            let ret_reg = pressure_manager.get_register(naming.ret_val_name());
             insts.extend(pressure_manager.take_instructions());
             
             insts.push(AsmInst::Comment("Get scalar return value".to_string()));
@@ -138,14 +141,15 @@ impl CallingConvention {
     /// Load parameter from stack in callee
     /// Parameters are at negative offsets from FP (before the frame)
     pub fn load_param(&self, index: usize, 
-                     pressure_manager: &mut RegisterPressureManager) -> (Vec<AsmInst>, Reg) {
+                     pressure_manager: &mut RegisterPressureManager,
+                     naming: &mut NameGenerator) -> (Vec<AsmInst>, Reg) {
         let mut insts = Vec::new();
         
         // Parameters are before the frame (negative offsets from FP)
         // They are pushed in reverse order, so param 0 is closest to FP
         let param_offset = -(index as i16 + 3); // -3 because: -1 for FP, -1 for RA, -1 for first param
         
-        let dest = pressure_manager.get_register(format!("param{index}"));
+        let dest = pressure_manager.get_register(naming.param_name(index));
         insts.extend(pressure_manager.take_instructions());
         
         insts.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));

@@ -1,0 +1,166 @@
+//! Load instruction lowering for V2 backend
+//! 
+//! Handles loading values from memory with proper bank management.
+//! Supports both scalar loads and fat pointer loads (2-component).
+
+use crate::ir::{Value, IrType as Type, BankTag};
+use rcc_common::TempId;
+use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::v2::naming::NameGenerator;
+use rcc_codegen::{AsmInst, Reg};
+use log::{debug, trace, warn};
+
+/// Lower a Load instruction to assembly
+/// 
+/// # Parameters
+/// - `mgr`: Register pressure manager for allocation and spilling
+/// - `naming`: Name generator for unique temporary names
+/// - `ptr_value`: Pointer value to load from (must contain bank info)
+/// - `result_type`: Type of the value being loaded
+/// - `result_temp`: Temp ID for the result
+/// 
+/// # Returns
+/// Vector of assembly instructions for the load operation
+pub fn lower_load(
+    mgr: &mut RegisterPressureManager,
+    naming: &mut NameGenerator,
+    ptr_value: &Value,
+    result_type: &Type,
+    result_temp: TempId,
+) -> Vec<AsmInst> {
+    debug!("lower_load: ptr={:?}, type={:?}, result=t{}", ptr_value, result_type, result_temp);
+    
+    let mut insts = vec![];
+    let result_name = naming.temp_name(result_temp);
+    
+    // Step 1: Get the pointer address register
+    let (addr_reg, ptr_name) = match ptr_value {
+        Value::Temp(t) => {
+            let name = naming.temp_name(*t);
+            trace!("  Loading from temp pointer: {}", name);
+            let reg = mgr.get_register(name.clone());
+            (reg, name)
+        }
+        Value::FatPtr(fp) => {
+            // Fat pointer has explicit address and bank
+            trace!("  Loading from fat pointer with bank {:?}", fp.bank);
+            let addr_reg = match fp.addr.as_ref() {
+                Value::Temp(t) => {
+                    let name = naming.temp_name(*t);
+                    mgr.get_register(name)
+                }
+                Value::Constant(c) => {
+                    // Load constant address into register
+                    let temp_reg_name = naming.load_const_addr(result_temp);
+                    let temp_reg = mgr.get_register(temp_reg_name);
+                    insts.push(AsmInst::LI(temp_reg, *c as i16));
+                    trace!("  Loaded constant address {} into {:?}", c, temp_reg);
+                    temp_reg
+                }
+                _ => {
+                    warn!("  Unexpected address type in fat pointer: {:?}", fp.addr);
+                    panic!("Invalid fat pointer address type")
+                }
+            };
+            
+            // Set bank info for the pointer
+            let bank_info = match fp.bank {
+                BankTag::Global => BankInfo::Global,
+                BankTag::Stack => BankInfo::Stack,
+            };
+            let ptr_bank_key = naming.pointer_bank_key(&result_name);
+            mgr.set_pointer_bank(ptr_bank_key.clone(), bank_info);
+            
+            (addr_reg, ptr_bank_key)
+        }
+        Value::Global(name) => {
+            // Global variables are in bank 0
+            trace!("  Loading from global: {}", name);
+            mgr.set_pointer_bank(name.clone(), BankInfo::Global);
+            
+            // For globals, we need to load the address
+            // This would typically be resolved by the linker
+            let addr_reg_name = naming.load_global_addr(name);
+            let addr_reg = mgr.get_register(addr_reg_name);
+            insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
+            let label = naming.load_global_label(name);
+            insts.push(AsmInst::Label(label));
+            // The actual address will be filled by the linker
+            insts.push(AsmInst::LI(addr_reg, 0)); // Placeholder
+            
+            (addr_reg, name.clone())
+        }
+        _ => {
+            warn!("  Invalid pointer value for load: {:?}", ptr_value);
+            panic!("Invalid pointer value for load")
+        }
+    };
+    
+    // Step 2: Get the bank register based on pointer's bank info
+    let bank_info = mgr.get_pointer_bank(&ptr_name)
+        .unwrap_or_else(|| {
+            warn!("  No bank info for pointer {}, defaulting to Stack", ptr_name);
+            BankInfo::Stack
+        });
+    
+    debug!("  Pointer {} has bank info: {:?}", ptr_name, bank_info);
+    
+    let bank_reg = match bank_info {
+        BankInfo::Global => {
+            trace!("  Using R0 for global bank");
+            Reg::R0
+        }
+        BankInfo::Stack => {
+            trace!("  Using R13 for stack bank (should be initialized to 1)");
+            Reg::R13
+        }
+        BankInfo::Register(r) => {
+            trace!("  Using {:?} for dynamic bank", r);
+            r
+        }
+    };
+    
+    // Step 3: Allocate destination register and generate LOAD instruction
+    let dest_reg = mgr.get_register(result_name.clone());
+    debug!("  Allocated {:?} for result {}", dest_reg, result_name);
+    
+    // Take any instructions generated by register allocation
+    insts.extend(mgr.take_instructions());
+    
+    // Generate the actual LOAD instruction
+    let load_inst = AsmInst::Load(dest_reg, bank_reg, addr_reg);
+    trace!("  Generated LOAD: {:?}", load_inst);
+    insts.push(load_inst);
+    
+    // Step 4: If loading a fat pointer, also load the bank component
+    if result_type.is_pointer() {
+        debug!("  Result is a pointer, loading bank component");
+        
+        // Calculate address for bank component (addr + 1)
+        let bank_addr_name = naming.load_bank_addr(result_temp);
+        let bank_addr_reg = mgr.get_register(bank_addr_name);
+        insts.extend(mgr.take_instructions());
+        
+        insts.push(AsmInst::AddI(bank_addr_reg, addr_reg, 1));
+        trace!("  Bank component at address {:?} + 1", addr_reg);
+        
+        // Load the bank value
+        let bank_value_name = naming.load_bank_value(result_temp);
+        let bank_dest_reg = mgr.get_register(bank_value_name);
+        insts.extend(mgr.take_instructions());
+        
+        let bank_load = AsmInst::Load(bank_dest_reg, bank_reg, bank_addr_reg);
+        trace!("  Generated bank LOAD: {:?}", bank_load);
+        insts.push(bank_load);
+        
+        // Store bank info for the loaded pointer
+        mgr.set_pointer_bank(result_name.clone(), BankInfo::Register(bank_dest_reg));
+        debug!("  Fat pointer loaded: addr in {:?}, bank in {:?}", dest_reg, bank_dest_reg);
+        
+        // Free the temporary bank address register
+        mgr.free_register(bank_addr_reg);
+    }
+    
+    debug!("lower_load complete: generated {} instructions", insts.len());
+    insts
+}

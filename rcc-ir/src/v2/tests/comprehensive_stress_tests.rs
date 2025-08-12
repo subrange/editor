@@ -6,6 +6,7 @@
 use crate::v2::calling_convention::{CallingConvention, CallArg};
 use crate::v2::regmgmt::RegisterPressureManager;
 use crate::v2::function::FunctionLowering;
+use crate::v2::naming::new_function_naming;
 use rcc_codegen::{AsmInst, Reg};
 
 // ========================================================================
@@ -237,7 +238,8 @@ fn stress_test_massive_argument_list() {
             expected_stack_words += 1;
         }
     }
-    let insts = cc.setup_call_args(&mut pm, args);
+    let mut naming = new_function_naming();
+    let insts = cc.setup_call_args(&mut pm, &mut naming, args);
     
     // Count stores to verify all args pushed
     let store_count = insts.iter()
@@ -269,13 +271,14 @@ fn stress_test_nested_calls() {
         
         let mut pm = RegisterPressureManager::new(0);
         pm.init();
-        let setup = cc.setup_call_args(&mut pm, args);
+        let mut naming = new_function_naming();
+        let setup = cc.setup_call_args(&mut pm, &mut naming, args);
         
         // Make the call
         let call = cc.emit_call(100 + depth as u16, depth as u16 % 4);
         
         // Handle return
-        let (insts, (_ret, _)) = cc.handle_return_value(&mut pm, depth % 2 == 0);
+        let (insts, (_ret, _)) = cc.handle_return_value(&mut pm, &mut naming, depth % 2 == 0);
         
         // Cleanup
         let cleanup = cc.cleanup_stack(3); // 1 scalar + 2 for fat pointer
@@ -323,7 +326,8 @@ fn stress_test_parameter_loading_order() {
     for i in 0..20 {
         let mut pm = RegisterPressureManager::new(0);
         pm.init();
-        let (insts, _reg) = cc.load_param(i, &mut pm);
+        let mut naming = new_function_naming();
+        let (insts, _reg) = cc.load_param(i, &mut pm, &mut naming);
         // Instructions are returned directly now
         
         // Should have AddI with correct offset
@@ -343,7 +347,8 @@ fn stress_test_mixed_return_patterns() {
         let is_pointer = i % 2 == 0;
         let mut pm = RegisterPressureManager::new(0);
         pm.init();
-        let (insts, (addr_reg, bank_reg)) = cc.handle_return_value(&mut pm, is_pointer);
+        let mut naming = new_function_naming();
+        let (insts, (addr_reg, bank_reg)) = cc.handle_return_value(&mut pm, &mut naming, is_pointer);
         
         if is_pointer {
             assert!(bank_reg.is_some(), "Iteration {}: pointer should have bank", i);
@@ -478,6 +483,8 @@ fn stress_test_epilogue_correctness() {
 #[test]
 fn integration_stress_test_full_function() {
     // Test a complete function with prologue, body, calls, and epilogue
+    // This test demonstrates the CORRECT usage pattern where FunctionLowering
+    // owns the naming and passes it to CallingConvention methods
     let mut func = FunctionLowering::new();
     let cc = CallingConvention::new();
     
@@ -496,15 +503,15 @@ fn integration_stress_test_full_function() {
         func.store_local(i, addr);
     }
     
-    // Make a function call
+    // Make a function call - using func's naming context
     let args = vec![
         CallArg::Scalar(Reg::R5),
         CallArg::FatPointer { addr: Reg::R6, bank: Reg::R7 },
         CallArg::Scalar(Reg::R8),
     ];
-    let setup = cc.setup_call_args(&mut func.pressure_manager, args);
+    let setup = cc.setup_call_args(&mut func.pressure_manager, &mut func.naming, args);
     let call = cc.emit_call(0x100, 2);
-    let (insts, (_ret_addr, _ret_bank)) = cc.handle_return_value(&mut func.pressure_manager, true);
+    let (insts, (_ret_addr, _ret_bank)) = cc.handle_return_value(&mut func.pressure_manager, &mut func.naming, true);
     func.instructions.extend(insts);
     let cleanup = cc.cleanup_stack(4); // 2 scalars + 1 fat pointer (2 words)
     
@@ -521,7 +528,7 @@ fn integration_stress_test_full_function() {
 
 #[test]
 fn integration_stress_test_recursive_pattern() {
-    // Simulate a recursive function pattern
+    // Simulate a recursive function pattern using cleaner API
     let mut func = FunctionLowering::new();
     let cc = CallingConvention::new();
     
@@ -529,8 +536,8 @@ fn integration_stress_test_recursive_pattern() {
     func.emit_prologue(5);
     
     // Load parameters that would be used in recursion
-    let param0 = func.pressure_manager.load_parameter(0);
-    let param1 = func.pressure_manager.load_parameter(1);
+    let (_, param0) = func.load_param(0);
+    let (_, param1) = func.load_param(1);
     
     // Simulate recursive call with modified parameters
     let args = vec![
@@ -538,11 +545,18 @@ fn integration_stress_test_recursive_pattern() {
         CallArg::Scalar(param1),
     ];
     
-    cc.setup_call_args(&mut func.pressure_manager, args);
-    cc.emit_call(0x0, 0); // Call self (same bank)
-    let (insts, (ret_val, _)) = cc.handle_return_value(&mut func.pressure_manager, false);
+    // Use the cleaner API - function manages its own naming
+    let setup = func.setup_call(args);
+    func.instructions.extend(setup);
+    
+    let call = cc.emit_call(0x0, 0); // Call self (same bank)
+    func.instructions.extend(call);
+    
+    let (insts, (ret_val, _)) = func.handle_call_return(false);
     func.instructions.extend(insts);
-    cc.cleanup_stack(2);
+    
+    let cleanup = cc.cleanup_stack(2);
+    func.instructions.extend(cleanup);
     
     // Return the recursive result
     func.emit_return(Some((ret_val, None)));
@@ -595,7 +609,8 @@ fn verify_fat_pointer_return_convention() {
     let cc = CallingConvention::new();
     let mut pm = RegisterPressureManager::new(0);
     pm.init();
-    let (insts, (_addr_reg, bank_reg)) = cc.handle_return_value(&mut pm, true);
+    let mut naming = new_function_naming();
+    let (insts, (_addr_reg, bank_reg)) = cc.handle_return_value(&mut pm, &mut naming, true);
     
     // Instructions are now returned directly from handle_return_value
     
