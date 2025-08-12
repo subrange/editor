@@ -61,6 +61,9 @@ pub struct ModuleLowerer {
     
     /// Cache for need() calculations to avoid recomputation
     pub(crate) need_cache: HashMap<String, usize>,
+    
+    /// Maximum stack offset needed for this function (for allocating stack space)
+    pub(crate) max_stack_offset: i16,
 }
 
 /// Location of a value - either in a register or spilled to stack
@@ -174,6 +177,7 @@ impl ModuleLowerer {
             current_function: None,
             needs_frame: false,
             label_counter: 0,
+            max_stack_offset: 0,
             local_stack_offset: 0,
             local_offsets: HashMap::new(),
             fat_ptr_components: HashMap::new(),

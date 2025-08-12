@@ -143,11 +143,6 @@ impl ModuleLowerer {
             self.needs_frame = true;
         }
 
-        // Generate prologue if needed
-        if self.needs_frame {
-            self.generate_prologue();
-        }
-
         // First, process all allocas to determine stack space needed
         // This is necessary to set the spill base offset correctly
         let mut max_stack_offset = 0i16;
@@ -172,6 +167,14 @@ impl ModuleLowerer {
         self.reg_alloc.set_spill_base(max_stack_offset + 1);
         log::debug!("Stack layout: user variables use FP+1 to FP+{}, spills start at FP+{}", 
                    max_stack_offset, max_stack_offset + 1);
+        
+        // Store the max stack offset so we can reserve space in prologue
+        self.max_stack_offset = max_stack_offset;
+
+        // Generate prologue if needed
+        if self.needs_frame {
+            self.generate_prologue();
+        }
 
         // Lower basic blocks
         for block in &function.blocks {
@@ -199,8 +202,15 @@ impl ModuleLowerer {
 
         // Set new FP = SP
         self.emit(AsmInst::Add(Reg::R15, Reg::R14, Reg::R0));
-
-        // We'll reserve space for locals and spills when we know how much we need
+        
+        // Reserve space for local variables and potential spills
+        // We need to advance the stack pointer to reserve space
+        // The register allocator might need additional space for spills
+        // We'll be conservative and reserve extra space
+        let total_stack_space = self.max_stack_offset + 20; // Extra space for spills
+        if total_stack_space > 0 {
+            self.emit(AsmInst::AddI(Reg::R14, Reg::R14, total_stack_space));
+        }
     }
 
     /// Generate function epilogue

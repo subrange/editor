@@ -5,7 +5,7 @@
 ; Entry point - this is where execution begins
 _start:
     ; Initialize stack pointer
-    LI R13, 0       ; Stack bank = 0
+    LI R13, 1       ; Stack bank = 1 (R13 is SB - stack bank id)
     LI R14, 1000    ; Stack pointer starts at 1000
     LI R15, 1000    ; Frame pointer starts at 1000
     

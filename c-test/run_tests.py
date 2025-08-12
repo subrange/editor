@@ -370,7 +370,7 @@ def main():
 
 
         # Pointer provenance tests with fat pointers
-        (f"{BASE_DIR}/tests/test_pointer_provenance.c", "GSSSS\n", True),
+        (f"{BASE_DIR}/tests/test_pointer_provenance.c", "GSSS\n", True),
         (f"{BASE_DIR}/tests/test_pointer_phi.c", "1234\n", True),
         (f"{BASE_DIR}/tests/test_pointer_swap_simple.c", "21\n", True),
         (f"{BASE_DIR}/tests/test_inline_swap_debug.c", "12 21\n", True),

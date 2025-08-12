@@ -7,6 +7,7 @@ puts:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
+    ADDI R14, R14, 20
 ; === Processing instruction #0: Binary { result: 1, op: Eq, lhs: Temp(0), rhs: Constant(0), result_type: I1 } ===
 ; === Processing Binary t1 ===
 ; Binary: need(lhs)=1, need(rhs)=1

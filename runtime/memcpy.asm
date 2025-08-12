@@ -7,6 +7,7 @@ memcpy:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
+    ADDI R14, R14, 21
 ; === Processing instruction #0: Alloca { result: 5, alloc_type: I16, count: None, result_type: Ptr(I16) } ===
 ; === ModuleLowerer::get_reg for 't5' ===
 ; get_reg for 't5'

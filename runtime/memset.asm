@@ -7,6 +7,7 @@ memset:
     STORE R15, R13, R14
     ADDI R14, R14, 1
     ADD R15, R14, R0
+    ADDI R14, R14, 21
 ; === Processing instruction #0: Alloca { result: 3, alloc_type: I16, count: None, result_type: Ptr(I16) } ===
 ; === ModuleLowerer::get_reg for 't3' ===
 ; get_reg for 't3'

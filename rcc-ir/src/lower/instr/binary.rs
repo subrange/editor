@@ -30,7 +30,20 @@ impl ModuleLowerer {
         // for non-commutative operations.
 
         let left_reg = self.get_value_register(lhs)?;
+        
+        // CRITICAL: Pin the left operand so it doesn't get spilled when getting right operand
+        let left_key = self.get_register_value_name(left_reg);
+        if let Some(ref left_name) = left_key {
+            self.reg_alloc.pin_value(left_name.clone());
+        }
+        
         let right_reg = self.get_value_register(rhs)?;
+        
+        // Unpin the left operand
+        if let Some(ref left_name) = left_key {
+            self.reg_alloc.unpin_value(left_name);
+        }
+        
         let dest_reg = left_reg;  // Result goes in left's register
 
         // Track the result in the first operand's register
