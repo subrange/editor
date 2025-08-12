@@ -2,33 +2,33 @@
 
 ; Function: memset
 memset:
-    STORE RA, R13, R14
-    ADDI R14, R14, 1
-    STORE R15, R13, R14
-    ADDI R14, R14, 1
-    ADD R15, R14, R0
-    ADDI R14, R14, 21
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+    ADD FP, SP, R0
+    ADDI SP, SP, 21
 ; === Processing instruction #0: Alloca { result: 4, alloc_type: I16, count: None, result_type: FatPtr(I16) } ===
 ; === ModuleLowerer::get_reg for 't4' ===
 ; get_reg for 't4'
 ;   Allocated free register for t4
 ; Alloca for t4 at FP+1 (fat ptr: stack bank)
-    ADDI R7, R15, 1
+    ADDI A2, FP, 1
 ; === Processing instruction #1: Store { value: Constant(0), ptr: Temp(4) } ===
 ; === ModuleLowerer::get_reg for 'addr_t4_0' ===
 ; get_reg for 'addr_t4_0'
 ;   Allocated free register for addr_t4_0
-    ADDI R8, R15, 1
+    ADDI A3, FP, 1
 ; === ModuleLowerer::get_reg for 'stack_bank_2' ===
 ; get_reg for 'stack_bank_2'
 ;   Allocated free register for stack_bank_2
-    LI R9, 1
+    LI X0, 1
 ; Store 0 to [t4]
 ; === ModuleLowerer::get_reg for 'const_0_5' ===
 ; get_reg for 'const_0_5'
 ;   Allocated free register for const_0_5
-    LI R10, 0
-    STORE R10, R9, R8
+    LI X1, 0
+    STORE X1, X0, A3
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #2: Branch(1) ===
     BEQ R0, R0, memset_L1
@@ -38,16 +38,16 @@ memset_L1:
 ; === ModuleLowerer::get_reg for 'addr_t4_6' ===
 ; get_reg for 'addr_t4_6'
 ;   Allocated free register for addr_t4_6
-    ADDI R7, R15, 1
+    ADDI A2, FP, 1
 ; Pinning addr_t4_6 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_7' ===
 ; get_reg for 'stack_bank_7'
 ;   Allocated free register for stack_bank_7
-    LI R8, 1
+    LI A3, 1
 ; === ModuleLowerer::get_reg for 't5' ===
 ; get_reg for 't5'
 ;   Allocated free register for t5
-    LOAD R9, R8, R7
+    LOAD X0, A3, A2
 ; === Processing instruction #1: Binary { result: 6, op: Slt, lhs: Temp(5), rhs: Temp(3), result_type: I16 } ===
 ; === Processing Binary t6 ===
 ; Binary: need(lhs)=1, need(rhs)=1
@@ -74,7 +74,7 @@ memset_L1:
 ; t3 found in R6
 ;   t3 is now in R6
 ; Reusing R9 for result t6
-    SLTU R9, R9, R6
+    SLTU X0, X0, A1
 ; Freeing right operand register R6
 ; === Processing instruction #2: BranchCond { condition: Temp(6), true_label: 2, false_label: 4 } ===
 ; Getting register for temp t6
@@ -87,7 +87,7 @@ memset_L1:
 ;   R? contains t6
 ; t6 found in R?
 ;   t6 is now in R9
-    BNE R9, R0, memset_L2
+    BNE X0, R0, memset_L2
     BEQ R0, R0, memset_L4
 memset_L2:
 ; === Processing instruction #0: Load { result: 7, ptr: Temp(4), result_type: I16 } ===
@@ -95,16 +95,16 @@ memset_L2:
 ; === ModuleLowerer::get_reg for 'addr_t4_8' ===
 ; get_reg for 'addr_t4_8'
 ;   Allocated free register for addr_t4_8
-    ADDI R7, R15, 1
+    ADDI A2, FP, 1
 ; Pinning addr_t4_8 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_9' ===
 ; get_reg for 'stack_bank_9'
 ;   Allocated free register for stack_bank_9
-    LI R8, 1
+    LI A3, 1
 ; === ModuleLowerer::get_reg for 't7' ===
 ; get_reg for 't7'
 ;   Allocated free register for t7
-    LOAD R9, R8, R7
+    LOAD X0, A3, A2
 ; === Processing instruction #1: GetElementPtr { result: 8, ptr: FatPtr(FatPointer { addr: Temp(0), bank: Stack }), indices: [Temp(7)], result_type: FatPtr(I8) } ===
 ; GetElementPtr t8 = {addr: t0, bank: Stack} + offsets
 ; Getting register for temp t0
@@ -131,7 +131,7 @@ memset_L2:
 ; === ModuleLowerer::get_reg for 't8' ===
 ; get_reg for 't8'
 ;   Allocated free register for t8
-    ADD R10, R3, R9
+    ADD X1, RV0, X0
 ; === Processing instruction #2: Store { value: Temp(2), ptr: FatPtr(FatPointer { addr: Temp(8), bank: Stack }) } ===
 ; Getting register for temp t8
 ; Looking for t8 in registers
@@ -147,7 +147,7 @@ memset_L2:
 ; === ModuleLowerer::get_reg for 'stack_bank_11' ===
 ; get_reg for 'stack_bank_11'
 ;   Allocated free register for stack_bank_11
-    LI R11, 1
+    LI X2, 1
 ; Store t2 to [{addr: t8, bank: Stack}]
 ; Getting register for temp t2
 ; Looking for t2 in registers
@@ -161,7 +161,7 @@ memset_L2:
 ;   R? contains bank_preserve_13
 ; t2 found in R5
 ;   t2 is now in R5
-    STORE R5, R11, R10
+    STORE A0, X2, X1
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #3: Branch(3) ===
     BEQ R0, R0, memset_L3
@@ -171,16 +171,16 @@ memset_L3:
 ; === ModuleLowerer::get_reg for 'addr_t4_14' ===
 ; get_reg for 'addr_t4_14'
 ;   Allocated free register for addr_t4_14
-    ADDI R7, R15, 1
+    ADDI A2, FP, 1
 ; Pinning addr_t4_14 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_15' ===
 ; get_reg for 'stack_bank_15'
 ;   Allocated free register for stack_bank_15
-    LI R8, 1
+    LI A3, 1
 ; === ModuleLowerer::get_reg for 't9' ===
 ; get_reg for 't9'
 ;   Allocated free register for t9
-    LOAD R9, R8, R7
+    LOAD X0, A3, A2
 ; === Processing instruction #1: Binary { result: 10, op: Add, lhs: Temp(9), rhs: Constant(1), result_type: I16 } ===
 ; === Processing Binary t10 ===
 ; Binary: need(lhs)=1, need(rhs)=1
@@ -197,19 +197,19 @@ memset_L3:
 ; === ModuleLowerer::get_reg for 'const_1_16' ===
 ; get_reg for 'const_1_16'
 ;   Allocated free register for const_1_16
-    LI R10, 1
+    LI X1, 1
 ; Reusing R9 for result t10
-    ADD R9, R9, R10
+    ADD X0, X0, X1
 ; Freeing right operand register R10
 ; === Processing instruction #2: Store { value: Temp(10), ptr: Temp(4) } ===
 ; === ModuleLowerer::get_reg for 'addr_t4_17' ===
 ; get_reg for 'addr_t4_17'
 ;   Allocated free register for addr_t4_17
-    ADDI R10, R15, 1
+    ADDI X1, FP, 1
 ; === ModuleLowerer::get_reg for 'stack_bank_19' ===
 ; get_reg for 'stack_bank_19'
 ;   Allocated free register for stack_bank_19
-    LI R11, 1
+    LI X2, 1
 ; Store t10 to [t4]
 ; Getting register for temp t10
 ; Looking for t10 in registers
@@ -223,15 +223,15 @@ memset_L3:
 ;   R? contains bank_preserve_21
 ; t10 found in R?
 ;   t10 is now in R9
-    STORE R9, R11, R10
+    STORE X0, X2, X1
 ; >>> Preserving registers: storing t10 from previous instruction
 ; === Processing instruction #3: Branch(1) ===
     BEQ R0, R0, memset_L1
 memset_L4:
 ; === Processing instruction #0: Return(None) ===
-    ADD R14, R15, R0
-    ADDI R14, R14, -1
-    LOAD R15, R13, R14
-    ADDI R14, R14, -1
-    LOAD RA, R13, R14
+    ADD SP, FP, R0
+    ADDI SP, SP, -1
+    LOAD FP, SB, SP
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
     RET

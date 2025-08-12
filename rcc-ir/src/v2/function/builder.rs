@@ -284,15 +284,15 @@ mod tests {
         
         builder
             .begin_function(5)  // 5 local slots
-            .load_local(0, Reg::R5)
-            .store_local(1, Reg::R5)
-            .end_function(Some((Reg::R5, None)));
+            .load_local(0, Reg::A0)
+            .store_local(1, Reg::A0)
+            .end_function(Some((Reg::A0, None)));
             
         let instructions = builder.build();
         
         assert!(!instructions.is_empty());
         // Should have R13 initialization
-        assert!(instructions.iter().any(|i| matches!(i, AsmInst::LI(Reg::R13, 1))));
+        assert!(instructions.iter().any(|i| matches!(i, AsmInst::LI(Reg::Sb, 1))));
     }
     
     #[test]
@@ -305,7 +305,7 @@ mod tests {
         let (ret_val, _) = builder.call_function(
             0x100, 
             2, 
-            vec![CallArg::Scalar(Reg::R5)],
+            vec![CallArg::Scalar(Reg::A0)],
             false
         );
         
@@ -339,7 +339,7 @@ mod tests {
         let mut builder = FunctionBuilder::new();
         builder
             .begin_function(0)
-            .begin_call(vec![CallArg::Scalar(Reg::R5)])
+            .begin_call(vec![CallArg::Scalar(Reg::A0)])
             .emit_call(0x100, 0)
             // Forgot to call end_call()!
             .end_function(None); // Should panic

@@ -30,7 +30,7 @@ fn test_store_scalar_to_stack() {
     // Should use R13 for stack bank
     let store_found = insts.iter().any(|i| {
         if let AsmInst::Store(_, bank, _) = i {
-            *bank == Reg::R13
+            *bank == Reg::Sb
         } else {
             false
         }
@@ -136,7 +136,7 @@ fn test_store_pointer_as_value() {
     
     // Store a temp that happens to be a pointer (should store both components)
     let value_temp = 45;
-    mgr.set_pointer_bank(naming.temp_name(value_temp), BankInfo::Register(Reg::R7));
+    mgr.set_pointer_bank(naming.temp_name(value_temp), BankInfo::Register(Reg::A2));
     
     let value = Value::Temp(value_temp);
     let ptr = Value::FatPtr(FatPointer {

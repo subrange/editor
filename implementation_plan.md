@@ -60,10 +60,10 @@ pub enum AsmInst {
 #[test]
 fn test_emit_hello_world() {
     let instrs = vec![
-        AsmInst::LI(Reg::R3, 'H' as i16),
-        AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
-        AsmInst::LI(Reg::R3, 'i' as i16),
-        AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
+        AsmInst::LI(Reg::Rv0, 'H' as i16),
+        AsmInst::Store(Reg::Rv0, Reg::R0, Reg::R0),
+        AsmInst::LI(Reg::Rv0, 'i' as i16),
+        AsmInst::Store(Reg::Rv0, Reg::R0, Reg::R0),
         AsmInst::Halt,
     ];
     
@@ -91,21 +91,21 @@ impl Frame {
         let mut code = vec![];
         
         // Save FP
-        code.push(AsmInst::Store(Reg::R15, Reg::R13, Reg::R14));
-        code.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+        code.push(AsmInst::Store(Reg::Fp, Reg::Sb, Reg::Sp));
+        code.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
         
         // Save RA if needed
         if self.has_calls {
-            code.push(AsmInst::Store(Reg::RA, Reg::R13, Reg::R14));
-            code.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+            code.push(AsmInst::Store(Reg::Ra, Reg::Sb, Reg::Sp));
+            code.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
         }
         
         // Set new FP
-        code.push(AsmInst::Add(Reg::R15, Reg::R14, Reg::R0));
+        code.push(AsmInst::Add(Reg::Fp, Reg::Sp, Reg::R0));
         
         // Allocate locals
         if self.locals_size > 0 {
-            code.push(AsmInst::AddI(Reg::R14, Reg::R14, self.locals_size as i16));
+            code.push(AsmInst::AddI(Reg::Sp, Reg::Sp, self.locals_size as i16));
         }
         
         code
@@ -144,9 +144,9 @@ fn test_lower_add() {
     ];
     
     let asm = lower_to_asm(ir);
-    assert_contains!(asm, AsmInst::LI(Reg::R3, 5));
-    assert_contains!(asm, AsmInst::LI(Reg::R4, 10));
-    assert_contains!(asm, AsmInst::Add(Reg::R5, Reg::R3, Reg::R4));
+    assert_contains!(asm, AsmInst::LI(Reg::Rv0, 5));
+    assert_contains!(asm, AsmInst::LI(Reg::Rv1, 10));
+    assert_contains!(asm, AsmInst::Add(Reg::A0, Reg::Rv0, Reg::Rv1));
 }
 
 #[test]
@@ -157,7 +157,7 @@ fn test_putchar_call() {
     ];
     
     let asm = lower_to_asm(ir);
-    assert_contains!(asm, AsmInst::Store(Reg::R3, Reg::R0, Reg::R0));
+    assert_contains!(asm, AsmInst::Store(Reg::Rv0, Reg::R0, Reg::R0));
 }
 ```
 

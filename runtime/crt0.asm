@@ -5,9 +5,9 @@
 ; Entry point - this is where execution begins
 _start:
     ; Initialize stack pointer
-    LI R13, 1       ; Stack bank = 1 (R13 is SB - stack bank id)
-    LI R14, 1000    ; Stack pointer starts at 1000
-    LI R15, 1000    ; Frame pointer starts at 1000
+    LI SB, 1        ; Stack bank = 1 (SB/R28 - stack bank id)
+    LI SP, 1000     ; Stack pointer starts at 1000 (SP/R29)
+    LI FP, 1000     ; Frame pointer starts at 1000 (FP/R30)
     
     ; TODO: Zero BSS section (uninitialized globals)
     ; For now, we'll skip this as we don't have a BSS section yet

@@ -28,7 +28,7 @@ fn test_complete_function_with_calls() {
         2,
         vec![
             CallArg::Scalar(param0),
-            CallArg::FatPointer { addr: param1, bank: Reg::R7 }
+            CallArg::FatPointer { addr: param1, bank: Reg::A2 }
         ],
         false
     );
@@ -40,8 +40,8 @@ fn test_complete_function_with_calls() {
     
     // Verify key invariants
     assert!(!instructions.is_empty());
-    assert!(instructions.iter().any(|i| matches!(i, AsmInst::LI(Reg::R13, 1))));
-    assert!(instructions.iter().any(|i| matches!(i, AsmInst::Jalr(_, _, Reg::RA))));
+    assert!(instructions.iter().any(|i| matches!(i, AsmInst::LI(Reg::Sb, 1))));
+    assert!(instructions.iter().any(|i| matches!(i, AsmInst::Jalr(_, _, Reg::Ra))));
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn test_multiple_nested_calls() {
     // First call
     let (result1, _) = builder.call_function(
         0x100, 0,
-        vec![CallArg::Scalar(Reg::R5)],
+        vec![CallArg::Scalar(Reg::A0)],
         false
     );
     
@@ -140,9 +140,9 @@ fn test_large_stack_frame() {
     
     // Access some locals
     builder
-        .store_local(0, Reg::R5)
-        .store_local(999, Reg::R6)
-        .load_local(500, Reg::R7);
+        .store_local(0, Reg::A0)
+        .store_local(999, Reg::A1)
+        .load_local(500, Reg::A2);
     
     builder.end_function(None);
     
@@ -150,6 +150,6 @@ fn test_large_stack_frame() {
     
     // Should allocate large frame
     assert!(instructions.iter().any(|i| 
-        matches!(i, AsmInst::AddI(Reg::R14, Reg::R14, 1000))
+        matches!(i, AsmInst::AddI(Reg::Sp, Reg::Sp, 1000))
     ));
 }

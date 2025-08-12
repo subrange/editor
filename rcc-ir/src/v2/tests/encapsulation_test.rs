@@ -9,7 +9,7 @@ fn test_can_only_use_public_api() {
     builder.begin_function(5);
     
     // These should work - public types
-    let _arg = crate::v2::CallArg::Scalar(rcc_codegen::Reg::R5);
+    let _arg = crate::v2::CallArg::Scalar(rcc_codegen::Reg::A0);
     
     // The following lines should NOT compile if uncommented:
     // (They're commented so the test suite passes)

@@ -11,7 +11,7 @@ impl ModuleLowerer {
         self.value_locations.clear();
         // Old system - no longer used, using reg_alloc instead
         // self.reg_contents.clear();
-        // self.free_regs = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5, Reg::R4, Reg::R3];
+        // self.free_regs = vec![Reg::X2, Reg::X1, Reg::X0, Reg::A3, Reg::A2, Reg::A1, Reg::A0, Reg::Rv1, Reg::Rv0];
         self.reg_alloc.reset(); // Reset the centralized allocator
         self.needs_frame = false;
         self.local_stack_offset = 0; // Reset local stack offset
@@ -38,12 +38,12 @@ impl ModuleLowerer {
 
                     // Address is in current register
                     let addr_reg = match next_param_reg_idx {
-                        0 => Reg::R3,
-                        1 => Reg::R4,
-                        2 => Reg::R5,
-                        3 => Reg::R6,
-                        4 => Reg::R7,
-                        _ => Reg::R8,
+                        0 => Reg::Rv0,
+                        1 => Reg::Rv1,
+                        2 => Reg::A0,
+                        3 => Reg::A1,
+                        4 => Reg::A2,
+                        _ => Reg::A3,
                     };
 
                     // Map parameter temp ID to its register location (address)
@@ -52,11 +52,11 @@ impl ModuleLowerer {
 
                     // Bank tag is in next register
                     let bank_reg = match next_param_reg_idx {
-                        1 => Reg::R4,
-                        2 => Reg::R5,
-                        3 => Reg::R6,
-                        4 => Reg::R7,
-                        5 => Reg::R8,
+                        1 => Reg::Rv1,
+                        2 => Reg::A0,
+                        3 => Reg::A1,
+                        4 => Reg::A2,
+                        5 => Reg::A3,
                         _ => unreachable!(),
                     };
 
@@ -82,9 +82,9 @@ impl ModuleLowerer {
                     next_param_reg_idx += 1;
                 } else if next_param_reg_idx == 5 {
                     // Address in R8, bank on stack
-                    self.value_locations.insert(Self::temp_name(*param_id), crate::module_lowering::Location::Register(Reg::R8));
-                    self.reg_alloc.mark_in_use(Reg::R8, Self::temp_name(*param_id));
-                    self.reg_alloc.mark_as_parameter(Reg::R8);
+                    self.value_locations.insert(Self::temp_name(*param_id), crate::module_lowering::Location::Register(Reg::A3));
+                    self.reg_alloc.mark_in_use(Reg::A3, Self::temp_name(*param_id));
+                    self.reg_alloc.mark_as_parameter(Reg::A3);
                     next_param_reg_idx += 1;
 
                     // Bank tag is on stack - will be loaded by caller
@@ -107,12 +107,12 @@ impl ModuleLowerer {
                 if next_param_reg_idx < 6 {
                     // Fits in register
                     let param_reg = match next_param_reg_idx {
-                        0 => Reg::R3,
-                        1 => Reg::R4,
-                        2 => Reg::R5,
-                        3 => Reg::R6,
-                        4 => Reg::R7,
-                        5 => Reg::R8,
+                        0 => Reg::Rv0,
+                        1 => Reg::Rv1,
+                        2 => Reg::A0,
+                        3 => Reg::A1,
+                        4 => Reg::A2,
+                        5 => Reg::A3,
                         _ => unreachable!(),
                     };
 
@@ -195,15 +195,15 @@ impl ModuleLowerer {
         // R14 is the stack pointer, R13 is the stack bank
         
         // Save RA at current stack pointer location
-        self.emit(AsmInst::Store(Reg::RA, Reg::R13, Reg::R14));
-        self.emit(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+        self.emit(AsmInst::Store(Reg::Ra, Reg::Sb, Reg::Sp));
+        self.emit(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
 
         // Save old FP at new stack pointer location
-        self.emit(AsmInst::Store(Reg::R15, Reg::R13, Reg::R14));
-        self.emit(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+        self.emit(AsmInst::Store(Reg::Fp, Reg::Sb, Reg::Sp));
+        self.emit(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
 
         // Set new FP = SP
-        self.emit(AsmInst::Add(Reg::R15, Reg::R14, Reg::R0));
+        self.emit(AsmInst::Add(Reg::Fp, Reg::Sp, Reg::R0));
         
         // Reserve space for local variables and potential spills
         // We need to advance the stack pointer to reserve space
@@ -211,22 +211,22 @@ impl ModuleLowerer {
         // We'll be conservative and reserve extra space
         let total_stack_space = self.max_stack_offset + 20; // Extra space for spills
         if total_stack_space > 0 {
-            self.emit(AsmInst::AddI(Reg::R14, Reg::R14, total_stack_space));
+            self.emit(AsmInst::AddI(Reg::Sp, Reg::Sp, total_stack_space));
         }
     }
 
     /// Generate function epilogue
     pub(crate) fn generate_epilogue(&mut self) {
         // Restore SP to FP (deallocate locals)
-        self.emit(AsmInst::Add(Reg::R14, Reg::R15, Reg::R0));
+        self.emit(AsmInst::Add(Reg::Sp, Reg::Fp, Reg::R0));
 
         // Pop old FP
-        self.emit(AsmInst::AddI(Reg::R14, Reg::R14, -1));
-        self.emit(AsmInst::Load(Reg::R15, Reg::R13, Reg::R14));
+        self.emit(AsmInst::AddI(Reg::Sp, Reg::Sp, -1));
+        self.emit(AsmInst::Load(Reg::Fp, Reg::Sb, Reg::Sp));
 
         // Pop RA
-        self.emit(AsmInst::AddI(Reg::R14, Reg::R14, -1));
-        self.emit(AsmInst::Load(Reg::RA, Reg::R13, Reg::R14));
+        self.emit(AsmInst::AddI(Reg::Sp, Reg::Sp, -1));
+        self.emit(AsmInst::Load(Reg::Ra, Reg::Sb, Reg::Sp));
     }
 
     /// Check if function has any call instructions

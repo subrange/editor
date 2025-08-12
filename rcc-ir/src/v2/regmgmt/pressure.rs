@@ -74,13 +74,13 @@ impl RegisterPressureManager {
     pub fn new(local_count: i16) -> Self {
         // Initialize with R5-R11 available
         let mut free_list = VecDeque::new();
-        free_list.push_back(Reg::R5);
-        free_list.push_back(Reg::R6);
-        free_list.push_back(Reg::R7);
-        free_list.push_back(Reg::R8);
-        free_list.push_back(Reg::R9);
-        free_list.push_back(Reg::R10);
-        free_list.push_back(Reg::R11);
+        free_list.push_back(Reg::A0);
+        free_list.push_back(Reg::A1);
+        free_list.push_back(Reg::A2);
+        free_list.push_back(Reg::A3);
+        free_list.push_back(Reg::X0);
+        free_list.push_back(Reg::X1);
+        free_list.push_back(Reg::X2);
         
         Self {
             allocator: RegAllocV2::new(),
@@ -106,9 +106,9 @@ impl RegisterPressureManager {
         trace!("  R13 initialized, spill base set to FP+{}", self.local_count);
     }
     
-    /// Initialize R13 for stack operations (called automatically when needed)
-    fn ensure_r13_initialized(&mut self) {
-        if !self.allocator.r13_initialized {
+    /// Initialize SB for stack operations (called automatically when needed)
+    fn ensure_sb_initialized(&mut self) {
+        if !self.allocator.sb_initialized {
             self.allocator.init_stack_bank();
             // The init_stack_bank generates instructions, take them
             self.instructions.extend(self.allocator.take_instructions());
@@ -128,21 +128,21 @@ impl RegisterPressureManager {
     
     /// Get bank register for a pointer (internal use)
     pub(super) fn get_bank_register(&mut self, ptr_value: &str) -> Reg {
-        self.ensure_r13_initialized();
+        self.ensure_sb_initialized();
         self.allocator.get_bank_register(ptr_value)
     }
     
     /// Load parameter from stack
     pub fn load_parameter(&mut self, param_idx: usize) -> Reg {
-        self.ensure_r13_initialized();
+        self.ensure_sb_initialized();
         let reg = self.allocator.load_parameter(param_idx);
         self.instructions.extend(self.allocator.take_instructions());
         reg
     }
     
-    /// Check if R13 is initialized (internal use)
-    pub(super) fn is_r13_initialized(&self) -> bool {
-        self.allocator.r13_initialized
+    /// Check if SB is initialized (internal use)
+    pub(super) fn is_sb_initialized(&self) -> bool {
+        self.allocator.sb_initialized
     }
     
     /// Calculate register need for an expression (Sethi-Ullman)
@@ -244,7 +244,7 @@ impl RegisterPressureManager {
             trace!("spill_register({:?}) containing '{}'", reg, value);
             
             // Ensure R13 is initialized before any stack operation
-            self.ensure_r13_initialized();
+            self.ensure_sb_initialized();
             
             // Get or allocate spill slot
             let slot = self.reg_to_slot.get(&reg).copied()
@@ -259,9 +259,9 @@ impl RegisterPressureManager {
             
             // Generate spill instructions using R12 as scratch
             self.instructions.push(AsmInst::Comment(format!("Spill {value} to slot {slot}")));
-            self.instructions.push(AsmInst::Add(Reg::R12, Reg::R15, Reg::R0));
-            self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R12, self.local_count + slot));
-            self.instructions.push(AsmInst::Store(reg, Reg::R13, Reg::R12));
+            self.instructions.push(AsmInst::Add(Reg::Sc, Reg::Fp, Reg::R0));
+            self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Sc, self.local_count + slot));
+            self.instructions.push(AsmInst::Store(reg, Reg::Sb, Reg::Sc));
             
             debug!("Spilled '{}' from {:?} to slot {} (FP+{})", value, reg, slot, self.local_count + slot);
         } else {
@@ -287,13 +287,13 @@ impl RegisterPressureManager {
             let reg = self.get_register(value.clone());
             
             // Ensure R13 is initialized before any stack operation
-            self.ensure_r13_initialized();
+            self.ensure_sb_initialized();
             
             // Generate reload instructions
             self.instructions.push(AsmInst::Comment(format!("Reload {value} from slot {slot}")));
-            self.instructions.push(AsmInst::Add(Reg::R12, Reg::R15, Reg::R0));
-            self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R12, self.local_count + slot));
-            self.instructions.push(AsmInst::Load(reg, Reg::R13, Reg::R12));
+            self.instructions.push(AsmInst::Add(Reg::Sc, Reg::Fp, Reg::R0));
+            self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Sc, self.local_count + slot));
+            self.instructions.push(AsmInst::Load(reg, Reg::Sb, Reg::Sc));
             
             debug!("Reloaded '{}' into {:?} from slot {} (FP+{})", value, reg, slot, self.local_count + slot);
             return reg;

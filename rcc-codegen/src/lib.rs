@@ -29,8 +29,8 @@ mod tests {
     #[test]
     fn test_basic_code_generation() {
         let instructions = vec![
-            AsmInst::LI(Reg::R3, 42),
-            AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
+            AsmInst::LI(Reg::T0, 42),
+            AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
             AsmInst::Halt,
         ];
 
@@ -38,8 +38,8 @@ mod tests {
         assert!(result.is_ok());
         
         let asm = result.unwrap();
-        assert!(asm.contains("LI R3, 42"));
-        assert!(asm.contains("STORE R3, R0, R0"));
+        assert!(asm.contains("LI T0, 42"));
+        assert!(asm.contains("STORE T0, R0, R0"));
         assert!(asm.contains("HALT"));
     }
 }

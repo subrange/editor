@@ -22,7 +22,7 @@ pub const DEBUG_MEMORY_DISPLAY_WORDS: usize = 32; // Number of memory words to d
 pub const DEBUG_MEMORY_WORDS_PER_LINE: usize = 8; // Words per line in memory dumps
 
 // VM limits
-pub const MAX_REGISTERS: usize = 18;
+pub const MAX_REGISTERS: usize = 32;
 pub const MIN_MEMORY_SIZE: usize = 256; // Minimum reasonable memory size
 
 // Output flags

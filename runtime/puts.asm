@@ -2,27 +2,27 @@
 
 ; Function: puts
 puts:
-    STORE RA, R13, R14
-    ADDI R14, R14, 1
-    STORE R15, R13, R14
-    ADDI R14, R14, 1
-    ADD R15, R14, R0
-    ADDI R14, R14, 22
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+    ADD FP, SP, R0
+    ADDI SP, SP, 22
 ; === Processing instruction #0: Alloca { result: 2, alloc_type: FatPtr(I8), count: None, result_type: FatPtr(FatPtr(I8)) } ===
 ; === ModuleLowerer::get_reg for 't2' ===
 ; get_reg for 't2'
 ;   Allocated free register for t2
 ; Alloca for t2 at FP+1 (fat ptr: stack bank)
-    ADDI R5, R15, 1
+    ADDI A0, FP, 1
 ; === Processing instruction #1: Store { value: FatPtr(FatPointer { addr: Temp(0), bank: Stack }), ptr: FatPtr(FatPointer { addr: Temp(2), bank: Stack }) } ===
 ; === ModuleLowerer::get_reg for 'addr_t2_0' ===
 ; get_reg for 'addr_t2_0'
 ;   Allocated free register for addr_t2_0
-    ADDI R6, R15, 1
+    ADDI A1, FP, 1
 ; === ModuleLowerer::get_reg for 'stack_bank_2' ===
 ; get_reg for 'stack_bank_2'
 ;   Allocated free register for stack_bank_2
-    LI R7, 1
+    LI A2, 1
 ; Store fat pointer {addr: t0, bank: Stack} to [{addr: t2, bank: Stack}]
 ; Getting register for temp t0
 ; Looking for t0 in registers
@@ -33,24 +33,24 @@ puts:
 ;   R7 contains bank_preserve_3
 ; t0 found in R3
 ;   t0 is now in R3
-    STORE R3, R7, R6
+    STORE RV0, A2, A1
 ; === ModuleLowerer::get_reg for 'stack_bank_4' ===
 ; get_reg for 'stack_bank_4'
 ;   Allocated free register for stack_bank_4
-    LI R8, 1
+    LI A3, 1
 ; === ModuleLowerer::get_reg for 'store_bank_5' ===
 ; get_reg for 'store_bank_5'
 ;   Allocated free register for store_bank_5
-    LI R9, 0
+    LI X0, 0
 ; === ModuleLowerer::get_reg for 'addr_t2_7' ===
 ; get_reg for 'addr_t2_7'
 ;   Allocated free register for addr_t2_7
-    ADDI R10, R15, 1
+    ADDI X1, FP, 1
 ; === ModuleLowerer::get_reg for 'next_addr_9' ===
 ; get_reg for 'next_addr_9'
 ;   Allocated free register for next_addr_9
-    ADDI R11, R10, 1
-    STORE R9, R7, R11
+    ADDI X2, X1, 1
+    STORE X0, A2, X2
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #2: Binary { result: 3, op: Eq, lhs: FatPtr(FatPointer { addr: Temp(2), bank: Stack }), rhs: Constant(0), result_type: I1 } ===
 ; === Processing Binary t3 ===
@@ -58,20 +58,20 @@ puts:
 ; === ModuleLowerer::get_reg for 'addr_t2_10' ===
 ; get_reg for 'addr_t2_10'
 ;   Allocated free register for addr_t2_10
-    ADDI R5, R15, 1
+    ADDI A0, FP, 1
 ; === ModuleLowerer::get_reg for 'const_0_11' ===
 ; get_reg for 'const_0_11'
 ;   Allocated free register for const_0_11
-    LI R6, 0
+    LI A1, 0
 ; Reusing R5 for result t3
-    SLTU R8, R5, R6
-    SLTU R7, R6, R5
-    OR R5, R8, R7
+    SLTU A3, A0, A1
+    SLTU A2, A1, A0
+    OR A0, A3, A2
 ; === ModuleLowerer::get_reg for 'eq_inv_14' ===
 ; get_reg for 'eq_inv_14'
 ;   Allocated free register for eq_inv_14
-    LI R7, 1
-    SUB R5, R7, R5
+    LI A2, 1
+    SUB A0, A2, A0
 ; Freeing right operand register R6
 ; === Processing instruction #3: BranchCond { condition: Temp(3), true_label: 1, false_label: 3 } ===
 ; Getting register for temp t3
@@ -81,7 +81,7 @@ puts:
 ;   R5 contains t3
 ; t3 found in R5
 ;   t3 is now in R5
-    BNE R5, R0, puts_L1
+    BNE A0, R0, puts_L1
     BEQ R0, R0, puts_L3
 puts_L1:
 ; === Processing instruction #0: Binary { result: 4, op: Sub, lhs: Constant(0), rhs: Constant(1), result_type: I16 } ===
@@ -90,13 +90,13 @@ puts_L1:
 ; === ModuleLowerer::get_reg for 'const_0_15' ===
 ; get_reg for 'const_0_15'
 ;   Allocated free register for const_0_15
-    LI R5, 0
+    LI A0, 0
 ; === ModuleLowerer::get_reg for 'const_1_16' ===
 ; get_reg for 'const_1_16'
 ;   Allocated free register for const_1_16
-    LI R6, 1
+    LI A1, 1
 ; Reusing R5 for result t4
-    SUB R5, R5, R6
+    SUB A0, A0, A1
 ; Freeing right operand register R6
 ; === Processing instruction #1: Return(Some(Temp(4))) ===
 ; Getting register for temp t4
@@ -106,12 +106,12 @@ puts_L1:
 ;   R5 contains t4
 ; t4 found in R5
 ;   t4 is now in R5
-    ADD R3, R5, R0
-    ADD R14, R15, R0
-    ADDI R14, R14, -1
-    LOAD R15, R13, R14
-    ADDI R14, R14, -1
-    LOAD RA, R13, R14
+    ADD RV0, A0, R0
+    ADD SP, FP, R0
+    ADDI SP, SP, -1
+    LOAD FP, SB, SP
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
     RET
 puts_L4:
 ; === Processing instruction #0: Branch(3) ===
@@ -125,16 +125,16 @@ puts_L5:
 ; === ModuleLowerer::get_reg for 'addr_t2_17' ===
 ; get_reg for 'addr_t2_17'
 ;   Allocated free register for addr_t2_17
-    ADDI R5, R15, 1
+    ADDI A0, FP, 1
 ; Pinning addr_t2_17 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_18' ===
 ; get_reg for 'stack_bank_18'
 ;   Allocated free register for stack_bank_18
-    LI R6, 1
+    LI A1, 1
 ; === ModuleLowerer::get_reg for 't5' ===
 ; get_reg for 't5'
 ;   Allocated free register for t5
-    LOAD R7, R6, R5
+    LOAD A2, A1, A0
 ; === Processing instruction #1: BranchCond { condition: Temp(5), true_label: 6, false_label: 7 } ===
 ; Getting register for temp t5
 ; Looking for t5 in registers
@@ -145,7 +145,7 @@ puts_L5:
 ;   R7 contains t5
 ; t5 found in R7
 ;   t5 is now in R7
-    BNE R7, R0, puts_L6
+    BNE A2, R0, puts_L6
     BEQ R0, R0, puts_L7
 puts_L6:
 ; === Processing instruction #0: Load { result: 6, ptr: FatPtr(FatPointer { addr: Temp(2), bank: Stack }), result_type: I8 } ===
@@ -153,16 +153,16 @@ puts_L6:
 ; === ModuleLowerer::get_reg for 'addr_t2_19' ===
 ; get_reg for 'addr_t2_19'
 ;   Allocated free register for addr_t2_19
-    ADDI R5, R15, 1
+    ADDI A0, FP, 1
 ; Pinning addr_t2_19 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_20' ===
 ; get_reg for 'stack_bank_20'
 ;   Allocated free register for stack_bank_20
-    LI R6, 1
+    LI A1, 1
 ; === ModuleLowerer::get_reg for 't6' ===
 ; get_reg for 't6'
 ;   Allocated free register for t6
-    LOAD R7, R6, R5
+    LOAD A2, A1, A0
 ; === Processing instruction #1: Call { result: None, function: Global("putchar"), args: [Temp(6)], result_type: Void } ===
 ; Getting register for temp t6
 ; Looking for t6 in registers
@@ -173,35 +173,35 @@ puts_L6:
 ;   R7 contains t6
 ; t6 found in R7
 ;   t6 is now in R7
-    ADD R3, R7, R0
+    ADD RV0, A2, R0
     CALL putchar
 ; === Processing instruction #2: GetElementPtr { result: 7, ptr: FatPtr(FatPointer { addr: Temp(2), bank: Stack }), indices: [Constant(1)], result_type: FatPtr(I16) } ===
 ; GetElementPtr t7 = {addr: t2, bank: Stack} + offsets
 ; === ModuleLowerer::get_reg for 'addr_t2_21' ===
-; Clearing R5 which contained addr_t2_19
-; Clearing R6 which contained stack_bank_20
-; Clearing R7 which contained t6
+; Clearing A0 which contained addr_t2_19
+; Clearing A1 which contained stack_bank_20
+; Clearing A2 which contained t6
 ; get_reg for 'addr_t2_21'
 ;   Allocated free register for addr_t2_21
-    ADDI R7, R15, 1
+    ADDI A2, FP, 1
 ;   Base {addr: t2, bank: Stack} in R7
 ; === ModuleLowerer::get_reg for 'const_1_22' ===
 ; get_reg for 'const_1_22'
 ;   Allocated free register for const_1_22
-    LI R6, 1
+    LI A1, 1
 ; === ModuleLowerer::get_reg for 't7' ===
 ; get_reg for 't7'
 ;   Allocated free register for t7
-    ADD R5, R7, R6
+    ADD A0, A2, A1
 ; === Processing instruction #3: Store { value: FatPtr(FatPointer { addr: Temp(7), bank: Stack }), ptr: Temp(2) } ===
 ; === ModuleLowerer::get_reg for 'addr_t2_23' ===
 ; get_reg for 'addr_t2_23'
 ;   Allocated free register for addr_t2_23
-    ADDI R8, R15, 1
+    ADDI A3, FP, 1
 ; === ModuleLowerer::get_reg for 'stack_bank_25' ===
 ; get_reg for 'stack_bank_25'
 ;   Allocated free register for stack_bank_25
-    LI R9, 1
+    LI X0, 1
 ; Store fat pointer {addr: t7, bank: Stack} to [t2]
 ; Getting register for temp t7
 ; Looking for t7 in registers
@@ -214,15 +214,15 @@ puts_L6:
 ;   R? contains bank_preserve_26
 ; t7 found in R5
 ;   t7 is now in R5
-    STORE R5, R9, R8
+    STORE A0, X0, A3
 ; === ModuleLowerer::get_reg for 'stack_bank_27' ===
 ; get_reg for 'stack_bank_27'
 ;   Allocated free register for stack_bank_27
-    LI R10, 1
+    LI X1, 1
 ; === ModuleLowerer::get_reg for 'store_bank_28' ===
 ; get_reg for 'store_bank_28'
 ;   Allocated free register for store_bank_28
-    LI R11, 0
+    LI X2, 0
 ; === ModuleLowerer::get_reg for 'addr_t2_30' ===
 ; get_reg for 'addr_t2_30'
 ;   No free registers, need to spill for addr_t2_30
@@ -237,10 +237,10 @@ puts_L6:
 ;     R11 contains 'bank_val_preserve_28'
 ;   Chose to spill t0 from R3
 ; Spilling t0 to FP+3
-    ADDI R12, R15, 3
-    STORE R3, R13, R12
+    ADDI SC, FP, 3
+    STORE RV0, SB, SC
 ;   Now R3 will contain addr_t2_30
-    ADDI R3, R15, 1
+    ADDI RV0, FP, 1
 ; === ModuleLowerer::get_reg for 'next_addr_32' ===
 ; get_reg for 'next_addr_32'
 ;   No free registers, need to spill for next_addr_32
@@ -255,11 +255,11 @@ puts_L6:
 ;     R11 contains 'bank_val_preserve_28'
 ;   Chose to spill t1 from R4
 ; Spilling t1 to FP+4
-    ADDI R12, R15, 4
-    STORE R4, R13, R12
+    ADDI SC, FP, 4
+    STORE RV1, SB, SC
 ;   Now R4 will contain next_addr_32
-    ADDI R4, R3, 1
-    STORE R11, R9, R4
+    ADDI RV1, RV0, 1
+    STORE X2, X0, RV1
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #4: Branch(5) ===
     BEQ R0, R0, puts_L5
@@ -268,27 +268,27 @@ puts_L7:
 ; === ModuleLowerer::get_reg for 'const_10_33' ===
 ; get_reg for 'const_10_33'
 ;   Allocated free register for const_10_33
-    LI R5, 10
-    ADD R3, R5, R0
+    LI A0, 10
+    ADD RV0, A0, R0
     CALL putchar
 ; === Processing instruction #1: Return(Some(Constant(0))) ===
 ; === ModuleLowerer::get_reg for 'const_0_34' ===
-; Clearing R5 which contained const_10_33
+; Clearing A0 which contained const_10_33
 ; get_reg for 'const_0_34'
 ;   Allocated free register for const_0_34
-    LI R5, 0
-    ADD R3, R5, R0
-    ADD R14, R15, R0
-    ADDI R14, R14, -1
-    LOAD R15, R13, R14
-    ADDI R14, R14, -1
-    LOAD RA, R13, R14
+    LI A0, 0
+    ADD RV0, A0, R0
+    ADD SP, FP, R0
+    ADDI SP, SP, -1
+    LOAD FP, SB, SP
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
     RET
 puts_L8:
 ; === Processing instruction #0: Return(None) ===
-    ADD R14, R15, R0
-    ADDI R14, R14, -1
-    LOAD R15, R13, R14
-    ADDI R14, R14, -1
-    LOAD RA, R13, R14
+    ADD SP, FP, R0
+    ADDI SP, SP, -1
+    LOAD FP, SB, SP
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
     RET

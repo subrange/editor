@@ -1,23 +1,23 @@
-//! V2 Register Allocator with Proper R13 Initialization and Correct ABI
+//! V2 Register Allocator - 32 Register Architecture
 //! 
-//! Key improvements over v1:
-//! - R13 (stack bank) is properly initialized to 1
-//! - Correct parameter passing in R5-R11 (not R3-R8)
-//! - Proper fat pointer handling (R3=addr, R4=bank)
-//! - Correct bank register usage for memory operations
+//! Updated for 32-register architecture:
+//! - Allocatable registers: T0-T7 (temporaries) and S0-S3 (saved)
+//! - Arguments passed in A0-A3
+//! - Return values in RV0-RV1
+//! - SC/SB/SP/FP/GP for scratch, stack bank, stack, frame, and global pointers
 
 use rcc_codegen::{AsmInst, Reg};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{HashMap, BTreeMap, BTreeSet};
 use log::{debug, trace};
 use super::bank::BankInfo;
 
-/// V2 register allocator with correct ABI and bank handling
+/// V2 register allocator with 32-register architecture
 pub(super) struct RegAllocV2 {
-    /// Free list of available registers (R5-R11 only, R3-R4 reserved for returns)
+    /// Free list of available registers (T0-T7, S0-S3)
     free_list: Vec<Reg>,
     
     /// Map from register to what it contains
-    reg_contents: BTreeMap<Reg, String>,
+    reg_contents: HashMap<Reg, String>,
     
     /// Map from spilled values to their stack offsets
     spill_slots: BTreeMap<String, i16>,
@@ -38,8 +38,8 @@ pub(super) struct RegAllocV2 {
     /// Kept for compatibility but not used
     _parameter_placeholder: Option<()>,
     
-    /// Track if R13 has been initialized for this function
-    pub(super) r13_initialized: bool,
+    /// Track if SB has been initialized for this function
+    pub(super) sb_initialized: bool,
     
     /// Track fat pointer bank components
     /// Maps value name to its bank register or tag
@@ -54,47 +54,53 @@ impl Default for RegAllocV2 {
 }
 
 impl RegAllocV2 {
-    /// Create a new allocator with R5-R11 available
-    /// R3-R4 are reserved for return values/fat pointers
+    /// Create a new allocator with T0-T7 and S0-S3 available
+    /// RV0-RV1 are reserved for return values
+    /// A0-A3 are reserved for arguments
     pub(super) fn new() -> Self {
         Self {
-            // R5-R11 are allocatable (7 registers total)
-            free_list: vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5],
-            reg_contents: BTreeMap::new(),
+            // T0-T7 and S0-S3 are allocatable (12 registers total)
+            free_list: vec![
+                // Saved registers first (callee-saved, less likely to be spilled)
+                Reg::S3, Reg::S2, Reg::S1, Reg::S0,
+                // Then temporaries (caller-saved)
+                Reg::T7, Reg::T6, Reg::T5, Reg::T4, Reg::T3, Reg::T2, Reg::T1, Reg::T0
+            ],
+            reg_contents: HashMap::new(),
             spill_slots: BTreeMap::new(),
             next_spill_offset: 0,
             instructions: Vec::new(),
             last_spilled: None,
             pinned_values: BTreeSet::new(),
             _parameter_placeholder: None,
-            r13_initialized: false,
+            sb_initialized: false,
             pointer_banks: BTreeMap::new(),
         }
     }
     
-    /// Initialize R13 as stack bank register (MUST be called at function start!)
+    /// Initialize SB as stack bank register (MUST be called at function start!)
     pub(super) fn init_stack_bank(&mut self) {
-        if !self.r13_initialized {
-            self.instructions.push(AsmInst::Comment("Initialize R13 as stack bank (1)".to_string()));
-            self.instructions.push(AsmInst::LI(Reg::R13, 1));
-            self.r13_initialized = true;
-            debug!("Initialized R13 to 1 for stack bank");
+        if !self.sb_initialized {
+            self.instructions.push(AsmInst::Comment("Initialize SB as stack bank (1)".to_string()));
+            self.instructions.push(AsmInst::LI(Reg::Sb, 1));
+            self.sb_initialized = true;
+            debug!("Initialized SB to 1 for stack bank");
         }
     }
-    
+
     /// Get the bank register for a pointer
     pub(super) fn get_bank_register(&mut self, ptr_value: &str) -> Reg {
         match self.pointer_banks.get(ptr_value) {
             Some(BankInfo::Global) => {
-                trace!("Using R0 for global bank");
-                Reg::R0  // Global bank is always 0
+                trace!("Using GP for global bank");
+                Reg::Gp  // Global pointer register for globals
             }
             Some(BankInfo::Stack) => {
-                if !self.r13_initialized {
-                    panic!("R13 not initialized! Call init_stack_bank() first");
+                if !self.sb_initialized {
+                    panic!("SB not initialized! Call init_stack_bank() first");
                 }
-                trace!("Using R13 for stack bank");
-                Reg::R13  // Stack bank register
+                trace!("Using SB for stack bank");
+                Reg::Sb  // Stack bank register
             }
             Some(BankInfo::Register(reg)) => {
                 trace!("Using {reg:?} for dynamic bank");
@@ -103,20 +109,20 @@ impl RegAllocV2 {
             None => {
                 // Default to stack if unknown
                 debug!("No bank info for '{ptr_value}', defaulting to stack");
-                if !self.r13_initialized {
-                    panic!("R13 not initialized! Call init_stack_bank() first");
+                if !self.sb_initialized {
+                    panic!("SB not initialized! Call init_stack_bank() first");
                 }
-                Reg::R13
+                Reg::Sb
             }
         }
     }
-    
+
     /// Set bank info for a pointer value
     pub(super) fn set_pointer_bank(&mut self, ptr_value: String, bank: BankInfo) {
         debug!("Setting bank info for '{ptr_value}': {bank:?}");
         self.pointer_banks.insert(ptr_value, bank);
     }
-    
+
     /// Load parameter from stack (params are stack-based per spec)
     /// Parameters are at negative offsets from FP
     pub(super) fn load_parameter(&mut self, param_idx: usize) -> Reg {
@@ -125,26 +131,26 @@ impl RegAllocV2 {
         let offset = -(param_idx as i16 + 3);
         debug!("Loading parameter {} from stack at FP{}", param_idx, offset);
         let dest = self.get_reg(format!("param{param_idx}"));
-        
+
         self.instructions.push(AsmInst::Comment(format!("Load param {param_idx} from FP{offset}")));
-        self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, offset));
-        self.instructions.push(AsmInst::Load(dest, Reg::R13, Reg::R12));
+        self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Fp, offset));
+        self.instructions.push(AsmInst::Load(dest, Reg::Sb, Reg::Sc));
         trace!("  Loaded param{} into {:?}", param_idx, dest);
-        
+
         dest
     }
-    
+
     /// Get a register for a value
     pub(super) fn get_reg(&mut self, for_value: String) -> Reg {
         trace!("get_reg for '{}', reg_contents: {:?}", for_value, self.reg_contents);
         trace!("  free_list: {:?}, pinned: {:?}", self.free_list, self.pinned_values);
-        
+
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &for_value) {
             trace!("  {for_value} already in {reg:?}");
             return reg;
         }
-        
+
         // Try to get a free register
         if let Some(reg) = self.free_list.pop() {
             trace!("  Allocated free {reg:?} for {for_value}");
@@ -152,69 +158,69 @@ impl RegAllocV2 {
             self.reg_contents.insert(reg, for_value);
             return reg;
         }
-        
+
         // Need to spill - find non-pinned victim
         debug!("Need to spill for '{}', pinned: {:?}", for_value, self.pinned_values);
         trace!("  Current register contents: {:?}", self.reg_contents);
-        
+
         let victim = self.reg_contents.iter()
             .find(|(_, val)| !self.pinned_values.contains(*val))
             .map(|(reg, _)| *reg)
             .expect("No spillable registers!");
-        
+
         let victim_value = self.reg_contents.remove(&victim).unwrap();
         debug!("Spilling '{}' from {:?} to make room for '{}'" , victim_value, victim, for_value);
         trace!("  Spilling {victim_value} from {victim:?}");
-        
+
         // Spill the victim
         let spill_offset = self.get_spill_slot(&victim_value);
-        
-        // Ensure R13 is initialized before any stack access
-        if !self.r13_initialized {
+
+        // Ensure SB is initialized before any stack access
+        if !self.sb_initialized {
             self.init_stack_bank();
         }
-        
+
         self.instructions.push(AsmInst::Comment(format!("Spilling {victim_value} to FP+{spill_offset}")));
-        self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset));
-        self.instructions.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
-        
+        self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Fp, spill_offset));
+        self.instructions.push(AsmInst::Store(victim, Reg::Sb, Reg::Sc));
+
         // Preserve bank info if this was a pointer
         if let Some(_bank) = self.pointer_banks.get(&victim_value).cloned() {
             // We'll need to track this for reload
             debug!("Preserved bank info for spilled pointer {victim_value}");
         }
-        
+
         self.last_spilled = Some((victim_value, spill_offset));
-        
+
         // Use the register for new value
         self.reg_contents.insert(victim, for_value);
         victim
     }
-    
+
     /// Reload a spilled value
     pub(super) fn reload(&mut self, value: String) -> Reg {
         trace!("reload('{}'), spill_slots: {:?}", value, self.spill_slots);
-        
+
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &value) {
             trace!("  '{}' already in {:?}, no reload needed", value, reg);
             return reg;
         }
-        
+
         // Check if spilled
         if let Some(&offset) = self.spill_slots.get(&value) {
             debug!("Reloading '{}' from spill slot FP+{}", value, offset);
             let reg = self.get_reg(value.clone());
-            
-            // Ensure R13 is initialized
-            if !self.r13_initialized {
-                trace!("  Initializing R13 before reload");
+
+            // Ensure SB is initialized
+            if !self.sb_initialized {
+                trace!("  Initializing SB before reload");
                 self.init_stack_bank();
             }
-            
+
             self.instructions.push(AsmInst::Comment(format!("Reloading {value} from FP+{offset}")));
-            self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, offset));
-            self.instructions.push(AsmInst::Load(reg, Reg::R13, Reg::R12));
+            self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Fp, offset));
+            self.instructions.push(AsmInst::Load(reg, Reg::Sb, Reg::Sc));
             debug!("Reloaded '{}' into {:?} from FP+{}", value, reg, offset);
             return reg;
         }
@@ -250,8 +256,13 @@ impl RegAllocV2 {
         
         self.reg_contents.clear();
         
-        // Reset free list to all allocatable registers
-        self.free_list = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5];
+        // Reset free list to all allocatable registers (T0-T7 and S0-S3)
+        self.free_list = vec![
+            // Saved registers first (callee-saved, less likely to be spilled)
+            Reg::S3, Reg::S2, Reg::S1, Reg::S0,
+            // Then temporaries (caller-saved)
+            Reg::T7, Reg::T6, Reg::T5, Reg::T4, Reg::T3, Reg::T2, Reg::T1, Reg::T0
+        ];
     }
     
     /// Mark a register as in use
@@ -263,25 +274,38 @@ impl RegAllocV2 {
     
     /// Free a specific register
     pub(super) fn free_reg(&mut self, reg: Reg) {
-        // Only free R5-R11
-        if matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11) {
+        // Only free allocatable registers (T0-T7, S0-S3)
+        if matches!(reg, 
+            Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7 |
+            Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3
+        ) {
             self.reg_contents.remove(&reg);
             if !self.free_list.contains(&reg) {
                 // Maintain deterministic order - insert in the right position
-                // Order should be R11, R10, R9, R8, R7, R6, R5
+                // Order: S3, S2, S1, S0, T7, T6, T5, T4, T3, T2, T1, T0
                 let position = match reg {
-                    Reg::R11 => 0,
-                    Reg::R10 => self.free_list.iter().position(|&r| 
-                        matches!(r, Reg::R9 | Reg::R8 | Reg::R7 | Reg::R6 | Reg::R5)).unwrap_or(self.free_list.len()),
-                    Reg::R9 => self.free_list.iter().position(|&r| 
-                        matches!(r, Reg::R8 | Reg::R7 | Reg::R6 | Reg::R5)).unwrap_or(self.free_list.len()),
-                    Reg::R8 => self.free_list.iter().position(|&r| 
-                        matches!(r, Reg::R7 | Reg::R6 | Reg::R5)).unwrap_or(self.free_list.len()),
-                    Reg::R7 => self.free_list.iter().position(|&r| 
-                        matches!(r, Reg::R6 | Reg::R5)).unwrap_or(self.free_list.len()),
-                    Reg::R6 => self.free_list.iter().position(|&r| 
-                        matches!(r, Reg::R5)).unwrap_or(self.free_list.len()),
-                    Reg::R5 => self.free_list.len(),
+                    Reg::S3 => 0,
+                    Reg::S2 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::S1 | Reg::S0 | Reg::T7 | Reg::T6 | Reg::T5 | Reg::T4 | Reg::T3 | Reg::T2 | Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::S1 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::S0 | Reg::T7 | Reg::T6 | Reg::T5 | Reg::T4 | Reg::T3 | Reg::T2 | Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::S0 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::T7 | Reg::T6 | Reg::T5 | Reg::T4 | Reg::T3 | Reg::T2 | Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::T7 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::T6 | Reg::T5 | Reg::T4 | Reg::T3 | Reg::T2 | Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::T6 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::T5 | Reg::T4 | Reg::T3 | Reg::T2 | Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::T5 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::T4 | Reg::T3 | Reg::T2 | Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::T4 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::T3 | Reg::T2 | Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::T3 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::T2 | Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::T2 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::T1 | Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::T1 => self.free_list.iter().position(|&r| 
+                        matches!(r, Reg::T0)).unwrap_or(self.free_list.len()),
+                    Reg::T0 => self.free_list.len(),
                     _ => unreachable!(),
                 };
                 self.free_list.insert(position, reg);
@@ -327,7 +351,12 @@ impl RegAllocV2 {
     pub(super) fn reset(&mut self) {
         debug!("Resetting allocator for new function");
         trace!("  Clearing spill_slots: {:?}, reg_contents: {:?}", self.spill_slots, self.reg_contents);
-        self.free_list = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5];
+        self.free_list = vec![
+            // Saved registers first (callee-saved, less likely to be spilled)
+            Reg::S3, Reg::S2, Reg::S1, Reg::S0,
+            // Then temporaries (caller-saved)
+            Reg::T7, Reg::T6, Reg::T5, Reg::T4, Reg::T3, Reg::T2, Reg::T1, Reg::T0
+        ];
         self.reg_contents.clear();
         self.spill_slots.clear();
         self.next_spill_offset = 0;
@@ -335,7 +364,7 @@ impl RegAllocV2 {
         self.last_spilled = None;
         self.pinned_values.clear();
         self._parameter_placeholder = None;
-        self.r13_initialized = false;
+        self.sb_initialized = false;
         self.pointer_banks.clear();
     }
 }
@@ -348,7 +377,7 @@ mod tests;
 // Make some fields accessible for testing
 #[cfg(test)]
 impl RegAllocV2 {
-    pub fn test_reg_contents(&self) -> &BTreeMap<Reg, String> {
+    pub fn test_reg_contents(&self) -> &HashMap<Reg, String> {
         &self.reg_contents
     }
     

@@ -239,8 +239,8 @@ impl TuiDebugger {
         let registers_memory_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(10),  // Registers
-                Constraint::Min(15),     // Memory
+                Constraint::Length(11),  // Registers (increased for 32 registers display)
+                Constraint::Min(14),     // Memory
             ])
             .split(right_chunks[0]);
         

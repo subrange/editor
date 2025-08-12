@@ -58,9 +58,9 @@ impl ModuleLowerer {
                 
                 // Store each character
                 for byte in chars {
-                    self.emit(AsmInst::LI(Reg::R3, byte as i16));
-                    self.emit(AsmInst::LI(Reg::R4, addr as i16));
-                    self.emit(AsmInst::Store(Reg::R3, Reg::R0, Reg::R4));
+                    self.emit(AsmInst::LI(Reg::Rv0, byte as i16));
+                    self.emit(AsmInst::LI(Reg::Rv1, addr as i16));
+                    self.emit(AsmInst::Store(Reg::Rv0, Reg::R0, Reg::Rv1));
                     addr += 1;
                 }
             }
@@ -73,9 +73,9 @@ impl ModuleLowerer {
                 match init_value {
                     Value::Constant(val) => {
                         // Load value into register and store at address
-                        self.emit(AsmInst::LI(Reg::R3, *val as i16));
-                        self.emit(AsmInst::LI(Reg::R4, address as i16));
-                        self.emit(AsmInst::Store(Reg::R3, Reg::R0, Reg::R4));
+                        self.emit(AsmInst::LI(Reg::Rv0, *val as i16));
+                        self.emit(AsmInst::LI(Reg::Rv1, address as i16));
+                        self.emit(AsmInst::Store(Reg::Rv0, Reg::R0, Reg::Rv1));
                     }
                     _ => {
                         // Other initializer types not yet supported

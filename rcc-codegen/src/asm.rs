@@ -4,48 +4,12 @@
 
 use std::fmt;
 
-/// Ripple VM Register Set
-/// 
-/// The Ripple VM has 20 registers total:
-/// - R0-R15: General purpose registers (R0 is typically zero/scratch)
-/// - PC, PCB: Program counter and program counter bank
-/// - RA, RAB: Return address and return address bank
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Reg {
-    // General purpose registers
-    R0, R3, R4, R5, R6, R7,
-    R8, R9, R10, R11, R12, R13, R14, R15,
-    
-    // Special registers
-    PC,   // Program Counter
-    PCB,  // Program Counter Bank
-    RA,   // Return Address
-    RAB,  // Return Address Bank
-}
+// Re-export Register type from ripple-asm as Reg for compatibility
+pub use ripple_asm::Register as Reg;
 
-impl fmt::Display for Reg {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Reg::R0 => write!(f, "R0"),
-            Reg::R3 => write!(f, "R3"),
-            Reg::R4 => write!(f, "R4"),
-            Reg::R5 => write!(f, "R5"),
-            Reg::R6 => write!(f, "R6"),
-            Reg::R7 => write!(f, "R7"),
-            Reg::R8 => write!(f, "R8"),
-            Reg::R9 => write!(f, "R9"),
-            Reg::R10 => write!(f, "R10"),
-            Reg::R11 => write!(f, "R11"),
-            Reg::R12 => write!(f, "R12"),
-            Reg::R13 => write!(f, "R13"),
-            Reg::R14 => write!(f, "R14"),
-            Reg::R15 => write!(f, "R15"),
-            Reg::PC => write!(f, "PC"),
-            Reg::PCB => write!(f, "PCB"),
-            Reg::RA => write!(f, "RA"),
-            Reg::RAB => write!(f, "RAB"),
-        }
-    }
+// Helper function to display registers (if needed for custom formatting)
+pub fn format_register(reg: Reg) -> String {
+    reg.to_str().to_string()
 }
 
 /// Ripple Assembly Instructions
@@ -176,17 +140,17 @@ mod tests {
 
     #[test]
     fn test_register_display() {
-        assert_eq!(format!("{}", Reg::R0), "R0");
-        assert_eq!(format!("{}", Reg::R15), "R15");
-        assert_eq!(format!("{}", Reg::PC), "PC");
-        assert_eq!(format!("{}", Reg::RA), "RA");
+        assert_eq!(Reg::R0.to_str(), "R0");
+        assert_eq!(Reg::T0.to_str(), "T0");
+        assert_eq!(Reg::Pc.to_str(), "PC");
+        assert_eq!(Reg::Ra.to_str(), "RA");
     }
 
     #[test]
     fn test_instruction_display() {
-        assert_eq!(format!("{}", AsmInst::LI(Reg::R3, 42)), "LI R3, 42");
-        assert_eq!(format!("{}", AsmInst::Add(Reg::R3, Reg::R4, Reg::R5)), "ADD R3, R4, R5");
-        assert_eq!(format!("{}", AsmInst::Store(Reg::R3, Reg::R0, Reg::R0)), "STORE R3, R0, R0");
+        assert_eq!(format!("{}", AsmInst::LI(Reg::T0, 42)), "LI T0, 42");
+        assert_eq!(format!("{}", AsmInst::Add(Reg::T0, Reg::T1, Reg::T2)), "ADD T0, T1, T2");
+        assert_eq!(format!("{}", AsmInst::Store(Reg::T0, Reg::R0, Reg::R0)), "STORE T0, R0, R0");
         assert_eq!(format!("{}", AsmInst::Label("main".to_string())), "main:");
         assert_eq!(format!("{}", AsmInst::Comment("Hello world".to_string())), "; Hello world");
     }
@@ -195,12 +159,12 @@ mod tests {
     fn test_hello_world_instructions() {
         let instructions = vec![
             AsmInst::Label("main".to_string()),
-            AsmInst::LI(Reg::R3, 'H' as i16),
-            AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
-            AsmInst::LI(Reg::R3, 'i' as i16),
-            AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
-            AsmInst::LI(Reg::R3, '\n' as i16),
-            AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
+            AsmInst::LI(Reg::T0, 'H' as i16),
+            AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
+            AsmInst::LI(Reg::T0, 'i' as i16),
+            AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
+            AsmInst::LI(Reg::T0, '\n' as i16),
+            AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
             AsmInst::Halt,
         ];
 

@@ -181,12 +181,12 @@ pub fn lower_store(
     
     let dest_bank_reg = match dest_bank_info {
         BankInfo::Global => {
-            trace!("  Using R0 for global bank (bank 0)");
-            Reg::R0  // Globals are in bank 0, R0 always reads 0
+            trace!("  Using GP for global bank");
+            Reg::Gp  // Global pointer register for globals
         }
         BankInfo::Stack => {
             trace!("  Using R13 (SB) for stack bank");
-            Reg::R13  // SB - Stack Bank register
+            Reg::Sb  // SB - Stack Bank register
         }
         BankInfo::Register(r) => {
             trace!("  Using {:?} for dynamic bank", r);

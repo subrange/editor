@@ -99,9 +99,9 @@ impl ModuleLowerer {
                     let temp_name = self.generate_temp_name(&format!("addr_t{id}"));
                     let reg = self.get_reg(temp_name);
                     if offset > 0 {
-                        self.emit(AsmInst::AddI(reg, Reg::R15, offset));
+                        self.emit(AsmInst::AddI(reg, Reg::Fp, offset));
                     } else {
-                        self.emit(AsmInst::Add(reg, Reg::R15, Reg::R0));
+                        self.emit(AsmInst::Add(reg, Reg::Fp, Reg::R0));
                     }
                     Ok(reg)
                 } else {
@@ -114,9 +114,9 @@ impl ModuleLowerer {
                     let reg = self.reload(key.clone());
 
                     let reg_name = match reg {
-                        Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
-                        Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
-                        Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
+                        Reg::Rv0 => "R3", Reg::Rv1 => "R4", Reg::A0 => "R5",
+                        Reg::A1 => "R6", Reg::A2 => "R7", Reg::A3 => "R8",
+                        Reg::X0 => "R9", Reg::X1 => "R10", Reg::X2 => "R11",
                         _ => "R?",
                     };
                     self.emit(AsmInst::Comment(format!("  {key} is now in {reg_name}")));

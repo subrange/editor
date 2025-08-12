@@ -40,9 +40,9 @@ impl ModuleLowerer {
 
         // Address = R15 (FP) + offset
         if offset > 0 {
-            self.emit(AsmInst::AddI(addr_reg, Reg::R15, offset));
+            self.emit(AsmInst::AddI(addr_reg, Reg::Fp, offset));
         } else {
-            self.emit(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
+            self.emit(AsmInst::Add(addr_reg, Reg::Fp, Reg::R0));
         }
     }
 }

@@ -103,12 +103,12 @@ mod tests {
     fn test_emit_hello_world() {
         let instructions = vec![
             AsmInst::Label("main".to_string()),
-            AsmInst::LI(Reg::R3, 'H' as i16),
-            AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
-            AsmInst::LI(Reg::R3, 'i' as i16),
-            AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
-            AsmInst::LI(Reg::R3, '\n' as i16),
-            AsmInst::Store(Reg::R3, Reg::R0, Reg::R0),
+            AsmInst::LI(Reg::T0, 'H' as i16),
+            AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
+            AsmInst::LI(Reg::T0, 'i' as i16),
+            AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
+            AsmInst::LI(Reg::T0, '\n' as i16),
+            AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
             AsmInst::Halt,
         ];
 
@@ -116,10 +116,10 @@ mod tests {
         
         // Verify the output format
         assert!(result.contains("main:\n"));
-        assert!(result.contains("    LI R3, 72\n"));  // 'H' = 72
-        assert!(result.contains("    LI R3, 105\n")); // 'i' = 105
-        assert!(result.contains("    LI R3, 10\n"));  // '\n' = 10
-        assert!(result.contains("    STORE R3, R0, R0\n"));
+        assert!(result.contains("    LI T0, 72\n"));  // 'H' = 72
+        assert!(result.contains("    LI T0, 105\n")); // 'i' = 105
+        assert!(result.contains("    LI T0, 10\n"));  // '\n' = 10
+        assert!(result.contains("    STORE T0, R0, R0\n"));
         assert!(result.contains("    HALT\n"));
     }
 
@@ -127,7 +127,7 @@ mod tests {
     fn test_emit_complete_program() {
         let instructions = vec![
             AsmInst::Label("main".to_string()),
-            AsmInst::LI(Reg::R3, 42),
+            AsmInst::LI(Reg::T0, 42),
             AsmInst::Halt,
         ];
 
@@ -138,7 +138,7 @@ mod tests {
         assert!(result.contains("_start:\n"));
         assert!(result.contains("    CALL main\n"));
         assert!(result.contains("main:\n"));
-        assert!(result.contains("    LI R3, 42\n"));
+        assert!(result.contains("    LI T0, 42\n"));
     }
 
     #[test]
@@ -146,7 +146,7 @@ mod tests {
         let instructions = vec![
             AsmInst::Comment("This is a test program".to_string()),
             AsmInst::Label("test_label".to_string()),
-            AsmInst::LI(Reg::R1, 1),
+            AsmInst::LI(Reg::T0, 1),
             AsmInst::Comment("End of program".to_string()),
         ];
 
@@ -155,7 +155,7 @@ mod tests {
         // Comments and labels should not be indented
         assert!(result.contains("; This is a test program\n"));
         assert!(result.contains("test_label:\n"));
-        assert!(result.contains("    LI R1, 1\n"));
+        assert!(result.contains("    LI T0, 1\n"));
         assert!(result.contains("; End of program\n"));
     }
 
@@ -163,16 +163,16 @@ mod tests {
     fn test_utility_functions() {
         let instructions = vec![
             AsmInst::Label("main".to_string()),
-            AsmInst::LI(Reg::R3, 42),
-            AsmInst::LI(Reg::R4, 0),
-            AsmInst::Add(Reg::R5, Reg::R3, Reg::R4),
+            AsmInst::LI(Reg::T0, 42),
+            AsmInst::LI(Reg::T1, 0),
+            AsmInst::Add(Reg::T2, Reg::T0, Reg::T1),
             AsmInst::Label("loop".to_string()),
             AsmInst::Halt,
         ];
 
         // Test contains_instruction
-        assert!(contains_instruction(&instructions, &AsmInst::LI(Reg::R3, 42)));
-        assert!(!contains_instruction(&instructions, &AsmInst::LI(Reg::R3, 43)));
+        assert!(contains_instruction(&instructions, &AsmInst::LI(Reg::T0, 42)));
+        assert!(!contains_instruction(&instructions, &AsmInst::LI(Reg::T0, 43)));
 
         // Test count_instruction_type
         let li_count = count_instruction_type(&instructions, |inst| {
@@ -188,27 +188,27 @@ mod tests {
     #[test]
     fn test_arithmetic_instructions() {
         let instructions = vec![
-            AsmInst::LI(Reg::R1, 10),
-            AsmInst::LI(Reg::R2, 20),
-            AsmInst::Add(Reg::R3, Reg::R1, Reg::R2),
-            AsmInst::Sub(Reg::R4, Reg::R2, Reg::R1),
-            AsmInst::AddI(Reg::R5, Reg::R1, 5),
+            AsmInst::LI(Reg::T0, 10),
+            AsmInst::LI(Reg::T1, 20),
+            AsmInst::Add(Reg::T2, Reg::T0, Reg::T1),
+            AsmInst::Sub(Reg::T3, Reg::T1, Reg::T0),
+            AsmInst::AddI(Reg::T4, Reg::T0, 5),
         ];
 
         let result = emit_instructions(instructions).unwrap();
         
-        assert!(result.contains("    ADD R3, R1, R2\n"));
-        assert!(result.contains("    SUB R4, R2, R1\n"));
-        assert!(result.contains("    ADDI R5, R1, 5\n"));
+        assert!(result.contains("    ADD T2, T0, T1\n"));
+        assert!(result.contains("    SUB T3, T1, T0\n"));
+        assert!(result.contains("    ADDI T4, T0, 5\n"));
     }
 
     #[test]
     fn test_control_flow() {
         let instructions = vec![
             AsmInst::Label("loop".to_string()),
-            AsmInst::Beq(Reg::R1, Reg::R2, "end".to_string()),
-            AsmInst::Inc(Reg::R1),
-            AsmInst::Bne(Reg::R1, Reg::R3, "loop".to_string()),
+            AsmInst::Beq(Reg::T0, Reg::T1, "end".to_string()),
+            AsmInst::Inc(Reg::T0),
+            AsmInst::Bne(Reg::T0, Reg::T2, "loop".to_string()),
             AsmInst::Label("end".to_string()),
             AsmInst::Ret,
         ];
@@ -216,8 +216,8 @@ mod tests {
         let result = emit_instructions(instructions).unwrap();
         
         assert!(result.contains("loop:\n"));
-        assert!(result.contains("    BEQ R1, R2, end\n"));
-        assert!(result.contains("    BNE R1, R3, loop\n"));
+        assert!(result.contains("    BEQ T0, T1, end\n"));
+        assert!(result.contains("    BNE T0, T2, loop\n"));
         assert!(result.contains("end:\n"));
     }
 }

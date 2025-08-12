@@ -45,7 +45,7 @@ fn test_multiple_loads_no_conflicts() {
     
     assert!(insts2.iter().any(|i| {
         if let AsmInst::Load(_, bank, _) = i {
-            *bank == Reg::R13
+            *bank == Reg::Sb
         } else {
             false
         }

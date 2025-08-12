@@ -4,96 +4,118 @@ use ratatui::prelude::{Color, Line, Modifier, Span, Style};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ripple_asm::Register;
 use crate::tui_debugger::{FocusedPane, TuiDebugger};
-use crate::vm::{VMState, VM};
+use crate::vm::VM;
 
 impl TuiDebugger {
     pub(crate) fn draw_registers(&self, frame: &mut Frame, area: Rect, vm: &VM) {
         let mut text = Vec::new();
 
-        // Special registers
-        text.push(Line::from(vec![
-            Span::styled("PC", Style::default().fg(Color::Gray)),
-            Span::styled("=", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                format!("{:04X}:{:04X}", vm.registers[Register::Pcb as usize], vm.registers[Register::Pc as usize]),
-                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
-            ),
-            Span::raw("  "),
-            Span::styled("RA", Style::default().fg(Color::Gray)),
-            Span::styled("=", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                format!("{:04X}:{:04X}", vm.registers[Register::Rab as usize], vm.registers[Register::Ra as usize]),
-                Style::default().fg(Color::Magenta)
-            ),
-        ]));
-
-        text.push(Line::from(""));
+        // First row: Hardware registers - PC and RA with banks, plus R0
+        let mut spans = Vec::new();
+        spans.push(Span::styled("PC:", Style::default().fg(Color::LightCyan)));
+        spans.push(Span::styled(
+            format!("{:04X}:{:04X}", vm.registers[Register::Pcb as usize], vm.registers[Register::Pc as usize]),
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+        ));
+        spans.push(Span::raw("  "));
+        spans.push(Span::styled("RA:", Style::default().fg(Color::LightCyan)));
+        spans.push(Span::styled(
+            format!("{:04X}:{:04X}", vm.registers[Register::Rab as usize], vm.registers[Register::Ra as usize]),
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+        ));
+        spans.push(Span::raw("  "));
+        spans.push(Span::styled("R0:", Style::default().fg(Color::LightCyan)));
+        spans.push(Span::styled("0000", Style::default().fg(Color::DarkGray)));
+        text.push(Line::from(spans));
         
-        // R0 (always zero) on its own line
-        text.push(Line::from(vec![
-            Span::styled("R0", Style::default().fg(Color::Gray)),
-            Span::styled("=", Style::default().fg(Color::DarkGray)),
-            Span::styled("0000", Style::default().fg(Color::DarkGray)),
-            Span::styled(" (always zero)", Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
-        ]));
-        
+        // Empty line after hardware registers
         text.push(Line::from(""));
 
-        // General purpose registers in grid (R3-R15)
-        for row in 0..3 {
-            let mut spans = Vec::new();
-            for col in 0..5 {
-                let reg_idx = 5 + row * 5 + col;
-                if reg_idx <= 17 {
-                    let value = vm.registers[reg_idx];
-                    let name = format!("R{:<2}", reg_idx - 2);
-
-                    // Check if register was recently changed
-                    let was_changed = self.register_changes.contains_key(&reg_idx);
-                    
-                    // Style for register name
-                    let name_style = if was_changed {
-                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(Color::Gray)
-                    };
-                    
-                    // Style for value
-                    let value_style = if was_changed {
-                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-                    } else if value != 0 {
-                        Style::default().fg(Color::Cyan)
-                    } else {
-                        Style::default().fg(Color::DarkGray)
-                    };
-
-                    spans.push(Span::styled(name, name_style));
-                    spans.push(Span::styled("=", Style::default().fg(Color::DarkGray)));
-                    spans.push(Span::styled(format!("{:04X}", value), value_style));
-                    
-                    if col < 4 && (5 + row * 5 + col + 1) <= 17 {
-                        spans.push(Span::raw("  "));
-                    }
-                }
-            }
-            text.push(Line::from(spans));
+        // Second row: Return values (RV0-RV1)
+        let mut spans = Vec::new();
+        for i in 5..=6 {
+            let reg_name = match i {
+                5 => "RV0",
+                6 => "RV1",
+                _ => unreachable!(),
+            };
+            spans.extend(self.format_register_with_color(reg_name, i, vm, Color::LightMagenta));
+            spans.push(Span::raw("  "));
         }
+        text.push(Line::from(spans));
 
-        text.push(Line::from(""));
+        // Third row: Arguments (A0-A3)
+        let mut spans = Vec::new();
+        for i in 7..=10 {
+            let reg_name = match i {
+                7 => "A0",
+                8 => "A1",
+                9 => "A2",
+                10 => "A3",
+                _ => unreachable!(),
+            };
+            spans.extend(self.format_register_with_color(reg_name, i, vm, Color::LightBlue));
+            spans.push(Span::raw("  "));
+        }
+        text.push(Line::from(spans));
 
-        // VM State
-        let state_color = match vm.state {
-            VMState::Running => Color::Green,
-            VMState::Halted => Color::Red,
-            VMState::Breakpoint => Color::Yellow,
-            VMState::Error(_) => Color::Red,
-            VMState::Setup => Color::Gray,
-        };
+        // Fourth row: Reserved/Extended (X0-X3)
+        let mut spans = Vec::new();
+        for i in 11..=14 {
+            let reg_name = match i {
+                11 => "X0",
+                12 => "X1",
+                13 => "X2",
+                14 => "X3",
+                _ => unreachable!(),
+            };
+            spans.extend(self.format_register_with_color(reg_name, i, vm, Color::Gray));
+            spans.push(Span::raw("  "));
+        }
+        text.push(Line::from(spans));
 
-        text.push(Line::from(vec![
-            Span::raw("State: "),
-            Span::styled(format!("{:?}", vm.state), Style::default().fg(state_color)),
-        ]));
+        // Fifth row: Saved (S0-S3)
+        let mut spans = Vec::new();
+        for i in 23..=26 {
+            let reg_name = format!("S{}", i - 23);
+            spans.extend(self.format_register_with_color(&reg_name, i, vm, Color::LightGreen));
+            spans.push(Span::raw("  "));
+        }
+        text.push(Line::from(spans));
+
+        // Sixth row: Temporaries T0-T3
+        let mut spans = Vec::new();
+        for i in 15..=18 {
+            let reg_name = format!("T{}", i - 15);
+            spans.extend(self.format_register_with_color(&reg_name, i, vm, Color::LightYellow));
+            spans.push(Span::raw("  "));
+        }
+        text.push(Line::from(spans));
+
+        // Seventh row: Temporaries T4-T7
+        let mut spans = Vec::new();
+        for i in 19..=22 {
+            let reg_name = format!("T{}", i - 15);
+            spans.extend(self.format_register_with_color(&reg_name, i, vm, Color::LightYellow));
+            spans.push(Span::raw("  "));
+        }
+        text.push(Line::from(spans));
+
+        // Eighth row: Special registers (SC, SB, SP, FP, GP)
+        let mut spans = Vec::new();
+        for i in 27..=31 {
+            let reg_name = match i {
+                27 => "SC",
+                28 => "SB",
+                29 => "SP",
+                30 => "FP",
+                31 => "GP",
+                _ => unreachable!(),
+            };
+            spans.extend(self.format_register_with_color(reg_name, i, vm, Color::LightRed));
+            spans.push(Span::raw("  "));
+        }
+        text.push(Line::from(spans));
 
         let title = format!(" Registers [{}] ", if self.focused_pane == FocusedPane::Registers { "ACTIVE" } else { "F2" });
         let block = Block::default()
@@ -109,4 +131,51 @@ impl TuiDebugger {
         frame.render_widget(paragraph, area);
     }
 
+    fn format_register(&self, name: &str, index: usize, vm: &VM) -> Vec<Span> {
+        let value = vm.registers[index];
+        let was_changed = self.register_changes.contains_key(&index);
+        
+        let name_style = if was_changed {
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        
+        let value_style = if was_changed {
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else if value != 0 {
+            Style::default().fg(Color::Cyan)
+        } else {
+            Style::default().fg(Color::DarkGray)
+        };
+
+        vec![
+            Span::styled(format!("{:3}", name), name_style),
+            Span::styled(":", Style::default().fg(Color::DarkGray)),
+            Span::styled(format!("{:04X}", value), value_style),
+        ]
+    }
+
+    fn format_register_with_color(&self, name: &str, index: usize, vm: &VM, group_color: Color) -> Vec<Span> {
+        let value = vm.registers[index];
+        let was_changed = self.register_changes.contains_key(&index);
+        
+        // Register name always stays in its group color
+        let name_style = Style::default().fg(group_color);
+        
+        // Only the value gets highlighted when changed
+        let value_style = if was_changed {
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else if value != 0 {
+            Style::default().fg(Color::White)
+        } else {
+            Style::default().fg(Color::DarkGray)
+        };
+
+        vec![
+            Span::styled(format!("{:3}", name), name_style),
+            Span::styled(":", Style::default().fg(Color::DarkGray)),
+            Span::styled(format!("{:04X}", value), value_style),
+        ]
+    }
 }

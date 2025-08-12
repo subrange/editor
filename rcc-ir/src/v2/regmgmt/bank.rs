@@ -5,10 +5,10 @@ use rcc_codegen::Reg;
 /// Information about the bank register for a pointer
 #[derive(Debug, Clone)]
 pub enum BankInfo {
-    /// Global bank (bank 0) - use R0
+    /// Global bank - use GP (R31)
     Global,
     
-    /// Stack bank (bank 1) - use R13 (must be initialized!)
+    /// Stack bank (bank 1) - use SB (R28, must be initialized!)
     Stack,
     
     /// Dynamic bank in a register
@@ -19,8 +19,8 @@ impl BankInfo {
     /// Get the register for this bank
     pub fn to_register(&self) -> Reg {
         match self {
-            BankInfo::Global => Reg::R0,
-            BankInfo::Stack => Reg::R13,
+            BankInfo::Global => Reg::Gp,
+            BankInfo::Stack => Reg::Sb,
             BankInfo::Register(reg) => *reg,
         }
     }
@@ -30,8 +30,8 @@ impl BankInfo {
         matches!(self, BankInfo::Global | BankInfo::Stack)
     }
     
-    /// Check if this requires R13 initialization
-    pub fn requires_r13(&self) -> bool {
+    /// Check if this requires SB initialization
+    pub fn requires_sb(&self) -> bool {
         matches!(self, BankInfo::Stack)
     }
 }

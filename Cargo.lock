@@ -616,6 +616,7 @@ version = "0.1.0"
 dependencies = [
  "pretty_assertions",
  "rcc-common",
+ "ripple-asm",
  "thiserror",
 ]
 

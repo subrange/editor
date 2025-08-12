@@ -2,27 +2,27 @@
 
 ; Function: memcpy
 memcpy:
-    STORE RA, R13, R14
-    ADDI R14, R14, 1
-    STORE R15, R13, R14
-    ADDI R14, R14, 1
-    ADD R15, R14, R0
-    ADDI R14, R14, 21
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+    ADD FP, SP, R0
+    ADDI SP, SP, 21
 ; === Processing instruction #0: Alloca { result: 7, alloc_type: I16, count: None, result_type: FatPtr(I16) } ===
 ; === ModuleLowerer::get_reg for 't7' ===
 ; get_reg for 't7'
 ;   Allocated free register for t7
 ; Alloca for t7 at FP+1 (fat ptr: stack bank)
-    ADDI R9, R15, 1
+    ADDI X0, FP, 1
 ; === Processing instruction #1: Store { value: Constant(0), ptr: Temp(7) } ===
 ; === ModuleLowerer::get_reg for 'addr_t7_0' ===
 ; get_reg for 'addr_t7_0'
 ;   Allocated free register for addr_t7_0
-    ADDI R10, R15, 1
+    ADDI X1, FP, 1
 ; === ModuleLowerer::get_reg for 'stack_bank_2' ===
 ; get_reg for 'stack_bank_2'
 ;   Allocated free register for stack_bank_2
-    LI R11, 1
+    LI X2, 1
 ; Store 0 to [t7]
 ; === ModuleLowerer::get_reg for 'const_0_5' ===
 ; get_reg for 'const_0_5'
@@ -38,11 +38,11 @@ memcpy:
 ;     R11 contains 'bank_preserve_4'
 ;   Chose to spill t0 from R3
 ; Spilling t0 to FP+2
-    ADDI R12, R15, 2
-    STORE R3, R13, R12
+    ADDI SC, FP, 2
+    STORE RV0, SB, SC
 ;   Now R3 will contain const_0_5
-    LI R3, 0
-    STORE R3, R11, R10
+    LI RV0, 0
+    STORE RV0, X2, X1
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #2: Branch(1) ===
     BEQ R0, R0, memcpy_L1
@@ -52,16 +52,16 @@ memcpy_L1:
 ; === ModuleLowerer::get_reg for 'addr_t7_6' ===
 ; get_reg for 'addr_t7_6'
 ;   Allocated free register for addr_t7_6
-    ADDI R9, R15, 1
+    ADDI X0, FP, 1
 ; Pinning addr_t7_6 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_7' ===
 ; get_reg for 'stack_bank_7'
 ;   Allocated free register for stack_bank_7
-    LI R10, 1
+    LI X1, 1
 ; === ModuleLowerer::get_reg for 't8' ===
 ; get_reg for 't8'
 ;   Allocated free register for t8
-    LOAD R11, R10, R9
+    LOAD X2, X1, X0
 ; === Processing instruction #1: Binary { result: 9, op: Slt, lhs: Temp(8), rhs: Temp(6), result_type: I16 } ===
 ; === Processing Binary t9 ===
 ; Binary: need(lhs)=1, need(rhs)=1
@@ -103,12 +103,12 @@ memcpy_L1:
 ;     R11 contains 't8'
 ;   Chose to spill const_0_5 from R3
 ; Spilling const_0_5 to FP+3
-    ADDI R12, R15, 3
-    STORE R3, R13, R12
+    ADDI SC, FP, 3
+    STORE RV0, SB, SC
 ;   Now R3 will contain t6
 ;   t6 is now in R3
 ; Reusing R11 for result t9
-    SLTU R11, R11, R3
+    SLTU X2, X2, RV0
 ; Freeing right operand register R3
 ; === Processing instruction #2: BranchCond { condition: Temp(9), true_label: 2, false_label: 4 } ===
 ; Getting register for temp t9
@@ -124,7 +124,7 @@ memcpy_L1:
 ;   R? contains t9
 ; t9 found in R?
 ;   t9 is now in R11
-    BNE R11, R0, memcpy_L2
+    BNE X2, R0, memcpy_L2
     BEQ R0, R0, memcpy_L4
 memcpy_L2:
 ; === Processing instruction #0: Load { result: 10, ptr: Temp(7), result_type: I16 } ===
@@ -132,16 +132,16 @@ memcpy_L2:
 ; === ModuleLowerer::get_reg for 'addr_t7_8' ===
 ; get_reg for 'addr_t7_8'
 ;   Allocated free register for addr_t7_8
-    ADDI R9, R15, 1
+    ADDI X0, FP, 1
 ; Pinning addr_t7_8 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_9' ===
 ; get_reg for 'stack_bank_9'
 ;   Allocated free register for stack_bank_9
-    LI R10, 1
+    LI X1, 1
 ; === ModuleLowerer::get_reg for 't10' ===
 ; get_reg for 't10'
 ;   Allocated free register for t10
-    LOAD R11, R10, R9
+    LOAD X2, X1, X0
 ; === Processing instruction #1: GetElementPtr { result: 11, ptr: FatPtr(FatPointer { addr: Temp(3), bank: Stack }), indices: [Temp(10)], result_type: FatPtr(I8) } ===
 ; GetElementPtr t11 = {addr: t3, bank: Stack} + offsets
 ; Getting register for temp t3
@@ -185,10 +185,10 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill t6 from R3
 ; Spilling t6 to FP+4
-    ADDI R12, R15, 4
-    STORE R3, R13, R12
+    ADDI SC, FP, 4
+    STORE RV0, SB, SC
 ;   Now R3 will contain t11
-    ADD R3, R6, R11
+    ADD RV0, A1, X2
 ; === Processing instruction #2: Load { result: 12, ptr: FatPtr(FatPointer { addr: Temp(11), bank: Stack }), result_type: I8 } ===
 ; Load from [{addr: t11, bank: Stack}] to t12
 ; Getting register for temp t11
@@ -219,10 +219,10 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill t1 from R4
 ; Spilling t1 to FP+5
-    ADDI R12, R15, 5
-    STORE R4, R13, R12
+    ADDI SC, FP, 5
+    STORE RV1, SB, SC
 ;   Now R4 will contain stack_bank_10
-    LI R4, 1
+    LI RV1, 1
 ; === ModuleLowerer::get_reg for 't12' ===
 ; get_reg for 't12'
 ;   No free registers, need to spill for t12
@@ -237,10 +237,10 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill t2 from R5
 ; Spilling t2 to FP+6
-    ADDI R12, R15, 6
-    STORE R5, R13, R12
+    ADDI SC, FP, 6
+    STORE A0, SB, SC
 ;   Now R5 will contain t12
-    LOAD R5, R4, R3
+    LOAD A0, RV1, RV0
 ; === Processing instruction #3: Load { result: 13, ptr: Temp(7), result_type: I16 } ===
 ; Load from [t7] to t13
 ; === ModuleLowerer::get_reg for 'addr_t7_11' ===
@@ -257,10 +257,10 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill t11 from R3
 ; Spilling t11 to FP+7
-    ADDI R12, R15, 7
-    STORE R3, R13, R12
+    ADDI SC, FP, 7
+    STORE RV0, SB, SC
 ;   Now R3 will contain addr_t7_11
-    ADDI R3, R15, 1
+    ADDI RV0, FP, 1
 ; Pinning addr_t7_11 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_12' ===
 ; get_reg for 'stack_bank_12'
@@ -276,10 +276,10 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill stack_bank_10 from R4
 ; Spilling stack_bank_10 to FP+8
-    ADDI R12, R15, 8
-    STORE R4, R13, R12
+    ADDI SC, FP, 8
+    STORE RV1, SB, SC
 ;   Now R4 will contain stack_bank_12
-    LI R4, 1
+    LI RV1, 1
 ; === ModuleLowerer::get_reg for 't13' ===
 ; get_reg for 't13'
 ;   No free registers, need to spill for t13
@@ -294,10 +294,10 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill t12 from R5
 ; Spilling t12 to FP+9
-    ADDI R12, R15, 9
-    STORE R5, R13, R12
+    ADDI SC, FP, 9
+    STORE A0, SB, SC
 ;   Now R5 will contain t13
-    LOAD R5, R4, R3
+    LOAD A0, RV1, RV0
 ; === Processing instruction #4: GetElementPtr { result: 14, ptr: FatPtr(FatPointer { addr: Temp(0), bank: Stack }), indices: [Temp(13)], result_type: FatPtr(I8) } ===
 ; GetElementPtr t14 = {addr: t0, bank: Stack} + offsets
 ; Getting register for temp t0
@@ -324,12 +324,12 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill addr_t7_11 from R3
 ; Spilling addr_t7_11 to FP+10
-    ADDI R12, R15, 10
-    STORE R3, R13, R12
+    ADDI SC, FP, 10
+    STORE RV0, SB, SC
 ;   Now R3 will contain t0
 ; Reloading t0 from FP+2
-    ADDI R12, R15, 2
-    LOAD R3, R13, R12
+    ADDI SC, FP, 2
+    LOAD RV0, SB, SC
 ;   t0 is now in R3
 ;   Base {addr: t0, bank: Stack} in R3
 ; Getting register for temp t13
@@ -359,10 +359,10 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill stack_bank_12 from R4
 ; Spilling stack_bank_12 to FP+11
-    ADDI R12, R15, 11
-    STORE R4, R13, R12
+    ADDI SC, FP, 11
+    STORE RV1, SB, SC
 ;   Now R4 will contain t14
-    ADD R4, R3, R5
+    ADD RV1, RV0, A0
 ; === Processing instruction #5: Store { value: Temp(12), ptr: FatPtr(FatPointer { addr: Temp(14), bank: Stack }) } ===
 ; Getting register for temp t14
 ; Looking for t14 in registers
@@ -391,10 +391,10 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill gep_base_14 from R3
 ; Spilling gep_base_14 to FP+12
-    ADDI R12, R15, 12
-    STORE R3, R13, R12
+    ADDI SC, FP, 12
+    STORE RV0, SB, SC
 ;   Now R3 will contain stack_bank_14
-    LI R3, 1
+    LI RV0, 1
 ; Store t12 to [{addr: t14, bank: Stack}]
 ; Getting register for temp t12
 ; Looking for t12 in registers
@@ -420,14 +420,14 @@ memcpy_L2:
 ;     R11 contains 'gep_index_11'
 ;   Chose to spill gep_index_14 from R5
 ; Spilling gep_index_14 to FP+13
-    ADDI R12, R15, 13
-    STORE R5, R13, R12
+    ADDI SC, FP, 13
+    STORE A0, SB, SC
 ;   Now R5 will contain t12
 ; Reloading t12 from FP+9
-    ADDI R12, R15, 9
-    LOAD R5, R13, R12
+    ADDI SC, FP, 9
+    LOAD A0, SB, SC
 ;   t12 is now in R5
-    STORE R5, R3, R4
+    STORE A0, RV0, RV1
 ; >>> Freeing all registers at Store statement boundary
 ; === Processing instruction #6: Branch(3) ===
     BEQ R0, R0, memcpy_L3
@@ -437,16 +437,16 @@ memcpy_L3:
 ; === ModuleLowerer::get_reg for 'addr_t7_17' ===
 ; get_reg for 'addr_t7_17'
 ;   Allocated free register for addr_t7_17
-    ADDI R9, R15, 1
+    ADDI X0, FP, 1
 ; Pinning addr_t7_17 in register to prevent spilling
 ; === ModuleLowerer::get_reg for 'stack_bank_18' ===
 ; get_reg for 'stack_bank_18'
 ;   Allocated free register for stack_bank_18
-    LI R10, 1
+    LI X1, 1
 ; === ModuleLowerer::get_reg for 't15' ===
 ; get_reg for 't15'
 ;   Allocated free register for t15
-    LOAD R11, R10, R9
+    LOAD X2, X1, X0
 ; === Processing instruction #1: Binary { result: 16, op: Add, lhs: Temp(15), rhs: Constant(1), result_type: I16 } ===
 ; === Processing Binary t16 ===
 ; Binary: need(lhs)=1, need(rhs)=1
@@ -477,12 +477,12 @@ memcpy_L3:
 ;     R11 contains 't15'
 ;   Chose to spill bank_preserve_16 from R3
 ; Spilling bank_preserve_16 to FP+14
-    ADDI R12, R15, 14
-    STORE R3, R13, R12
+    ADDI SC, FP, 14
+    STORE RV0, SB, SC
 ;   Now R3 will contain const_1_19
-    LI R3, 1
+    LI RV0, 1
 ; Reusing R11 for result t16
-    ADD R11, R11, R3
+    ADD X2, X2, RV0
 ; Freeing right operand register R3
 ; === Processing instruction #2: Store { value: Temp(16), ptr: Temp(7) } ===
 ; === ModuleLowerer::get_reg for 'addr_t7_20' ===
@@ -499,10 +499,10 @@ memcpy_L3:
 ;     R11 contains 't16'
 ;   Chose to spill const_1_19 from R3
 ; Spilling const_1_19 to FP+15
-    ADDI R12, R15, 15
-    STORE R3, R13, R12
+    ADDI SC, FP, 15
+    STORE RV0, SB, SC
 ;   Now R3 will contain addr_t7_20
-    ADDI R3, R15, 1
+    ADDI RV0, FP, 1
 ; === ModuleLowerer::get_reg for 'stack_bank_22' ===
 ; get_reg for 'stack_bank_22'
 ;   No free registers, need to spill for stack_bank_22
@@ -517,10 +517,10 @@ memcpy_L3:
 ;     R11 contains 't16'
 ;   Chose to spill ptr_preserve2_15 from R4
 ; Spilling ptr_preserve2_15 to FP+16
-    ADDI R12, R15, 16
-    STORE R4, R13, R12
+    ADDI SC, FP, 16
+    STORE RV1, SB, SC
 ;   Now R4 will contain stack_bank_22
-    LI R4, 1
+    LI RV1, 1
 ; Store t16 to [t7]
 ; Getting register for temp t16
 ; Looking for t16 in registers
@@ -535,15 +535,15 @@ memcpy_L3:
 ;   R? contains t16
 ; t16 found in R?
 ;   t16 is now in R11
-    STORE R11, R4, R3
+    STORE X2, RV1, RV0
 ; >>> Preserving registers: storing t16 from previous instruction
 ; === Processing instruction #3: Branch(1) ===
     BEQ R0, R0, memcpy_L1
 memcpy_L4:
 ; === Processing instruction #0: Return(None) ===
-    ADD R14, R15, R0
-    ADDI R14, R14, -1
-    LOAD R15, R13, R14
-    ADDI R14, R14, -1
-    LOAD RA, R13, R14
+    ADD SP, FP, R0
+    ADDI SP, SP, -1
+    LOAD FP, SB, SP
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
     RET

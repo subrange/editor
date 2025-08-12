@@ -53,8 +53,8 @@ pub struct VM {
     // Data memory - separate from instructions
     pub memory: Vec<u16>,
     
-    // Registers (18 total: R0, PC, PCB, RA, RAB, R3-R15)
-    pub registers: [u16; 18],
+    // Registers (32 total: R0-R31)
+    pub registers: [u16; 32],
     
     // VM state
     pub state: VMState,
@@ -87,7 +87,7 @@ impl VM {
         VM {
             instructions: Vec::new(),
             memory: vec![0; memory_size],
-            registers: [0; MAX_REGISTERS],
+            registers: [0; 32],
             state: VMState::Setup,
             bank_size,
             debug_mode: false,
@@ -253,7 +253,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     self.registers[rd] = self.registers[rs].wrapping_add(self.registers[rt]);
                 }
             },
@@ -261,7 +261,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     self.registers[rd] = self.registers[rs].wrapping_sub(self.registers[rt]);
                 }
             },
@@ -269,7 +269,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     self.registers[rd] = self.registers[rs] & self.registers[rt];
                 }
             },
@@ -277,7 +277,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     self.registers[rd] = self.registers[rs] | self.registers[rt];
                 }
             },
@@ -285,7 +285,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     self.registers[rd] = self.registers[rs] ^ self.registers[rt];
                 }
             },
@@ -293,7 +293,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     let shift = (self.registers[rt] & 15) as u32;
                     self.registers[rd] = self.registers[rs].wrapping_shl(shift);
                 }
@@ -302,7 +302,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     let shift = (self.registers[rt] & 15) as u32;
                     self.registers[rd] = self.registers[rs].wrapping_shr(shift);
                 }
@@ -311,7 +311,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     let rs_val = self.registers[rs] as i16;
                     let rt_val = self.registers[rt] as i16;
                     self.registers[rd] = if rs_val < rt_val { 1 } else { 0 };
@@ -321,7 +321,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     self.registers[rd] = if self.registers[rs] < self.registers[rt] { 1 } else { 0 };
                 }
             },
@@ -331,7 +331,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     self.registers[rd] = self.registers[rs].wrapping_add(imm);
                 }
             },
@@ -339,7 +339,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     self.registers[rd] = self.registers[rs] & imm;
                 }
             },
@@ -347,7 +347,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     self.registers[rd] = self.registers[rs] | imm;
                 }
             },
@@ -355,14 +355,14 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     self.registers[rd] = self.registers[rs] ^ imm;
                 }
             },
             0x0E => { // LI
                 let rd = instr.word1 as usize;
                 let imm = instr.word2;
-                if rd < 18 {
+                if rd < 32 {
                     self.registers[rd] = imm;
                 }
             },
@@ -370,7 +370,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3 as u32;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     self.registers[rd] = self.registers[rs].wrapping_shl(imm & 15);
                 }
             },
@@ -378,7 +378,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3 as u32;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     self.registers[rd] = self.registers[rs].wrapping_shr(imm & 15);
                 }
             },
@@ -388,7 +388,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let bank_reg = instr.word2 as usize;
                 let addr_reg = instr.word3 as usize;
-                if rd < 18 && bank_reg < 18 && addr_reg < 18 {
+                if rd < 32 && bank_reg < 32 && addr_reg < 32 {
                     let bank_val = self.registers[bank_reg];
                     let addr_val = self.registers[addr_reg];
                     
@@ -406,7 +406,7 @@ impl VM {
                 let rs = instr.word1 as usize;
                 let bank_reg = instr.word2 as usize;
                 let addr_reg = instr.word3 as usize;
-                if rs < 18 && bank_reg < 18 && addr_reg < 18 {
+                if rs < 32 && bank_reg < 32 && addr_reg < 32 {
                     let bank_val = self.registers[bank_reg];
                     let addr_val = self.registers[addr_reg];
                     
@@ -439,7 +439,7 @@ impl VM {
                 let addr = instr.word3;
                 
                 // Save return address in rd (typically RA)
-                if rd < 18 {
+                if rd < 32 {
                     self.registers[rd] = self.registers[Register::Pc as usize].wrapping_add(1);
                 }
                 self.registers[Register::Rab as usize] = self.registers[Register::Pcb as usize];
@@ -451,7 +451,7 @@ impl VM {
             0x14 => { // JALR
                 let rd = instr.word1 as usize;
                 let rs = instr.word3 as usize; // Note: rs is in word3 for JALR
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     // Save return address
                     self.registers[rd] = self.registers[Register::Pc as usize].wrapping_add(1);
                     self.registers[Register::Rab as usize] = self.registers[Register::Pcb as usize];
@@ -464,7 +464,7 @@ impl VM {
                 let rs = instr.word1 as usize;
                 let rt = instr.word2 as usize;
                 let offset = instr.word3 as i16;
-                if rs < 18 && rt < 18 {
+                if rs < 32 && rt < 32 {
                     if self.registers[rs] == self.registers[rt] {
                         let new_pc = (self.registers[Register::Pc as usize] as i16).wrapping_add(offset);
                         self.registers[Register::Pc as usize] = new_pc as u16;
@@ -476,7 +476,7 @@ impl VM {
                 let rs = instr.word1 as usize;
                 let rt = instr.word2 as usize;
                 let offset = instr.word3 as i16;
-                if rs < 18 && rt < 18 {
+                if rs < 32 && rt < 32 {
                     if self.registers[rs] != self.registers[rt] {
                         let new_pc = (self.registers[Register::Pc as usize] as i16).wrapping_add(offset);
                         self.registers[Register::Pc as usize] = new_pc as u16;
@@ -488,7 +488,7 @@ impl VM {
                 let rs = instr.word1 as usize;
                 let rt = instr.word2 as usize;
                 let offset = instr.word3 as i16;
-                if rs < 18 && rt < 18 {
+                if rs < 32 && rt < 32 {
                     let rs_val = self.registers[rs] as i16;
                     let rt_val = self.registers[rt] as i16;
                     if rs_val < rt_val {
@@ -502,7 +502,7 @@ impl VM {
                 let rs = instr.word1 as usize;
                 let rt = instr.word2 as usize;
                 let offset = instr.word3 as i16;
-                if rs < 18 && rt < 18 {
+                if rs < 32 && rt < 32 {
                     let rs_val = self.registers[rs] as i16;
                     let rt_val = self.registers[rt] as i16;
                     if rs_val >= rt_val {
@@ -525,20 +525,38 @@ impl VM {
                     eprintln!("RA: {} (bank: {})", self.registers[Register::Ra as usize], self.registers[Register::Rab as usize]);
                     
                     eprintln!("\nRegisters:");
-                    eprintln!("  R0:  0x{:04X} ({})", self.registers[Register::R0 as usize], self.registers[Register::R0 as usize]);
-                    eprintln!("  R3:  0x{:04X} ({})", self.registers[Register::R3 as usize], self.registers[Register::R3 as usize]);
-                    eprintln!("  R4:  0x{:04X} ({})", self.registers[Register::R4 as usize], self.registers[Register::R4 as usize]);
-                    eprintln!("  R5:  0x{:04X} ({})", self.registers[Register::R5 as usize], self.registers[Register::R5 as usize]);
-                    eprintln!("  R6:  0x{:04X} ({})", self.registers[Register::R6 as usize], self.registers[Register::R6 as usize]);
-                    eprintln!("  R7:  0x{:04X} ({})", self.registers[Register::R7 as usize], self.registers[Register::R7 as usize]);
-                    eprintln!("  R8:  0x{:04X} ({})", self.registers[Register::R8 as usize], self.registers[Register::R8 as usize]);
-                    eprintln!("  R9:  0x{:04X} ({})", self.registers[Register::R9 as usize], self.registers[Register::R9 as usize]);
-                    eprintln!("  R10: 0x{:04X} ({})", self.registers[Register::R10 as usize], self.registers[Register::R10 as usize]);
-                    eprintln!("  R11: 0x{:04X} ({})", self.registers[Register::R11 as usize], self.registers[Register::R11 as usize]);
-                    eprintln!("  R12: 0x{:04X} ({})", self.registers[Register::R12 as usize], self.registers[Register::R12 as usize]);
-                    eprintln!("  R13: 0x{:04X} ({})", self.registers[Register::R13 as usize], self.registers[Register::R13 as usize]);
-                    eprintln!("  R14: 0x{:04X} ({})", self.registers[Register::R14 as usize], self.registers[Register::R14 as usize]);
-                    eprintln!("  R15: 0x{:04X} ({})", self.registers[Register::R15 as usize], self.registers[Register::R15 as usize]);
+                    eprintln!("  R0 (ZR):  0x{:04X} ({})", self.registers[Register::R0 as usize], self.registers[Register::R0 as usize]);
+                    eprintln!("  R1 (PC):  0x{:04X} ({})", self.registers[Register::Pc as usize], self.registers[Register::Pc as usize]);
+                    eprintln!("  R2 (PCB): 0x{:04X} ({})", self.registers[Register::Pcb as usize], self.registers[Register::Pcb as usize]);
+                    eprintln!("  R3 (RA):  0x{:04X} ({})", self.registers[Register::Ra as usize], self.registers[Register::Ra as usize]);
+                    eprintln!("  R4 (RAB): 0x{:04X} ({})", self.registers[Register::Rab as usize], self.registers[Register::Rab as usize]);
+                    eprintln!("  R5 (RV0): 0x{:04X} ({})", self.registers[Register::Rv0 as usize], self.registers[Register::Rv0 as usize]);
+                    eprintln!("  R6 (RV1): 0x{:04X} ({})", self.registers[Register::Rv1 as usize], self.registers[Register::Rv1 as usize]);
+                    eprintln!("  R7 (A0):  0x{:04X} ({})", self.registers[Register::A0 as usize], self.registers[Register::A0 as usize]);
+                    eprintln!("  R8 (A1):  0x{:04X} ({})", self.registers[Register::A1 as usize], self.registers[Register::A1 as usize]);
+                    eprintln!("  R9 (A2):  0x{:04X} ({})", self.registers[Register::A2 as usize], self.registers[Register::A2 as usize]);
+                    eprintln!("  R10 (A3): 0x{:04X} ({})", self.registers[Register::A3 as usize], self.registers[Register::A3 as usize]);
+                    eprintln!("  R11 (X0): 0x{:04X} ({})", self.registers[Register::X0 as usize], self.registers[Register::X0 as usize]);
+                    eprintln!("  R12 (X1): 0x{:04X} ({})", self.registers[Register::X1 as usize], self.registers[Register::X1 as usize]);
+                    eprintln!("  R13 (X2): 0x{:04X} ({})", self.registers[Register::X2 as usize], self.registers[Register::X2 as usize]);
+                    eprintln!("  R14 (X3): 0x{:04X} ({})", self.registers[Register::X3 as usize], self.registers[Register::X3 as usize]);
+                    eprintln!("  R15 (T0): 0x{:04X} ({})", self.registers[Register::T0 as usize], self.registers[Register::T0 as usize]);
+                    eprintln!("  R16 (T1): 0x{:04X} ({})", self.registers[Register::T1 as usize], self.registers[Register::T1 as usize]);
+                    eprintln!("  R17 (T2): 0x{:04X} ({})", self.registers[Register::T2 as usize], self.registers[Register::T2 as usize]);
+                    eprintln!("  R18 (T3): 0x{:04X} ({})", self.registers[Register::T3 as usize], self.registers[Register::T3 as usize]);
+                    eprintln!("  R19 (T4): 0x{:04X} ({})", self.registers[Register::T4 as usize], self.registers[Register::T4 as usize]);
+                    eprintln!("  R20 (T5): 0x{:04X} ({})", self.registers[Register::T5 as usize], self.registers[Register::T5 as usize]);
+                    eprintln!("  R21 (T6): 0x{:04X} ({})", self.registers[Register::T6 as usize], self.registers[Register::T6 as usize]);
+                    eprintln!("  R22 (T7): 0x{:04X} ({})", self.registers[Register::T7 as usize], self.registers[Register::T7 as usize]);
+                    eprintln!("  R23 (S0): 0x{:04X} ({})", self.registers[Register::S0 as usize], self.registers[Register::S0 as usize]);
+                    eprintln!("  R24 (S1): 0x{:04X} ({})", self.registers[Register::S1 as usize], self.registers[Register::S1 as usize]);
+                    eprintln!("  R25 (S2): 0x{:04X} ({})", self.registers[Register::S2 as usize], self.registers[Register::S2 as usize]);
+                    eprintln!("  R26 (S3): 0x{:04X} ({})", self.registers[Register::S3 as usize], self.registers[Register::S3 as usize]);
+                    eprintln!("  R27 (SC): 0x{:04X} ({})", self.registers[Register::Sc as usize], self.registers[Register::Sc as usize]);
+                    eprintln!("  R28 (SB): 0x{:04X} ({})", self.registers[Register::Sb as usize], self.registers[Register::Sb as usize]);
+                    eprintln!("  R29 (SP): 0x{:04X} ({})", self.registers[Register::Sp as usize], self.registers[Register::Sp as usize]);
+                    eprintln!("  R30 (FP): 0x{:04X} ({})", self.registers[Register::Fp as usize], self.registers[Register::Fp as usize]);
+                    eprintln!("  R31 (GP): 0x{:04X} ({})", self.registers[Register::Gp as usize], self.registers[Register::Gp as usize]);
                     
                     eprintln!("\nMemory (first {} words):", DEBUG_MEMORY_DISPLAY_WORDS);
                     for i in (0..DEBUG_MEMORY_DISPLAY_WORDS.min(self.memory.len())).step_by(DEBUG_MEMORY_WORDS_PER_LINE) {
@@ -572,7 +590,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     self.registers[rd] = self.registers[rs].wrapping_mul(self.registers[rt]);
                 }
             },
@@ -580,7 +598,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     if self.registers[rt] != 0 {
                         self.registers[rd] = self.registers[rs] / self.registers[rt];
                     } else {
@@ -592,7 +610,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let rt = instr.word3 as usize;
-                if rd < 18 && rs < 18 && rt < 18 {
+                if rd < 32 && rs < 32 && rt < 32 {
                     if self.registers[rt] != 0 {
                         self.registers[rd] = self.registers[rs] % self.registers[rt];
                     } else {
@@ -604,7 +622,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     self.registers[rd] = self.registers[rs].wrapping_mul(imm);
                 }
             },
@@ -612,7 +630,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     if imm != 0 {
                         self.registers[rd] = self.registers[rs] / imm;
                     } else {
@@ -624,7 +642,7 @@ impl VM {
                 let rd = instr.word1 as usize;
                 let rs = instr.word2 as usize;
                 let imm = instr.word3;
-                if rd < 18 && rs < 18 {
+                if rd < 32 && rs < 32 {
                     if imm != 0 {
                         self.registers[rd] = self.registers[rs] % imm;
                     } else {
@@ -679,7 +697,7 @@ impl VM {
     
     pub fn reset(&mut self) {
         // Clear registers but preserve bank size
-        self.registers = [0; 18];
+        self.registers = [0; 32];
         
         // Reset to entry point (instruction 0)
         self.registers[Register::Pc as usize] = 0;
@@ -729,7 +747,7 @@ impl VM {
                 eprintln!("LOAD R{}, R{}, R{} ; R{}=mem[R{}*{}+R{}]={}", 
                     instr.word1, instr.word2, instr.word3,
                     instr.word1, instr.word2, self.bank_size, instr.word3,
-                    if instr.word1 < 18 && instr.word2 < 18 && instr.word3 < 18 {
+                    if instr.word1 < 32 && instr.word2 < 32 && instr.word3 < 32 {
                         let addr = (self.registers[instr.word2 as usize] as usize * self.bank_size as usize) 
                                  + self.registers[instr.word3 as usize] as usize;
                         if addr < self.memory.len() {
@@ -745,7 +763,7 @@ impl VM {
                 eprintln!("STORE R{}, R{}, R{} ; mem[R{}*{}+R{}]=R{}={}", 
                     instr.word1, instr.word2, instr.word3,
                     instr.word2, self.bank_size, instr.word3, instr.word1,
-                    if instr.word1 < 18 {
+                    if instr.word1 < 32 {
                         self.registers[instr.word1 as usize]
                     } else {
                         0

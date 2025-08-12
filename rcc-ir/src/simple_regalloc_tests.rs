@@ -11,11 +11,11 @@ mod tests {
         
         // Should allocate R5 first (last in the free list)
         let r1 = alloc.get_reg("temp1".to_string());
-        assert_eq!(r1, Reg::R5);
+        assert_eq!(r1, Reg::A0);
         
         // Should allocate R6 next
         let r2 = alloc.get_reg("temp2".to_string());
-        assert_eq!(r2, Reg::R6);
+        assert_eq!(r2, Reg::A1);
         
         // Different register for different value
         assert_ne!(r1, r2);
@@ -39,14 +39,14 @@ mod tests {
         
         // Allocate R5
         let r1 = alloc.get_reg("temp1".to_string());
-        assert_eq!(r1, Reg::R5);
+        assert_eq!(r1, Reg::A0);
         
         // Free it
         alloc.free_reg(r1);
         
         // Should be able to allocate it again for different value
         let r2 = alloc.get_reg("temp2".to_string());
-        assert_eq!(r2, Reg::R5);
+        assert_eq!(r2, Reg::A0);
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
         
         // Should be able to allocate R5 again
         let r_new = alloc.get_reg("temp_new".to_string());
-        assert_eq!(r_new, Reg::R5);
+        assert_eq!(r_new, Reg::A0);
     }
 
     #[test]
@@ -178,7 +178,7 @@ mod tests {
         
         // Should be back to initial state
         let r1 = alloc.get_reg("temp_fresh".to_string());
-        assert_eq!(r1, Reg::R5);
+        assert_eq!(r1, Reg::A0);
         
         // No spill instructions should be present
         let instrs = alloc.take_instructions();
@@ -191,7 +191,7 @@ mod tests {
         
         let r1 = alloc.get_reg("temp1".to_string());
         assert!(alloc.is_allocated(r1));
-        assert!(!alloc.is_allocated(Reg::R7)); // Not allocated yet
+        assert!(!alloc.is_allocated(Reg::A2)); // Not allocated yet
         
         alloc.free_reg(r1);
         assert!(!alloc.is_allocated(r1));
@@ -203,18 +203,18 @@ mod tests {
         
         // R3 and R4 are not in the allocatable pool
         // Freeing them should do nothing
-        alloc.free_reg(Reg::R3);
-        alloc.free_reg(Reg::R4);
+        alloc.free_reg(Reg::Rv0);
+        alloc.free_reg(Reg::Rv1);
         
         // R12-R15 are also not allocatable
-        alloc.free_reg(Reg::R12);
-        alloc.free_reg(Reg::R13);
-        alloc.free_reg(Reg::R14);
-        alloc.free_reg(Reg::R15);
+        alloc.free_reg(Reg::Sc);
+        alloc.free_reg(Reg::Sb);
+        alloc.free_reg(Reg::Sp);
+        alloc.free_reg(Reg::Fp);
         
         // Should still allocate R5 first
         let r1 = alloc.get_reg("temp1".to_string());
-        assert_eq!(r1, Reg::R5);
+        assert_eq!(r1, Reg::A0);
     }
 
     #[test]
@@ -263,7 +263,7 @@ mod tests {
         let r = alloc.reload("never_seen".to_string());
         
         // Should just allocate a new register
-        assert_eq!(r, Reg::R5);
+        assert_eq!(r, Reg::A0);
         
         // No reload instructions should be generated
         let instrs = alloc.take_instructions();

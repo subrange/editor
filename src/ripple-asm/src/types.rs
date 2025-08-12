@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
@@ -177,26 +178,46 @@ impl Opcode {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Register {
-    R0 = 0,
-    Pc = 1,
-    Pcb = 2,
-    Ra = 3,
-    Rab = 4,
-    R3 = 5,
-    R4 = 6,
-    R5 = 7,
-    R6 = 8,
-    R7 = 9,
-    R8 = 10,
-    R9 = 11,
-    R10 = 12,
-    R11 = 13,
-    R12 = 14,
-    R13 = 15,
-    R14 = 16,
-    R15 = 17,
+    R0 = 0,   // Zero register (ZR)
+    Pc = 1,   // Program Counter
+    Pcb = 2,  // Program Counter Bank
+    Ra = 3,   // Return Address
+    Rab = 4,  // Return Address Bank
+    Rv0 = 5,  // Return Value 0 (R5)
+    Rv1 = 6,  // Return Value 1 (R6)
+    A0 = 7,   // Argument 0 (R7)
+    A1 = 8,   // Argument 1 (R8)
+    A2 = 9,   // Argument 2 (R9)
+    A3 = 10,  // Argument 3 (R10)
+    X0 = 11,  // Reserved/Extended 0 (R11)
+    X1 = 12,  // Reserved/Extended 1 (R12)
+    X2 = 13,  // Reserved/Extended 2 (R13)
+    X3 = 14,  // Reserved/Extended 3 (R14)
+    T0 = 15,  // Temporary 0 (R15)
+    T1 = 16,  // Temporary 1 (R16)
+    T2 = 17,  // Temporary 2 (R17)
+    T3 = 18,  // Temporary 3 (R18)
+    T4 = 19,  // Temporary 4 (R19)
+    T5 = 20,  // Temporary 5 (R20)
+    T6 = 21,  // Temporary 6 (R21)
+    T7 = 22,  // Temporary 7 (R22)
+    S0 = 23,  // Saved 0 (R23)
+    S1 = 24,  // Saved 1 (R24)
+    S2 = 25,  // Saved 2 (R25)
+    S3 = 26,  // Saved 3 (R26)
+    Sc = 27,  // Allocator Scratch (R27)
+    Sb = 28,  // Stack Bank (R28)
+    Sp = 29,  // Stack Pointer (R29)
+    Fp = 30,  // Frame Pointer (R30)
+    Gp = 31,  // Global Pointer (R31)
+}
+
+impl std::fmt::Display for Register {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_str())
+    }
 }
 
 impl Register {
@@ -207,43 +228,74 @@ impl Register {
             2 => Some(Register::Pcb),
             3 => Some(Register::Ra),
             4 => Some(Register::Rab),
-            5 => Some(Register::R3),
-            6 => Some(Register::R4),
-            7 => Some(Register::R5),
-            8 => Some(Register::R6),
-            9 => Some(Register::R7),
-            10 => Some(Register::R8),
-            11 => Some(Register::R9),
-            12 => Some(Register::R10),
-            13 => Some(Register::R11),
-            14 => Some(Register::R12),
-            15 => Some(Register::R13),
-            16 => Some(Register::R14),
-            17 => Some(Register::R15),
+            5 => Some(Register::Rv0),
+            6 => Some(Register::Rv1),
+            7 => Some(Register::A0),
+            8 => Some(Register::A1),
+            9 => Some(Register::A2),
+            10 => Some(Register::A3),
+            11 => Some(Register::X0),
+            12 => Some(Register::X1),
+            13 => Some(Register::X2),
+            14 => Some(Register::X3),
+            15 => Some(Register::T0),
+            16 => Some(Register::T1),
+            17 => Some(Register::T2),
+            18 => Some(Register::T3),
+            19 => Some(Register::T4),
+            20 => Some(Register::T5),
+            21 => Some(Register::T6),
+            22 => Some(Register::T7),
+            23 => Some(Register::S0),
+            24 => Some(Register::S1),
+            25 => Some(Register::S2),
+            26 => Some(Register::S3),
+            27 => Some(Register::Sc),
+            28 => Some(Register::Sb),
+            29 => Some(Register::Sp),
+            30 => Some(Register::Fp),
+            31 => Some(Register::Gp),
             _ => None,
         }
     }
 
     pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_uppercase().as_str() {
-            "R0" => Some(Register::R0),
-            "PC" => Some(Register::Pc),
-            "PCB" => Some(Register::Pcb),
-            "RA" => Some(Register::Ra),
-            "RAB" => Some(Register::Rab),
-            "R3" => Some(Register::R3),
-            "R4" => Some(Register::R4),
-            "R5" => Some(Register::R5),
-            "R6" => Some(Register::R6),
-            "R7" => Some(Register::R7),
-            "R8" => Some(Register::R8),
-            "R9" => Some(Register::R9),
-            "R10" => Some(Register::R10),
-            "R11" => Some(Register::R11),
-            "R12" => Some(Register::R12),
-            "R13" => Some(Register::R13),
-            "R14" => Some(Register::R14),
-            "R15" => Some(Register::R15),
+        let upper = s.to_uppercase();
+        
+        // Try symbolic names first
+        match upper.as_str() {
+            "ZR" | "R0" => Some(Register::R0),
+            "PC" | "R1" => Some(Register::Pc),
+            "PCB" | "R2" => Some(Register::Pcb),
+            "RA" | "R3" => Some(Register::Ra),
+            "RAB" | "R4" => Some(Register::Rab),
+            "RV0" | "V0" | "R5" => Some(Register::Rv0),
+            "RV1" | "V1" | "R6" => Some(Register::Rv1),
+            "A0" | "R7" => Some(Register::A0),
+            "A1" | "R8" => Some(Register::A1),
+            "A2" | "R9" => Some(Register::A2),
+            "A3" | "R10" => Some(Register::A3),
+            "X0" | "R11" => Some(Register::X0),
+            "X1" | "R12" => Some(Register::X1),
+            "X2" | "R13" => Some(Register::X2),
+            "X3" | "R14" => Some(Register::X3),
+            "T0" | "R15" => Some(Register::T0),
+            "T1" | "R16" => Some(Register::T1),
+            "T2" | "R17" => Some(Register::T2),
+            "T3" | "R18" => Some(Register::T3),
+            "T4" | "R19" => Some(Register::T4),
+            "T5" | "R20" => Some(Register::T5),
+            "T6" | "R21" => Some(Register::T6),
+            "T7" | "R22" => Some(Register::T7),
+            "S0" | "R23" => Some(Register::S0),
+            "S1" | "R24" => Some(Register::S1),
+            "S2" | "R25" => Some(Register::S2),
+            "S3" | "R26" => Some(Register::S3),
+            "SC" | "R27" => Some(Register::Sc),
+            "SB" | "R28" => Some(Register::Sb),
+            "SP" | "R29" => Some(Register::Sp),
+            "FP" | "R30" => Some(Register::Fp),
+            "GP" | "R31" => Some(Register::Gp),
             _ => None,
         }
     }
@@ -255,19 +307,33 @@ impl Register {
             Register::Pcb => "PCB",
             Register::Ra => "RA",
             Register::Rab => "RAB",
-            Register::R3 => "R3",
-            Register::R4 => "R4",
-            Register::R5 => "R5",
-            Register::R6 => "R6",
-            Register::R7 => "R7",
-            Register::R8 => "R8",
-            Register::R9 => "R9",
-            Register::R10 => "R10",
-            Register::R11 => "R11",
-            Register::R12 => "R12",
-            Register::R13 => "R13",
-            Register::R14 => "R14",
-            Register::R15 => "R15",
+            Register::Rv0 => "RV0",
+            Register::Rv1 => "RV1",
+            Register::A0 => "A0",
+            Register::A1 => "A1",
+            Register::A2 => "A2",
+            Register::A3 => "A3",
+            Register::X0 => "X0",
+            Register::X1 => "X1",
+            Register::X2 => "X2",
+            Register::X3 => "X3",
+            Register::T0 => "T0",
+            Register::T1 => "T1",
+            Register::T2 => "T2",
+            Register::T3 => "T3",
+            Register::T4 => "T4",
+            Register::T5 => "T5",
+            Register::T6 => "T6",
+            Register::T7 => "T7",
+            Register::S0 => "S0",
+            Register::S1 => "S1",
+            Register::S2 => "S2",
+            Register::S3 => "S3",
+            Register::Sc => "SC",
+            Register::Sb => "SB",
+            Register::Sp => "SP",
+            Register::Fp => "FP",
+            Register::Gp => "GP",
         }
     }
 
@@ -278,27 +344,42 @@ impl Register {
             Register::Pcb => "@PCB",
             Register::Ra => "@RA",
             Register::Rab => "@RAB",
-            Register::R3 => "@R3",
-            Register::R4 => "@R4",
-            Register::R5 => "@R5",
-            Register::R6 => "@R6",
-            Register::R7 => "@R7",
-            Register::R8 => "@R8",
-            Register::R9 => "@R9",
-            Register::R10 => "@R10",
-            Register::R11 => "@R11",
-            Register::R12 => "@R12",
-            Register::R13 => "@R13",
-            Register::R14 => "@R14",
-            Register::R15 => "@R15",
+            Register::Rv0 => "@RV0",
+            Register::Rv1 => "@RV1",
+            Register::A0 => "@A0",
+            Register::A1 => "@A1",
+            Register::A2 => "@A2",
+            Register::A3 => "@A3",
+            Register::X0 => "@X0",
+            Register::X1 => "@X1",
+            Register::X2 => "@X2",
+            Register::X3 => "@X3",
+            Register::T0 => "@T0",
+            Register::T1 => "@T1",
+            Register::T2 => "@T2",
+            Register::T3 => "@T3",
+            Register::T4 => "@T4",
+            Register::T5 => "@T5",
+            Register::T6 => "@T6",
+            Register::T7 => "@T7",
+            Register::S0 => "@S0",
+            Register::S1 => "@S1",
+            Register::S2 => "@S2",
+            Register::S3 => "@S3",
+            Register::Sc => "@SC",
+            Register::Sb => "@SB",
+            Register::Sp => "@SP",
+            Register::Fp => "@FP",
+            Register::Gp => "@GP",
         }
     }
 
     pub fn all() -> Vec<&'static str> {
         vec![
-            "R0", "PC", "PCB", "RA", "RAB", "R3", "R4", "R5", 
-            "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", 
-            "R14", "R15"
+            "R0", "PC", "PCB", "RA", "RAB", "RV0", "RV1", 
+            "A0", "A1", "A2", "A3", "X0", "X1", "X2", "X3",
+            "T0", "T1", "T2", "T3", "T4", "T5", "T6", "T7",
+            "S0", "S1", "S2", "S3", "SC", "SB", "SP", "FP", "GP"
         ]
     }
 }

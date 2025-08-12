@@ -55,9 +55,9 @@ impl ModuleLowerer {
         self.emit(AsmInst::Comment(
             format!("Reusing {} for result t{}",
                     match dest_reg {
-                        Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
-                        Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
-                        Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
+                        Reg::Rv0 => "R3", Reg::Rv1 => "R4", Reg::A0 => "R5",
+                        Reg::A1 => "R6", Reg::A2 => "R7", Reg::A3 => "R8",
+                        Reg::X0 => "R9", Reg::X1 => "R10", Reg::X2 => "R11",
                         _ => "R?",
                     }, result)
         ));
@@ -222,9 +222,9 @@ impl ModuleLowerer {
         self.emit(AsmInst::Comment(
             format!("Freeing right operand register {}",
                     match right_reg {
-                        Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
-                        Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
-                        Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
+                        Reg::Rv0 => "R3", Reg::Rv1 => "R4", Reg::A0 => "R5",
+                        Reg::A1 => "R6", Reg::A2 => "R7", Reg::A3 => "R8",
+                        Reg::X0 => "R9", Reg::X1 => "R10", Reg::X2 => "R11",
                         _ => "R?",
                     })
         ));

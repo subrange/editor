@@ -152,7 +152,7 @@ pub fn lower_load(
         }
         BankInfo::Stack => {
             trace!("  Using R13 for stack bank");
-            Reg::R13   // Stack bank (already initialized)
+            Reg::Sb   // Stack bank (already initialized)
         }
         BankInfo::Register(r) => {
             trace!("  Using {:?} for dynamic bank", r);

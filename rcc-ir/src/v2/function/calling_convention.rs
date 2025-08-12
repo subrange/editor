@@ -44,8 +44,8 @@ impl CallingConvention {
                     trace!("  Pushing arg {} (scalar) from {:?}", idx, src_reg);
                     insts.push(AsmInst::Comment(format!("Push arg {idx} (scalar)")));
                     // Push scalar value
-                    insts.push(AsmInst::Store(src_reg, Reg::R13, Reg::R14));
-                    insts.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+                    insts.push(AsmInst::Store(src_reg, Reg::Sb, Reg::Sp));
+                    insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
                     stack_offset += 1;
                 }
                 
@@ -53,11 +53,11 @@ impl CallingConvention {
                     trace!("  Pushing arg {} (fat ptr) - addr: {:?}, bank: {:?}", idx, addr, bank);
                     insts.push(AsmInst::Comment(format!("Push arg {idx} (fat ptr)")));
                     // Push bank first (higher address)
-                    insts.push(AsmInst::Store(bank, Reg::R13, Reg::R14));
-                    insts.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+                    insts.push(AsmInst::Store(bank, Reg::Sb, Reg::Sp));
+                    insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
                     // Then push address
-                    insts.push(AsmInst::Store(addr, Reg::R13, Reg::R14));
-                    insts.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+                    insts.push(AsmInst::Store(addr, Reg::Sb, Reg::Sp));
+                    insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
                     stack_offset += 2;
                 }
             }
@@ -93,7 +93,7 @@ impl CallingConvention {
         if func_bank != 0 {
             debug!("  Cross-bank call: setting PCB to {}", func_bank);
             insts.push(AsmInst::Comment("Set PCB for cross-bank call".to_string()));
-            insts.push(AsmInst::LI(Reg::PCB, func_bank as i16));
+            insts.push(AsmInst::LI(Reg::Pcb, func_bank as i16));
         } else {
             trace!("  In-bank call (bank 0)");
         }
@@ -127,8 +127,8 @@ impl CallingConvention {
             
             // Copy from R3/R4
             insts.push(AsmInst::Comment("Get fat pointer return value".to_string()));
-            insts.push(AsmInst::Add(addr_reg, Reg::R3, Reg::R0));
-            insts.push(AsmInst::Add(bank_reg, Reg::R4, Reg::R0));
+            insts.push(AsmInst::Add(addr_reg, Reg::Rv0, Reg::R0));
+            insts.push(AsmInst::Add(bank_reg, Reg::Rv1, Reg::R0));
             
             (insts, (addr_reg, Some(bank_reg)))
         } else {
@@ -139,7 +139,7 @@ impl CallingConvention {
             insts.extend(pressure_manager.take_instructions());
             
             insts.push(AsmInst::Comment("Get scalar return value".to_string()));
-            insts.push(AsmInst::Add(ret_reg, Reg::R3, Reg::R0));
+            insts.push(AsmInst::Add(ret_reg, Reg::Rv0, Reg::R0));
             
             (insts, (ret_reg, None))
         }
@@ -151,7 +151,7 @@ impl CallingConvention {
         if num_args_words > 0 {
             debug!("Cleaning up {} words from stack after call", num_args_words);
             insts.push(AsmInst::Comment(format!("Clean up {num_args_words} words from stack")));
-            insts.push(AsmInst::AddI(Reg::R14, Reg::R14, -num_args_words));
+            insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -num_args_words));
             trace!("  Adjusted SP by -{}", num_args_words);
         } else {
             trace!("No stack cleanup needed (0 arguments)");
@@ -185,9 +185,9 @@ impl CallingConvention {
         
         insts.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));
         trace!("  Computing address: FP + {}", param_offset);
-        insts.push(AsmInst::AddI(Reg::R12, Reg::R15, param_offset));
+        insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, param_offset));
         trace!("  Loading from stack (bank R13) at computed address into {:?}", dest);
-        insts.push(AsmInst::Load(dest, Reg::R13, Reg::R12));
+        insts.push(AsmInst::Load(dest, Reg::Sb, Reg::Sc));
         
         debug!("Parameter load complete: generated {} instructions, result in {:?}", 
                insts.len(), dest);

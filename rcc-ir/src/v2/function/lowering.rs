@@ -98,25 +98,25 @@ impl FunctionLowering {
         // Save RA at current SP
         trace!("  Saving RA at SP");
         insts.push(AsmInst::Comment("Save RA at SP".to_string()));
-        insts.push(AsmInst::Store(Reg::RA, Reg::R13, Reg::R14));
-        insts.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+        insts.push(AsmInst::Store(Reg::Ra, Reg::Sb, Reg::Sp));
+        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
         
         // Save old FP
         trace!("  Saving old FP");
         insts.push(AsmInst::Comment("Save old FP".to_string()));
-        insts.push(AsmInst::Store(Reg::R15, Reg::R13, Reg::R14));
-        insts.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
+        insts.push(AsmInst::Store(Reg::Fp, Reg::Sb, Reg::Sp));
+        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
         
         // Set new FP = SP
         trace!("  Setting FP = SP");
         insts.push(AsmInst::Comment("Set FP = SP".to_string()));
-        insts.push(AsmInst::Add(Reg::R15, Reg::R14, Reg::R0));
+        insts.push(AsmInst::Add(Reg::Fp, Reg::Sp, Reg::R0));
         
         // Allocate space for locals
         if local_slots > 0 {
             debug!("  Allocating {} stack slots for locals", local_slots);
             insts.push(AsmInst::Comment(format!("Allocate {local_slots} slots for locals")));
-            insts.push(AsmInst::AddI(Reg::R14, Reg::R14, local_slots));
+            insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, local_slots));
         } else {
             trace!("  No local slots to allocate");
         }
@@ -137,19 +137,19 @@ impl FunctionLowering {
         // Restore SP = FP
         trace!("  Restoring SP = FP");
         insts.push(AsmInst::Comment("Restore SP = FP".to_string()));
-        insts.push(AsmInst::Add(Reg::R14, Reg::R15, Reg::R0));
+        insts.push(AsmInst::Add(Reg::Sp, Reg::Fp, Reg::R0));
         
         // Restore old FP
         trace!("  Restoring old FP");
         insts.push(AsmInst::Comment("Restore old FP".to_string()));
-        insts.push(AsmInst::AddI(Reg::R14, Reg::R14, -1));
-        insts.push(AsmInst::Load(Reg::R15, Reg::R13, Reg::R14));
+        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -1));
+        insts.push(AsmInst::Load(Reg::Fp, Reg::Sb, Reg::Sp));
         
         // Restore RA
         trace!("  Restoring RA");
         insts.push(AsmInst::Comment("Restore RA".to_string()));
-        insts.push(AsmInst::AddI(Reg::R14, Reg::R14, -1));
-        insts.push(AsmInst::Load(Reg::RA, Reg::R13, Reg::R14));
+        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -1));
+        insts.push(AsmInst::Load(Reg::Ra, Reg::Sb, Reg::Sp));
         
         // Return to caller
         // Need to restore PCB from RAB for cross-bank returns
@@ -161,12 +161,12 @@ impl FunctionLowering {
         // Note: RAB is automatically saved by JAL instruction
         // but we need to explicitly restore PCB before jumping back
         trace!("  Restoring PCB from RAB");
-        insts.push(AsmInst::Add(Reg::PCB, Reg::RAB, Reg::R0));
+        insts.push(AsmInst::Add(Reg::Pcb, Reg::Rab, Reg::R0));
         
         // JALR rd, 0, rs format: rd←PC+1 (unused), PC←rs
         // This jumps to the address in RA within the bank we just restored
         trace!("  JALR to RA");
-        insts.push(AsmInst::Jalr(Reg::R0, Reg::R0, Reg::RA));
+        insts.push(AsmInst::Jalr(Reg::R0, Reg::R0, Reg::Ra));
         
         debug!("Epilogue complete: generated {} instructions", insts.len());
         insts
@@ -183,15 +183,15 @@ impl FunctionLowering {
                 // Fat pointer return: R3=addr, R4=bank
                 info!("  Returning fat pointer: addr={:?}, bank={:?}", addr_reg, bank);
                 insts.push(AsmInst::Comment("Return fat pointer".to_string()));
-                if addr_reg != Reg::R3 {
+                if addr_reg != Reg::Rv0 {
                     trace!("  Moving address from {:?} to R3", addr_reg);
-                    insts.push(AsmInst::Add(Reg::R3, addr_reg, Reg::R0));
+                    insts.push(AsmInst::Add(Reg::Rv0, addr_reg, Reg::R0));
                 } else {
                     trace!("  Address already in R3");
                 }
-                if bank != Reg::R4 {
+                if bank != Reg::Rv1 {
                     trace!("  Moving bank from {:?} to R4", bank);
-                    insts.push(AsmInst::Add(Reg::R4, bank, Reg::R0));
+                    insts.push(AsmInst::Add(Reg::Rv1, bank, Reg::R0));
                 } else {
                     trace!("  Bank already in R4");
                 }
@@ -199,9 +199,9 @@ impl FunctionLowering {
                 // Scalar return: R3=value
                 info!("  Returning scalar value in {:?}", addr_reg);
                 insts.push(AsmInst::Comment("Return scalar value".to_string()));
-                if addr_reg != Reg::R3 {
+                if addr_reg != Reg::Rv0 {
                     trace!("  Moving value from {:?} to R3", addr_reg);
-                    insts.push(AsmInst::Add(Reg::R3, addr_reg, Reg::R0));
+                    insts.push(AsmInst::Add(Reg::Rv0, addr_reg, Reg::R0));
                 } else {
                     trace!("  Value already in R3");
                 }
@@ -230,7 +230,7 @@ impl FunctionLowering {
         
         self.instructions.push(AsmInst::Comment(format!("Get address of local at FP+{offset}")));
         trace!("  Computing address: FP + {}", offset);
-        self.instructions.push(AsmInst::Add(reg, Reg::R15, Reg::R0));
+        self.instructions.push(AsmInst::Add(reg, Reg::Fp, Reg::R0));
         self.instructions.push(AsmInst::AddI(reg, reg, offset));
         
         // Take any spill/reload instructions generated
@@ -268,12 +268,12 @@ impl FunctionLowering {
         insts.extend(spill_insts);
         
         trace!("  Computing address: FP + {}", offset);
-        insts.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
+        insts.push(AsmInst::Add(addr_reg, Reg::Fp, Reg::R0));
         insts.push(AsmInst::AddI(addr_reg, addr_reg, offset));
         
         // Load using R13 as bank
         debug!("  Loading from stack (bank R13) at address in {:?} to {:?}", addr_reg, dest);
-        insts.push(AsmInst::Load(dest, Reg::R13, addr_reg));
+        insts.push(AsmInst::Load(dest, Reg::Sb, addr_reg));
         
         trace!("  Freeing temporary address register {:?}", addr_reg);
         self.pressure_manager.free_register(addr_reg);
@@ -301,12 +301,12 @@ impl FunctionLowering {
         insts.extend(spill_insts);
         
         trace!("  Computing address: FP + {}", offset);
-        insts.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
+        insts.push(AsmInst::Add(addr_reg, Reg::Fp, Reg::R0));
         insts.push(AsmInst::AddI(addr_reg, addr_reg, offset));
         
         // Store using R13 as bank
         debug!("  Storing {:?} to stack (bank R13) at address in {:?}", src, addr_reg);
-        insts.push(AsmInst::Store(src, Reg::R13, addr_reg));
+        insts.push(AsmInst::Store(src, Reg::Sb, addr_reg));
         
         trace!("  Freeing temporary address register {:?}", addr_reg);
         self.pressure_manager.free_register(addr_reg);

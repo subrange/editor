@@ -27,7 +27,7 @@ fn test_load_scalar_from_stack() {
     // Should use R13 for stack bank
     let load_found = insts.iter().any(|i| {
         if let AsmInst::Load(_, bank, _) = i {
-            *bank == Reg::R13
+            *bank == Reg::Sb
         } else {
             false
         }
@@ -108,7 +108,7 @@ fn test_load_from_temp_pointer() {
     // Should use R13 for stack bank (from the pointer bank info)
     let load_found = insts.iter().any(|i| {
         if let AsmInst::Load(_, bank, _) = i {
-            *bank == Reg::R13
+            *bank == Reg::Sb
         } else {
             false
         }

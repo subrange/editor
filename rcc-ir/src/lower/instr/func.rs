@@ -52,23 +52,23 @@ impl ModuleLowerer {
                 // Get address register
                 let addr_reg = self.get_value_register(arg)?;
                 let addr_param_reg = match next_param_reg_idx {
-                    0 => Reg::R3,
-                    1 => Reg::R4,
-                    2 => Reg::R5,
-                    3 => Reg::R6,
-                    4 => Reg::R7,
-                    _ => Reg::R8,
+                    0 => Reg::Rv0,
+                    1 => Reg::Rv1,
+                    2 => Reg::A0,
+                    3 => Reg::A1,
+                    4 => Reg::A2,
+                    _ => Reg::A3,
                 };
                 arg_regs.push((addr_reg, addr_param_reg));
                 next_param_reg_idx += 1;
 
                 // Get bank tag and pass it in the next register
                 let bank_param_reg = match next_param_reg_idx {
-                    1 => Reg::R4,
-                    2 => Reg::R5,
-                    3 => Reg::R6,
-                    4 => Reg::R7,
-                    5 => Reg::R8,
+                    1 => Reg::Rv1,
+                    2 => Reg::A0,
+                    3 => Reg::A1,
+                    4 => Reg::A2,
+                    5 => Reg::A3,
                     _ => unreachable!(),
                 };
 
@@ -126,12 +126,12 @@ impl ModuleLowerer {
                 // Non-pointer argument in register
                 let arg_reg = self.get_value_register(arg)?;
                 let param_reg = match next_param_reg_idx {
-                    0 => Reg::R3,
-                    1 => Reg::R4,
-                    2 => Reg::R5,
-                    3 => Reg::R6,
-                    4 => Reg::R7,
-                    5 => Reg::R8,
+                    0 => Reg::Rv0,
+                    1 => Reg::Rv1,
+                    2 => Reg::A0,
+                    3 => Reg::A1,
+                    4 => Reg::A2,
+                    5 => Reg::A3,
                     _ => unreachable!(),
                 };
                 arg_regs.push((arg_reg, param_reg));
@@ -183,12 +183,12 @@ impl ModuleLowerer {
                 if let Some(j) = conflict_idx {
                     // Save the conflicting source to R9 first
                     let (_, dst2) = arg_regs[j];
-                    self.emit(AsmInst::Add(Reg::R9, dst, Reg::R0));
+                    self.emit(AsmInst::Add(Reg::X0, dst, Reg::R0));
                     // Now we can move src to dst
                     self.emit(AsmInst::Add(dst, src, Reg::R0));
                     moved[i] = true;
                     // And move R9 to dst2
-                    self.emit(AsmInst::Add(dst2, Reg::R9, Reg::R0));
+                    self.emit(AsmInst::Add(dst2, Reg::X0, Reg::R0));
                     moved[j] = true;
                 } else {
                     // No conflict, just move
@@ -202,14 +202,14 @@ impl ModuleLowerer {
         if !stack_args.is_empty() {
             // Adjust stack pointer for arguments
             let stack_space = stack_args.len() as i16;
-            self.emit(AsmInst::AddI(Reg::R14, Reg::R14, -stack_space));
+            self.emit(AsmInst::AddI(Reg::Sp, Reg::Sp, -stack_space));
 
             // Push each argument onto the stack
             for (i, arg_reg) in stack_args.iter().enumerate() {
                 let offset = i as i16;
                 let addr_reg = self.get_reg(format!("stack_arg_addr_{i}"));
-                self.emit(AsmInst::AddI(addr_reg, Reg::R14, offset));
-                self.emit(AsmInst::Store(*arg_reg, Reg::R13, addr_reg));
+                self.emit(AsmInst::AddI(addr_reg, Reg::Sp, offset));
+                self.emit(AsmInst::Store(*arg_reg, Reg::Sb, addr_reg));
             }
         }
 
@@ -218,18 +218,18 @@ impl ModuleLowerer {
         // Clean up stack after call
         if !stack_args.is_empty() {
             let stack_space = stack_args.len() as i16;
-            self.emit(AsmInst::AddI(Reg::R14, Reg::R14, stack_space));
+            self.emit(AsmInst::AddI(Reg::Sp, Reg::Sp, stack_space));
         }
         
         // After the call, argument registers R3-R8 can be clobbered
         // Clear them from the allocator's tracking
         // Note: R3 will contain the return value if any
-        self.reg_alloc.clear_register(Reg::R3);
-        self.reg_alloc.clear_register(Reg::R4);
-        self.reg_alloc.clear_register(Reg::R5);
-        self.reg_alloc.clear_register(Reg::R6);
-        self.reg_alloc.clear_register(Reg::R7);
-        self.reg_alloc.clear_register(Reg::R8);
+        self.reg_alloc.clear_register(Reg::Rv0);
+        self.reg_alloc.clear_register(Reg::Rv1);
+        self.reg_alloc.clear_register(Reg::A0);
+        self.reg_alloc.clear_register(Reg::A1);
+        self.reg_alloc.clear_register(Reg::A2);
+        self.reg_alloc.clear_register(Reg::A3);
 
         if let Some(dest) = result {
             // Result is in R3 by convention
@@ -240,8 +240,8 @@ impl ModuleLowerer {
             let dest_reg = self.get_reg(result_key.clone());
             
             // Move result from R3 to the allocated register (may be R3 itself if free)
-            if dest_reg != Reg::R3 {
-                self.emit(AsmInst::Add(dest_reg, Reg::R3, Reg::R0));
+            if dest_reg != Reg::Rv0 {
+                self.emit(AsmInst::Add(dest_reg, Reg::Rv0, Reg::R0));
             }
             
             // Update our local tracking
@@ -256,8 +256,8 @@ impl ModuleLowerer {
         if let Some(val) = value {
             let val_reg = self.get_value_register(val)?;
             // Move return value to return register (R3 by convention)
-            if val_reg != Reg::R3 {
-                self.emit(AsmInst::Add(Reg::R3, val_reg, Reg::R0));
+            if val_reg != Reg::Rv0 {
+                self.emit(AsmInst::Add(Reg::Rv0, val_reg, Reg::R0));
             }
         }
 

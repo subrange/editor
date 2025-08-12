@@ -18,36 +18,38 @@ pub enum AbiError {
     FrameTooLarge(u16),
 }
 
-/// Ripple VM Calling Convention
+/// Ripple VM Calling Convention - 32 Register Architecture
 /// 
 /// Register Usage:
-/// - R0: Zero/scratch register
-/// - R3-R4: Scratch registers (R1-R2 don't exist)  
-/// - R3-R8: Argument/return value registers
-/// - R9-R12: Callee-saved registers
-/// - R13: Stack bank register (always 0 for now)
-/// - R14: Stack pointer
-/// - R15: Frame pointer
-/// - RA/RAB: Return address and bank
+/// - R0: Zero register (always 0)
+/// - PC, PCB: Program counter and bank
+/// - RA, RAB: Return address and bank  
+/// - RV0, RV1: Return values (R5-R6)
+/// - A0-A3: Function arguments (R7-R10)
+/// - X0-X3: Reserved for future extensions (R11-R14)
+/// - T0-T7: Temporary/caller-saved registers (R15-R22)
+/// - S0-S3: Saved/callee-saved registers (R23-R28)
+/// - SC, SP, FP, GP: Stack pointer, frame pointer, global pointer (R29-R31)
 pub struct CallingConvention;
 
 impl CallingConvention {
     /// Maximum number of parameters that can be passed in registers
-    pub const MAX_REG_PARAMS: usize = 6; // R3-R8
+    pub const MAX_REG_PARAMS: usize = 4; // A0-A3
     
     /// Registers used for passing parameters
-    pub const PARAM_REGS: [Reg; 6] = [Reg::R3, Reg::R4, Reg::R5, Reg::R6, Reg::R7, Reg::R8];
+    pub const PARAM_REGS: [Reg; 4] = [Reg::A0, Reg::A1, Reg::A2, Reg::A3];
     
     /// Registers that must be saved by callee
-    pub const CALLEE_SAVED: [Reg; 4] = [Reg::R9, Reg::R10, Reg::R11, Reg::R12];
+    pub const CALLEE_SAVED: [Reg; 4] = [Reg::S0, Reg::S1, Reg::S2, Reg::S3];
     
-    /// Registers that can be freely used by callee
-    pub const CALLER_SAVED: [Reg; 6] = [Reg::R0, Reg::R3, Reg::R4, Reg::R5, Reg::R6, Reg::R7];
+    /// Registers that can be freely used by callee (caller-saved)
+    pub const CALLER_SAVED: [Reg; 8] = [Reg::T0, Reg::T1, Reg::T2, Reg::T3, Reg::T4, Reg::T5, Reg::T6, Reg::T7];
     
     /// Stack registers
-    pub const STACK_BANK: Reg = Reg::R13;  // Bank register for stack
-    pub const STACK_PTR: Reg = Reg::R14;   // Stack pointer
-    pub const FRAME_PTR: Reg = Reg::R15;   // Frame pointer
+    pub const SCRATCH: Reg = Reg::Sc;
+    pub const STACK_BANK: Reg = Reg::Sb;  // Bank register for stack
+    pub const STACK_PTR: Reg = Reg::Sp;   // Stack pointer (R29)
+    pub const FRAME_PTR: Reg = Reg::Fp;   // Frame pointer (R30)
     
     /// Get the register for a parameter index (0-based)
     pub fn param_reg(index: usize) -> Result<Reg, AbiError> {
@@ -162,7 +164,7 @@ impl Frame {
         // Save return address if this function makes calls
         if self.has_calls {
             code.push(AsmInst::Store(
-                Reg::RA,
+                Reg::Ra,
                 CallingConvention::STACK_BANK,
                 CallingConvention::STACK_PTR
             ));
@@ -245,7 +247,7 @@ impl Frame {
         if self.has_calls {
             code.push(AsmInst::SubI(CallingConvention::STACK_PTR, CallingConvention::STACK_PTR, 1));
             code.push(AsmInst::Load(
-                Reg::RA,
+                Reg::Ra,
                 CallingConvention::STACK_BANK,
                 CallingConvention::STACK_PTR
             ));
@@ -297,8 +299,8 @@ mod tests {
 
     #[test]
     fn test_calling_convention() {
-        assert_eq!(CallingConvention::param_reg(0).unwrap(), Reg::R3);
-        assert_eq!(CallingConvention::param_reg(5).unwrap(), Reg::R8);
+        assert_eq!(CallingConvention::param_reg(0).unwrap(), Reg::A0);
+        assert_eq!(CallingConvention::param_reg(3).unwrap(), Reg::A3);
         assert!(CallingConvention::param_reg(6).is_err());
     }
 
@@ -320,40 +322,40 @@ mod tests {
         
         // Should save FP, set new FP, allocate locals
         assert!(!prologue.is_empty());
-        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::Store(Reg::R15, _, _))));
-        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::AddI(Reg::R14, _, 4))));
+        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::Store(Reg::Fp, _, _))));
+        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::AddI(Reg::Sp, _, 4))));
     }
 
     #[test]
     fn test_frame_with_calls() {
         let mut frame = Frame::new(2);
         frame.set_has_calls(true);
-        frame.add_saved_reg(Reg::R9);
+        frame.add_saved_reg(Reg::S0);
         
         let prologue = frame.gen_prologue();
         let epilogue = frame.gen_epilogue();
         
         // Should save FP, RA, and R9
-        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::Store(Reg::R15, _, _))));
-        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::Store(Reg::RA, _, _))));
-        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::Store(Reg::R9, _, _))));
+        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::Store(Reg::Fp, _, _))));
+        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::Store(Reg::Ra, _, _))));
+        assert!(prologue.iter().any(|inst| matches!(inst, AsmInst::Store(Reg::S0, _, _))));
         
         // Epilogue should restore in reverse order
-        assert!(epilogue.iter().any(|inst| matches!(inst, AsmInst::Load(Reg::R9, _, _))));
-        assert!(epilogue.iter().any(|inst| matches!(inst, AsmInst::Load(Reg::RA, _, _))));
-        assert!(epilogue.iter().any(|inst| matches!(inst, AsmInst::Load(Reg::R15, _, _))));
+        assert!(epilogue.iter().any(|inst| matches!(inst, AsmInst::Load(Reg::S0, _, _))));
+        assert!(epilogue.iter().any(|inst| matches!(inst, AsmInst::Load(Reg::Ra, _, _))));
+        assert!(epilogue.iter().any(|inst| matches!(inst, AsmInst::Load(Reg::Fp, _, _))));
         assert!(epilogue.iter().any(|inst| matches!(inst, AsmInst::Ret)));
     }
 
     #[test]
     fn test_call_generation() {
         let frame = Frame::new(0);
-        let args = vec![Reg::R5, Reg::R6];
+        let args = vec![Reg::T0, Reg::T1];
         let call_seq = frame.gen_call("printf", &args).unwrap();
         
         // Should move args to parameter registers and call
-        assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Move(Reg::R3, Reg::R5))));
-        assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Move(Reg::R4, Reg::R6))));
+        assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Move(Reg::A0, Reg::T0))));
+        assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Move(Reg::A1, Reg::T1))));
         assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Call(label) if label == "printf")));
     }
 
@@ -361,8 +363,8 @@ mod tests {
     fn test_too_many_args() {
         let frame = Frame::new(0);
         let args: Vec<Reg> = (0..10).map(|i| match i {
-            0 => Reg::R0, 1 => Reg::R3, 2 => Reg::R4, 3 => Reg::R5, 4 => Reg::R6,
-            5 => Reg::R5, 6 => Reg::R6, 7 => Reg::R7, 8 => Reg::R8, _ => Reg::R9,
+            0 => Reg::R0, 1 => Reg::T0, 2 => Reg::T1, 3 => Reg::T2, 4 => Reg::T3,
+            5 => Reg::T4, 6 => Reg::T5, 7 => Reg::T6, 8 => Reg::T7, _ => Reg::S0,
         }).collect();
         
         let result = frame.gen_call("func", &args);

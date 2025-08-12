@@ -5,14 +5,14 @@ use rcc_codegen::{AsmInst, Reg};
 #[test]
 fn test_r13_initialization() {
     let mut alloc = RegAllocV2::new();
-    assert!(!alloc.r13_initialized);
+    assert!(!alloc.sb_initialized);
     
     alloc.init_stack_bank();
-    assert!(alloc.r13_initialized);
+    assert!(alloc.sb_initialized);
     
     let insts = alloc.take_instructions();
     assert_eq!(insts.len(), 2);
-    assert!(matches!(insts[1], AsmInst::LI(Reg::R13, 1)));
+    assert!(matches!(insts[1], AsmInst::LI(Reg::Sb, 1)));
 }
 
 #[test]
@@ -24,9 +24,9 @@ fn test_allocatable_registers() {
     let r2 = alloc.get_reg("val2".to_string());
     let r3 = alloc.get_reg("val3".to_string());
     
-    assert_eq!(r1, Reg::R5);
-    assert_eq!(r2, Reg::R6);
-    assert_eq!(r3, Reg::R7);
+    assert_eq!(r1, Reg::A0);
+    assert_eq!(r2, Reg::A1);
+    assert_eq!(r3, Reg::A2);
 }
 
 #[test]
@@ -36,12 +36,12 @@ fn test_load_parameter() {
     
     // Load param 0 (should be at FP-3)
     let reg = alloc.load_parameter(0);
-    assert!(matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
+    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
     
     let insts = alloc.take_instructions();
     // Should have load from FP-3
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::R12, Reg::R15, -3))));
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::R13, Reg::R12))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -3))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::Sb, Reg::Sc))));
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn test_spilling_with_r13() {
     
     let insts = alloc.take_instructions();
     // Should have R13 init + spill operations
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(_, Reg::R13, _))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(_, Reg::Sb, _))));
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn test_bank_info_tracking() {
     assert_eq!(alloc.get_bank_register("global_ptr"), Reg::R0);
     
     alloc.init_stack_bank(); // Must init before using stack bank
-    assert_eq!(alloc.get_bank_register("stack_ptr"), Reg::R13);
+    assert_eq!(alloc.get_bank_register("stack_ptr"), Reg::Sb);
 }
 
 #[test]
@@ -100,11 +100,11 @@ fn test_reload_from_spill() {
     
     // Reload spilled value
     let reg = alloc.reload("val0".to_string());
-    assert!(matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
+    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
     
     let insts = alloc.take_instructions();
     // Should have load instruction for reload
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::R13, _))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::Sb, _))));
 }
 
 #[test]
@@ -150,13 +150,13 @@ fn test_free_temporaries_clears_all() {
     let r7 = alloc.get_reg("new7".to_string());
     
     // Should get all 7 registers
-    assert!(matches!(r1, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-    assert!(matches!(r2, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-    assert!(matches!(r3, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-    assert!(matches!(r4, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-    assert!(matches!(r5, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-    assert!(matches!(r6, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-    assert!(matches!(r7, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
+    assert!(matches!(r1, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(r2, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(r3, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(r4, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(r5, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(r6, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(r7, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
 }
 
 // ========================================================================
@@ -177,13 +177,13 @@ fn stress_test_massive_spill_cascade() {
         allocated.push((format!("val_{}", i), reg));
     }
     
-    // Verify R13 was initialized before first spill
-    assert!(alloc.r13_initialized);
+    // Verify SB was initialized before first spill
+    assert!(alloc.sb_initialized);
     
     // Check that we have many spill instructions
     let insts = alloc.take_instructions();
     let spill_count = insts.iter()
-        .filter(|i| matches!(i, AsmInst::Store(_, Reg::R13, _)))
+        .filter(|i| matches!(i, AsmInst::Store(_, Reg::Sb, _)))
         .count();
     assert!(spill_count >= 93, "Expected at least 93 spills, got {}", spill_count);
 }
@@ -207,7 +207,7 @@ fn stress_test_interleaved_spill_reload() {
     // Verify spills happened
     let insts_after_spill = alloc.take_instructions();
     let spill_count = insts_after_spill.iter()
-        .filter(|i| matches!(i, AsmInst::Store(_, Reg::R13, _)))
+        .filter(|i| matches!(i, AsmInst::Store(_, Reg::Sb, _)))
         .count();
     assert!(spill_count >= 10, "Should spill values when out of registers");
     
@@ -217,11 +217,11 @@ fn stress_test_interleaved_spill_reload() {
     // Phase 3: Reload individual spilled values and verify
     let reg1 = alloc.reload(format!("phase1_0"));
     let insts = alloc.take_instructions();
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::R13, _))),
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::Sb, _))),
             "Reloading spilled value should generate load");
     
     // Verify the value is now in a register
-    assert!(matches!(reg1, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
+    assert!(matches!(reg1, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
     
     // Reload same value again - should not generate another load
     let reg2 = alloc.reload(format!("phase1_0"));
@@ -290,7 +290,7 @@ fn stress_test_bank_tracking_complex() {
     
     // Verify correct bank registers are returned
     assert_eq!(alloc.get_bank_register("global_array"), Reg::R0);
-    assert_eq!(alloc.get_bank_register("stack_array"), Reg::R13);
+    assert_eq!(alloc.get_bank_register("stack_array"), Reg::Sb);
     assert_eq!(alloc.get_bank_register("dynamic_ptr"), bank_reg);
     
     // Test with spilled dynamic bank
@@ -300,7 +300,7 @@ fn stress_test_bank_tracking_complex() {
     
     // Reload and check bank is preserved
     let reloaded_bank = alloc.get_bank_register("dynamic_ptr");
-    assert!(matches!(reloaded_bank, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
+    assert!(matches!(reloaded_bank, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
 }
 
 #[test]
@@ -311,7 +311,7 @@ fn stress_test_parameter_loading_edge_cases() {
     // Test loading many parameters (more than available registers)
     for i in 0..20 {
         let reg = alloc.load_parameter(i);
-        assert!(matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
+        assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
     }
     
     // Should have many loads and spills
@@ -319,13 +319,13 @@ fn stress_test_parameter_loading_edge_cases() {
     
     // Each parameter load generates AddI + Load
     let load_count = insts.iter()
-        .filter(|i| matches!(i, AsmInst::Load(_, Reg::R13, _)))
+        .filter(|i| matches!(i, AsmInst::Load(_, Reg::Sb, _)))
         .count();
     assert_eq!(load_count, 20, "Should have 20 parameter loads");
     
     // Parameters beyond index 6 should cause spills
     let spill_count = insts.iter()
-        .filter(|i| matches!(i, AsmInst::Store(_, Reg::R13, _)))
+        .filter(|i| matches!(i, AsmInst::Store(_, Reg::Sb, _)))
         .count();
     assert!(spill_count >= 13, "Should spill for params beyond available registers");
 }
@@ -370,12 +370,12 @@ fn verify_r13_always_initialized_before_stack_ops() {
     
     // Find first R13 init and first stack operation
     let r13_init_pos = insts.iter().position(|i| 
-        matches!(i, AsmInst::LI(Reg::R13, 1))
+        matches!(i, AsmInst::LI(Reg::Sb, 1))
     );
     
     let first_stack_op = insts.iter().position(|i| 
-        matches!(i, AsmInst::Store(_, Reg::R13, _)) || 
-        matches!(i, AsmInst::Load(_, Reg::R13, _))
+        matches!(i, AsmInst::Store(_, Reg::Sb, _)) ||
+        matches!(i, AsmInst::Load(_, Reg::Sb, _))
     );
     
     if let (Some(init), Some(stack_op)) = (r13_init_pos, first_stack_op) {
@@ -392,7 +392,7 @@ fn verify_no_r3_r4_for_parameters() {
     // Parameters should never allocate R3 or R4
     for i in 0..20 {
         let reg = alloc.load_parameter(i);
-        assert!(!matches!(reg, Reg::R3 | Reg::R4 | Reg::RA | Reg::RAB), 
+        assert!(!matches!(reg, Reg::Rv0 | Reg::Rv1 | Reg::Ra | Reg::Rab),
                 "Parameter {} incorrectly allocated to {:?}", i, reg);
     }
 }

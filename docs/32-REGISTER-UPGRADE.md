@@ -18,40 +18,40 @@ Upgrade Ripple VM from 18 to 32 registers to eliminate current architectural con
 ### Register Naming Convention
 The assembler will support BOTH numeric and symbolic names for all registers:
 
-| Numeric | Symbolic | Purpose              | Notes            |
-|---------|----------|----------------------|------------------|
-| R0      | ZR, R0   | Hardware zero        | Always reads 0   |
-| R1      | PC       | Program Counter      |                  |
-| R2      | PCB      | Program Counter Bank |                  |
-| R3      | RA       | Return Address       |                  |
-| R4      | RAB      | Return Address Bank  |                  |
-| R5      | RV0, V0  | Return Value 0       | Fat ptr address  |
-| R6      | RV1, V1  | Return Value 1       | Fat ptr bank     |
-| R7      | A0       | Argument 0           |                  |
-| R8      | A1       | Argument 1           |                  |
-| R9      | A2       | Argument 2           |                  |
-| R10     | A3       | Argument 3           |                  |
-| R11     | X0       | Reserved/Extended 0  | Future use       |
-| R12     | X1       | Reserved/Extended 1  | Future use       |
-| R13     | X2       | Reserved/Extended 2  | Future use       |
-| R14     | X3       | Reserved/Extended 3  | Future use       |
-| R15     | T0       | Temporary 0          | Caller-saved     |
-| R16     | T1       | Temporary 1          | Caller-saved     |
-| R17     | T2       | Temporary 2          | Caller-saved     |
-| R18     | T3       | Temporary 3          | Caller-saved     |
-| R19     | T4       | Temporary 4          | Caller-saved     |
-| R20     | T5       | Temporary 5          | Caller-saved     |
-| R21     | T6       | Temporary 6          | Caller-saved     |
-| R22     | T7       | Temporary 7          | Caller-saved     |
-| R23     | S0       | Saved 0              | Callee-saved     |
-| R24     | S1       | Saved 1              | Callee-saved     |
-| R25     | S2       | Saved 2              | Callee-saved     |
-| R26     | S3       | Saved 3              | Callee-saved     |
-| R27     | S4       | Saved 4              | Callee-saved     |
-| R28     | S5       | Saved 5              | Callee-saved     |
-| R29     | SP       | Stack Pointer        |                  |
-| R30     | FP       | Frame Pointer        |                  |
-| R31     | GP       | Global Pointer       | Bank for globals |
+| Numeric | Symbolic | Purpose              | Notes                 |
+|---------|----------|----------------------|-----------------------|
+| R0      | ZR, R0   | Hardware zero        | Always reads 0        |
+| R1      | PC       | Program Counter      |                       |
+| R2      | PCB      | Program Counter Bank |                       |
+| R3      | RA       | Return Address       |                       |
+| R4      | RAB      | Return Address Bank  |                       |
+| R5      | RV0, V0  | Return Value 0       | Fat ptr address       |
+| R6      | RV1, V1  | Return Value 1       | Fat ptr bank          |
+| R7      | A0       | Argument 0           |                       |
+| R8      | A1       | Argument 1           |                       |
+| R9      | A2       | Argument 2           |                       |
+| R10     | A3       | Argument 3           |                       |
+| R11     | X0       | Reserved/Extended 0  | Future use            |
+| R12     | X1       | Reserved/Extended 1  | Future use            |
+| R13     | X2       | Reserved/Extended 2  | Future use            |
+| R14     | X3       | Reserved/Extended 3  | Future use            |
+| R15     | T0       | Temporary 0          | Caller-saved          |
+| R16     | T1       | Temporary 1          | Caller-saved          |
+| R17     | T2       | Temporary 2          | Caller-saved          |
+| R18     | T3       | Temporary 3          | Caller-saved          |
+| R19     | T4       | Temporary 4          | Caller-saved          |
+| R20     | T5       | Temporary 5          | Caller-saved          |
+| R21     | T6       | Temporary 6          | Caller-saved          |
+| R22     | T7       | Temporary 7          | Caller-saved          |
+| R23     | S0       | Saved 0              | Callee-saved          |
+| R24     | S1       | Saved 1              | Callee-saved          |
+| R25     | S2       | Saved 2              | Callee-saved          |
+| R26     | S3       | Saved 3              | Callee-saved          |
+| R27     | SC       | Allocator Scratch    | For register spilling |
+| R28     | SB       | Stack Bank           | Bank for stack        |
+| R29     | SP       | Stack Pointer        |                       |
+| R30     | FP       | Frame Pointer        |                       |
+| R31     | GP       | Global Pointer       | Bank for globals      |
 
 ### Assembly Examples
 
@@ -80,11 +80,11 @@ MOVE S0, RV0         ; Save return value
 - **Arguments**: R7-R10 (A0-A3) - 4 function arguments
 - **Reserved**: R11-R14 (X0-X3) - Reserved for future extensions
 - **Temporaries**: R15-R22 (T0-T7) - caller-saved, general use
-- **Saved**: R23-R28 (S0-S5) - callee-saved, general use
-- **Special**: R29-R31 (SP, FP, GP)
+- **Saved**: R23-R27 (S0-S3) - callee-saved, general use
+- **Special**: R28-R31 (SB, SC, SP, FP, GP)
 
 ### Allocatable Pool for Register Allocator
-**14 registers**: T0-T7 (temporaries) and S0-S5 (saved)
+**14 registers**: T0-T7 (temporaries) and S0-S3 (saved)
 
 **NOT in allocatable pool**:
 - A0-A3 are ONLY for argument passing (4 args in registers)
@@ -102,7 +102,7 @@ With 4 reserved registers, we can implement:
 
 ## Benefits
 
-1. **2x more allocatable registers** (14 vs 7) - T0-T7 and S0-S5
+1. **Near 2x more allocatable registers** (12 vs 7) - T0-T7 and S0-S3
 2. **Fast function calls** - up to 4 args in registers (A0-A3)
 3. **Reduced spilling** - callee-saved registers preserve values across calls
 4. **Multiple global banks** - GP register enables easy bank switching
@@ -141,12 +141,12 @@ pub struct VM {
 
 **File: `src/ripple-asm/src/types.rs`**
 - Extend `Register` enum to include R18-R31
-- Add symbolic names (A0-A3, X0-X3, T0-T7, S0-S5, SP, FP, GP)
+- Add symbolic names (A0-A3, X0-X3, T0-T7, S0-S3, SC, SB, SP, FP, GP)
 
 **File: `src/ripple-asm/src/parser.rs`**
 - Update register parsing to accept BOTH formats:
   - Numeric: R0 through R31
-  - Symbolic: PC, RA, A0-A3, X0-X3, T0-T7, S0-S5, SP, FP, GP, etc.
+  - Symbolic: PC, RA, A0-A3, X0-X3, T0-T7, S0-S3, SC, Sb, SP, FP, GP, etc.
 - Case-insensitive parsing (r0, R0, a0, A0 all valid)
 - Hash map for name lookups:
 ```rust
@@ -175,6 +175,8 @@ fn parse_register(s: &str) -> Option<u8> {
         "X3" => Some(14),
         "T0" => Some(15),
         // ... etc
+        "SC" => Some(27),
+        "SB" => Some(28),
         "SP" => Some(29),
         "FP" => Some(30),
         "GP" => Some(31),
@@ -194,8 +196,8 @@ pub enum Reg {
     A0, A1, A2, A3,  // Arguments (R7-R10)
     X0, X1, X2, X3,  // Reserved (R11-R14)
     T0, T1, T2, T3, T4, T5, T6, T7,  // Temporaries (R15-R22)
-    S0, S1, S2, S3, S4, S5,  // Saved (R23-R28)
-    SP, FP, GP,  // Special (R29-R31)
+    S0, S1, S2, S3,  // Saved (R23-R26)
+    SC, SB, SP, FP, GP,  // Special (R27-R31)
 }
 ```
 
@@ -209,9 +211,8 @@ const ALLOCATABLE_REGS: &[Reg] = &[
     Reg::T4, Reg::T5, Reg::T6, Reg::T7,
     // Saved registers (callee-saved)
     Reg::S0, Reg::S1, Reg::S2, Reg::S3,
-    Reg::S4, Reg::S5,
 ];
-// Total: 14 allocatable registers (2x our current 7!)
+// Total: 12 allocatable registers (Near 2x our current 7!)
 // A0-A3 are NOT here - they're only for argument passing
 // X0-X3 are NOT here - they're reserved for future use
 ```
@@ -219,7 +220,7 @@ const ALLOCATABLE_REGS: &[Reg] = &[
 **File: `rcc-ir/src/v2/function/calling_convention.rs`**
 - Implement register-based argument passing (A0-A3)
 - Handle spilling when >4 arguments  
-- Implement callee-saved register preservation (S0-S5)
+- Implement callee-saved register preservation (S0-S3)
 
 **File: `rcc-ir/src/v2/instr/load.rs` and `store.rs`**
 ```rust
@@ -265,10 +266,11 @@ VADD4 X0, A0, A1        ; Add 4x16-bit values in parallel
 ; First 4 arguments are in A0-A3
 ; Additional arguments (5+) are on stack at FP+2, FP+3, etc.
 ; Save callee-saved registers (if used)
-ADDI  SP, SP, -6
-STORE S0, SP, 0   ; Only if S0 is used
-STORE S1, SP, 1   ; Only if S1 is used
-; ... up to S5
+
+// Figure out how to properly do this
+
+
+; ... up to S3
 
 ; Set up frame
 MOVE  FP, SP
@@ -277,41 +279,6 @@ ADDI  SP, SP, -locals_size
 ; Now we can use arguments directly from A0-A3
 ; Example: ADD T0, A0, A1  ; Use first two arguments
 ; For 5th+ args: LOAD T0, FP, 2  ; Load 5th argument
-```
-
-### Function Call
-```asm
-; Move arguments into dedicated argument registers
-; Arguments MUST go in A0-A3 (4 args), rest on stack
-MOVE  A0, T0       ; First arg from temporary
-MOVE  A1, S0       ; Second arg from saved register
-MOVE  A2, RV0      ; Third arg from previous return value
-MOVE  A3, T1       ; Fourth arg
-; 5th+ arguments go on stack
-STORE T2, SP, 0    ; 5th argument
-STORE T3, SP, 1    ; 6th argument
-ADDI  SP, SP, 2
-
-JAL   function_address
-
-; Result in RV0/RV1 (or R5/R6)
-; Stack cleanup if needed
-ADDI  SP, SP, -1   ; If we pushed args
-```
-
-### Function Epilogue
-```asm
-; Restore stack
-MOVE  SP, FP
-
-; Restore callee-saved registers
-LOAD  S0, SP, 0
-LOAD  S1, SP, 1
-; ...
-ADDI  SP, SP, 6
-
-; Return
-JALR  R0, R0, RA
 ```
 
 ## Implementation Plan
@@ -363,11 +330,11 @@ JALR  R0, R0, RA
 
 ## Risks and Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Bugs in register allocation | Extensive testing, gradual rollout |
+| Risk                         | Mitigation                          |
+|------------------------------|-------------------------------------|
+| Bugs in register allocation  | Extensive testing, gradual rollout  |
 | Missed hardcoded assumptions | Global search for "18", "R12", etc. |
-| Performance regression | Benchmark before/after |
+| Performance regression       | Benchmark before/after              |
 
 ## Future Enhancements
 

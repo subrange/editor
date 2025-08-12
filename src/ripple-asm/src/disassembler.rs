@@ -1,5 +1,6 @@
 use crate::types::{Instruction, Opcode, InstructionFormat};
 use std::collections::HashMap;
+use crate::Register;
 
 pub struct Disassembler {
     labels: HashMap<u32, String>,
@@ -302,28 +303,10 @@ impl Disassembler {
     }
 
     fn register_name(&self, reg: u8) -> Result<String, String> {
-        let name = match reg {
-            0 => "R0",
-            1 => "PC",
-            2 => "PCB",
-            3 => "RA",
-            4 => "RAB",
-            5 => "R3",
-            6 => "R4",
-            7 => "R5",
-            8 => "R6",
-            9 => "R7",
-            10 => "R8",
-            11 => "R9",
-            12 => "R10",
-            13 => "R11",
-            14 => "R12",
-            15 => "R13",
-            16 => "R14",
-            17 => "R15",
-            _ => return Err(format!("Invalid register: {}", reg)),
-        };
-        Ok(name.to_string())
+        let name = Register::from_u8(reg)
+            .map(|r| r.to_string());
+
+        name.ok_or_else(|| format!("Invalid register: {}", reg))
     }
 
     fn opcode_from_byte(&self, byte: u8) -> Option<Opcode> {

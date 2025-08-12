@@ -28,8 +28,8 @@ impl ModuleLowerer {
         self.emit(AsmInst::Comment(
             format!("  Base {} in {}", self.value_to_string(ptr),
                     match base_reg {
-                        Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
-                        Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
+                        Reg::Rv0 => "R3", Reg::Rv1 => "R4", Reg::A0 => "R5",
+                        Reg::A1 => "R6", Reg::A2 => "R7", Reg::A3 => "R8",
                         _ => "R?"
                     })
         ));
