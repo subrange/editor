@@ -84,7 +84,7 @@ MOVE S0, RV0         ; Save return value
 - **Special**: R28-R31 (SB, SC, SP, FP, GP)
 
 ### Allocatable Pool for Register Allocator
-**14 registers**: T0-T7 (temporaries) and S0-S3 (saved)
+**12 registers**: T0-T7 (temporaries) and S0-S3 (saved)
 
 **NOT in allocatable pool**:
 - A0-A3 are ONLY for argument passing (4 args in registers)
@@ -302,6 +302,6 @@ ADDI  SP, SP, -locals_size
 
 ### Phase 4: Compiler V2 Backend (Week 2-3)
 - [x] Update register allocator
-- [ ] Implement new calling convention
-- [?] Update spilling (remove R12 hack) // Please check if this uses Reg::Sc instead
-- [ ] Use GP for globals
+- [x] Implement new calling convention
+- [x] Update spilling (remove R12 hack) - Uses Reg::Sc instead
+- [x] Use GP for globals

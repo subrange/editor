@@ -21,6 +21,7 @@ fn stress_test_massive_argument_list() {
     
     let mut args = Vec::new();
     let mut expected_stack_words = 0;
+    let mut register_slots_used = 0;
     
     for i in 0..50 {
         if i % 3 == 0 {
@@ -29,10 +30,26 @@ fn stress_test_massive_argument_list() {
                 addr: Reg::A0,
                 bank: Reg::A1
             });
-            expected_stack_words += 2;
+            
+            // Check if this goes to registers or stack
+            if register_slots_used + 2 <= 4 {
+                // Fits in registers
+                register_slots_used += 2;
+            } else {
+                // Goes to stack
+                expected_stack_words += 2;
+            }
         } else {
             args.push(CallArg::Scalar(Reg::A0));
-            expected_stack_words += 1;
+            
+            // Check if this goes to registers or stack
+            if register_slots_used < 4 {
+                // Fits in registers
+                register_slots_used += 1;
+            } else {
+                // Goes to stack
+                expected_stack_words += 1;
+            }
         }
     }
     let mut naming = new_function_naming();

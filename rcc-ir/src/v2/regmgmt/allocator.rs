@@ -50,6 +50,10 @@ pub(super) struct RegAllocV2 {
     /// Track fat pointer bank components
     /// Maps value name to its bank register or tag
     pub(super) pointer_banks: BTreeMap<String, BankInfo>,
+    
+    /// Track which callee-saved registers (S0-S3) have been used
+    /// These need to be saved in prologue and restored in epilogue
+    pub(super) used_callee_saved: BTreeSet<Reg>,
 }
 
 
@@ -75,6 +79,7 @@ impl RegAllocV2 {
             pinned_values: BTreeSet::new(),
             sb_initialized: false,
             pointer_banks: BTreeMap::new(),
+            used_callee_saved: BTreeSet::new(),
         }
     }
     
@@ -155,6 +160,13 @@ impl RegAllocV2 {
         if let Some(reg) = self.free_list.pop() {
             trace!("  Allocated free {reg:?} for {for_value}");
             debug!("Allocated {reg:?} for '{for_value}' (was free)");
+            
+            // Track if we're using a callee-saved register
+            if matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3) {
+                self.used_callee_saved.insert(reg);
+                trace!("  Marked callee-saved register {:?} as used", reg);
+            }
+            
             self.reg_contents.insert(reg, for_value);
             return reg;
         }
@@ -355,6 +367,22 @@ impl RegAllocV2 {
         self.pinned_values.clear();
         self.sb_initialized = false;
         self.pointer_banks.clear();
+        self.used_callee_saved.clear();
+    }
+    
+    /// Get the list of callee-saved registers that have been used
+    /// These need to be saved in prologue and restored in epilogue
+    pub(super) fn get_used_callee_saved(&self) -> Vec<Reg> {
+        let mut regs: Vec<Reg> = self.used_callee_saved.iter().copied().collect();
+        // Sort for deterministic order (S0, S1, S2, S3)
+        regs.sort_by_key(|r| match r {
+            Reg::S0 => 0,
+            Reg::S1 => 1,
+            Reg::S2 => 2,
+            Reg::S3 => 3,
+            _ => unreachable!("Only S0-S3 should be in used_callee_saved, found {:?}", r),
+        });
+        regs
     }
 }
 

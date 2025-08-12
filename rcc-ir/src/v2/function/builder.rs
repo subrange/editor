@@ -48,6 +48,9 @@ pub struct FunctionBuilder {
     
     /// Stack of pending cleanups (for nested calls)
     cleanup_stack: Vec<i16>,
+    
+    /// Parameter types for this function (needed for correct stack offset calculation)
+    param_types: Vec<(rcc_common::TempId, crate::ir::IrType)>,
 }
 
 impl FunctionBuilder {
@@ -61,6 +64,22 @@ impl FunctionBuilder {
             prologue_emitted: false,
             epilogue_emitted: false,
             cleanup_stack: Vec::new(),
+            param_types: Vec::new(),
+        }
+    }
+    
+    /// Create a new function builder with parameter types
+    /// This should be used when lowering IR functions that have parameter type information
+    pub fn with_params(param_types: Vec<(rcc_common::TempId, crate::ir::IrType)>) -> Self {
+        info!("Creating new FunctionBuilder with {} parameters", param_types.len());
+        Self {
+            func: FunctionLowering::new(),
+            cc: CallingConvention::new(),
+            instructions: Vec::new(),
+            prologue_emitted: false,
+            epilogue_emitted: false,
+            cleanup_stack: Vec::new(),
+            param_types,
         }
     }
     
@@ -86,7 +105,7 @@ impl FunctionBuilder {
         assert!(self.prologue_emitted, "Must emit prologue before loading parameters");
         assert!(!self.epilogue_emitted, "Cannot load parameters after epilogue");
         
-        let (insts, reg) = self.func.load_param(index);
+        let (insts, reg) = self.func.load_param(index, &self.param_types);
         trace!("  Parameter {} loaded into {:?}, {} instructions generated", index, reg, insts.len());
         self.instructions.extend(insts);
         reg

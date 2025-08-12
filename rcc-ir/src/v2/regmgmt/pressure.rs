@@ -141,6 +141,12 @@ impl RegisterPressureManager {
         self.allocator.sb_initialized
     }
     
+    /// Get the list of callee-saved registers that have been used
+    /// These need to be saved in prologue and restored in epilogue
+    pub(super) fn get_used_callee_saved(&self) -> Vec<Reg> {
+        self.allocator.get_used_callee_saved()
+    }
+    
     /// Calculate register need for an expression (Sethi-Ullman)
     pub fn calculate_need(&self, value: &Value) -> RegisterNeed {
         let need = match value {

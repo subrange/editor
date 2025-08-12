@@ -98,7 +98,7 @@ let instructions = manager.take_instructions();
 
 ## Safety Invariants
 
-1. **R13 Initialization**: Always initialized before any stack operation
+1. **Sb Initialization**: Stack Bank always initialized before any stack operation
 2. **Register Consistency**: Register contents always match internal tracking
 3. **Spill Slot Management**: Each value has at most one spill slot
 4. **Bank Tracking**: All pointers have associated bank information

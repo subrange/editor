@@ -24,8 +24,59 @@ impl CallingConvention {
         Self {}
     }
     
+    /// Core logic for analyzing parameter/argument placement
+    /// Takes a closure that determines if an item is a fat pointer
+    /// Returns (register_items_with_slots, first_stack_item_index)
+    fn analyze_placement<F>(&self, count: usize, is_fat_ptr: F) -> (Vec<(usize, usize)>, usize)
+    where
+        F: Fn(usize) -> bool,
+    {
+        let mut register_items = Vec::new();
+        let mut reg_slots_used = 0;
+        let mut first_stack_item = count;
+        
+        for i in 0..count {
+            if is_fat_ptr(i) {
+                // Fat pointer needs 2 slots
+                if reg_slots_used + 1 < 4 {  // Can fit both parts in registers
+                    register_items.push((i, reg_slots_used));
+                    reg_slots_used += 2;
+                } else {
+                    // Fat pointer doesn't fit, it and all subsequent go to stack
+                    first_stack_item = i;
+                    break;
+                }
+            } else {
+                // Scalar needs 1 slot
+                if reg_slots_used < 4 {
+                    register_items.push((i, reg_slots_used));
+                    reg_slots_used += 1;
+                } else {
+                    // No more register slots
+                    first_stack_item = i;
+                    break;
+                }
+            }
+        }
+        
+        (register_items, first_stack_item)
+    }
+    
+    /// Analyze which arguments go in registers vs stack based on CallArg types
+    fn analyze_arg_placement(&self, args: &[CallArg]) -> (Vec<(usize, usize)>, usize) {
+        self.analyze_placement(args.len(), |i| matches!(args[i], CallArg::FatPointer { .. }))
+    }
+    
+    /// Analyze parameter placement for load_param based on IrType
+    fn analyze_param_placement(&self, param_types: &[(rcc_common::TempId, crate::ir::IrType)]) 
+        -> (Vec<(usize, usize)>, usize) {
+        self.analyze_placement(param_types.len(), |i| param_types[i].1.is_pointer())
+    }
+    
     /// Setup parameters for a function call
-    /// All parameters are passed on the stack according to the calling convention
+    /// First 4 scalar arguments or 2 fat pointers go in A0-A3
+    /// Remaining arguments are passed on the stack
+    /// Returns (instructions, stack_words_used)
     pub(super) fn setup_call_args(&self, 
                            pressure_manager: &mut RegisterPressureManager,
                            _naming: &mut NameGenerator,
@@ -33,37 +84,100 @@ impl CallingConvention {
         info!("Setting up {} call arguments", args.len());
         let mut insts = Vec::new();
         let mut stack_offset = 0i16;
+        let arg_regs = [Reg::A0, Reg::A1, Reg::A2, Reg::A3];
         
-        insts.push(AsmInst::Comment(format!("Pushing {} arguments to stack", args.len())));
+        // Use common logic to determine placement
+        let (register_arg_slots, first_stack_arg) = self.analyze_arg_placement(&args);
         
-        // Push arguments onto stack in reverse order (rightmost first)
-        debug!("  Pushing arguments in reverse order (rightmost first)");
-        for (idx, arg) in args.into_iter().enumerate().rev() {
-            match arg {
-                CallArg::Scalar(src_reg) => {
-                    trace!("  Pushing arg {} (scalar) from {:?}", idx, src_reg);
-                    insts.push(AsmInst::Comment(format!("Push arg {idx} (scalar)")));
-                    // Push scalar value
-                    insts.push(AsmInst::Store(src_reg, Reg::Sb, Reg::Sp));
-                    insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
-                    stack_offset += 1;
+        // Separate args into register args and stack args
+        let mut reg_args = Vec::new();
+        let mut stack_args = Vec::new();
+        
+        for (idx, arg) in args.into_iter().enumerate() {
+            if let Some((_, reg_slot)) = register_arg_slots.iter().find(|(i, _)| *i == idx) {
+                // This arg goes in register(s)
+                match &arg {
+                    CallArg::Scalar(_) => {
+                        trace!("  Arg {} (scalar) goes in {:?}", idx, arg_regs[*reg_slot]);
+                        reg_args.push((idx, arg_regs[*reg_slot], arg));
+                    }
+                    CallArg::FatPointer { .. } => {
+                        trace!("  Arg {} (fat ptr) goes in {:?} and {:?}", idx, 
+                               arg_regs[*reg_slot], arg_regs[*reg_slot + 1]);
+                        reg_args.push((idx, arg_regs[*reg_slot], arg));
+                    }
                 }
-                
-                CallArg::FatPointer { addr, bank } => {
-                    trace!("  Pushing arg {} (fat ptr) - addr: {:?}, bank: {:?}", idx, addr, bank);
-                    insts.push(AsmInst::Comment(format!("Push arg {idx} (fat ptr)")));
-                    // Push bank first (higher address)
-                    insts.push(AsmInst::Store(bank, Reg::Sb, Reg::Sp));
-                    insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
-                    // Then push address
-                    insts.push(AsmInst::Store(addr, Reg::Sb, Reg::Sp));
-                    insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
-                    stack_offset += 2;
+            } else {
+                // This arg goes on stack
+                match &arg {
+                    CallArg::Scalar(_) => trace!("  Arg {} (scalar) goes on stack", idx),
+                    CallArg::FatPointer { .. } => trace!("  Arg {} (fat ptr) goes on stack", idx),
+                }
+                stack_args.push((idx, arg));
+            }
+        }
+        
+        // First, push stack arguments in reverse order
+        if !stack_args.is_empty() {
+            insts.push(AsmInst::Comment(format!("Pushing {} arguments to stack", stack_args.len())));
+            debug!("  Pushing {} stack arguments in reverse order", stack_args.len());
+            
+            for (idx, arg) in stack_args.into_iter().rev() {
+                match arg {
+                    CallArg::Scalar(src_reg) => {
+                        insts.push(AsmInst::Comment(format!("Push arg {idx} (scalar) to stack")));
+                        insts.push(AsmInst::Store(src_reg, Reg::Sb, Reg::Sp));
+                        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
+                        stack_offset += 1;
+                    }
+                    CallArg::FatPointer { addr, bank } => {
+                        insts.push(AsmInst::Comment(format!("Push arg {idx} (fat ptr) to stack")));
+                        // Push bank first (higher address)
+                        insts.push(AsmInst::Store(bank, Reg::Sb, Reg::Sp));
+                        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
+                        // Then push address
+                        insts.push(AsmInst::Store(addr, Reg::Sb, Reg::Sp));
+                        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
+                        stack_offset += 2;
+                    }
                 }
             }
         }
         
-        // Spill all registers before call
+        // Then, move register arguments to A0-A3
+        if !reg_args.is_empty() {
+            insts.push(AsmInst::Comment(format!("Setting up {} register arguments", reg_args.len())));
+            debug!("  Setting up {} register arguments", reg_args.len());
+            
+            for (idx, dest_reg, arg) in reg_args {
+                match arg {
+                    CallArg::Scalar(src_reg) => {
+                        insts.push(AsmInst::Comment(format!("Arg {idx} (scalar) to {:?}", dest_reg)));
+                        if src_reg != dest_reg {
+                            insts.push(AsmInst::Add(dest_reg, src_reg, Reg::R0));
+                        }
+                    }
+                    CallArg::FatPointer { addr, bank } => {
+                        // Fat pointer uses two consecutive registers
+                        let bank_reg = match dest_reg {
+                            Reg::A0 => Reg::A1,
+                            Reg::A1 => Reg::A2,
+                            Reg::A2 => Reg::A3,
+                            _ => panic!("Invalid fat pointer register assignment"),
+                        };
+                        insts.push(AsmInst::Comment(format!("Arg {idx} (fat ptr) to {:?},{:?}", dest_reg, bank_reg)));
+                        if addr != dest_reg {
+                            insts.push(AsmInst::Add(dest_reg, addr, Reg::R0));
+                        }
+                        if bank != bank_reg {
+                            insts.push(AsmInst::Add(bank_reg, bank, Reg::R0));
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Spill all registers before call (except A0-A3 which hold arguments)
         debug!("  Spilling all registers before call");
         pressure_manager.spill_all();
         let spill_insts = pressure_manager.take_instructions();
@@ -73,9 +187,11 @@ impl CallingConvention {
         insts.extend(spill_insts);
         
         // Add comment about stack adjustment
-        insts.push(AsmInst::Comment(format!("Pushed {stack_offset} words to stack")));
-        debug!("Call args setup complete: pushed {} words, generated {} instructions", 
-               stack_offset, insts.len());
+        if stack_offset > 0 {
+            insts.push(AsmInst::Comment(format!("Pushed {stack_offset} words to stack")));
+        }
+        debug!("Call args setup complete: {} in registers, {} words on stack, {} total instructions", 
+               register_arg_slots.len(), stack_offset, insts.len());
         
         insts
     }
@@ -159,19 +275,16 @@ impl CallingConvention {
         insts
     }
     
-    /// Load parameter from stack in callee
-    /// Parameters are at negative offsets from FP (before the frame)
+    /// Load parameter in callee
+    /// First 4 scalar parameters are in A0-A3
+    /// Additional parameters are on the stack at negative offsets from FP
+    /// param_types: The types of all parameters to calculate correct stack offsets
     pub(super) fn load_param(&self, index: usize, 
+                     param_types: &[(rcc_common::TempId, crate::ir::IrType)],
                      pressure_manager: &mut RegisterPressureManager,
                      naming: &mut NameGenerator) -> (Vec<AsmInst>, Reg) {
-        info!("Loading parameter {} from stack", index);
+        info!("Loading parameter {}", index);
         let mut insts = Vec::new();
-        
-        // Parameters are before the frame (negative offsets from FP)
-        // They are pushed in reverse order, so param 0 is closest to FP
-        let param_offset = -(index as i16 + 3); // -3 because: -1 for FP, -1 for RA, -1 for first param
-        debug!("  Parameter {} is at FP{} (offset calculation: -({}+3))", 
-               index, param_offset, index);
         
         let param_name = naming.param_name(index);
         trace!("  Allocating register for parameter '{}'", param_name);
@@ -183,11 +296,62 @@ impl CallingConvention {
         }
         insts.extend(spill_insts);
         
-        insts.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));
-        trace!("  Computing address: FP + {}", param_offset);
-        insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, param_offset));
-        trace!("  Loading from stack (bank R13) at computed address into {:?}", dest);
-        insts.push(AsmInst::Load(dest, Reg::Sb, Reg::Sc));
+        // Use common logic to determine placement
+        let (register_params, first_stack_param) = self.analyze_param_placement(param_types);
+        
+        // Check if this parameter is in a register
+        let param_reg = if let Some((_, reg_slot)) = register_params.iter().find(|(i, _)| *i == index) {
+            Some(match *reg_slot {
+                0 => Reg::A0,
+                1 => Reg::A1,
+                2 => Reg::A2,
+                3 => Reg::A3,
+                _ => unreachable!(),
+            })
+        } else {
+            None
+        };
+        
+        if let Some(arg_reg) = param_reg {
+            // Parameter is in a register
+            debug!("  Parameter {} is in register {:?}", index, arg_reg);
+            insts.push(AsmInst::Comment(format!("Load param {index} from {:?}", arg_reg)));
+            if dest != arg_reg {
+                insts.push(AsmInst::Add(dest, arg_reg, Reg::R0));
+            }
+        } else {
+            // Parameter is on the stack
+            // Stack parameters start after the 4 register parameters
+            // They are before the frame (negative offsets from FP)
+            // Stack layout: ... param6, param5, param4, RA, FP, S0, S1, S2, S3, locals...
+            
+            // Calculate the actual offset based on parameter types
+            // We need to account for fat pointers taking 2 cells
+            let mut param_offset = -6i16; // Start at -6 for FP, RA, and S0-S3
+            
+            // Count stack words before our parameter
+            for i in first_stack_param..index {
+                if i >= param_types.len() {
+                    break;
+                }
+                if param_types[i].1.is_pointer() {
+                    param_offset -= 2; // Fat pointer takes 2 words
+                } else {
+                    param_offset -= 1; // Scalar takes 1 word
+                }
+            }
+            
+            // Account for this parameter itself
+            param_offset -= 1;
+            
+            debug!("  Parameter {} (stack param) is at FP{}", index, param_offset);
+            
+            insts.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));
+            trace!("  Computing address: FP + {}", param_offset);
+            insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, param_offset));
+            trace!("  Loading from stack (bank SB) at computed address into {:?}", dest);
+            insts.push(AsmInst::Load(dest, Reg::Sb, Reg::Sc));
+        }
         
         debug!("Parameter load complete: generated {} instructions, result in {:?}", 
                insts.len(), dest);

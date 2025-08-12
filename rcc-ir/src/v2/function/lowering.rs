@@ -66,16 +66,19 @@ impl FunctionLowering {
     }
     
     /// Helper to load a parameter using this function's context
-    pub(super) fn load_param(&mut self, index: usize) -> (Vec<AsmInst>, Reg) {
+    /// param_types: The types of all parameters to calculate correct stack offsets
+    pub(super) fn load_param(&mut self, index: usize, param_types: &[(rcc_common::TempId, crate::ir::IrType)]) -> (Vec<AsmInst>, Reg) {
         debug!("Loading parameter {}", index);
         let cc = super::calling_convention::CallingConvention::new();
-        let result = cc.load_param(index, &mut self.pressure_manager, &mut self.naming);
+        let result = cc.load_param(index, param_types, &mut self.pressure_manager, &mut self.naming);
         trace!("  Parameter load generated {} instructions, result in {:?}", result.0.len(), result.1);
         result
     }
     
     /// Generate function prologue
-    /// Parameters are already on stack (pushed by caller)
+    /// First 4 parameters are in A0-A3, additional parameters are on stack
+    /// NOTE: For simplicity, we always save all callee-saved registers (S0-S3)
+    /// A smarter implementation would only save the ones actually used
     pub(super) fn emit_prologue(&mut self, local_slots: i16) -> Vec<AsmInst> {
         info!("Emitting function prologue with {} local slots", local_slots);
         let mut insts = Vec::new();
@@ -106,6 +109,16 @@ impl FunctionLowering {
         insts.push(AsmInst::Comment("Save old FP".to_string()));
         insts.push(AsmInst::Store(Reg::Fp, Reg::Sb, Reg::Sp));
         insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
+        
+        // Save callee-saved registers (S0-S3)
+        // For simplicity, we always save all of them
+        // A smarter implementation would track which ones are actually used
+        insts.push(AsmInst::Comment("Save callee-saved registers S0-S3".to_string()));
+        for reg in [Reg::S0, Reg::S1, Reg::S2, Reg::S3] {
+            trace!("  Saving {:?}", reg);
+            insts.push(AsmInst::Store(reg, Reg::Sb, Reg::Sp));
+            insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
+        }
         
         // Set new FP = SP
         trace!("  Setting FP = SP");
@@ -139,13 +152,23 @@ impl FunctionLowering {
         insts.push(AsmInst::Comment("Restore SP = FP".to_string()));
         insts.push(AsmInst::Add(Reg::Sp, Reg::Fp, Reg::R0));
         
-        // Restore old FP
+        // Restore callee-saved registers (S3-S0 in reverse order)
+        // We saved S0, S1, S2, S3 in that order
+        // So FP-6 = S0, FP-5 = S1, FP-4 = S2, FP-3 = S3
+        insts.push(AsmInst::Comment("Restore callee-saved registers S3-S0".to_string()));
+        for (offset, reg) in [(-3, Reg::S3), (-4, Reg::S2), (-5, Reg::S1), (-6, Reg::S0)] {
+            trace!("  Restoring {:?} from FP{}", reg, offset);
+            insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, offset));
+            insts.push(AsmInst::Load(reg, Reg::Sb, Reg::Sc));
+        }
+        
+        // Restore old FP (at FP-2)
         trace!("  Restoring old FP");
         insts.push(AsmInst::Comment("Restore old FP".to_string()));
         insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -1));
         insts.push(AsmInst::Load(Reg::Fp, Reg::Sb, Reg::Sp));
         
-        // Restore RA
+        // Restore RA (at FP-1)
         trace!("  Restoring RA");
         insts.push(AsmInst::Comment("Restore RA".to_string()));
         insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -1));
