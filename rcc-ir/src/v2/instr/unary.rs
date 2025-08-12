@@ -61,7 +61,7 @@ pub fn lower_unary_op(
             // In RISC architectures, NOT is often XOR with -1 (all ones)
             let all_ones_reg = mgr.get_register(naming.all_ones());
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(all_ones_reg, -1)); // Load -1 (0xFFFF)
+            insts.push(AsmInst::Li(all_ones_reg, -1)); // Load -1 (0xFFFF)
             insts.push(AsmInst::Xor(result_reg, operand_reg, all_ones_reg));
             mgr.free_register(all_ones_reg);
             trace!("  Generated NOT using XOR with -1");
@@ -72,7 +72,7 @@ pub fn lower_unary_op(
             // Implement as: result = 0 - operand
             let zero_reg = mgr.get_register(naming.zero_temp());
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(zero_reg, 0));
+            insts.push(AsmInst::Li(zero_reg, 0));
             insts.push(AsmInst::Sub(result_reg, zero_reg, operand_reg));
             mgr.free_register(zero_reg);
             trace!("  Generated NEG using 0 - operand");
@@ -109,7 +109,7 @@ pub fn lower_unary_op(
                     // Truncate to 8 bits
                     let mask_reg = mgr.get_register(naming.mask_i8());
                     insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::LI(mask_reg, 0xFF)); // 8-bit mask
+                    insts.push(AsmInst::Li(mask_reg, 0xFF)); // 8-bit mask
                     insts.push(AsmInst::And(result_reg, operand_reg, mask_reg));
                     mgr.free_register(mask_reg);
                     trace!("  Generated TRUNC to i8 using AND 0xFF");
@@ -118,7 +118,7 @@ pub fn lower_unary_op(
                     // Truncate to 1 bit (boolean)
                     let mask_reg = mgr.get_register(naming.mask_i1());
                     insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::LI(mask_reg, 1)); // 1-bit mask
+                    insts.push(AsmInst::Li(mask_reg, 1)); // 1-bit mask
                     insts.push(AsmInst::And(result_reg, operand_reg, mask_reg));
                     mgr.free_register(mask_reg);
                     trace!("  Generated TRUNC to i1 using AND 0x1");

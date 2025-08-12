@@ -120,7 +120,7 @@ impl ModuleLowerer {
                 // Now invert the result: dest = 1 - dest
                 let temp_name = self.generate_temp_name("eq_inv");
                 let temp3 = self.get_reg(temp_name);
-                self.emit(AsmInst::LI(temp3, 1));
+                self.emit(AsmInst::Li(temp3, 1));
                 self.emit(AsmInst::Sub(dest_reg, temp3, dest_reg));
                 self.reg_alloc.free_reg(temp3);
             }
@@ -172,7 +172,7 @@ impl ModuleLowerer {
                 let temp = self.get_reg(temp_name);
 
                 self.emit(AsmInst::Sltu(dest_reg, right_reg, left_reg));
-                self.emit(AsmInst::LI(temp, 1));
+                self.emit(AsmInst::Li(temp, 1));
                 self.emit(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
                 self.reg_alloc.free_reg(temp);
             }
@@ -184,7 +184,7 @@ impl ModuleLowerer {
                 self.emit(AsmInst::Sltu(dest_reg, left_reg, right_reg));
                 let temp_name = self.generate_temp_name("sge_temp");
                 let temp = self.get_reg(temp_name);
-                self.emit(AsmInst::LI(temp, 1));
+                self.emit(AsmInst::Li(temp, 1));
                 self.emit(AsmInst::Sub(dest_reg, temp, dest_reg)); // 1 - result
                 self.reg_alloc.free_reg(temp);
             }

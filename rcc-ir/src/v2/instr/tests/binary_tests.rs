@@ -57,7 +57,7 @@ fn test_logical_immediate_fallback() {
                                           rhs_const, result_temp);
     
     // Should generate LI followed by AND
-    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, 0xFF))));
+    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, 0xFF))));
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::And(_, _, _))));
 }
 
@@ -320,7 +320,7 @@ fn test_sge_operation() {
     
     // Should generate SLT followed by subtraction from 1
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Slt(_, _, _))));
-    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, 1))));
+    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, 1))));
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Sub(_, _, _))));
 }
 
@@ -339,7 +339,7 @@ fn test_ule_operation() {
     
     // Should generate SLTU with swapped operands, then subtract from 1
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Sltu(_, _, _))));
-    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, 1))));
+    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, 1))));
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Sub(_, _, _))));
 }
 
@@ -358,6 +358,6 @@ fn test_uge_operation() {
     
     // Should generate SLTU, then subtract from 1
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Sltu(_, _, _))));
-    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, 1))));
+    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, 1))));
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Sub(_, _, _))));
 }

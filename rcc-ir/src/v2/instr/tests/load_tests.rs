@@ -51,7 +51,7 @@ fn test_load_scalar_from_global() {
     let insts = lower_load(&mut mgr, &mut naming, &ptr, &Type::I16, 30);
     
     // Should load constant address first
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 100))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 100))));
     
     // Should use GP for global bank
     let load_found = insts.iter().any(|i| {
@@ -128,7 +128,7 @@ fn test_load_from_global_variable() {
     
     // Should generate label and placeholder for linker
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Label(_))));
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 0)))); // Placeholder
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 0)))); // Placeholder
     
     // Should have LOAD instruction with GP (global bank)
     let load_found = insts.iter().any(|i| {

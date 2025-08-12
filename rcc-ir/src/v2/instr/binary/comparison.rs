@@ -32,7 +32,7 @@ pub(super) fn generate_comparison_instructions(
             // We'll use SLTU with 1 to check if value is 0
             let one_reg = mgr.get_register(naming.const_one(result_temp));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(one_reg, 1));
+            insts.push(AsmInst::Li(one_reg, 1));
             insts.push(AsmInst::Sltu(result_reg, xor_reg, one_reg)); // result = (xor < 1) = (xor == 0)
             mgr.free_register(xor_reg);
             mgr.free_register(one_reg);
@@ -46,7 +46,7 @@ pub(super) fn generate_comparison_instructions(
             // We can use SLTU(0, xor_result) or SLT(0, xor_result)
             let zero_reg = mgr.get_register(naming.const_zero(result_temp));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(zero_reg, 0));
+            insts.push(AsmInst::Li(zero_reg, 0));
             insts.push(AsmInst::Sltu(result_reg, zero_reg, xor_reg)); // result = (0 < xor) = (xor != 0)
             mgr.free_register(xor_reg);
             mgr.free_register(zero_reg);
@@ -63,7 +63,7 @@ pub(super) fn generate_comparison_instructions(
             // result = !temp = 1 - temp (since temp is 0 or 1)
             let one_reg = mgr.get_register(naming.const_one(result_temp));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(one_reg, 1));
+            insts.push(AsmInst::Li(one_reg, 1));
             insts.push(AsmInst::Sub(result_reg, one_reg, temp_reg));
             mgr.free_register(temp_reg);
             mgr.free_register(one_reg);
@@ -80,7 +80,7 @@ pub(super) fn generate_comparison_instructions(
             // result = !temp = 1 - temp
             let one_reg = mgr.get_register(naming.const_one(result_temp));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(one_reg, 1));
+            insts.push(AsmInst::Li(one_reg, 1));
             insts.push(AsmInst::Sub(result_reg, one_reg, temp_reg));
             mgr.free_register(temp_reg);
             mgr.free_register(one_reg);
@@ -97,7 +97,7 @@ pub(super) fn generate_comparison_instructions(
             // result = !temp = 1 - temp
             let one_reg = mgr.get_register(naming.const_one(result_temp));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(one_reg, 1));
+            insts.push(AsmInst::Li(one_reg, 1));
             insts.push(AsmInst::Sub(result_reg, one_reg, temp_reg));
             mgr.free_register(temp_reg);
             mgr.free_register(one_reg);
@@ -114,7 +114,7 @@ pub(super) fn generate_comparison_instructions(
             // result = !temp = 1 - temp
             let one_reg = mgr.get_register(naming.const_one(result_temp));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(one_reg, 1));
+            insts.push(AsmInst::Li(one_reg, 1));
             insts.push(AsmInst::Sub(result_reg, one_reg, temp_reg));
             mgr.free_register(temp_reg);
             mgr.free_register(one_reg);

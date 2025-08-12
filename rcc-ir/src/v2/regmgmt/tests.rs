@@ -12,7 +12,7 @@ fn test_r13_initialization() {
     
     let insts = alloc.take_instructions();
     assert_eq!(insts.len(), 2);
-    assert!(matches!(insts[1], AsmInst::LI(Reg::Sb, 1)));
+    assert!(matches!(insts[1], AsmInst::Li(Reg::Sb, 1)));
 }
 
 #[test]
@@ -387,7 +387,7 @@ fn verify_r13_always_initialized_before_stack_ops() {
     
     // Find first R13 init and first stack operation
     let r13_init_pos = insts.iter().position(|i| 
-        matches!(i, AsmInst::LI(Reg::Sb, 1))
+        matches!(i, AsmInst::Li(Reg::Sb, 1))
     );
     
     let first_stack_op = insts.iter().position(|i| 

@@ -119,7 +119,7 @@ fn stress_test_huge_stack_frame() {
     let insts = func.emit_prologue(1000);
     
     // Should initialize R13
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(Reg::Sb, 1))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
     
     // Should allocate 1000 slots
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sp, Reg::Sp, 1000))));

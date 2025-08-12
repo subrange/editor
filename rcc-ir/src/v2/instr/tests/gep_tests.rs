@@ -80,7 +80,7 @@ fn test_gep_dynamic_index() {
     // Should generate shift instruction (element_size = 2 = 2^1)
     // First load shift amount (1), then shift
     assert!(insts.iter().any(|inst| {
-        matches!(inst, AsmInst::LI(_, 1))
+        matches!(inst, AsmInst::Li(_, 1))
     }), "Should load shift amount 1 for element_size=2");
     assert!(insts.iter().any(|inst| {
         matches!(inst, AsmInst::Sll(_, _, _))
@@ -131,7 +131,7 @@ fn test_gep_power_of_two_optimization() {
         if let Some(shift) = expected_shift {
             // Check that we load the shift amount and then perform the shift
             assert!(
-                insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, s) if *s == shift)),
+                insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, s) if *s == shift)),
                 "Expected to load shift amount {} for element size {}", shift, element_size
             );
             assert!(
@@ -164,7 +164,7 @@ fn test_gep_non_power_of_two_size() {
     
     // Should load the size constant
     assert!(insts.iter().any(|inst| {
-        matches!(inst, AsmInst::LI(_, 3))
+        matches!(inst, AsmInst::Li(_, 3))
     }));
 }
 
@@ -253,7 +253,7 @@ fn test_gep_fat_pointer_with_constant_addr() {
     
     // Should load constant address
     assert!(insts.iter().any(|inst| {
-        matches!(inst, AsmInst::LI(_, 0x1000))
+        matches!(inst, AsmInst::Li(_, 0x1000))
     }));
     
     // Should add offset

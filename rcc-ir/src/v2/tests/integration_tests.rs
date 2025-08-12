@@ -40,7 +40,7 @@ fn test_complete_function_with_calls() {
     
     // Verify key invariants
     assert!(!instructions.is_empty());
-    assert!(instructions.iter().any(|i| matches!(i, AsmInst::LI(Reg::Sb, 1))));
+    assert!(instructions.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
     assert!(instructions.iter().any(|i| matches!(i, AsmInst::Jalr(_, _, Reg::Ra))));
 }
 

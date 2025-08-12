@@ -7,7 +7,7 @@ fn test_prologue_initializes_r13() {
     let insts = func.emit_prologue(5);
     
     // Should have LI R13, 1 near the beginning
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(Reg::Sb, 1))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
     
     // Should save RA and FP
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(Reg::Ra, _, _))));
@@ -81,7 +81,7 @@ fn test_prologue_with_no_locals() {
     let insts = func.emit_prologue(0);
     
     // Should still initialize R13
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(Reg::Sb, 1))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
     
     // Should save RA and FP
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(Reg::Ra, _, _))));

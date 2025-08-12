@@ -87,7 +87,7 @@ impl RegAllocV2 {
     pub(super) fn init_stack_bank(&mut self) {
         if !self.sb_initialized {
             self.instructions.push(AsmInst::Comment("Initialize SB as stack bank (1)".to_string()));
-            self.instructions.push(AsmInst::LI(Reg::Sb, 1));
+            self.instructions.push(AsmInst::Li(Reg::Sb, 1));
             self.sb_initialized = true;
             debug!("Initialized SB to 1 for stack bank");
         }

@@ -343,7 +343,7 @@ impl RegisterPressureManager {
             }
             Value::Constant(val) => {
                 let reg = self.get_register(format!("const_{val}"));
-                self.instructions.push(AsmInst::LI(reg, *val as i16));
+                self.instructions.push(AsmInst::Li(reg, *val as i16));
                 reg
             }
             Value::Global(name) => {

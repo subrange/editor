@@ -53,7 +53,7 @@ pub fn lower_load(
                     // Load constant address into register
                     let temp_reg_name = naming.load_const_addr(result_temp);
                     let temp_reg = mgr.get_register(temp_reg_name);
-                    insts.push(AsmInst::LI(temp_reg, *c as i16));
+                    insts.push(AsmInst::Li(temp_reg, *c as i16));
                     trace!("  Loaded constant address {} into {:?}", c, temp_reg);
                     temp_reg
                 }
@@ -85,7 +85,7 @@ pub fn lower_load(
             let label = naming.load_global_label(name);
             insts.push(AsmInst::Label(label));
             // The actual address will be filled by the linker
-            insts.push(AsmInst::LI(addr_reg, 0)); // Placeholder
+            insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder
             
             (addr_reg, name.clone())
         }

@@ -145,8 +145,8 @@ fn test_multiple_stores_no_conflicts() {
     assert!(!insts2.is_empty());
     
     // Should load both constants
-    assert!(insts1.iter().any(|i| matches!(i, AsmInst::LI(_, 100))));
-    assert!(insts2.iter().any(|i| matches!(i, AsmInst::LI(_, 200))));
+    assert!(insts1.iter().any(|i| matches!(i, AsmInst::Li(_, 100))));
+    assert!(insts2.iter().any(|i| matches!(i, AsmInst::Li(_, 200))));
 }
 
 #[test]
@@ -182,8 +182,8 @@ fn test_load_modify_store_pattern() {
     assert!(!store_insts.is_empty());
     
     // Load should have loaded from address 1000
-    assert!(load_insts.iter().any(|i| matches!(i, AsmInst::LI(_, 1000))));
+    assert!(load_insts.iter().any(|i| matches!(i, AsmInst::Li(_, 1000))));
     
     // Store should store to address 2000
-    assert!(store_insts.iter().any(|i| matches!(i, AsmInst::LI(_, 2000))));
+    assert!(store_insts.iter().any(|i| matches!(i, AsmInst::Li(_, 2000))));
 }

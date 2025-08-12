@@ -88,7 +88,7 @@ impl ModuleLowerer {
                 let const_key = self.generate_temp_name(&format!("const_{n}"));
                 let reg = self.get_reg(const_key);  // Use wrapper, not direct call!
 
-                self.emit(AsmInst::LI(reg, *n as i16));
+                self.emit(AsmInst::Li(reg, *n as i16));
                 Ok(reg)
             }
             Value::Temp(id) => {
@@ -140,7 +140,7 @@ impl ModuleLowerer {
                     // We generate a unique name each time to ensure it's always loaded fresh
                     let temp_name = self.generate_temp_name(&format!("global_addr_{}", self.label_counter));
                     let reg = self.get_reg(temp_name);
-                    self.emit(AsmInst::LI(reg, addr as i16));
+                    self.emit(AsmInst::Li(reg, addr as i16));
                     Ok(reg)
                 } else {
                     Err(CompilerError::codegen_error(
@@ -175,7 +175,7 @@ impl ModuleLowerer {
                         // For stack bank, we need a register containing 1
                         let temp_name = self.generate_temp_name("stack_bank");
                         let reg = self.get_reg(temp_name);
-                        self.emit(AsmInst::LI(reg, 1));
+                        self.emit(AsmInst::Li(reg, 1));
                         Ok(reg)
                     }
                 }
@@ -208,7 +208,7 @@ impl ModuleLowerer {
                     self.emit_comment("Select bank register based on tag".to_string());
                     
                     self.emit_many(vec![
-                        AsmInst::LI(result_reg, 1),
+                        AsmInst::Li(result_reg, 1),
                         AsmInst::Beq(bank_reg, result_reg, stack_label.clone()),
 
                         // Bank is 0 (global) - use R0
@@ -217,7 +217,7 @@ impl ModuleLowerer {
 
                         // Bank is 1 (stack) - use bank value 1
                         AsmInst::Label(stack_label),
-                        AsmInst::LI(result_reg, 1),
+                        AsmInst::Li(result_reg, 1),
 
                         AsmInst::Label(done_label)
                     ]);
@@ -240,7 +240,7 @@ impl ModuleLowerer {
                             // For stack bank, we need a register containing 1
                             let temp_name = self.generate_temp_name("stack_bank");
                             let reg = self.get_reg(temp_name);
-                            self.emit(AsmInst::LI(reg, 1));
+                            self.emit(AsmInst::Li(reg, 1));
                             Ok(reg)
                         }
                     }
@@ -250,7 +250,7 @@ impl ModuleLowerer {
                         // Stack-allocated variable, need bank 1
                         let temp_name = self.generate_temp_name("stack_bank");
                         let reg = self.get_reg(temp_name);
-                        self.emit(AsmInst::LI(reg, 1));
+                        self.emit(AsmInst::Li(reg, 1));
                         Ok(reg)
                     } else {
                         // This should never happen with properly tracked fat pointers

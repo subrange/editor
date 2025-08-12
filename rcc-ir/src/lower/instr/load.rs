@@ -22,7 +22,7 @@ impl ModuleLowerer {
                         // Load address part
                         let temp_name = self.generate_temp_name("load_addr");
                         let addr_reg = self.get_reg(temp_name);
-                        self.emit(AsmInst::LI(addr_reg, addr as i16));
+                        self.emit(AsmInst::Li(addr_reg, addr as i16));
                         
                         // Now allocate the destination register
                         let result_key = Self::temp_name(*result);
@@ -36,7 +36,7 @@ impl ModuleLowerer {
                         let bank_temp_key = Self::bank_temp_key(*result);
                         let bank_addr_reg = self.get_reg(bank_addr_name);
                         let bank_reg = self.get_reg(bank_temp_key.clone());
-                        self.emit(AsmInst::LI(bank_addr_reg, (addr + 1) as i16));
+                        self.emit(AsmInst::Li(bank_addr_reg, (addr + 1) as i16));
                         self.emit(AsmInst::Load(bank_reg, Reg::R0, bank_addr_reg));
 
                         // Store bank tag location for later use
@@ -50,7 +50,7 @@ impl ModuleLowerer {
                         // Regular load from global address
                         let temp_name = self.generate_temp_name("load_addr");
                         let addr_reg = self.get_reg(temp_name);
-                        self.emit(AsmInst::LI(addr_reg, addr as i16));
+                        self.emit(AsmInst::Li(addr_reg, addr as i16));
                         
                         // Now allocate the destination register
                         let result_key = Self::temp_name(*result);
@@ -69,7 +69,7 @@ impl ModuleLowerer {
                     let dest_reg = self.get_reg(result_key.clone());
                     self.value_locations.insert(result_key, Location::Register(dest_reg));
                     
-                    self.emit(AsmInst::LI(dest_reg, 0));
+                    self.emit(AsmInst::Li(dest_reg, 0));
                     
                 }
                 
@@ -166,7 +166,7 @@ impl ModuleLowerer {
                         self.emit(AsmInst::Comment("No bank value tracked, generating stack bank".to_string()));
                         let temp_bank_name = self.generate_temp_name("stack_bank_load");
                         let temp_bank = self.get_reg(temp_bank_name);
-                        self.emit(AsmInst::LI(temp_bank, 1));
+                        self.emit(AsmInst::Li(temp_bank, 1));
                         temp_bank
                     };
                     

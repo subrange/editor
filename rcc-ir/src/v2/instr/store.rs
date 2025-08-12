@@ -55,7 +55,7 @@ pub fn lower_store(
             let temp_reg_name = naming.store_const_value();
             let temp_reg = mgr.get_register(temp_reg_name);
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(temp_reg, *c as i16));
+            insts.push(AsmInst::Li(temp_reg, *c as i16));
             (temp_reg, false, None)
         }
         Value::FatPtr(fp) => {
@@ -72,7 +72,7 @@ pub fn lower_store(
                     let temp_reg_name = naming.store_fatptr_addr();
                     let temp_reg = mgr.get_register(temp_reg_name);
                     insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::LI(temp_reg, *c as i16));
+                    insts.push(AsmInst::Li(temp_reg, *c as i16));
                     temp_reg
                 }
                 _ => panic!("Invalid fat pointer address type")
@@ -86,7 +86,7 @@ pub fn lower_store(
                 BankTag::Global => 0,
                 BankTag::Stack => 1,
             };
-            insts.push(AsmInst::LI(bank_reg, bank_val));
+            insts.push(AsmInst::Li(bank_reg, bank_val));
             
             (addr_reg, true, Some(bank_reg))
         }
@@ -99,7 +99,7 @@ pub fn lower_store(
             insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
             let label = naming.store_global_label(name);
             insts.push(AsmInst::Label(label));
-            insts.push(AsmInst::LI(addr_reg, 0)); // Placeholder for linker
+            insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder for linker
             (addr_reg, false, None)
         }
         _ => {
@@ -130,7 +130,7 @@ pub fn lower_store(
                     let temp_reg_name = naming.store_dest_addr();
                     let temp_reg = mgr.get_register(temp_reg_name);
                     insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::LI(temp_reg, *c as i16));
+                    insts.push(AsmInst::Li(temp_reg, *c as i16));
                     trace!("  Loaded destination address {} into {:?}", c, temp_reg);
                     temp_reg
                 }
@@ -158,7 +158,7 @@ pub fn lower_store(
             insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
             let label = naming.store_global_label(name);
             insts.push(AsmInst::Label(label));
-            insts.push(AsmInst::LI(addr_reg, 0)); // Placeholder for linker
+            insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder for linker
             
             (addr_reg, name.clone())
         }

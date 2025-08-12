@@ -139,7 +139,7 @@ impl SimpleRegAlloc {
     pub fn get_const_reg(&mut self, value: i16) -> Reg {
         // Get a register without tracking it
         if let Some(reg) = self.free_list.pop() {
-            self.instructions.push(AsmInst::LI(reg, value));
+            self.instructions.push(AsmInst::Li(reg, value));
             return reg;
         }
         
@@ -154,7 +154,7 @@ impl SimpleRegAlloc {
         self.instructions.push(AsmInst::Store(victim, Reg::Sb, Reg::Sc));
         
         // Load constant into the register
-        self.instructions.push(AsmInst::LI(victim, value));
+        self.instructions.push(AsmInst::Li(victim, value));
         victim
     }
     

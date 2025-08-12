@@ -33,7 +33,7 @@ impl ModuleLowerer {
                     let addr_reg = self.get_reg(temp_name);
 
                     // Store address part
-                    self.emit(AsmInst::LI(addr_reg, addr as i16));
+                    self.emit(AsmInst::Li(addr_reg, addr as i16));
                     self.emit(AsmInst::Store(value_reg, Reg::R0, addr_reg));
 
                     // Get bank tag for the value
@@ -52,8 +52,8 @@ impl ModuleLowerer {
                     // Store bank tag at next word
                     let temp_name = self.generate_temp_name("store_bank");
                     let bank_reg = self.get_reg(temp_name);
-                    self.emit(AsmInst::LI(bank_reg, bank_tag));
-                    self.emit(AsmInst::LI(addr_reg, (addr + 1) as i16));
+                    self.emit(AsmInst::Li(bank_reg, bank_tag));
+                    self.emit(AsmInst::Li(addr_reg, (addr + 1) as i16));
                     self.emit(AsmInst::Store(bank_reg, Reg::R0, addr_reg));
                     
                     Ok(())
@@ -62,7 +62,7 @@ impl ModuleLowerer {
                     let value_reg = self.get_value_register(value)?;
                     let temp_name = self.generate_temp_name("store_addr");
                     let addr_reg = self.get_reg(temp_name);
-                    self.emit(AsmInst::LI(addr_reg, addr as i16));
+                    self.emit(AsmInst::Li(addr_reg, addr as i16));
                     self.emit(AsmInst::Store(value_reg, Reg::R0, addr_reg));
                     
                     Ok(())
@@ -152,7 +152,7 @@ impl ModuleLowerer {
                     
                     // Get register for bank value and load the static value
                     let bank_reg = self.get_reg(format!("store_bank_{}", self.label_counter));
-                    self.emit(AsmInst::LI(bank_reg, bank_tag_val));
+                    self.emit(AsmInst::Li(bank_reg, bank_tag_val));
                     bank_reg
                 };
                 

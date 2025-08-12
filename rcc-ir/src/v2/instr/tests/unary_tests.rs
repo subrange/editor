@@ -19,7 +19,7 @@ fn test_not_operation() {
                                &operand, &IrType::I16, result_temp);
     
     // Should generate LI -1 followed by XOR
-    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, -1))));
+    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, -1))));
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Xor(_, _, _))));
 }
 
@@ -36,7 +36,7 @@ fn test_neg_operation() {
                                &operand, &IrType::I16, result_temp);
     
     // Should generate LI 0 followed by SUB
-    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, 0))));
+    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, 0))));
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Sub(_, _, _))));
 }
 
@@ -87,7 +87,7 @@ fn test_trunc_to_i8() {
                                &operand, &IrType::I8, result_temp);
     
     // Should generate AND with 0xFF mask
-    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, 0xFF))));
+    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, 0xFF))));
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::And(_, _, _))));
 }
 
@@ -104,7 +104,7 @@ fn test_trunc_to_i1() {
                                &operand, &IrType::I1, result_temp);
     
     // Should generate AND with 0x1 mask
-    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::LI(_, 1))));
+    assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Li(_, 1))));
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::And(_, _, _))));
 }
 

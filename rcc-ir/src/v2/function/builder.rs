@@ -311,7 +311,7 @@ mod tests {
         
         assert!(!instructions.is_empty());
         // Should have R13 initialization
-        assert!(instructions.iter().any(|i| matches!(i, AsmInst::LI(Reg::Sb, 1))));
+        assert!(instructions.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
     }
     
     #[test]

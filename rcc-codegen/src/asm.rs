@@ -45,7 +45,7 @@ pub enum AsmInst {
     // Memory Instructions
     Load(Reg, Reg, Reg),          // rd = memory[bank:addr]
     Store(Reg, Reg, Reg),         // memory[bank:addr] = rs
-    LI(Reg, i16),                 // rd = immediate
+    Li(Reg, i16),                 // rd = immediate
     
     // Control Flow Instructions
     Jal(i16, i16),                // Jump and link (bank_imm, addr_imm)
@@ -103,7 +103,7 @@ impl fmt::Display for AsmInst {
             // Memory
             AsmInst::Load(rd, bank, addr) => write!(f, "LOAD {}, {}, {}", rd, bank, addr),
             AsmInst::Store(rs, bank, addr) => write!(f, "STORE {}, {}, {}", rs, bank, addr),
-            AsmInst::LI(rd, imm) => write!(f, "LI {}, {}", rd, imm),
+            AsmInst::Li(rd, imm) => write!(f, "LI {}, {}", rd, imm),
             
             // Control Flow
             AsmInst::Jal(bank, addr) => write!(f, "JAL {}, {}", bank, addr),
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_instruction_display() {
-        assert_eq!(format!("{}", AsmInst::LI(Reg::T0, 42)), "LI T0, 42");
+        assert_eq!(format!("{}", AsmInst::Li(Reg::T0, 42)), "LI T0, 42");
         assert_eq!(format!("{}", AsmInst::Add(Reg::T0, Reg::T1, Reg::T2)), "ADD T0, T1, T2");
         assert_eq!(format!("{}", AsmInst::Store(Reg::T0, Reg::R0, Reg::R0)), "STORE T0, R0, R0");
         assert_eq!(format!("{}", AsmInst::Label("main".to_string())), "main:");
@@ -159,11 +159,11 @@ mod tests {
     fn test_hello_world_instructions() {
         let instructions = vec![
             AsmInst::Label("main".to_string()),
-            AsmInst::LI(Reg::T0, 'H' as i16),
+            AsmInst::Li(Reg::T0, 'H' as i16),
             AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
-            AsmInst::LI(Reg::T0, 'i' as i16),
+            AsmInst::Li(Reg::T0, 'i' as i16),
             AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
-            AsmInst::LI(Reg::T0, '\n' as i16),
+            AsmInst::Li(Reg::T0, '\n' as i16),
             AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
             AsmInst::Halt,
         ];

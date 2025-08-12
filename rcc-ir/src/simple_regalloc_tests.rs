@@ -59,7 +59,7 @@ mod tests {
         // Should generate LI instruction
         let instrs = alloc.take_instructions();
         assert_eq!(instrs.len(), 1);
-        assert!(matches!(instrs[0], AsmInst::LI(_, 42)));
+        assert!(matches!(instrs[0], AsmInst::Li(_, 42)));
     }
 
     #[test]

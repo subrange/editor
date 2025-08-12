@@ -250,7 +250,7 @@ fn test_value_types_handling() {
     
     // Check LI instruction was generated
     let insts = rpm.take_instructions();
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 42))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 42))));
     
     // Test temp
     let mut rpm2 = RegisterPressureManager::new(0);
@@ -614,7 +614,7 @@ fn test_spill_with_large_constants() {
     
     // Should handle large constants properly
     let insts = rpm.take_instructions();
-    let li_count = insts.iter().filter(|i| matches!(i, AsmInst::LI(_, _))).count();
+    let li_count = insts.iter().filter(|i| matches!(i, AsmInst::Li(_, _))).count();
     assert!(li_count > 0);
 }
 

@@ -29,7 +29,7 @@ mod tests {
     #[test]
     fn test_basic_code_generation() {
         let instructions = vec![
-            AsmInst::LI(Reg::T0, 42),
+            AsmInst::Li(Reg::T0, 42),
             AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
             AsmInst::Halt,
         ];

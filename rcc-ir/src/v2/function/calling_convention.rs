@@ -209,7 +209,7 @@ impl CallingConvention {
         if func_bank != 0 {
             debug!("  Cross-bank call: setting PCB to {}", func_bank);
             insts.push(AsmInst::Comment("Set PCB for cross-bank call".to_string()));
-            insts.push(AsmInst::LI(Reg::Pcb, func_bank as i16));
+            insts.push(AsmInst::Li(Reg::Pcb, func_bank as i16));
         } else {
             trace!("  In-bank call (bank 0)");
         }

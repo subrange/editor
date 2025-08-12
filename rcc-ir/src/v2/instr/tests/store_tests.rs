@@ -22,7 +22,7 @@ fn test_store_scalar_to_stack() {
     let insts = lower_store(&mut mgr, &mut naming, &value, &ptr);
     
     // Should load constant into register
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 42))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 42))));
     
     // Should have STORE instruction
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(_, _, _))));
@@ -54,7 +54,7 @@ fn test_store_scalar_to_global() {
     let insts = lower_store(&mut mgr, &mut naming, &value, &ptr);
     
     // Should load destination address
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 200))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 200))));
     
     // Should use GP for global bank
     let store_found = insts.iter().any(|i| {
@@ -87,8 +87,8 @@ fn test_store_fat_pointer() {
     let insts = lower_store(&mut mgr, &mut naming, &value, &ptr);
     
     // Should load pointer address and bank values
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 100))));
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 0)))); // Global bank = 0
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 100))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 0)))); // Global bank = 0
     
     // Should have two STORE instructions (address and bank)
     let store_count = insts.iter().filter(|i| matches!(i, AsmInst::Store(_, _, _))).count();
@@ -115,7 +115,7 @@ fn test_store_to_temp_pointer() {
     let insts = lower_store(&mut mgr, &mut naming, &value, &ptr);
     
     // Should load constant
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 99))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 99))));
     
     // Should use GP for global bank (from the pointer bank info)
     let store_found = insts.iter().any(|i| {
@@ -168,8 +168,8 @@ fn test_store_to_global_variable() {
     
     // Should generate label and placeholder for linker
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Label(_))));
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 0)))); // Placeholder for address
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 777)))); // Value to store
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 0)))); // Placeholder for address
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 777)))); // Value to store
     
     // Should have STORE instruction with GP (global bank)
     let store_found = insts.iter().any(|i| {

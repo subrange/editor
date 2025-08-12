@@ -103,11 +103,11 @@ mod tests {
     fn test_emit_hello_world() {
         let instructions = vec![
             AsmInst::Label("main".to_string()),
-            AsmInst::LI(Reg::T0, 'H' as i16),
+            AsmInst::Li(Reg::T0, 'H' as i16),
             AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
-            AsmInst::LI(Reg::T0, 'i' as i16),
+            AsmInst::Li(Reg::T0, 'i' as i16),
             AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
-            AsmInst::LI(Reg::T0, '\n' as i16),
+            AsmInst::Li(Reg::T0, '\n' as i16),
             AsmInst::Store(Reg::T0, Reg::R0, Reg::R0),
             AsmInst::Halt,
         ];
@@ -127,7 +127,7 @@ mod tests {
     fn test_emit_complete_program() {
         let instructions = vec![
             AsmInst::Label("main".to_string()),
-            AsmInst::LI(Reg::T0, 42),
+            AsmInst::Li(Reg::T0, 42),
             AsmInst::Halt,
         ];
 
@@ -146,7 +146,7 @@ mod tests {
         let instructions = vec![
             AsmInst::Comment("This is a test program".to_string()),
             AsmInst::Label("test_label".to_string()),
-            AsmInst::LI(Reg::T0, 1),
+            AsmInst::Li(Reg::T0, 1),
             AsmInst::Comment("End of program".to_string()),
         ];
 
@@ -163,20 +163,20 @@ mod tests {
     fn test_utility_functions() {
         let instructions = vec![
             AsmInst::Label("main".to_string()),
-            AsmInst::LI(Reg::T0, 42),
-            AsmInst::LI(Reg::T1, 0),
+            AsmInst::Li(Reg::T0, 42),
+            AsmInst::Li(Reg::T1, 0),
             AsmInst::Add(Reg::T2, Reg::T0, Reg::T1),
             AsmInst::Label("loop".to_string()),
             AsmInst::Halt,
         ];
 
         // Test contains_instruction
-        assert!(contains_instruction(&instructions, &AsmInst::LI(Reg::T0, 42)));
-        assert!(!contains_instruction(&instructions, &AsmInst::LI(Reg::T0, 43)));
+        assert!(contains_instruction(&instructions, &AsmInst::Li(Reg::T0, 42)));
+        assert!(!contains_instruction(&instructions, &AsmInst::Li(Reg::T0, 43)));
 
         // Test count_instruction_type
         let li_count = count_instruction_type(&instructions, |inst| {
-            matches!(inst, AsmInst::LI(_, _))
+            matches!(inst, AsmInst::Li(_, _))
         });
         assert_eq!(li_count, 2);
 
@@ -188,8 +188,8 @@ mod tests {
     #[test]
     fn test_arithmetic_instructions() {
         let instructions = vec![
-            AsmInst::LI(Reg::T0, 10),
-            AsmInst::LI(Reg::T1, 20),
+            AsmInst::Li(Reg::T0, 10),
+            AsmInst::Li(Reg::T1, 20),
             AsmInst::Add(Reg::T2, Reg::T0, Reg::T1),
             AsmInst::Sub(Reg::T3, Reg::T1, Reg::T0),
             AsmInst::AddI(Reg::T4, Reg::T0, 5),

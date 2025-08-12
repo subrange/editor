@@ -102,10 +102,10 @@ impl IrType {
             IrType::Void => None,
             IrType::I1 => Some(1), // Stored in full byte
             IrType::I8 => Some(1),
-            IrType::I16 => Some(2),
-            IrType::I32 => Some(4),
-            IrType::I64 => Some(8),
-            IrType::FatPtr(_) => Some(4), // Fat pointers: 2 words (address + bank tag)
+            IrType::I16 => Some(1),
+            IrType::I32 => Some(2),
+            IrType::I64 => Some(4),
+            IrType::FatPtr(_) => Some(2), // Fat pointers: 2 words (address + bank tag)
             IrType::Array { size, element_type } => {
                 element_type.size_in_bytes().map(|elem_size| elem_size * size)
             }

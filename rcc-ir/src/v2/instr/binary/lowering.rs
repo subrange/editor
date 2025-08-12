@@ -216,7 +216,7 @@ pub fn lower_binary_op_immediate(
             debug!("  No immediate form for {:?}, loading constant into register", op);
             let rhs_reg = mgr.get_register(naming.imm_value(rhs_const));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(rhs_reg, rhs_const));
+            insts.push(AsmInst::Li(rhs_reg, rhs_const));
             
             match op {
                 IrBinaryOp::And => insts.push(AsmInst::And(result_reg, lhs_reg, rhs_reg)),
@@ -233,7 +233,7 @@ pub fn lower_binary_op_immediate(
             debug!("  No immediate form for shift, loading constant into register");
             let rhs_reg = mgr.get_register(naming.imm_value(rhs_const));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(rhs_reg, rhs_const));
+            insts.push(AsmInst::Li(rhs_reg, rhs_const));
             
             match op {
                 IrBinaryOp::Shl => insts.push(AsmInst::Sll(result_reg, lhs_reg, rhs_reg)),

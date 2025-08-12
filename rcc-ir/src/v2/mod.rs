@@ -25,6 +25,7 @@ pub mod regmgmt;
 pub mod naming;
 pub mod instr;
 pub mod function;  // Now a module with controlled exports
+pub mod lower;  // Main lowering module
 
 #[cfg(test)]
 mod tests;
@@ -33,6 +34,7 @@ mod tests;
 pub use regmgmt::{RegisterPressureManager, BankInfo};
 pub use function::{FunctionBuilder, CallArg};
 pub use instr::{lower_load, lower_store, lower_gep};
+pub use lower::{lower_module_v2, lower_function_v2};
 
 // Note: Internal components like FunctionLowering and CallingConvention
 // are completely hidden inside the function module.

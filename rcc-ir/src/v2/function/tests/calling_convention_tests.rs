@@ -134,14 +134,14 @@ fn test_cross_bank_call() {
     // Test in-bank call (bank 0)
     let insts = cc.emit_call(100, 0);
     // Should NOT set PCB for bank 0
-    assert!(!insts.iter().any(|i| matches!(i, AsmInst::LI(Reg::Pcb, _))));
+    assert!(!insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::Pcb, _))));
     // Should have JAL
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Jal(_, 100))));
     
     // Test cross-bank call (bank 3)
     let insts = cc.emit_call(200, 3);
     // Should set PCB to 3
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(Reg::Pcb, 3))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::Pcb, 3))));
     // Should have JAL to address 200
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Jal(_, 200))));
 }

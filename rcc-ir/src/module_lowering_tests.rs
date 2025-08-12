@@ -123,7 +123,7 @@ mod tests {
         // Look for store instructions with addresses
         let mut addresses = Vec::new();
         for inst in &asm {
-            if let AsmInst::LI(_, addr) = inst {
+            if let AsmInst::Li(_, addr) = inst {
                 if *addr >= 100 && *addr < 200 {
                     addresses.push(*addr);
                 }

@@ -79,7 +79,7 @@ pub fn lower_gep(
                     // Load constant into register
                     let temp_name = naming.gep_offset_temp(result_temp);
                     let temp_reg = mgr.get_register(temp_name);
-                    insts.push(AsmInst::LI(temp_reg, *c as i16));
+                    insts.push(AsmInst::Li(temp_reg, *c as i16));
                     trace!("  Loaded constant base address {} into {:?}", c, temp_reg);
                     temp_reg
                 }
@@ -106,7 +106,7 @@ pub fn lower_gep(
             
             // Load global address (to be resolved by linker)
             insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
-            insts.push(AsmInst::LI(addr_reg, 0)); // Placeholder for linker
+            insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder for linker
             
             // Globals use BankInfo::Global which maps to GP register
             (addr_reg, name.clone(), BankInfo::Global)
@@ -236,7 +236,7 @@ pub fn lower_gep(
             let shift_amount = element_size.trailing_zeros() as i16;
             let shift_reg = mgr.get_register(naming.gep_shift(result_temp));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(shift_reg, shift_amount));
+            insts.push(AsmInst::Li(shift_reg, shift_amount));
             insts.push(AsmInst::Sll(offset_reg, index_reg, shift_reg));
             mgr.free_register(shift_reg);
             trace!("  Using shift by {} for element size {}", shift_amount, element_size);
@@ -244,7 +244,7 @@ pub fn lower_gep(
             // Need multiplication
             let size_reg = mgr.get_register(naming.gep_size(result_temp));
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::LI(size_reg, element_size));
+            insts.push(AsmInst::Li(size_reg, element_size));
             insts.push(AsmInst::Mul(offset_reg, index_reg, size_reg));
             mgr.free_register(size_reg);
             trace!("  Using multiplication for element size {}", element_size);
@@ -264,7 +264,7 @@ pub fn lower_gep(
         let bank_size_reg = mgr.get_register(naming.gep_bank_size(result_temp));
         insts.extend(mgr.take_instructions());
         
-        insts.push(AsmInst::LI(bank_size_reg, BANK_SIZE_INSTRUCTIONS as i16));
+        insts.push(AsmInst::Li(bank_size_reg, BANK_SIZE_INSTRUCTIONS as i16));
         insts.push(AsmInst::Div(bank_delta_reg, result_addr_reg, bank_size_reg));
         trace!("  Calculated bank delta (banks crossed)");
         
