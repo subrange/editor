@@ -5,16 +5,17 @@
 
 pub mod load;
 pub mod store;
+pub mod gep;
 
 pub use load::lower_load;
 pub use store::lower_store;
+pub use gep::lower_gep;
 
 // Test modules
 #[cfg(test)]
 mod tests;
 
 // TODO: Add these modules as they are implemented
-// pub mod gep;
 // pub mod icmp;
 // pub mod branch;
 // pub mod alloca;

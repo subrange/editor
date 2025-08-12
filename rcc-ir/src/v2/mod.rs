@@ -32,7 +32,7 @@ mod tests;
 // Public exports - only what consumers need
 pub use regmgmt::{RegisterPressureManager, BankInfo};
 pub use function::{FunctionBuilder, CallArg};
-pub use instr::{lower_load, lower_store};
+pub use instr::{lower_load, lower_store, lower_gep};
 
 // Note: Internal components like FunctionLowering and CallingConvention
 // are completely hidden inside the function module.

@@ -74,7 +74,6 @@ pub fn lower_load(
             (addr_reg, ptr_bank_key)
         }
         Value::Global(name) => {
-            // Global variables are in bank 0
             trace!("  Loading from global: {}", name);
             mgr.set_pointer_bank(name.clone(), BankInfo::Global);
             

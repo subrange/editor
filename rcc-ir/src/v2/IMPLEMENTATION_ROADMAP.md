@@ -153,8 +153,8 @@ pub fn lower_load(
     debug!("  Pointer bank info: {:?}", bank_info);
     let bank_reg = match bank_info {
         BankInfo::Global => {
-            trace!("  Using R0 for global bank");
-            Reg::R0  // Global bank
+            trace!("  Using Gp for global bank pointer");
+            Reg::Gp   // Global bank pointer (Gp)
         }
         BankInfo::Stack => {
             trace!("  Using R13 for stack bank");

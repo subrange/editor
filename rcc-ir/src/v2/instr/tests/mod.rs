@@ -9,8 +9,10 @@ mod load_tests;
 #[cfg(test)]
 mod store_tests;
 
+#[cfg(test)]
+mod gep_tests;
+
 // Future test modules as instructions are implemented:
-// mod gep_tests;
 // mod icmp_tests;
 // mod branch_tests;
 // mod call_tests;

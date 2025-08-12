@@ -67,6 +67,10 @@ enum Commands {
         /// Debug level (0=none, 1=basic, 2=verbose, 3=trace)
         #[arg(short, long, default_value = "0")]
         debug: u8,
+        
+        /// Bank size in cells (default: 4096)
+        #[arg(long, default_value = "4096")]
+        bank_size: u16,
     },
 }
 
@@ -86,7 +90,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Compile { input, output, print_ir, save_ir, ir_output, debug } => {
+        Commands::Compile { input, output, print_ir, save_ir, ir_output, debug, bank_size } => {
             // Initialize logger based on debug level
             let log_level = match debug {
                 0 => "error",
@@ -102,7 +106,7 @@ fn main() {
                 .format_target(false)
                 .init();
             
-            if let Err(e) = compile_c99_file(&input, output.as_deref(), print_ir, save_ir, ir_output.as_deref()) {
+            if let Err(e) = compile_c99_file(&input, output.as_deref(), print_ir, save_ir, ir_output.as_deref(), bank_size) {
                 eprintln!("Error compiling C99 file: {}", e);
                 std::process::exit(1);
             }
@@ -134,8 +138,9 @@ fn compile_c99_file(
     print_ir: bool,
     save_ir: bool,
     ir_output_path: Option<&std::path::Path>,
+    bank_size: u16,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Compiling C99 file: {}", input_path.display());
+    println!("Compiling C99 file: {} (bank_size: {})", input_path.display(), bank_size);
     
     // Read source file
     let source = fs::read_to_string(input_path)?;
@@ -215,7 +220,8 @@ fn compile_c99_file(
             // Check if main function exists
             let has_main = ir_module.functions.iter().any(|f| f.name == "main");
             
-            // Lower Module to assembly
+            // Lower Module to assembly  
+            // TODO: When V2 is connected, pass bank_size parameter
             match rcc_ir::lower_module_to_assembly(ir_module) {
                 Ok(asm_instructions) => {
                     println!("💕 Successfully lowered to assembly");
