@@ -7,20 +7,35 @@
 //! - Proper fat pointer handling
 //! - Bank-aware GEP operations
 //! - Correct memory operation bank registers
+//! 
+//! ## Architecture
+//! 
+//! The V2 backend follows a strict encapsulation pattern:
+//! - Public APIs provide safe, high-level interfaces
+//! - Internal modules handle complex implementation details
+//! - Safety invariants are enforced automatically
+//! 
+//! Consumers should use:
+//! - `FunctionBuilder` for building complete functions
+//! - `RegisterPressureManager` for register allocation (if needed directly)
+//! - `lower_load/lower_store` for instruction lowering
 
+// Public modules - safe APIs for consumers
 pub mod regmgmt;
-pub mod function;
-pub mod calling_convention;
 pub mod naming;
 pub mod instr;
+pub mod function;  // Now a module with controlled exports
 
 #[cfg(test)]
 mod tests;
 
+// Public exports - only what consumers need
 pub use regmgmt::{RegisterPressureManager, BankInfo};
-pub use function::FunctionLowering;
-pub use calling_convention::CallingConvention;
+pub use function::{FunctionBuilder, CallArg};
 pub use instr::{lower_load, lower_store};
+
+// Note: Internal components like FunctionLowering and CallingConvention
+// are completely hidden inside the function module.
 
 /// Bank size in instructions (from ASSEMBLY_FORMAT.md)
 /// Each bank holds 4096 instructions

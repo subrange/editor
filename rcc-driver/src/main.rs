@@ -4,8 +4,8 @@
 //! a simple command-line interface for testing the backend code generation.
 
 use clap::{Parser, Subcommand};
-use rcc_codegen::generate_assembly;
-use rcc_ir::{lower_to_assembly, lowering::test_helpers, Module};
+// use rcc_codegen::generate_assembly; // Not used currently
+use rcc_ir::Module;
 use rcc_frontend::Frontend;
 use std::fs;
 use std::path::PathBuf;
@@ -110,36 +110,10 @@ fn main() {
     }
 }
 
-fn run_test(test_name: &str, output_path: Option<&std::path::Path>) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Running test: {}", test_name);
-    
-    let program = match test_name {
-        "hello" => test_helpers::create_hello_world_ir(),
-        "arithmetic" => test_helpers::create_arithmetic_ir(),
-        _ => {
-            return Err(format!("Unknown test: {}", test_name).into());
-        }
-    };
-    
-    // Show the IR
-    println!("\nGenerated IR:");
-    println!("{}", program.display());
-    
-    // Lower to assembly
-    let asm_instructions = lower_to_assembly(program)?;
-    
-    // Generate assembly text
-    let asm_text = rcc_codegen::emit::emit_complete_program(asm_instructions, true)?;
-    
-    println!("\nGenerated Assembly:");
-    println!("{}", asm_text);
-    
-    // Write to file if requested
-    if let Some(path) = output_path {
-        fs::write(path, &asm_text)?;
-        println!("\nAssembly written to: {}", path.display());
-    }
-    
+fn run_test(_test_name: &str, _output_path: Option<&std::path::Path>) -> Result<(), Box<dyn std::error::Error>> {
+    // Test command temporarily disabled while migrating to v2
+    println!("Test command is temporarily disabled during v2 migration");
+    println!("Please use the 'compile' command to test compilation");
     Ok(())
 }
 

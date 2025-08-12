@@ -38,15 +38,16 @@ R15 = 17  // General purpose
 - **R3** (5): Return value register (or pointer address for fat pointers)
 - **R4** (6): Second return value (or pointer bank for fat pointers)
 - **R5-R11** (7-13): General purpose, allocatable registers (7 registers)
-- **R12** (14): Scratch register (GB - globals/rodata bank)
-- **R13** (15): Stack bank register (SB)
+- **R12** (14): Scratch register - reserved for address calculations during spill/reload
+- **R13** (15): Stack bank register (SB) - holds bank ID for stack (initialized to 1)
 - **R14** (16): Stack pointer (SP)
 - **R15** (17): Frame pointer (FP)
 
 ### Register Classes
-- **Caller-saved**: R3-R12 (all allocatable registers)
+- **Caller-saved**: R3-R11 (return values and allocatable registers)
 - **Callee-saved**: None in current convention
 - **Allocatable pool**: [R5, R6, R7, R8, R9, R10, R11]
+- **Reserved**: R12 (scratch), R13 (SB), R14 (SP), R15 (FP)
 
 ## Stack Frame Layout
 
@@ -73,9 +74,16 @@ Where:
 ## Function Prologue
 
 ```asm
+; Initialize stack bank register (if not already set)
+LI    R13, 1            ; SB = 1 (stack in bank 1)
+
+; Set up frame
 ADD   FP, SP, R0        ; Set frame pointer to current stack pointer
 ADDI  SP, SP, -(L+S)    ; Allocate stack frame
 ```
+
+Note: R13 initialization may be done once at program start rather than in every function.
+R12 is reserved as a scratch register for spill/reload address calculations.
 
 ## Function Epilogue
 
@@ -109,9 +117,14 @@ Pointers consist of two components:
 - **Bank tag**: Identifies memory region
 
 ### Bank Tag Values
-- `0`: Global memory (.rodata/.data)
-- `1`: Stack memory (frame/alloca)
+- `0`: Global memory (.rodata/.data) - use R0 for bank (always reads 0)
+- `1`: Stack memory (frame/alloca) - stored in R13 (SB)
 - `2`: Reserved for future heap
+
+### Bank Register Usage
+- **R0**: Used for global bank access (globals are in bank 0, R0 always reads 0)
+- **R12**: Reserved as scratch register for address calculations during spill/reload
+- **R13 (SB)**: Initialize to 1 at program/function start for stack in bank 1
 
 ### Pointer Parameter Passing
 When passing pointer parameters:
@@ -133,7 +146,7 @@ LOAD rd, bankReg, addrReg
 ```
 Where:
 - `rd`: Destination register
-- `bankReg`: Register containing bank ID (SB or GB)
+- `bankReg`: Register containing bank ID (R13 for stack, R0 for globals, or dynamic)
 - `addrReg`: Register containing address
 
 ### Store to Pointer
@@ -142,7 +155,7 @@ STORE rs, bankReg, addrReg
 ```
 Where:
 - `rs`: Source register
-- `bankReg`: Register containing bank ID
+- `bankReg`: Register containing bank ID (R13 for stack, R0 for globals, or dynamic)
 - `addrReg`: Register containing address
 
 ### Pointer Arithmetic (GEP)
@@ -170,16 +183,16 @@ Where:
 
 ### Spill Operation
 ```asm
-ADD   R12, FP, R0       ; Use R12 as scratch
-ADDI  R12, R12, (L+slot); Calculate spill address
-STORE reg, SB, R12      ; Store to stack
+ADD   R12, FP, R0       ; R12 is dedicated scratch for address calc
+ADDI  R12, R12, (L+slot); Calculate spill address  
+STORE reg, R13, R12     ; Store to stack (R13 = SB)
 ```
 
 ### Reload Operation
 ```asm
-ADD   R12, FP, R0       ; Use R12 as scratch
+ADD   R12, FP, R0       ; R12 is dedicated scratch for address calc
 ADDI  R12, R12, (L+slot); Calculate spill address
-LOAD  reg, SB, R12      ; Load from stack
+LOAD  reg, R13, R12     ; Load from stack (R13 = SB)
 ```
 
 ## Register Allocation Algorithm
@@ -209,7 +222,7 @@ LOAD  result, SB, r     ; Load from stack bank
 ### Global Variable Access
 ```asm
 LI    r, offset         ; Load global address
-LOAD  result, GB, r     ; Load from global bank
+LOAD  result, R0, r     ; Load from global bank (R0 reads 0, globals in bank 0)
 ```
 
 ## Inter-procedural Considerations

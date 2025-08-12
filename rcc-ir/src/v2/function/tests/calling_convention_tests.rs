@@ -1,4 +1,4 @@
-use crate::v2::calling_convention::{CallingConvention, CallArg};
+use crate::v2::function::calling_convention::{CallingConvention, CallArg};
 use crate::v2::regmgmt::RegisterPressureManager;
 use crate::v2::naming::new_function_naming;
 use rcc_codegen::{AsmInst, Reg};
