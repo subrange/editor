@@ -20,7 +20,7 @@ fn test_prologue_initializes_r13() {
 #[test]
 fn test_epilogue_restores_state() {
     let mut func = FunctionLowering::new();
-    func.allocator.init_stack_bank(); // Simulate prologue init
+    func.pressure_manager.init(); // Initialize pressure manager
     let insts = func.emit_epilogue();
     
     // Should restore SP, FP, RA
@@ -37,7 +37,7 @@ fn test_epilogue_restores_state() {
 #[test]
 fn test_fat_pointer_return() {
     let mut func = FunctionLowering::new();
-    func.allocator.init_stack_bank();
+    func.pressure_manager.init();
     
     // Return fat pointer with addr in R5, bank in R6
     let insts = func.emit_return(Some((Reg::R5, Some(Reg::R6))));
@@ -50,7 +50,7 @@ fn test_fat_pointer_return() {
 #[test]
 fn test_scalar_return() {
     let mut func = FunctionLowering::new();
-    func.allocator.init_stack_bank();
+    func.pressure_manager.init();
     
     // Return scalar value in R7
     let insts = func.emit_return(Some((Reg::R7, None)));
@@ -64,7 +64,7 @@ fn test_scalar_return() {
 #[test]
 fn test_local_access() {
     let mut func = FunctionLowering::new();
-    func.allocator.init_stack_bank();
+    func.pressure_manager.init();
     
     // Test load from local
     let load_insts = func.load_local(3, Reg::R5);

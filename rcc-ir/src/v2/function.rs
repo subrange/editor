@@ -6,11 +6,11 @@
 //! - Correct RA/FP save/restore
 
 use rcc_codegen::{AsmInst, Reg};
-use crate::v2::regalloc::RegAllocV2;
+use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
 use log::debug;
 
 pub struct FunctionLowering {
-    pub allocator: RegAllocV2,
+    pub pressure_manager: RegisterPressureManager,
     pub local_count: i16,
     pub spill_count: i16,
     pub instructions: Vec<AsmInst>,
@@ -25,7 +25,7 @@ impl Default for FunctionLowering {
 impl FunctionLowering {
     pub fn new() -> Self {
         Self {
-            allocator: RegAllocV2::new(),
+            pressure_manager: RegisterPressureManager::new(0),
             local_count: 0,
             spill_count: 0,
             instructions: Vec::new(),
@@ -33,16 +33,19 @@ impl FunctionLowering {
     }
     
     /// Generate function prologue
-    /// CRITICAL: Must initialize R13 to 1 for stack bank!
     /// Parameters are already on stack (pushed by caller)
     pub fn emit_prologue(&mut self, local_slots: i16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
-        // CRITICAL FIX: Initialize R13 to 1 for stack bank
         insts.push(AsmInst::Comment("=== Function Prologue ===".to_string()));
-        insts.push(AsmInst::Comment("Initialize R13 as stack bank".to_string()));
-        insts.push(AsmInst::LI(Reg::R13, 1));
-        self.allocator.r13_initialized = true;
+        
+        // Initialize pressure manager with local count
+        // This will handle R13 initialization automatically
+        self.pressure_manager = RegisterPressureManager::new(local_slots);
+        self.pressure_manager.init();
+        
+        // Take any initialization instructions (R13 setup)
+        insts.extend(self.pressure_manager.take_instructions());
         
         // Save RA at current SP
         insts.push(AsmInst::Comment("Save RA at SP".to_string()));
@@ -65,9 +68,6 @@ impl FunctionLowering {
         }
         
         self.local_count = local_slots;
-        
-        // Set spill base after locals
-        self.allocator.set_spill_base(local_slots);
         
         debug!("Generated prologue: locals={local_slots}");
         insts
@@ -142,15 +142,19 @@ impl FunctionLowering {
     
     /// Get local variable address
     pub fn get_local_addr(&mut self, offset: i16) -> Reg {
-        let reg = self.allocator.get_reg(format!("local_{offset}"));
+        // Use pressure manager for better register allocation
+        let reg = self.pressure_manager.get_register(format!("local_{offset}"));
         
         self.instructions.push(AsmInst::Comment(format!("Get address of local at FP+{offset}")));
         self.instructions.push(AsmInst::Add(reg, Reg::R15, Reg::R0));
         self.instructions.push(AsmInst::AddI(reg, reg, offset));
         
+        // Take any spill/reload instructions generated
+        self.instructions.extend(self.pressure_manager.take_instructions());
+        
         // Mark this as a stack pointer
-        self.allocator.set_pointer_bank(format!("local_{offset}"), 
-                                        crate::v2::regalloc::BankInfo::Stack);
+        self.pressure_manager.set_pointer_bank(format!("local_{offset}"), 
+                                        BankInfo::Stack);
         reg
     }
     
@@ -160,15 +164,17 @@ impl FunctionLowering {
         
         insts.push(AsmInst::Comment(format!("Load from local at FP+{offset}")));
         
-        // Calculate address
-        let addr_reg = self.allocator.get_reg(format!("local_addr_{offset}"));
+        // Calculate address using pressure manager
+        let addr_reg = self.pressure_manager.get_register(format!("local_addr_{offset}"));
+        insts.extend(self.pressure_manager.take_instructions());
+        
         insts.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
         insts.push(AsmInst::AddI(addr_reg, addr_reg, offset));
         
         // Load using R13 as bank
         insts.push(AsmInst::Load(dest, Reg::R13, addr_reg));
         
-        self.allocator.free_reg(addr_reg);
+        self.pressure_manager.free_register(addr_reg);
         insts
     }
     
@@ -178,15 +184,17 @@ impl FunctionLowering {
         
         insts.push(AsmInst::Comment(format!("Store to local at FP+{offset}")));
         
-        // Calculate address
-        let addr_reg = self.allocator.get_reg(format!("local_addr_{offset}"));
+        // Calculate address using pressure manager
+        let addr_reg = self.pressure_manager.get_register(format!("local_addr_{offset}"));
+        insts.extend(self.pressure_manager.take_instructions());
+        
         insts.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
         insts.push(AsmInst::AddI(addr_reg, addr_reg, offset));
         
         // Store using R13 as bank
         insts.push(AsmInst::Store(src, Reg::R13, addr_reg));
         
-        self.allocator.free_reg(addr_reg);
+        self.pressure_manager.free_register(addr_reg);
         insts
     }
 }

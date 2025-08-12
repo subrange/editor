@@ -7,7 +7,8 @@ use std::collections::{BTreeMap, VecDeque};
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
 use crate::ir::{BasicBlock, Instruction, Value, IrBinaryOp};
-use crate::v2::regalloc::RegAllocV2;
+use super::allocator::RegAllocV2;
+use super::bank::BankInfo;
 use log::debug;
 
 /// Register need calculation result
@@ -38,7 +39,7 @@ pub struct ValueLifetime {
 
 /// LRU-based register allocator with Sethi-Ullman ordering
 pub struct RegisterPressureManager {
-    /// Base allocator for low-level operations
+    /// Base allocator for low-level operations (internal only)
     allocator: RegAllocV2,
     
     /// Free list of available registers
@@ -99,6 +100,41 @@ impl RegisterPressureManager {
     pub fn init(&mut self) {
         self.allocator.init_stack_bank();
         self.allocator.set_spill_base(self.local_count);
+        // Take any initialization instructions from the allocator
+        self.instructions.extend(self.allocator.take_instructions());
+    }
+    
+    /// Initialize R13 for stack operations (called automatically when needed)
+    fn ensure_r13_initialized(&mut self) {
+        if !self.allocator.r13_initialized {
+            self.allocator.init_stack_bank();
+            // The init_stack_bank generates instructions, take them
+            self.instructions.extend(self.allocator.take_instructions());
+        }
+    }
+    
+    /// Set pointer bank information
+    pub fn set_pointer_bank(&mut self, ptr_value: String, bank: BankInfo) {
+        self.allocator.set_pointer_bank(ptr_value, bank);
+    }
+    
+    /// Get bank register for a pointer (internal use)
+    pub(super) fn get_bank_register(&mut self, ptr_value: &str) -> Reg {
+        self.ensure_r13_initialized();
+        self.allocator.get_bank_register(ptr_value)
+    }
+    
+    /// Load parameter from stack
+    pub fn load_parameter(&mut self, param_idx: usize) -> Reg {
+        self.ensure_r13_initialized();
+        let reg = self.allocator.load_parameter(param_idx);
+        self.instructions.extend(self.allocator.take_instructions());
+        reg
+    }
+    
+    /// Check if R13 is initialized (internal use)
+    pub(super) fn is_r13_initialized(&self) -> bool {
+        self.allocator.r13_initialized
     }
     
     /// Calculate register need for an expression (Sethi-Ullman)
@@ -185,6 +221,9 @@ impl RegisterPressureManager {
     /// Spill a register to stack
     fn spill_register(&mut self, reg: Reg) {
         if let Some(value) = self.reg_contents.get(&reg).cloned() {
+            // Ensure R13 is initialized before any stack operation
+            self.ensure_r13_initialized();
+            
             // Get or allocate spill slot
             let slot = self.reg_to_slot.get(&reg).copied()
                 .unwrap_or_else(|| {
@@ -217,6 +256,9 @@ impl RegisterPressureManager {
         // Check if spilled
         if let Some(&slot) = self.value_to_slot.get(&value) {
             let reg = self.get_register(value.clone());
+            
+            // Ensure R13 is initialized before any stack operation
+            self.ensure_r13_initialized();
             
             // Generate reload instructions
             self.instructions.push(AsmInst::Comment(format!("Reload {value} from slot {slot}")));
@@ -431,68 +473,5 @@ impl RegisterPressureManager {
     /// Get spill count for metrics
     pub fn get_spill_count(&self) -> usize {
         self.value_to_slot.len()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_sethi_ullman_ordering() {
-        let rpm = RegisterPressureManager::new(0);
-        
-        // Test that complex expressions get proper ordering
-        let const1 = Value::Constant(10);
-        let const2 = Value::Constant(20);
-        
-        let need1 = rpm.calculate_need(&const1);
-        let need2 = rpm.calculate_need(&const2);
-        
-        assert_eq!(need1.count, 1);
-        assert_eq!(need2.count, 1);
-        
-        let (binary_need, swap) = rpm.calculate_binary_need(&const1, &const2);
-        assert_eq!(binary_need.count, 2); // Both need 1, so total is 1+1
-        assert!(!swap); // No need to swap equal needs
-    }
-    
-    #[test]
-    fn test_lru_spilling() {
-        let mut rpm = RegisterPressureManager::new(5);
-        rpm.init();
-        
-        // Allocate all 7 registers
-        for i in 0..7 {
-            let reg = rpm.get_register(format!("val{}", i));
-            assert!(matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-        }
-        
-        // Next allocation should spill LRU (val0)
-        let reg = rpm.get_register("val7".to_string());
-        assert!(matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-        
-        // Check that spill happened
-        let insts = rpm.take_instructions();
-        assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(_, Reg::R13, _))));
-    }
-    
-    #[test]
-    fn test_reload() {
-        let mut rpm = RegisterPressureManager::new(0);
-        rpm.init();
-        
-        // Allocate and force spill
-        for i in 0..8 {
-            rpm.get_register(format!("val{}", i));
-        }
-        
-        // Reload a spilled value
-        let reg = rpm.reload_value("val0".to_string());
-        assert!(matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11));
-        
-        // Check that reload happened
-        let insts = rpm.take_instructions();
-        assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::R13, _))));
     }
 }

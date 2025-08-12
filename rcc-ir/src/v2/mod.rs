@@ -8,18 +8,16 @@
 //! - Bank-aware GEP operations
 //! - Correct memory operation bank registers
 
-pub mod regalloc;
+pub mod regmgmt;
 pub mod function;
 pub mod calling_convention;
-pub mod register_pressure;
 
 #[cfg(test)]
 mod tests;
 
-pub use regalloc::RegAllocV2;
+pub use regmgmt::{RegisterPressureManager, BankInfo};
 pub use function::FunctionLowering;
 pub use calling_convention::CallingConvention;
-pub use register_pressure::RegisterPressureManager;
 
 /// Bank size in instructions (from ASSEMBLY_FORMAT.md)
 /// Each bank holds 4096 instructions

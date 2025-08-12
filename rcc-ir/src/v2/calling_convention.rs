@@ -7,7 +7,7 @@
 //! - Stack parameters pushed before call, accessed via FP in callee
 
 use rcc_codegen::{AsmInst, Reg};
-use crate::v2::regalloc::RegAllocV2;
+use crate::v2::regmgmt::RegisterPressureManager;
 use log::debug;
 
 pub struct CallingConvention {}
@@ -26,7 +26,7 @@ impl CallingConvention {
     /// Setup parameters for a function call
     /// All parameters are passed on the stack according to the calling convention
     pub fn setup_call_args(&self, 
-                           allocator: &mut RegAllocV2,
+                           pressure_manager: &mut RegisterPressureManager,
                            args: Vec<CallArg>) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         let mut stack_offset = 0i16;
@@ -57,8 +57,12 @@ impl CallingConvention {
             }
         }
         
-        // Return stack adjustment so caller can clean up after call
-        allocator.instructions.push(AsmInst::Comment(format!("Pushed {stack_offset} words to stack")));
+        // Spill all registers before call
+        pressure_manager.spill_all();
+        insts.extend(pressure_manager.take_instructions());
+        
+        // Add comment about stack adjustment
+        insts.push(AsmInst::Comment(format!("Pushed {stack_offset} words to stack")));
         
         insts
     }
@@ -88,31 +92,36 @@ impl CallingConvention {
     
     /// Handle return value after call
     pub fn handle_return_value(&self, 
-                              allocator: &mut RegAllocV2,
-                              is_pointer: bool) -> (Reg, Option<Reg>) {
+                              pressure_manager: &mut RegisterPressureManager,
+                              is_pointer: bool) -> (Vec<AsmInst>, (Reg, Option<Reg>)) {
+        let mut insts = Vec::new();
+        
         if is_pointer {
             // Fat pointer return in R3 (addr) and R4 (bank)
             debug!("Handling fat pointer return");
             
             // Allocate registers for the return value
-            let addr_reg = allocator.get_reg("ret_addr".to_string());
-            let bank_reg = allocator.get_reg("ret_bank".to_string());
+            let addr_reg = pressure_manager.get_register("ret_addr".to_string());
+            let bank_reg = pressure_manager.get_register("ret_bank".to_string());
+            insts.extend(pressure_manager.take_instructions());
             
             // Copy from R3/R4
-            allocator.instructions.push(AsmInst::Comment("Get fat pointer return value".to_string()));
-            allocator.instructions.push(AsmInst::Add(addr_reg, Reg::R3, Reg::R0));
-            allocator.instructions.push(AsmInst::Add(bank_reg, Reg::R4, Reg::R0));
+            insts.push(AsmInst::Comment("Get fat pointer return value".to_string()));
+            insts.push(AsmInst::Add(addr_reg, Reg::R3, Reg::R0));
+            insts.push(AsmInst::Add(bank_reg, Reg::R4, Reg::R0));
             
-            (addr_reg, Some(bank_reg))
+            (insts, (addr_reg, Some(bank_reg)))
         } else {
             // Scalar return in R3
             debug!("Handling scalar return");
             
-            let ret_reg = allocator.get_reg("ret_val".to_string());
-            allocator.instructions.push(AsmInst::Comment("Get scalar return value".to_string()));
-            allocator.instructions.push(AsmInst::Add(ret_reg, Reg::R3, Reg::R0));
+            let ret_reg = pressure_manager.get_register("ret_val".to_string());
+            insts.extend(pressure_manager.take_instructions());
             
-            (ret_reg, None)
+            insts.push(AsmInst::Comment("Get scalar return value".to_string()));
+            insts.push(AsmInst::Add(ret_reg, Reg::R3, Reg::R0));
+            
+            (insts, (ret_reg, None))
         }
     }
     
@@ -128,17 +137,22 @@ impl CallingConvention {
     
     /// Load parameter from stack in callee
     /// Parameters are at negative offsets from FP (before the frame)
-    pub fn load_param(&self, index: usize, allocator: &mut RegAllocV2) -> Reg {
+    pub fn load_param(&self, index: usize, 
+                     pressure_manager: &mut RegisterPressureManager) -> (Vec<AsmInst>, Reg) {
+        let mut insts = Vec::new();
+        
         // Parameters are before the frame (negative offsets from FP)
         // They are pushed in reverse order, so param 0 is closest to FP
         let param_offset = -(index as i16 + 3); // -3 because: -1 for FP, -1 for RA, -1 for first param
-        let dest = allocator.get_reg(format!("param{index}"));
         
-        allocator.instructions.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));
-        allocator.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, param_offset));
-        allocator.instructions.push(AsmInst::Load(dest, Reg::R13, Reg::R12));
+        let dest = pressure_manager.get_register(format!("param{index}"));
+        insts.extend(pressure_manager.take_instructions());
         
-        dest
+        insts.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));
+        insts.push(AsmInst::AddI(Reg::R12, Reg::R15, param_offset));
+        insts.push(AsmInst::Load(dest, Reg::R13, Reg::R12));
+        
+        (insts, dest)
     }
 }
 

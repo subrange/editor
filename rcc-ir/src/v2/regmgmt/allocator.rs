@@ -9,9 +9,10 @@
 use rcc_codegen::{AsmInst, Reg};
 use std::collections::{BTreeMap, BTreeSet};
 use log::{debug, trace};
+use super::bank::BankInfo;
 
 /// V2 register allocator with correct ABI and bank handling
-pub struct RegAllocV2 {
+pub(super) struct RegAllocV2 {
     /// Free list of available registers (R5-R11 only, R3-R4 reserved for returns)
     free_list: Vec<Reg>,
     
@@ -25,7 +26,7 @@ pub struct RegAllocV2 {
     next_spill_offset: i16,
     
     /// Instructions to emit (for spill/reload code)
-    pub instructions: Vec<AsmInst>,
+    pub(super) instructions: Vec<AsmInst>,
     
     /// Track the last spilled value and its offset
     last_spilled: Option<(String, i16)>,
@@ -38,19 +39,13 @@ pub struct RegAllocV2 {
     _parameter_placeholder: Option<()>,
     
     /// Track if R13 has been initialized for this function
-    pub r13_initialized: bool,
+    pub(super) r13_initialized: bool,
     
     /// Track fat pointer bank components
     /// Maps value name to its bank register or tag
     pointer_banks: BTreeMap<String, BankInfo>,
 }
 
-#[derive(Debug, Clone)]
-pub enum BankInfo {
-    Global,     // Bank 0 - use R0
-    Stack,      // Bank 1 - use R13 (must be initialized!)
-    Register(Reg), // Dynamic bank in a register
-}
 
 impl Default for RegAllocV2 {
     fn default() -> Self {
@@ -61,7 +56,7 @@ impl Default for RegAllocV2 {
 impl RegAllocV2 {
     /// Create a new allocator with R5-R11 available
     /// R3-R4 are reserved for return values/fat pointers
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             // R5-R11 are allocatable (7 registers total)
             free_list: vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5],
@@ -78,7 +73,7 @@ impl RegAllocV2 {
     }
     
     /// Initialize R13 as stack bank register (MUST be called at function start!)
-    pub fn init_stack_bank(&mut self) {
+    pub(super) fn init_stack_bank(&mut self) {
         if !self.r13_initialized {
             self.instructions.push(AsmInst::Comment("Initialize R13 as stack bank (1)".to_string()));
             self.instructions.push(AsmInst::LI(Reg::R13, 1));
@@ -88,7 +83,7 @@ impl RegAllocV2 {
     }
     
     /// Get the bank register for a pointer
-    pub fn get_bank_register(&mut self, ptr_value: &str) -> Reg {
+    pub(super) fn get_bank_register(&mut self, ptr_value: &str) -> Reg {
         match self.pointer_banks.get(ptr_value) {
             Some(BankInfo::Global) => {
                 trace!("Using R0 for global bank");
@@ -117,14 +112,14 @@ impl RegAllocV2 {
     }
     
     /// Set bank info for a pointer value
-    pub fn set_pointer_bank(&mut self, ptr_value: String, bank: BankInfo) {
+    pub(super) fn set_pointer_bank(&mut self, ptr_value: String, bank: BankInfo) {
         debug!("Setting bank info for '{ptr_value}': {bank:?}");
         self.pointer_banks.insert(ptr_value, bank);
     }
     
     /// Load parameter from stack (params are stack-based per spec)
     /// Parameters are at negative offsets from FP
-    pub fn load_parameter(&mut self, param_idx: usize) -> Reg {
+    pub(super) fn load_parameter(&mut self, param_idx: usize) -> Reg {
         // Parameters are pushed before call, accessed via FP
         // param0 at FP-3, param1 at FP-4, etc.
         let offset = -(param_idx as i16 + 3);
@@ -138,7 +133,7 @@ impl RegAllocV2 {
     }
     
     /// Get a register for a value
-    pub fn get_reg(&mut self, for_value: String) -> Reg {
+    pub(super) fn get_reg(&mut self, for_value: String) -> Reg {
         trace!("get_reg for '{}', reg_contents: {:?}", for_value, self.reg_contents);
         
         // Check if already in a register
@@ -191,7 +186,7 @@ impl RegAllocV2 {
     }
     
     /// Reload a spilled value
-    pub fn reload(&mut self, value: String) -> Reg {
+    pub(super) fn reload(&mut self, value: String) -> Reg {
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &value) {
             return reg;
@@ -217,23 +212,23 @@ impl RegAllocV2 {
     }
     
     /// Pin a value to prevent spilling
-    pub fn pin_value(&mut self, value: String) {
+    pub(super) fn pin_value(&mut self, value: String) {
         self.pinned_values.insert(value);
     }
     
     /// Unpin a value
-    pub fn unpin_value(&mut self, value: &str) {
+    pub(super) fn unpin_value(&mut self, value: &str) {
         self.pinned_values.remove(value);
     }
     
     /// Clear all pins
-    pub fn clear_pins(&mut self) {
+    pub(super) fn clear_pins(&mut self) {
         self.pinned_values.clear();
     }
     
     /// Free all temporaries at statement boundaries
     /// Since params are on stack, we can free all registers
-    pub fn free_temporaries(&mut self) {
+    pub(super) fn free_temporaries(&mut self) {
         debug!("Freeing all temporaries");
         
         self.reg_contents.clear();
@@ -243,13 +238,13 @@ impl RegAllocV2 {
     }
     
     /// Mark a register as in use
-    pub fn mark_in_use(&mut self, reg: Reg, value: String) {
+    pub(super) fn mark_in_use(&mut self, reg: Reg, value: String) {
         self.reg_contents.insert(reg, value);
         self.free_list.retain(|&r| r != reg);
     }
     
     /// Free a specific register
-    pub fn free_reg(&mut self, reg: Reg) {
+    pub(super) fn free_reg(&mut self, reg: Reg) {
         // Only free R5-R11
         if matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11) {
             self.reg_contents.remove(&reg);
@@ -290,28 +285,28 @@ impl RegAllocV2 {
     }
     
     /// Set the base offset for spill slots
-    pub fn set_spill_base(&mut self, offset: i16) {
+    pub(super) fn set_spill_base(&mut self, offset: i16) {
         self.next_spill_offset = offset;
     }
     
     /// Take accumulated instructions
-    pub fn take_instructions(&mut self) -> Vec<AsmInst> {
+    pub(super) fn take_instructions(&mut self) -> Vec<AsmInst> {
         std::mem::take(&mut self.instructions)
     }
     
     /// Get last spilled info
-    pub fn take_last_spilled(&mut self) -> Option<(String, i16)> {
+    pub(super) fn take_last_spilled(&mut self) -> Option<(String, i16)> {
         self.last_spilled.take()
     }
     
     /// Check if a value is tracked
-    pub fn is_tracked(&self, value: &str) -> bool {
+    pub(super) fn is_tracked(&self, value: &str) -> bool {
         self.reg_contents.values().any(|v| v == value) || 
         self.spill_slots.contains_key(value)
     }
     
     /// Reset for new function
-    pub fn reset(&mut self) {
+    pub(super) fn reset(&mut self) {
         self.free_list = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5];
         self.reg_contents.clear();
         self.spill_slots.clear();
@@ -325,7 +320,10 @@ impl RegAllocV2 {
     }
 }
 
-// Tests moved to tests/regalloc_tests.rs
+// Unit tests for the allocator
+#[cfg(test)]
+#[path = "tests.rs"]
+mod tests;
 
 // Make some fields accessible for testing
 #[cfg(test)]
