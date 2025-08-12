@@ -12,17 +12,46 @@ pub use errors::CodegenError;
 
 use std::collections::{HashMap, HashSet};
 use rcc_ir::{Module, Function, Value, IrType, IrBuilder, GlobalVariable, Linkage, LabelId as Label};
+use rcc_ir::ir::{FatPointer, BankTag as IrBankTag};
 use crate::ast::{TranslationUnit, TopLevelItem, FunctionDefinition, Declaration, Type, 
-                 InitializerKind, ExpressionKind, Statement, StatementKind, Expression, BinaryOp};
+                 InitializerKind, ExpressionKind, Statement, StatementKind, Expression, BinaryOp, BankTag};
 use crate::CompilerError;
 use self::statements::StatementGenerator;
 use self::types::{convert_type, get_ast_type_size};
+
+/// Variable information including bank tag
+#[derive(Debug, Clone)]
+pub struct VarInfo {
+    pub value: Value,
+    pub ir_type: IrType,
+    pub bank: Option<BankTag>,
+}
+
+impl VarInfo {
+    /// Get the value as a fat pointer if it's a pointer with bank info
+    pub fn as_fat_ptr(&self) -> Value {
+        if let Some(bank) = self.bank {
+            // Convert to fat pointer representation
+            let bank_tag = match bank {
+                BankTag::Global => IrBankTag::Global,
+                BankTag::Stack => IrBankTag::Stack,
+                _ => IrBankTag::Stack, // Default to stack for unknown
+            };
+            Value::FatPtr(FatPointer {
+                addr: Box::new(self.value.clone()),
+                bank: bank_tag,
+            })
+        } else {
+            self.value.clone()
+        }
+    }
+}
 
 /// Code generator - transforms AST to IR
 pub struct CodeGenerator {
     module: Module,
     builder: IrBuilder,
-    variables: HashMap<String, (Value, IrType)>,
+    variables: HashMap<String, VarInfo>,
     array_variables: HashSet<String>,
     parameter_variables: HashSet<String>,
     string_literals: HashMap<String, String>,
@@ -147,7 +176,7 @@ impl CodeGenerator {
     fn generate_function(&mut self, func_def: &FunctionDefinition) -> Result<(), CompilerError> {
         // Save global variables before clearing
         let globals: Vec<_> = self.variables.iter()
-            .filter(|(_, (v, _))| matches!(v, Value::Global(_) | Value::Function(_)))
+            .filter(|(_, v)| matches!(v.value, Value::Global(_) | Value::Function(_)))
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         
@@ -172,10 +201,26 @@ impl CodeGenerator {
         self.builder.create_function(func_def.name.clone(), return_type);
         
         // Add parameters to the function
+        // Fat pointers are passed as two parameters (addr, bank)
+        let mut actual_param_id = 0u32;
+        let mut param_mapping = Vec::new(); // Maps parameter index to actual temp IDs
+        
         for (i, param) in func_def.parameters.iter().enumerate() {
-            let param_id = i as u32;
             let param_type = param_types[i].clone();
-            self.builder.add_parameter(param_id, param_type.clone());
+            
+            // Check if this is a pointer parameter (needs fat pointer handling)
+            if let Type::Pointer { .. } = &param.param_type {
+                // Fat pointer: add two parameters (address and bank)
+                self.builder.add_parameter(actual_param_id, IrType::I16); // Address
+                self.builder.add_parameter(actual_param_id + 1, IrType::I16); // Bank
+                param_mapping.push((actual_param_id, Some(actual_param_id + 1)));
+                actual_param_id += 2;
+            } else {
+                // Regular parameter
+                self.builder.add_parameter(actual_param_id, param_type.clone());
+                param_mapping.push((actual_param_id, None));
+                actual_param_id += 1;
+            }
         }
         
         // Create entry block
@@ -195,26 +240,64 @@ impl CodeGenerator {
         
         // Now process parameters based on whether they're reassigned
         for (i, param) in func_def.parameters.iter().enumerate() {
-            let param_value = Value::Temp(i as u32);
+            let (addr_temp_id, bank_temp_id) = param_mapping[i];
+            let param_value = Value::Temp(addr_temp_id);
             let param_type = param_types[i].clone();
             let param_name = param.name.clone().unwrap_or_else(|| format!("arg{}", i));
             
+            // For pointer parameters, create a fat pointer value
+            let param_value = if let Some(bank_id) = bank_temp_id {
+                // This is a pointer parameter - create fat pointer
+                Value::FatPtr(FatPointer {
+                    addr: Box::new(Value::Temp(addr_temp_id)),
+                    bank: IrBankTag::Stack, // Will be determined at runtime from bank_id
+                })
+            } else {
+                Value::Temp(addr_temp_id)
+            };
+            
+            // Determine bank tag for pointer parameters
+            let param_bank = if bank_temp_id.is_some() {
+                Some(BankTag::Unknown) // Bank will be determined at runtime
+            } else {
+                None
+            };
+            
             if reassigned_params.contains(&param_name) {
                 // This parameter is reassigned - create an alloca for it
-                let alloca_temp = self.builder.build_alloca(param_type.clone(), None)?;
+                let alloca_val = self.builder.build_alloca(param_type.clone(), None)?;
                 
-                // Store the original parameter value
-                self.builder.build_store(param_value, Value::Temp(alloca_temp))?;
+                // Store the original parameter value (alloca_val is already a FatPtr)
+                self.builder.build_store(param_value, alloca_val.clone())?;
+                
+                // Extract temp ID for variable mapping
+                let alloca_temp = if let Value::FatPtr(ref fp) = alloca_val {
+                    if let Value::Temp(id) = *fp.addr {
+                        id
+                    } else {
+                        return Err("Unexpected alloca result".to_string().into());
+                    }
+                } else {
+                    return Err("Alloca should return FatPtr".to_string().into());
+                };
                 
                 // Map the parameter to the alloca
-                let var_type = IrType::Ptr(Box::new(param_type));
-                self.variables.insert(param_name.clone(), (Value::Temp(alloca_temp), var_type));
+                let var_type = IrType::FatPtr(Box::new(param_type));
+                self.variables.insert(param_name.clone(), VarInfo {
+                    value: Value::Temp(alloca_temp),
+                    ir_type: var_type,
+                    bank: Some(BankTag::Stack), // Parameters are on the stack
+                });
                 
                 // Remove from parameter_variables since it now uses an alloca
                 self.parameter_variables.remove(&param_name);
             } else {
                 // This parameter is never reassigned - use it directly
-                self.variables.insert(param_name, (param_value, param_type));
+                self.variables.insert(param_name, VarInfo {
+                    value: param_value,
+                    ir_type: param_type,
+                    bank: None, // Parameter bank is unknown
+                });
                 // Keep it in parameter_variables for direct use
             }
         }
@@ -255,7 +338,11 @@ impl CodeGenerator {
         if matches!(decl.decl_type, Type::Function { .. }) {
             // Just add to the variables map for reference
             // For function types, we use Void as a placeholder since functions don't have an IR type
-            self.variables.insert(decl.name.clone(), (Value::Function(decl.name.clone()), IrType::Void));
+            self.variables.insert(decl.name.clone(), VarInfo {
+                value: Value::Function(decl.name.clone()),
+                ir_type: IrType::Void,
+                bank: None, // Functions don't have banks
+            });
             return Ok(());
         }
         
@@ -283,7 +370,11 @@ impl CodeGenerator {
         self.module.add_global(global);
         
         // Add to variables map for later reference
-        self.variables.insert(decl.name.clone(), (Value::Global(decl.name.clone()), ir_type));
+        self.variables.insert(decl.name.clone(), VarInfo {
+            value: Value::Global(decl.name.clone()),
+            ir_type,
+            bank: Some(BankTag::Global), // Globals are in global memory
+        });
         
         Ok(())
     }

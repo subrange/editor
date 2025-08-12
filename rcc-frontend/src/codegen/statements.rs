@@ -3,17 +3,18 @@
 use std::collections::{HashMap, HashSet};
 use rcc_common::TempId;
 use rcc_ir::{Value, IrType, IrBuilder, LabelId as Label};
-use crate::ast::{Statement, StatementKind, Declaration, Expression, BinaryOp, Initializer, InitializerKind, ExpressionKind, Type};
+use crate::ast::{Statement, StatementKind, Declaration, Expression, BinaryOp, Initializer, InitializerKind, ExpressionKind, Type, BankTag};
 use crate::CompilerError;
 use super::errors::CodegenError;
 use super::types::convert_type;
 use super::expressions::ExpressionGenerator;
+use super::VarInfo;
 
 /// Statement generator context
 pub struct StatementGenerator<'a> {
     pub builder: &'a mut IrBuilder,
     pub module: &'a mut rcc_ir::Module,
-    pub variables: &'a mut HashMap<String, (Value, IrType)>,
+    pub variables: &'a mut HashMap<String, VarInfo>,
     pub array_variables: &'a mut HashSet<String>,
     pub parameter_variables: &'a mut HashSet<String>,
     pub string_literals: &'a mut HashMap<String, String>,
@@ -192,14 +193,46 @@ impl<'a> StatementGenerator<'a> {
             IrType::Array { size, element_type } => {
                 // Allocate array - alloca returns pointer to first element
                 let count = Some(Value::Constant(*size as i64));
-                let alloca_temp = self.builder.build_alloca((**element_type).clone(), count)?;
+                let alloca_val = self.builder.build_alloca((**element_type).clone(), count)?;
+                // Extract the temp ID from the fat pointer
+                let alloca_temp = if let Value::FatPtr(fp) = &alloca_val {
+                    if let Value::Temp(id) = *fp.addr {
+                        id
+                    } else {
+                        return Err(CodegenError::InternalError {
+                            message: "Unexpected alloca result".to_string(),
+                            location: decl.span.start.clone(),
+                        }.into());
+                    }
+                } else {
+                    return Err(CodegenError::InternalError {
+                        message: "Alloca should return FatPtr".to_string(),
+                        location: decl.span.start.clone(),
+                    }.into());
+                };
                 // The variable type is pointer to element type (array decays to pointer)
-                (alloca_temp, IrType::Ptr(element_type.clone()), true)
+                (alloca_temp, IrType::FatPtr(element_type.clone()), true)
             }
             _ => {
                 // Regular scalar allocation
-                let alloca_temp = self.builder.build_alloca(ir_type.clone(), None)?;
-                (alloca_temp, IrType::Ptr(Box::new(ir_type.clone())), false)
+                let alloca_val = self.builder.build_alloca(ir_type.clone(), None)?;
+                // Extract the temp ID from the fat pointer
+                let alloca_temp = if let Value::FatPtr(fp) = &alloca_val {
+                    if let Value::Temp(id) = *fp.addr {
+                        id
+                    } else {
+                        return Err(CodegenError::InternalError {
+                            message: "Unexpected alloca result".to_string(),
+                            location: decl.span.start.clone(),
+                        }.into());
+                    }
+                } else {
+                    return Err(CodegenError::InternalError {
+                        message: "Alloca should return FatPtr".to_string(),
+                        location: decl.span.start.clone(),
+                    }.into());
+                };
+                (alloca_temp, IrType::FatPtr(Box::new(ir_type.clone())), false)
             }
         };
         
@@ -217,7 +250,11 @@ impl<'a> StatementGenerator<'a> {
         
         // Add to variables map
         let var_value = Value::Temp(alloca_temp);
-        self.variables.insert(decl.name.clone(), (var_value, var_type));
+        self.variables.insert(decl.name.clone(), VarInfo {
+            value: var_value,
+            ir_type: var_type,
+            bank: Some(BankTag::Stack), // Local variables are on the stack
+        });
         
         // Track if this is an array
         if is_array {
@@ -265,7 +302,7 @@ impl<'a> StatementGenerator<'a> {
                     let elem_ptr = self.builder.build_pointer_offset(
                         Value::Temp(array_ptr),
                         index_val,
-                        IrType::Ptr(Box::new(element_type.clone()))
+                        IrType::FatPtr(Box::new(element_type.clone()))
                     )?;
                     
                     // Generate value for this element
@@ -308,7 +345,7 @@ impl<'a> StatementGenerator<'a> {
                         let elem_ptr = self.builder.build_pointer_offset(
                             Value::Temp(array_ptr),
                             index_val,
-                            IrType::Ptr(Box::new(IrType::I8))
+                            IrType::FatPtr(Box::new(IrType::I8))
                         )?;
                         
                         let char_val = Value::Constant(ch as i64);
@@ -320,7 +357,7 @@ impl<'a> StatementGenerator<'a> {
                     let null_ptr = self.builder.build_pointer_offset(
                         Value::Temp(array_ptr),
                         null_index,
-                        IrType::Ptr(Box::new(IrType::I8))
+                        IrType::FatPtr(Box::new(IrType::I8))
                     )?;
                     self.builder.build_store(Value::Constant(0), null_ptr)?;
                     

@@ -15,9 +15,10 @@ pub fn convert_type(ast_type: &Type, location: SourceLocation) -> Result<IrType,
         Type::Short | Type::UnsignedShort => Ok(IrType::I16),
         Type::Int | Type::UnsignedInt => Ok(IrType::I16), // 16-bit int on Ripple
         Type::Long | Type::UnsignedLong => Ok(IrType::I32),
-        Type::Pointer(target) => {
+        Type::Pointer { target, .. } => {
+            // Note: Bank information is tracked separately in codegen, not in IrType
             let target_type = convert_type(target, location)?;
-            Ok(IrType::Ptr(Box::new(target_type)))
+            Ok(IrType::FatPtr(Box::new(target_type)))
         }
         Type::Array { element_type, size } => {
             let elem_type = convert_type(element_type, location)?;
@@ -25,7 +26,7 @@ pub fn convert_type(ast_type: &Type, location: SourceLocation) -> Result<IrType,
                 Ok(IrType::Array { size: *size, element_type: Box::new(elem_type) })
             } else {
                 // Incomplete array type - treat as pointer for now
-                Ok(IrType::Ptr(Box::new(elem_type)))
+                Ok(IrType::FatPtr(Box::new(elem_type)))
             }
         }
         Type::Struct { fields, .. } => {
@@ -77,7 +78,7 @@ pub fn get_ast_type_size(ast_type: &Type) -> u64 {
         Type::Short | Type::UnsignedShort => 2,
         Type::Int | Type::UnsignedInt => 2, // 16-bit int on Ripple
         Type::Long | Type::UnsignedLong => 4,
-        Type::Pointer(_) => 2, // 16-bit pointers
+        Type::Pointer { .. } => 4, // Fat pointers: 2 bytes address + 2 bytes bank
         Type::Array { element_type, size } => {
             let elem_size = get_ast_type_size(element_type);
             if let Some(size) = size {

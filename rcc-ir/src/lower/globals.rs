@@ -16,7 +16,7 @@ impl ModuleLowerer {
         let size = match &global.var_type {
             IrType::I8 | IrType::I16 => 1,
             IrType::I32 => 2, // 32-bit takes 2 words
-            IrType::Ptr(_) => 1, // Pointers are 16-bit
+            IrType::FatPtr(_) => 1, // Pointers are 16-bit
             IrType::Array { size, .. } if is_string => {
                 // For strings, allocate one word per character (including null terminator)
                 *size as u16  // Each character gets its own word

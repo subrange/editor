@@ -65,7 +65,7 @@ impl ModuleLowerer {
             IrType::I1 => 1, // Boolean takes 1 word
             IrType::I8 | IrType::I16 => 1,
             IrType::I32 | IrType::I64 => 2,
-            IrType::Ptr(_) => 2, // Fat pointers: 2 words (address + bank tag)
+            IrType::FatPtr(_) => 2, // Fat pointers: 2 words (address + bank tag)
             IrType::Array { element_type, size } => {
                 let elem_size = self.get_type_size_in_words(element_type);
                 elem_size * size

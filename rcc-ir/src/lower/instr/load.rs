@@ -10,7 +10,7 @@ impl ModuleLowerer {
                                                self.value_to_string(ptr), result)));
 
             // Check if we're loading a pointer type
-            let is_loading_pointer = matches!(result_type, IrType::Ptr(_));
+            let is_loading_pointer = matches!(result_type, IrType::FatPtr(_));
 
             // Check if ptr is a global address
             if let Value::Global(name) = ptr {

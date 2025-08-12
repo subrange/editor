@@ -72,7 +72,7 @@ pub enum IrType {
     I64,  // 64-bit integer (not supported on Ripple in MVP)
     
     /// Pointer type
-    Ptr(Box<IrType>),
+    FatPtr(Box<IrType>),
     
     /// Array type [size x element_type]
     Array { size: u64, element_type: Box<IrType> },
@@ -105,7 +105,7 @@ impl IrType {
             IrType::I16 => Some(2),
             IrType::I32 => Some(4),
             IrType::I64 => Some(8),
-            IrType::Ptr(_) => Some(4), // Fat pointers: 2 words (address + bank tag)
+            IrType::FatPtr(_) => Some(4), // Fat pointers: 2 words (address + bank tag)
             IrType::Array { size, element_type } => {
                 element_type.size_in_bytes().map(|elem_size| elem_size * size)
             }
@@ -128,13 +128,13 @@ impl IrType {
     
     /// Check if this is a pointer type
     pub fn is_pointer(&self) -> bool {
-        matches!(self, IrType::Ptr(_))
+        matches!(self, IrType::FatPtr(_))
     }
     
     /// Get the element type for pointers and arrays
     pub fn element_type(&self) -> Option<&IrType> {
         match self {
-            IrType::Ptr(elem) => Some(elem),
+            IrType::FatPtr(elem) => Some(elem),
             IrType::Array { element_type, .. } => Some(element_type),
             _ => None,
         }
@@ -150,7 +150,7 @@ impl fmt::Display for IrType {
             IrType::I16 => write!(f, "i16"),
             IrType::I32 => write!(f, "i32"),
             IrType::I64 => write!(f, "i64"),
-            IrType::Ptr(target) => write!(f, "{}*", target),
+            IrType::FatPtr(target) => write!(f, "{}*", target),
             IrType::Array { size, element_type } => write!(f, "[{} x {}]", size, element_type),
             IrType::Function { return_type, param_types, is_vararg } => {
                 write!(f, "{} (", return_type)?;
@@ -278,11 +278,13 @@ pub enum Instruction {
     },
     
     /// Get element pointer: result = getelementptr ptr, index
+    /// Input ptr must be a FatPtr, result will be stored as temp but represents a fat pointer
+    /// The backend must handle bank overflow when computing the final address
     GetElementPtr {
-        result: TempId,
-        ptr: Value,
-        indices: Vec<Value>,
-        result_type: IrType,
+        result: TempId,          // Result temp that will hold the computed address
+        ptr: Value,              // Must be a FatPtr with bank info
+        indices: Vec<Value>,     // Offsets to apply
+        result_type: IrType,     // Type of the result pointer
     },
     
     /// Allocate stack memory: result = alloca type, count
@@ -373,15 +375,16 @@ impl fmt::Display for Instruction {
             }
             Instruction::Store { value, ptr } => {
                 // For stores, we print: store <value>, <type>* <ptr>
-                // Since we don't have type information in the Store instruction,
-                // we'll use a simple heuristic: i16* for most cases
-                // This is just for display - the actual execution uses the correct types
                 write!(f, "store {}, i16* {}", value, ptr)
             }
-            Instruction::GetElementPtr { result, ptr, indices, result_type } => {
+            Instruction::GetElementPtr { result, ptr, indices, result_type: _ } => {
                 write!(f, "%{} = getelementptr {}", result, ptr)?;
                 for index in indices {
                     write!(f, ", {}", index)?;
+                }
+                // Bank info is in the ptr if it's a FatPtr
+                if let Value::FatPtr(ref fp) = ptr {
+                    write!(f, " ; bank={:?}", fp.bank)?;
                 }
                 Ok(())
             }
@@ -676,13 +679,17 @@ impl IrBuilder {
         self.add_instruction(instr)
     }
     
-    pub fn build_alloca(&mut self, alloc_type: IrType, count: Option<Value>) -> Result<TempId, String> {
+    pub fn build_alloca(&mut self, alloc_type: IrType, count: Option<Value>) -> Result<Value, String> {
         let result = self.new_temp();
-        let result_type = IrType::Ptr(Box::new(alloc_type.clone()));
+        let result_type = IrType::FatPtr(Box::new(alloc_type.clone()));
         let instr = Instruction::Alloca { result, alloc_type, count, result_type };
         
         self.add_instruction(instr)?;
-        Ok(result)
+        // Alloca always returns a stack pointer
+        Ok(Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Temp(result)),
+            bank: BankTag::Stack,
+        }))
     }
     
     pub fn build_call(&mut self, function: Value, args: Vec<Value>, result_type: IrType) -> Result<Option<TempId>, String> {
@@ -715,15 +722,56 @@ impl IrBuilder {
     
     pub fn build_pointer_offset(&mut self, ptr: Value, offset: Value, result_type: IrType) -> Result<Value, String> {
         let result = self.new_temp();
+        
+        // Extract bank from input pointer if it's a fat pointer
+        let bank = if let Value::FatPtr(ref fat_ptr) = ptr {
+            fat_ptr.bank
+        } else {
+            BankTag::Stack // Default to stack if not specified
+        };
+        
         let instr = Instruction::GetElementPtr { 
             result, 
-            ptr, 
+            ptr: ptr.clone(), 
             indices: vec![offset], 
-            result_type: result_type.clone() 
+            result_type: result_type.clone(),
         };
         
         self.add_instruction(instr)?;
-        Ok(Value::Temp(result))
+        
+        // Return a fat pointer
+        Ok(Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Temp(result)),
+            bank,
+        }))
+    }
+    
+    pub fn build_pointer_offset_with_bank(&mut self, ptr: Value, offset: Value, result_type: IrType, bank: Option<BankTag>) -> Result<Value, String> {
+        let result = self.new_temp();
+        
+        // Use provided bank or extract from input pointer
+        let actual_bank = bank.unwrap_or_else(|| {
+            if let Value::FatPtr(ref fat_ptr) = ptr {
+                fat_ptr.bank
+            } else {
+                BankTag::Stack // Default to stack
+            }
+        });
+        
+        let instr = Instruction::GetElementPtr { 
+            result, 
+            ptr: ptr.clone(), 
+            indices: vec![offset], 
+            result_type: result_type.clone(),
+        };
+        
+        self.add_instruction(instr)?;
+        
+        // Return a fat pointer
+        Ok(Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Temp(result)),
+            bank: actual_bank,
+        }))
     }
     
     pub fn build_inline_asm(&mut self, assembly: String) -> Result<(), String> {
@@ -779,7 +827,7 @@ mod tests {
         assert_eq!(IrType::I8.size_in_bytes(), Some(1));
         assert_eq!(IrType::I16.size_in_bytes(), Some(2));
         assert_eq!(IrType::I32.size_in_bytes(), Some(4));
-        assert_eq!(IrType::Ptr(Box::new(IrType::I32)).size_in_bytes(), Some(2));
+        assert_eq!(IrType::FatPtr(Box::new(IrType::I32)).size_in_bytes(), Some(4)); // Fat pointers
         
         let array_type = IrType::Array {
             size: 10,

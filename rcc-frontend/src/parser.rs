@@ -433,7 +433,7 @@ impl Parser {
         // Parse pointer prefix
         let mut current_type = base_type;
         while self.match_token(&TokenType::Star) {
-            current_type = Type::Pointer(Box::new(current_type));
+            current_type = Type::Pointer { target: Box::new(current_type), bank: None };
         }
         
         // Parse direct declarator
@@ -1322,7 +1322,7 @@ impl Parser {
                         // Handle pointer types
                         while self.peek().map(|t| &t.token_type) == Some(&TokenType::Star) {
                             self.advance();
-                            type_spec = Type::Pointer(Box::new(type_spec));
+                            type_spec = Type::Pointer { target: Box::new(type_spec), bank: None };
                         }
                         
                         if self.peek().map(|t| &t.token_type) == Some(&TokenType::RightParen) {

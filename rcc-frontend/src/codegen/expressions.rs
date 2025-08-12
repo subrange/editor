@@ -2,17 +2,19 @@
 
 use std::collections::HashMap;
 use rcc_ir::{Value, IrType, IrBinaryOp, IrBuilder, GlobalVariable, Linkage};
+use rcc_ir::ir::{FatPointer, BankTag as IrBankTag};
 use rcc_common::SourceLocation;
-use crate::ast::{Expression, ExpressionKind, BinaryOp, UnaryOp, Type};
+use crate::ast::{Expression, ExpressionKind, BinaryOp, UnaryOp, Type, BankTag};
 use crate::CompilerError;
 use super::errors::CodegenError;
 use super::types::convert_type;
+use super::VarInfo;
 
 /// Expression generator context
 pub struct ExpressionGenerator<'a> {
     pub builder: &'a mut IrBuilder,
     pub module: &'a mut rcc_ir::Module,
-    pub variables: &'a HashMap<String, (Value, IrType)>,
+    pub variables: &'a HashMap<String, VarInfo>,
     pub array_variables: &'a std::collections::HashSet<String>,
     pub parameter_variables: &'a std::collections::HashSet<String>,
     pub string_literals: &'a mut HashMap<String, String>,
@@ -112,30 +114,44 @@ impl<'a> ExpressionGenerator<'a> {
     }
     
     fn generate_identifier(&mut self, name: &str, expr: &Expression) -> Result<Value, CompilerError> {
-        if let Some((value, var_type)) = self.variables.get(name) {
+        if let Some(var_info) = self.variables.get(name) {
+            let value = &var_info.value;
+            let var_type = &var_info.ir_type;
+            
+            // If this is a pointer expression, always return a fat pointer
+            if let Some(Type::Pointer { .. }) = &expr.expr_type {
+                return Ok(var_info.as_fat_ptr());
+            }
+            
             // Check if this is a global variable (needs to be loaded)
             if let Value::Global(_) = value {
                 // Global variables always need to be loaded
                 let temp = self.builder.build_load(value.clone(), var_type.clone())?;
                 Ok(Value::Temp(temp))
             } else if self.parameter_variables.contains(name) && var_type.is_pointer() {
-                // This is a pointer parameter that hasn't been reassigned
-                // Use it directly without loading
-                Ok(value.clone())
+                // This is a pointer parameter - must be a fat pointer
+                Ok(var_info.as_fat_ptr())
             } else {
                 // Check if this is a pointer type (variable that needs to be loaded)
                 match var_type {
-                    IrType::Ptr(element_type) => {
+                    IrType::FatPtr(element_type) => {
                         // Check if this is an array variable
-                        // Arrays decay to pointers when used as rvalues
+                        // Arrays decay to fat pointers when used as rvalues
                         if self.array_variables.contains(name) {
-                            // Arrays decay to pointers when used as rvalues
-                            Ok(value.clone())
+                            // Arrays decay to fat pointers
+                            Ok(var_info.as_fat_ptr())
                         } else if element_type.is_pointer() {
-                            // This is a pointer to a pointer (like an alloca of a pointer parameter)
-                            // Load the pointer value
+                            // This is a pointer to a pointer
+                            // Load the pointer value and wrap as fat pointer
                             let temp = self.builder.build_load(value.clone(), *element_type.clone())?;
-                            Ok(Value::Temp(temp))
+                            Ok(Value::FatPtr(FatPointer {
+                                addr: Box::new(Value::Temp(temp)),
+                                bank: match var_info.bank {
+                                    Some(BankTag::Global) => IrBankTag::Global,
+                                    Some(BankTag::Stack) => IrBankTag::Stack,
+                                    _ => IrBankTag::Stack,
+                                },
+                            }))
                         } else {
                             // Regular pointer variable (local or global), load its value
                             let temp = self.builder.build_load(value.clone(), *element_type.clone())?;
@@ -171,7 +187,7 @@ impl<'a> ExpressionGenerator<'a> {
                         Type::Array { element_type, .. } => {
                             convert_type(element_type, left.span.start.clone())?
                         }
-                        Type::Pointer(target) => {
+                        Type::Pointer { target, .. } => {
                             convert_type(target, left.span.start.clone())?
                         }
                         _ => IrType::I16 // Default to i16 for int
@@ -181,10 +197,13 @@ impl<'a> ExpressionGenerator<'a> {
                 };
                 
                 // Use GetElementPtr for proper array indexing
+                // Note: For bank-aware GEP, we need to ensure the backend handles bank overflow
+                // The backend should check: (base_addr + index * elem_size) / bank_size
+                // and adjust the bank register if needed
                 let addr = self.builder.build_pointer_offset(
                     base_ptr,
                     index,
-                    IrType::Ptr(Box::new(element_type.clone()))
+                    IrType::FatPtr(Box::new(element_type.clone()))
                 )?;
                 
                 // Load from the calculated address
@@ -241,7 +260,7 @@ impl<'a> ExpressionGenerator<'a> {
                         let result = self.builder.build_pointer_offset(
                             ptr_val,
                             final_offset,
-                            IrType::Ptr(Box::new(IrType::I16))
+                            IrType::FatPtr(Box::new(IrType::I16))
                         )?;
                         Ok(result)
                     } else if !left_is_ptr && right_is_ptr && op == BinaryOp::Add {
@@ -252,7 +271,7 @@ impl<'a> ExpressionGenerator<'a> {
                         let result = self.builder.build_pointer_offset(
                             ptr_val,
                             offset_val,
-                            IrType::Ptr(Box::new(IrType::I16))
+                            IrType::FatPtr(Box::new(IrType::I16))
                         )?;
                         Ok(result)
                     } else if left_is_ptr && right_is_ptr && op == BinaryOp::Sub {
@@ -348,6 +367,162 @@ impl<'a> ExpressionGenerator<'a> {
     }
     
     /// Generate function call
+    /// Generate a fat pointer value for an expression
+    fn generate_fat_pointer(&mut self, expr: &Expression) -> Result<Value, CompilerError> {
+        match &expr.kind {
+            ExpressionKind::Identifier { name, .. } => {
+                // Look up the variable and get its fat pointer representation
+                if let Some(var_info) = self.variables.get(name) {
+                    Ok(var_info.as_fat_ptr())
+                } else {
+                    Err(CodegenError::InternalError {
+                        message: format!("Unknown variable '{}'", name),
+                        location: expr.span.start.clone(),
+                    }.into())
+                }
+            }
+            ExpressionKind::Unary { op: UnaryOp::AddressOf, operand } => {
+                // Address-of operation - create fat pointer
+                let addr_val = self.generate(operand)?;
+                let bank = self.determine_bank_for_operand(operand)?;
+                Ok(Value::FatPtr(FatPointer {
+                    addr: Box::new(addr_val),
+                    bank,
+                }))
+            }
+            _ => {
+                // For other expressions, generate normally and wrap in fat pointer
+                let val = self.generate(expr)?;
+                // Try to determine bank from expression type
+                if let Some(Type::Pointer { bank, .. }) = &expr.expr_type {
+                    let ir_bank = match bank {
+                        Some(BankTag::Global) => IrBankTag::Global,
+                        Some(BankTag::Stack) => IrBankTag::Stack,
+                        _ => IrBankTag::Stack, // Default to stack
+                    };
+                    Ok(Value::FatPtr(FatPointer {
+                        addr: Box::new(val),
+                        bank: ir_bank,
+                    }))
+                } else {
+                    Ok(val)
+                }
+            }
+        }
+    }
+    
+    /// Determine the bank for an operand
+    fn determine_bank_for_operand(&self, operand: &Expression) -> Result<IrBankTag, CompilerError> {
+        match &operand.kind {
+            ExpressionKind::Identifier { name, .. } => {
+                if let Some(var_info) = self.variables.get(name) {
+                    match var_info.bank {
+                        Some(BankTag::Global) => Ok(IrBankTag::Global),
+                        Some(BankTag::Stack) => Ok(IrBankTag::Stack),
+                        _ => Ok(IrBankTag::Stack), // Default to stack
+                    }
+                } else {
+                    Ok(IrBankTag::Stack)
+                }
+            }
+            _ => Ok(IrBankTag::Stack), // Default to stack
+        }
+    }
+    
+    /// Get the bank register/value for a pointer value
+    fn get_bank_for_value(&self, value: &Value, expr: &Expression) -> Result<Value, CompilerError> {
+        // Check the expression kind to determine the bank
+        match &expr.kind {
+            ExpressionKind::Identifier { name, .. } => {
+                // Look up the variable's bank information
+                if let Some(var_info) = self.variables.get(name) {
+                    match var_info.bank {
+                        Some(BankTag::Global) => Ok(Value::Constant(0)),
+                        Some(BankTag::Stack) => Ok(Value::Constant(1)),
+                        Some(BankTag::Heap) => Ok(Value::Constant(2)),
+                        Some(BankTag::Unknown) => {
+                            // For unknown banks, we need to track them at runtime
+                            // Look for a stored bank register value for this pointer
+                            // When a pointer parameter is passed with unknown bank, we store it
+                            // as a separate temp that tracks the bank value
+                            let bank_var_name = format!("{}_bank", name);
+                            if let Some(bank_info) = self.variables.get(&bank_var_name) {
+                                // Use the stored bank value
+                                Ok(bank_info.value.clone())
+                            } else {
+                                // This shouldn't happen if we're properly tracking banks
+                                return Err(CodegenError::InternalError {
+                                    message: format!("Pointer '{}' has unknown bank without tracking. Internal compiler error.", name),
+                                    location: expr.span.start.clone(),
+                                }.into());
+                            }
+                        }
+                        Some(BankTag::Mixed) => {
+                            return Err(CodegenError::InternalError {
+                                message: format!("Pointer '{}' has mixed bank tags. Cannot determine bank at compile time.", name),
+                                location: expr.span.start.clone(),
+                            }.into());
+                        }
+                        None => {
+                            // No bank info - this shouldn't happen for pointers
+                            return Err(CodegenError::InternalError {
+                                message: format!("Pointer '{}' missing bank information", name),
+                                location: expr.span.start.clone(),
+                            }.into());
+                        }
+                    }
+                } else {
+                    return Err(CodegenError::InternalError {
+                        message: format!("Unknown variable '{}'", name),
+                        location: expr.span.start.clone(),
+                    }.into());
+                }
+            }
+            ExpressionKind::Unary { op: UnaryOp::AddressOf, operand } => {
+                // Address-of operation - determine bank from operand
+                self.get_bank_for_address_of(operand)
+            }
+            _ => {
+                // For other expressions, we need to analyze the type
+                if let Some(Type::Pointer { bank, .. }) = &expr.expr_type {
+                    match bank {
+                        Some(BankTag::Global) => Ok(Value::Constant(0)),
+                        Some(BankTag::Stack) => Ok(Value::Constant(1)),
+                        Some(BankTag::Heap) => Ok(Value::Constant(2)),
+                        _ => Err(CodegenError::InternalError {
+                            message: "Cannot determine bank for pointer expression".to_string(),
+                            location: expr.span.start.clone(),
+                        }.into())
+                    }
+                } else {
+                    Err(CodegenError::InternalError {
+                        message: "Expression is not a pointer type".to_string(),
+                        location: expr.span.start.clone(),
+                    }.into())
+                }
+            }
+        }
+    }
+    
+    /// Determine bank for address-of operation
+    fn get_bank_for_address_of(&self, operand: &Expression) -> Result<Value, CompilerError> {
+        match &operand.kind {
+            ExpressionKind::Identifier { name, .. } => {
+                // Check if it's a local or global variable
+                if let Some(var_info) = self.variables.get(name) {
+                    match &var_info.value {
+                        Value::Global(_) => Ok(Value::Constant(0)), // Global bank
+                        Value::Temp(_) => Ok(Value::Constant(1)),   // Stack bank
+                        _ => Ok(Value::Constant(1))                 // Default to stack
+                    }
+                } else {
+                    Ok(Value::Constant(1)) // Default to stack for unknowns
+                }
+            }
+            _ => Ok(Value::Constant(1)) // Default to stack
+        }
+    }
+
     pub fn generate_function_call(&mut self, function: &Expression, arguments: &[Expression]) 
         -> Result<Value, CompilerError> {
         // Get function value
@@ -367,7 +542,16 @@ impl<'a> ExpressionGenerator<'a> {
         // Generate arguments
         let mut arg_values = Vec::new();
         for arg in arguments {
-            arg_values.push(self.generate(arg)?);
+            // Check if this is a pointer type that needs fat pointer handling
+            if let Some(Type::Pointer { .. }) = &arg.expr_type {
+                // Generate as fat pointer
+                let fat_ptr = self.generate_fat_pointer(arg)?;
+                arg_values.push(fat_ptr);
+            } else {
+                // Non-pointer argument, generate normally
+                let arg_val = self.generate(arg)?;
+                arg_values.push(arg_val);
+            }
         }
         
         // Get return type from the function type
@@ -405,7 +589,7 @@ impl<'a> ExpressionGenerator<'a> {
         // Handle pointer dereferencing if needed
         let struct_type = if is_pointer {
             match obj_type {
-                Type::Pointer(inner) => &**inner,
+                Type::Pointer { target, .. } => &**target,
                 _ => {
                     return Err(CodegenError::InternalError {
                         message: format!("Expected pointer type for -> operator, found {:?}", obj_type),
@@ -471,7 +655,7 @@ impl<'a> ExpressionGenerator<'a> {
         let field_addr = if offset > 0 {
             let offset_val = Value::Constant(offset as i64);
             let temp = self.builder.build_binary(IrBinaryOp::Add, base_addr, offset_val, 
-                IrType::Ptr(Box::new(IrType::I16)))?;
+                IrType::FatPtr(Box::new(IrType::I16)))?;
             Value::Temp(temp)
         } else {
             base_addr
@@ -487,7 +671,8 @@ impl<'a> ExpressionGenerator<'a> {
     pub fn generate_lvalue(&mut self, expr: &Expression) -> Result<Value, CompilerError> {
         match &expr.kind {
             ExpressionKind::Identifier { name, .. } => {
-                if let Some((value, _)) = self.variables.get(name) {
+                if let Some(var_info) = self.variables.get(name) {
+                    let value = &var_info.value;
                     match value {
                         Value::Global(_) => Ok(value.clone()), // Global variables are already addresses
                         Value::Temp(_) => Ok(value.clone()),    // Local variables
@@ -520,7 +705,7 @@ impl<'a> ExpressionGenerator<'a> {
                         Type::Array { element_type, .. } => {
                             convert_type(element_type, left.span.start.clone())?
                         }
-                        Type::Pointer(target) => {
+                        Type::Pointer { target, .. } => {
                             convert_type(target, left.span.start.clone())?
                         }
                         _ => IrType::I16 // Default to i16 for int
@@ -533,7 +718,7 @@ impl<'a> ExpressionGenerator<'a> {
                 let addr = self.builder.build_pointer_offset(
                     base_ptr,
                     index,
-                    IrType::Ptr(Box::new(element_type))
+                    IrType::FatPtr(Box::new(element_type))
                 )?;
                 
                 Ok(addr)
@@ -565,7 +750,7 @@ impl<'a> ExpressionGenerator<'a> {
         // Handle pointer dereferencing if needed
         let struct_type = if is_pointer {
             match obj_type {
-                Type::Pointer(inner) => &**inner,
+                Type::Pointer { target, .. } => &**target,
                 _ => {
                     return Err(CodegenError::InternalError {
                         message: format!("Expected pointer type for -> operator, found {:?}", obj_type),
@@ -630,7 +815,7 @@ impl<'a> ExpressionGenerator<'a> {
         if offset > 0 {
             let offset_val = Value::Constant(offset as i64);
             let temp = self.builder.build_binary(IrBinaryOp::Add, base_addr, offset_val, 
-                IrType::Ptr(Box::new(IrType::I16)))?;
+                IrType::FatPtr(Box::new(IrType::I16)))?;
             Ok(Value::Temp(temp))
         } else {
             Ok(base_addr)

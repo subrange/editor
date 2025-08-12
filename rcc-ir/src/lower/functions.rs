@@ -31,7 +31,7 @@ impl ModuleLowerer {
         let mut stack_param_offset = 2; // After saved RA and old FP
 
         for (param_id, param_type) in function.parameters.iter() {
-            if matches!(param_type, IrType::Ptr(_)) {
+            if matches!(param_type, IrType::FatPtr(_)) {
                 // Pointer parameter - receives as fat pointer (addr, bank)
                 if next_param_reg_idx < 5 {
                     // Can fit both parts in registers

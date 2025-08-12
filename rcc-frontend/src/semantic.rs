@@ -4,7 +4,7 @@
 //! on the AST produced by the parser.
 
 use crate::ast::*;
-use rcc_common::{CompilerError, SymbolTable, SymbolId, Symbol, SourceLocation};
+use rcc_common::{CompilerError, SymbolTable, SymbolId, Symbol, SourceLocation, StorageClass as CommonStorageClass};
 use std::collections::HashMap;
 
 /// Semantic analysis errors
@@ -287,9 +287,12 @@ impl SemanticAnalyzer {
                     ty.clone()
                 }
             }
-            Type::Pointer(inner) => {
+            Type::Pointer { target, bank } => {
                 // Recursively resolve pointed-to type
-                Type::Pointer(Box::new(self.resolve_type(inner)))
+                Type::Pointer { 
+                    target: Box::new(self.resolve_type(target)),
+                    bank: *bank,
+                }
             }
             Type::Array { element_type, size } => {
                 // Recursively resolve element type
@@ -836,7 +839,12 @@ impl SemanticAnalyzer {
             
             UnaryOp::AddressOf => {
                 if self.is_lvalue(operand) {
-                    Ok(Type::Pointer(Box::new(operand_type.clone())))
+                    // Determine bank based on operand
+                    let bank = self.determine_bank_for_address_of(operand);
+                    Ok(Type::Pointer { 
+                        target: Box::new(operand_type.clone()),
+                        bank,
+                    })
                 } else {
                     Err(SemanticError::InvalidOperation {
                         operation: "address-of".to_string(),
@@ -923,6 +931,50 @@ impl SemanticAnalyzer {
         } else {
             // Use arithmetic promotion rules
             self.arithmetic_result_type(left, right)
+        }
+    }
+    
+    /// Determine the bank tag for address-of operations
+    fn determine_bank_for_address_of(&self, operand: &Expression) -> Option<BankTag> {
+        match &operand.kind {
+            ExpressionKind::Identifier { symbol_id, .. } => {
+                if let Some(id) = symbol_id {
+                    if let Some(symbol) = self.symbol_table.get_symbol(*id) {
+                        // Local variables are on the stack
+                        if matches!(symbol.storage_class, CommonStorageClass::Auto | CommonStorageClass::Register) {
+                            return Some(BankTag::Stack);
+                        }
+                        // Static and extern variables are global
+                        if matches!(symbol.storage_class, CommonStorageClass::Static | CommonStorageClass::Extern) {
+                            return Some(BankTag::Global);
+                        }
+                    }
+                }
+                None
+            }
+            ExpressionKind::Member { .. } => {
+                // For struct members, inherit the bank from the struct
+                None // We'll need more context to determine this
+            }
+            ExpressionKind::Binary { op: BinaryOp::Index, left, .. } => {
+                // Array indexing inherits bank from array
+                if let Some(arr_type) = &left.expr_type {
+                    if let Type::Pointer { bank, .. } = arr_type {
+                        return *bank;
+                    }
+                }
+                None
+            }
+            ExpressionKind::Unary { op: UnaryOp::Dereference, operand } => {
+                // Dereferencing a pointer - bank depends on the pointer's bank
+                if let Some(ptr_type) = &operand.expr_type {
+                    if let Type::Pointer { bank, .. } = ptr_type {
+                        return *bank;
+                    }
+                }
+                None
+            }
+            _ => None,
         }
     }
 }

@@ -10,6 +10,28 @@ use std::fmt;
 /// Unique identifier for AST nodes (useful for debugging and analysis)
 pub type NodeId = u32;
 
+/// Memory bank tag for fat pointers
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BankTag {
+    Global = 0,  // .rodata/.data
+    Stack = 1,   // frame/alloca
+    Heap = 2,    // Reserved for future heap
+    Unknown,     // Parameter or loaded pointer
+    Mixed,       // Can be different banks on different paths
+}
+
+impl fmt::Display for BankTag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BankTag::Global => write!(f, "global"),
+            BankTag::Stack => write!(f, "stack"),
+            BankTag::Heap => write!(f, "heap"),
+            BankTag::Unknown => write!(f, "unknown"),
+            BankTag::Mixed => write!(f, "mixed"),
+        }
+    }
+}
+
 /// C99 type system
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
@@ -32,8 +54,11 @@ pub enum Type {
     Long,
     UnsignedLong,
     
-    /// Pointer to another type
-    Pointer(Box<Type>),
+    /// Pointer to another type with optional bank information
+    Pointer {
+        target: Box<Type>,
+        bank: Option<BankTag>,
+    },
     
     /// Array type with optional size
     Array {
@@ -82,7 +107,7 @@ impl Type {
             Type::Short | Type::UnsignedShort => Some(2),
             Type::Int | Type::UnsignedInt => Some(2), // 16-bit int on Ripple
             Type::Long | Type::UnsignedLong => Some(4),
-            Type::Pointer(_) => Some(2), // 16-bit pointers in MVP
+            Type::Pointer { .. } => Some(4), // Fat pointers: 2 bytes address + 2 bytes bank
             Type::Array { element_type, size: Some(count) } => {
                 element_type.size_in_bytes().map(|elem_size| elem_size * count)
             }
@@ -129,14 +154,23 @@ impl Type {
     
     /// Check if type is pointer
     pub fn is_pointer(&self) -> bool {
-        matches!(self, Type::Pointer(_) | Type::Array { .. })
+        matches!(self, Type::Pointer { .. } | Type::Array { .. })
     }
     
     /// Get pointer target type
     pub fn pointer_target(&self) -> Option<&Type> {
         match self {
-            Type::Pointer(target) => Some(target),
+            Type::Pointer { target, .. } => Some(target),
             Type::Array { element_type, .. } => Some(element_type),
+            _ => None,
+        }
+    }
+    
+    /// Get pointer bank tag
+    pub fn pointer_bank(&self) -> Option<BankTag> {
+        match self {
+            Type::Pointer { bank, .. } => *bank,
+            Type::Array { .. } => None, // Arrays don't have explicit bank (context-dependent)
             _ => None,
         }
     }
@@ -152,13 +186,13 @@ impl Type {
             (a, b) if a.is_integer() && b.is_integer() => true,
             
             // Pointer conversions
-            (Type::Pointer(a), Type::Pointer(b)) => {
+            (Type::Pointer { target: a, .. }, Type::Pointer { target: b, .. }) => {
                 // void* is compatible with any pointer
                 matches!(a.as_ref(), Type::Void) || matches!(b.as_ref(), Type::Void) || a == b
             }
             
             // Array to pointer decay
-            (Type::Pointer(target), Type::Array { element_type, .. }) => target == element_type,
+            (Type::Pointer { target, .. }, Type::Array { element_type, .. }) => target == element_type,
             
             _ => false,
         }
@@ -179,7 +213,13 @@ impl fmt::Display for Type {
             Type::UnsignedInt => write!(f, "unsigned int"),
             Type::Long => write!(f, "long"),
             Type::UnsignedLong => write!(f, "unsigned long"),
-            Type::Pointer(target) => write!(f, "{}*", target),
+            Type::Pointer { target, bank } => {
+                write!(f, "{}*", target)?;
+                if let Some(bank) = bank {
+                    write!(f, "@{}", bank)?;
+                }
+                Ok(())
+            },
             Type::Array { element_type, size: Some(n) } => write!(f, "{}[{}]", element_type, n),
             Type::Array { element_type, size: None } => write!(f, "{}[]", element_type),
             Type::Function { return_type, parameters, is_variadic } => {
@@ -634,7 +674,7 @@ mod tests {
         assert_eq!(Type::Char.size_in_bytes(), Some(1));
         assert_eq!(Type::Int.size_in_bytes(), Some(2)); // 16-bit int
         assert_eq!(Type::Long.size_in_bytes(), Some(4)); // 32-bit long
-        assert_eq!(Type::Pointer(Box::new(Type::Int)).size_in_bytes(), Some(2)); // 16-bit pointer
+        assert_eq!(Type::Pointer { target: Box::new(Type::Int), bank: None }.size_in_bytes(), Some(4)); // Fat pointer
         
         let array_type = Type::Array { 
             element_type: Box::new(Type::Int), 
@@ -648,7 +688,7 @@ mod tests {
         assert!(Type::Int.is_integer());
         assert!(Type::Int.is_signed_integer());
         assert!(!Type::UnsignedInt.is_signed_integer());
-        assert!(Type::Pointer(Box::new(Type::Int)).is_pointer());
+        assert!(Type::Pointer { target: Box::new(Type::Int), bank: None }.is_pointer());
         assert!(!Type::Int.is_pointer());
     }
 
@@ -656,8 +696,8 @@ mod tests {
     fn test_type_compatibility() {
         let int_type = Type::Int;
         let uint_type = Type::UnsignedInt;
-        let int_ptr = Type::Pointer(Box::new(Type::Int));
-        let void_ptr = Type::Pointer(Box::new(Type::Void));
+        let int_ptr = Type::Pointer { target: Box::new(Type::Int), bank: None };
+        let void_ptr = Type::Pointer { target: Box::new(Type::Void), bank: None };
         
         // Integer types are compatible
         assert!(int_type.is_assignable_from(&uint_type));
@@ -709,7 +749,8 @@ mod tests {
     #[test]
     fn test_type_display() {
         assert_eq!(format!("{}", Type::Int), "int");
-        assert_eq!(format!("{}", Type::Pointer(Box::new(Type::Char))), "char*");
+        assert_eq!(format!("{}", Type::Pointer { target: Box::new(Type::Char), bank: None }), "char*");
+        assert_eq!(format!("{}", Type::Pointer { target: Box::new(Type::Int), bank: Some(BankTag::Stack) }), "int*@stack");
         assert_eq!(format!("{}", Type::Array { 
             element_type: Box::new(Type::Int), 
             size: Some(10) 
