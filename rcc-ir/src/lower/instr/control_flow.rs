@@ -8,15 +8,13 @@ impl ModuleLowerer {
         // Unconditional jump to label
         // Use BEQ R0, R0, label (always true) as unconditional jump
         let func_name = self
-            .current_function
-            .as_ref()
-            .map(|f| f.clone())
+            .current_function.clone()
             .unwrap_or_else(|| "unknown".to_string());
 
         self.emit(AsmInst::Beq(
             Reg::R0,
             Reg::R0,
-            format!("{}_L{}", func_name, target),
+            format!("{func_name}_L{target}"),
         ));
 
         Ok(())
@@ -32,9 +30,7 @@ impl ModuleLowerer {
         let cond_reg = self.get_value_register(condition)?;
 
         let func_name = self
-            .current_function
-            .as_ref()
-            .map(|f| f.clone())
+            .current_function.clone()
             .unwrap_or_else(|| "unknown".to_string());
 
         // Branch if condition is non-zero (true)
@@ -42,7 +38,7 @@ impl ModuleLowerer {
         self.emit(AsmInst::Bne(
             cond_reg,
             Reg::R0,
-            format!("{}_L{}", func_name, true_label),
+            format!("{func_name}_L{true_label}"),
         ));
 
         // If we fall through (condition was zero/false), jump to false label
@@ -50,7 +46,7 @@ impl ModuleLowerer {
         self.emit(AsmInst::Beq(
             Reg::R0,
             Reg::R0,
-            format!("{}_L{}", func_name, false_label),
+            format!("{func_name}_L{false_label}"),
         ));
 
         Ok(())

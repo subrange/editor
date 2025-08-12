@@ -69,8 +69,8 @@ impl ModuleLowerer {
                 }
                 // Registers will be freed at statement boundary
             } else {
-                self.emit(AsmInst::Comment(format!("Store to undefined global @{}", name)));
-                Err(CompilerError::CodegenError {location: SourceLocation::dummy(), message: format!("Undefined global variable: {}", name)})
+                self.emit(AsmInst::Comment(format!("Store to undefined global @{name}")));
+                Err(CompilerError::CodegenError {location: SourceLocation::dummy(), message: format!("Undefined global variable: {name}")})
             }
         } else {
             // Get ptr register first
@@ -115,7 +115,7 @@ impl ModuleLowerer {
                 }
 
                 // Store address - ptr_reg is still pinned and valid
-                self.emit(AsmInst::Store(value_reg, preserved_bank.clone(), ptr_reg));
+                self.emit(AsmInst::Store(value_reg, preserved_bank, ptr_reg));
                 
                 // NOW unpin the pointer register after we've used it
                 self.reg_alloc.unpin_value(&ptr_pin_key);
@@ -191,7 +191,7 @@ impl ModuleLowerer {
                 }
 
                 // Store the bank tag
-                self.emit(AsmInst::Store(bank_reg, preserved_bank.clone(), next_addr));
+                self.emit(AsmInst::Store(bank_reg, preserved_bank, next_addr));
                 
                 Ok(())
             } else {

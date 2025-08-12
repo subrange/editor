@@ -207,7 +207,7 @@ impl ModuleLowerer {
             // Push each argument onto the stack
             for (i, arg_reg) in stack_args.iter().enumerate() {
                 let offset = i as i16;
-                let addr_reg = self.get_reg(format!("stack_arg_addr_{}", i));
+                let addr_reg = self.get_reg(format!("stack_arg_addr_{i}"));
                 self.emit(AsmInst::AddI(addr_reg, Reg::R14, offset));
                 self.emit(AsmInst::Store(*arg_reg, Reg::R13, addr_reg));
             }

@@ -48,10 +48,10 @@ pub enum Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Temp(id) => write!(f, "%{}", id),
-            Value::Constant(val) => write!(f, "{}", val),
-            Value::Global(name) => write!(f, "@{}", name),
-            Value::Function(name) => write!(f, "@{}", name),
+            Value::Temp(id) => write!(f, "%{id}"),
+            Value::Constant(val) => write!(f, "{val}"),
+            Value::Global(name) => write!(f, "@{name}"),
+            Value::Function(name) => write!(f, "@{name}"),
             Value::FatPtr(ptr) => write!(f, "{{addr: {}, bank: {:?}}}", ptr.addr, ptr.bank),
             Value::Undef => write!(f, "undef"),
         }
@@ -150,18 +150,18 @@ impl fmt::Display for IrType {
             IrType::I16 => write!(f, "i16"),
             IrType::I32 => write!(f, "i32"),
             IrType::I64 => write!(f, "i64"),
-            IrType::FatPtr(target) => write!(f, "{}*", target),
-            IrType::Array { size, element_type } => write!(f, "[{} x {}]", size, element_type),
+            IrType::FatPtr(target) => write!(f, "{target}*"),
+            IrType::Array { size, element_type } => write!(f, "[{size} x {element_type}]"),
             IrType::Function { return_type, param_types, is_vararg } => {
-                write!(f, "{} (", return_type)?;
+                write!(f, "{return_type} (")?;
                 for (i, param) in param_types.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
-                    write!(f, "{}", param)?;
+                    write!(f, "{param}")?;
                 }
                 if *is_vararg { write!(f, ", ...")?; }
                 write!(f, ")")
             }
-            IrType::Struct { name: Some(name), .. } => write!(f, "%{}", name),
+            IrType::Struct { name: Some(name), .. } => write!(f, "%{name}"),
             IrType::Struct { name: None, .. } => write!(f, "%struct"),
             IrType::Label => write!(f, "label"),
         }
@@ -213,7 +213,7 @@ impl fmt::Display for IrBinaryOp {
             IrBinaryOp::Ugt => "ugt",
             IrBinaryOp::Uge => "uge",
         };
-        write!(f, "{}", op_str)
+        write!(f, "{op_str}")
     }
 }
 
@@ -240,7 +240,7 @@ impl fmt::Display for IrUnaryOp {
             IrUnaryOp::PtrToInt => "ptrtoint",
             IrUnaryOp::IntToPtr => "inttoptr",
         };
-        write!(f, "{}", op_str)
+        write!(f, "{op_str}")
     }
 }
 
@@ -365,22 +365,22 @@ impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Instruction::Binary { result, op, lhs, rhs, result_type } => {
-                write!(f, "%{} = {} {} {}, {}", result, op, result_type, lhs, rhs)
+                write!(f, "%{result} = {op} {result_type} {lhs}, {rhs}")
             }
             Instruction::Unary { result, op, operand, result_type } => {
-                write!(f, "%{} = {} {} {} to {}", result, op, result_type, operand, result_type)
+                write!(f, "%{result} = {op} {result_type} {operand} to {result_type}")
             }
             Instruction::Load { result, ptr, result_type } => {
-                write!(f, "%{} = load {}, {}* {}", result, result_type, result_type, ptr)
+                write!(f, "%{result} = load {result_type}, {result_type}* {ptr}")
             }
             Instruction::Store { value, ptr } => {
                 // For stores, we print: store <value>, <type>* <ptr>
-                write!(f, "store {}, i16* {}", value, ptr)
+                write!(f, "store {value}, i16* {ptr}")
             }
             Instruction::GetElementPtr { result, ptr, indices, result_type: _ } => {
-                write!(f, "%{} = getelementptr {}", result, ptr)?;
+                write!(f, "%{result} = getelementptr {ptr}")?;
                 for index in indices {
-                    write!(f, ", {}", index)?;
+                    write!(f, ", {index}")?;
                 }
                 // Bank info is in the ptr if it's a FatPtr
                 if let Value::FatPtr(ref fp) = ptr {
@@ -389,60 +389,59 @@ impl fmt::Display for Instruction {
                 Ok(())
             }
             Instruction::Alloca { result, alloc_type, count, .. } => {
-                write!(f, "%{} = alloca {}", result, alloc_type)?;
+                write!(f, "%{result} = alloca {alloc_type}")?;
                 if let Some(count) = count {
-                    write!(f, ", {}", count)?;
+                    write!(f, ", {count}")?;
                 }
                 Ok(())
             }
             Instruction::Call { result, function, args, .. } => {
                 if let Some(result) = result {
-                    write!(f, "%{} = ", result)?;
+                    write!(f, "%{result} = ")?;
                 }
-                write!(f, "call {}(", function)?;
+                write!(f, "call {function}(")?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
-                    write!(f, "{}", arg)?;
+                    write!(f, "{arg}")?;
                 }
                 write!(f, ")")
             }
-            Instruction::Return(Some(value)) => write!(f, "ret {}", value),
+            Instruction::Return(Some(value)) => write!(f, "ret {value}"),
             Instruction::Return(None) => write!(f, "ret void"),
-            Instruction::Branch(label) => write!(f, "br label %{}", label),
+            Instruction::Branch(label) => write!(f, "br label %{label}"),
             Instruction::BranchCond { condition, true_label, false_label } => {
-                write!(f, "br {} {}, label %{}, label %{}", condition, condition, true_label, false_label)
+                write!(f, "br {condition} {condition}, label %{true_label}, label %{false_label}")
             }
             Instruction::Phi { result, incoming, result_type } => {
-                write!(f, "%{} = phi {} ", result, result_type)?;
+                write!(f, "%{result} = phi {result_type} ")?;
                 for (i, (value, label)) in incoming.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
-                    write!(f, "[{}, %{}]", value, label)?;
+                    write!(f, "[{value}, %{label}]")?;
                 }
                 Ok(())
             }
             Instruction::Cast { result, value, target_type } => {
-                write!(f, "%{} = cast {} to {}", result, value, target_type)
+                write!(f, "%{result} = cast {value} to {target_type}")
             }
             Instruction::Select { result, condition, true_value, false_value, result_type } => {
-                write!(f, "%{} = select {} {}, {} {}, {} {}", 
-                    result, result_type, condition, result_type, true_value, result_type, false_value)
+                write!(f, "%{result} = select {result_type} {condition}, {result_type} {true_value}, {result_type} {false_value}")
             }
             Instruction::Intrinsic { result, intrinsic, args, .. } => {
                 if let Some(result) = result {
-                    write!(f, "%{} = ", result)?;
+                    write!(f, "%{result} = ")?;
                 }
-                write!(f, "call @{}(", intrinsic)?;
+                write!(f, "call @{intrinsic}(")?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
-                    write!(f, "{}", arg)?;
+                    write!(f, "{arg}")?;
                 }
                 write!(f, ")")
             }
             Instruction::DebugLoc { location } => {
                 write!(f, "!dbg !{}", location.line)
             }
-            Instruction::InlineAsm { assembly } => write!(f, "asm \"{}\"", assembly),
-            Instruction::Comment(text) => write!(f, "; {}", text),
+            Instruction::InlineAsm { assembly } => write!(f, "asm \"{assembly}\""),
+            Instruction::Comment(text) => write!(f, "; {text}"),
         }
     }
 }
@@ -475,7 +474,7 @@ impl BasicBlock {
     }
     
     pub fn has_terminator(&self) -> bool {
-        self.instructions.last().map_or(false, |instr| {
+        self.instructions.last().is_some_and(|instr| {
             matches!(instr, 
                 Instruction::Return(_) | 
                 Instruction::Branch(_) | 
@@ -750,7 +749,7 @@ impl IrBuilder {
         let result = self.new_temp();
         
         // Use provided bank or extract from input pointer
-        let actual_bank = bank.unwrap_or_else(|| {
+        let actual_bank = bank.unwrap_or({
             if let Value::FatPtr(ref fat_ptr) = ptr {
                 fat_ptr.bank
             } else {

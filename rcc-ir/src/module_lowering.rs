@@ -72,6 +72,12 @@ pub(crate) enum Location {
     Spilled(i16), // Offset from FP
 }
 
+impl Default for ModuleLowerer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModuleLowerer {
 
     pub(crate) fn emit(&mut self, i: AsmInst) { self.instructions.push(i) }
@@ -95,7 +101,7 @@ impl ModuleLowerer {
     /// Automatically increments the label counter and includes function context
     pub(crate) fn generate_label(&mut self, prefix: &str) -> String {
         let func_prefix = self.current_function.as_ref()
-            .map(|f| format!("{}_", f))
+            .map(|f| format!("{f}_"))
             .unwrap_or_default();
         let label = format!("{}{}_{}", func_prefix, prefix, self.label_counter);
         self.label_counter += 1;
@@ -112,8 +118,8 @@ impl ModuleLowerer {
     
     /// Generate a pair of labels for branching (e.g., for if/else)
     pub(crate) fn generate_branch_labels(&mut self, prefix: &str) -> (String, String) {
-        let true_label = self.generate_label(&format!("{}_true", prefix));
-        let false_label = self.generate_label(&format!("{}_false", prefix));
+        let true_label = self.generate_label(&format!("{prefix}_true"));
+        let false_label = self.generate_label(&format!("{prefix}_false"));
         (true_label, false_label)
     }
     
@@ -127,7 +133,7 @@ impl ModuleLowerer {
     // Keep these as static methods since they don't need the counter
     /// Format a temp ID as a string (e.g., 42 -> "t42")
     pub(crate) fn temp_name(id: u32) -> String {
-        format!("t{}", id)
+        format!("t{id}")
     }
     
     /// Get the bank temp key for a pointer temp ID
@@ -138,12 +144,12 @@ impl ModuleLowerer {
     
     /// Format a constant as a string for tracking
     fn const_name(value: i64) -> String {
-        format!("const_{}", value)
+        format!("const_{value}")
     }
     
     /// Format a global name for tracking
     fn global_name(name: &str) -> String {
-        format!("global_{}", name)
+        format!("global_{name}")
     }
     
     // Deprecated - use generate_label instead
@@ -157,8 +163,8 @@ impl ModuleLowerer {
             Value::Temp(id) => Self::temp_name(*id),
             Value::Constant(n) => Self::const_name(*n),
             Value::Global(name) => Self::global_name(name),
-            Value::Function(name) => format!("func_{}", name),
-            Value::FatPtr(components) => format!("fatptr_{:?}", components),
+            Value::Function(name) => format!("func_{name}"),
+            Value::FatPtr(components) => format!("fatptr_{components:?}"),
             Value::Undef => "undef".to_string(),
         }
     }
@@ -216,15 +222,15 @@ impl ModuleLowerer {
     }
     
     pub(crate) fn get_reg(&mut self, for_value: String) -> Reg {
-        trace!("ModuleLowerer::get_reg for '{}'", for_value);
-        self.instructions.push(AsmInst::Comment(format!("=== ModuleLowerer::get_reg for '{}' ===", for_value)));
+        trace!("ModuleLowerer::get_reg for '{for_value}'");
+        self.instructions.push(AsmInst::Comment(format!("=== ModuleLowerer::get_reg for '{for_value}' ===")));
         
         // Use the centralized allocator
         let reg = self.reg_alloc.get_reg(for_value.clone());
         
         // Check if the allocator spilled anything
         if let Some((spilled_value, spill_offset)) = self.reg_alloc.take_last_spilled() {
-            debug!("Register allocator spilled '{}' to FP+{}", spilled_value, spill_offset);
+            debug!("Register allocator spilled '{spilled_value}' to FP+{spill_offset}");
             // Update value_locations to show this value is now spilled
             self.value_locations.insert(spilled_value, Location::Spilled(spill_offset));
         }
@@ -262,10 +268,10 @@ impl ModuleLowerer {
     /// Convert a value to string for debug output
     pub(crate) fn value_to_string(&self, value: &Value) -> String {
         match value {
-            Value::Constant(n) => format!("{}", n),
-            Value::Temp(id) => format!("t{}", id),
+            Value::Constant(n) => format!("{n}"),
+            Value::Temp(id) => format!("t{id}"),
             Value::Function(name) => name.clone(),
-            Value::Global(name) => format!("@{}", name),
+            Value::Global(name) => format!("@{name}"),
             Value::FatPtr(ptr) => format!("{{addr: {}, bank: {:?}}}", self.value_to_string(&ptr.addr), ptr.bank),
             _ => "?".to_string(),
         }

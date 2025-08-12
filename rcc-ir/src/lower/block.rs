@@ -9,15 +9,14 @@ impl ModuleLowerer {
         // Add label for block if not the first one
         if block.id != 0 {
             // Generate unique label by prefixing with function name
-            let func_name = self.current_function.as_ref()
-                .map(|f| f.clone())
+            let func_name = self.current_function.clone()
                 .unwrap_or_else(|| "unknown".to_string());
             self.emit(AsmInst::Label(format!("{}_L{}", func_name, block.id)));
         }
 
         for (idx, instruction) in block.instructions.iter().enumerate() {
             // Log the instruction being processed
-            self.emit(AsmInst::Comment(format!("=== Processing instruction #{}: {:?} ===", idx, instruction)));
+            self.emit(AsmInst::Comment(format!("=== Processing instruction #{idx}: {instruction:?} ===")));
             
             self.lower_instruction(instruction)?;
 
@@ -39,7 +38,7 @@ impl ModuleLowerer {
                                     // don't free registers yet
                                     if value == &Value::Temp(*res) {
                                         // Keep registers for now
-                                        self.emit(AsmInst::Comment(format!(">>> Preserving registers: storing t{} from previous instruction", res)));
+                                        self.emit(AsmInst::Comment(format!(">>> Preserving registers: storing t{res} from previous instruction")));
                                         continue;
                                     }
                                 }

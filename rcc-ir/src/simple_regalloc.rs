@@ -37,6 +37,12 @@ pub struct SimpleRegAlloc {
     parameter_registers: std::collections::HashSet<Reg>,
 }
 
+impl Default for SimpleRegAlloc {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SimpleRegAlloc {
     /// Create a new allocator with R5-R11 available (R3 is for return value, R4 for special uses)
     pub fn new() -> Self {
@@ -56,7 +62,7 @@ impl SimpleRegAlloc {
     
     /// Mark a register as holding a parameter that should persist across statement boundaries
     pub fn mark_as_parameter(&mut self, reg: Reg) {
-        debug!("Marking {:?} as parameter register", reg);
+        debug!("Marking {reg:?} as parameter register");
         self.parameter_registers.insert(reg);
     }
     
@@ -64,23 +70,23 @@ impl SimpleRegAlloc {
     /// If all registers are in use, spills the least recently used one
     pub fn get_reg(&mut self, for_value: String) -> Reg {
         trace!("get_reg called for '{}', reg_contents: {:?}", for_value, self.reg_contents);
-        self.instructions.push(AsmInst::Comment(format!("get_reg for '{}'", for_value)));
+        self.instructions.push(AsmInst::Comment(format!("get_reg for '{for_value}'")));
         
         // Check if this value already has a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &for_value) {
-            self.instructions.push(AsmInst::Comment(format!("  {} already in register", for_value)));
+            self.instructions.push(AsmInst::Comment(format!("  {for_value} already in register")));
             return reg;
         }
         
         // Try to get a free register
         if let Some(reg) = self.free_list.pop() {
-            self.instructions.push(AsmInst::Comment(format!("  Allocated free register for {}", for_value)));
+            self.instructions.push(AsmInst::Comment(format!("  Allocated free register for {for_value}")));
             self.reg_contents.insert(reg, for_value);
             return reg;
         }
         
         // No free registers - need to spill
-        self.instructions.push(AsmInst::Comment(format!("  No free registers, need to spill for {}", for_value)));
+        self.instructions.push(AsmInst::Comment(format!("  No free registers, need to spill for {for_value}")));
         
         // Log current register contents
         for (reg, val) in &self.reg_contents {
@@ -90,7 +96,7 @@ impl SimpleRegAlloc {
                 Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
                 _ => "R?",
             };
-            self.instructions.push(AsmInst::Comment(format!("    {} contains '{}'", reg_name, val)));
+            self.instructions.push(AsmInst::Comment(format!("    {reg_name} contains '{val}'")));
         }
         
         // Pick the first non-pinned register in reg_contents
@@ -98,7 +104,7 @@ impl SimpleRegAlloc {
         let victim = self.reg_contents.iter()
             .find(|(_, val)| {
                 let is_pinned = self.pinned_values.contains(*val);
-                trace!("    Checking '{}': pinned={}", val, is_pinned);
+                trace!("    Checking '{val}': pinned={is_pinned}");
                 !is_pinned
             })
             .map(|(reg, _)| *reg)
@@ -111,11 +117,11 @@ impl SimpleRegAlloc {
             Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
             _ => "R?",
         };
-        self.instructions.push(AsmInst::Comment(format!("  Chose to spill {} from {}", victim_value, victim_name)));
+        self.instructions.push(AsmInst::Comment(format!("  Chose to spill {victim_value} from {victim_name}")));
         
         // Spill the victim
         let spill_offset = self.get_spill_slot(&victim_value);
-        self.instructions.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim_value, spill_offset)));
+        self.instructions.push(AsmInst::Comment(format!("Spilling {victim_value} to FP+{spill_offset}")));
         self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset));
         self.instructions.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
         
@@ -123,7 +129,7 @@ impl SimpleRegAlloc {
         self.last_spilled = Some((victim_value, spill_offset));
         
         // Now use this register for the new value
-        self.instructions.push(AsmInst::Comment(format!("  Now {} will contain {}", victim_name, for_value)));
+        self.instructions.push(AsmInst::Comment(format!("  Now {victim_name} will contain {for_value}")));
         self.reg_contents.insert(victim, for_value);
         victim
     }
@@ -143,7 +149,7 @@ impl SimpleRegAlloc {
         
         // Spill the victim
         let spill_offset = self.get_spill_slot(&victim_value);
-        self.instructions.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim_value, spill_offset)));
+        self.instructions.push(AsmInst::Comment(format!("Spilling {victim_value} to FP+{spill_offset}")));
         self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset));
         self.instructions.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
         
@@ -167,7 +173,7 @@ impl SimpleRegAlloc {
     
     /// Check if a value is tracked (either in register or spilled)
     pub fn is_tracked(&self, value: &str) -> bool {
-        trace!("is_tracked: Looking for '{}'", value);
+        trace!("is_tracked: Looking for '{value}'");
         trace!("  reg_contents: {:?}", self.reg_contents);
         trace!("  spill_slots: {:?}", self.spill_slots.keys().collect::<Vec<_>>());
         // Check if it's in a register
@@ -181,7 +187,7 @@ impl SimpleRegAlloc {
     /// Mark a register as containing a value without spilling
     /// This prevents the register from being chosen for spilling
     pub fn mark_in_use(&mut self, reg: Reg, value: String) {
-        debug!("mark_in_use: {:?} = {}", reg, value);
+        debug!("mark_in_use: {reg:?} = {value}");
         self.reg_contents.insert(reg, value);
         // Remove from free list if it's there
         self.free_list.retain(|&r| r != reg);
@@ -189,14 +195,14 @@ impl SimpleRegAlloc {
     
     /// Pin a value so it cannot be spilled
     pub fn pin_value(&mut self, value: String) {
-        debug!("Pinning value '{}'", value);
+        debug!("Pinning value '{value}'");
         self.pinned_values.insert(value.clone());
         trace!("  Pinned values now: {:?}", self.pinned_values);
     }
     
     /// Unpin a value, allowing it to be spilled again
     pub fn unpin_value(&mut self, value: &str) {
-        debug!("Unpinning value '{}'" , value);
+        debug!("Unpinning value '{value}'");
         self.pinned_values.remove(value);
     }
     
@@ -232,7 +238,7 @@ impl SimpleRegAlloc {
             if let Some(&victim) = victims.first() {
                 let victim_value = self.reg_contents.remove(&victim).unwrap();
                 let spill_offset = self.get_spill_slot(&victim_value);
-                insts.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim_value, spill_offset)));
+                insts.push(AsmInst::Comment(format!("Spilling {victim_value} to FP+{spill_offset}")));
                 insts.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset));
                 insts.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
                 self.reg_contents.insert(victim, value2.clone());
@@ -252,14 +258,14 @@ impl SimpleRegAlloc {
             // Spill reg1's current value
             let victim1_value = self.reg_contents.remove(&reg1).unwrap();
             let spill_offset1 = self.get_spill_slot(&victim1_value);
-            insts.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim1_value, spill_offset1)));
+            insts.push(AsmInst::Comment(format!("Spilling {victim1_value} to FP+{spill_offset1}")));
             insts.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset1));
             insts.push(AsmInst::Store(reg1, Reg::R13, Reg::R12));
             
             // Spill reg2's current value
             let victim2_value = self.reg_contents.remove(&reg2).unwrap();
             let spill_offset2 = self.get_spill_slot(&victim2_value);
-            insts.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim2_value, spill_offset2)));
+            insts.push(AsmInst::Comment(format!("Spilling {victim2_value} to FP+{spill_offset2}")));
             insts.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset2));
             insts.push(AsmInst::Store(reg2, Reg::R13, Reg::R12));
             
@@ -278,20 +284,19 @@ impl SimpleRegAlloc {
     pub fn clear_register(&mut self, reg: Reg) {
         // Don't clear parameter registers
         if self.parameter_registers.contains(&reg) {
-            trace!("clear_register: Skipping parameter register {:?}", reg);
+            trace!("clear_register: Skipping parameter register {reg:?}");
             return;
         }
         
         if let Some(val) = self.reg_contents.remove(&reg) {
-            debug!("clear_register: {:?} (contained {})", reg, val);
-            self.instructions.push(AsmInst::Comment(format!("Clearing {:?} which contained {}", reg, val)));
+            debug!("clear_register: {reg:?} (contained {val})");
+            self.instructions.push(AsmInst::Comment(format!("Clearing {reg:?} which contained {val}")));
         }
         // Add to free list if it's an allocatable register
-        if matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11) {
-            if !self.free_list.contains(&reg) {
+        if matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11)
+            && !self.free_list.contains(&reg) {
                 self.free_list.push(reg);
             }
-        }
     }
     
     /// Free a register, returning it to the free list
@@ -307,25 +312,24 @@ impl SimpleRegAlloc {
     
     /// Free a constant register - returns it to the front of free list to avoid immediate reuse
     pub fn free_const_reg(&mut self, reg: Reg) {
-        if matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11) {
-            if !self.free_list.contains(&reg) {
+        if matches!(reg, Reg::R5 | Reg::R6 | Reg::R7 | Reg::R8 | Reg::R9 | Reg::R10 | Reg::R11)
+            && !self.free_list.contains(&reg) {
                 // Insert at front to avoid immediate reuse
                 self.free_list.insert(0, reg);
             }
-        }
     }
     
     /// Reload a spilled value into a register
     pub fn reload(&mut self, value: String) -> Reg {
         // Debug: show what we're looking for and what's in registers
-        self.instructions.push(AsmInst::Comment(format!("Looking for {} in registers", value)));
+        self.instructions.push(AsmInst::Comment(format!("Looking for {value} in registers")));
         for (reg, val) in &self.reg_contents {
             let reg_name = match reg {
                 Reg::R3 => "R3", Reg::R4 => "R4", Reg::R5 => "R5",
                 Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
                 _ => "R?",
             };
-            self.instructions.push(AsmInst::Comment(format!("  {} contains {}", reg_name, val)));
+            self.instructions.push(AsmInst::Comment(format!("  {reg_name} contains {val}")));
         }
         
         // Check if already in a register
@@ -335,21 +339,21 @@ impl SimpleRegAlloc {
                 Reg::R6 => "R6", Reg::R7 => "R7", Reg::R8 => "R8",
                 _ => "R?",
             };
-            self.instructions.push(AsmInst::Comment(format!("{} found in {}", value, reg_name)));
+            self.instructions.push(AsmInst::Comment(format!("{value} found in {reg_name}")));
             return reg;
         }
         
         // Check if it was spilled
         if let Some(&offset) = self.spill_slots.get(&value) {
             let reg = self.get_reg(value.clone());
-            self.instructions.push(AsmInst::Comment(format!("Reloading {} from FP+{}", value, offset)));
+            self.instructions.push(AsmInst::Comment(format!("Reloading {value} from FP+{offset}")));
             self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, offset));
             self.instructions.push(AsmInst::Load(reg, Reg::R13, Reg::R12));
             return reg;
         }
         
         // Not spilled, just get a new register
-        self.instructions.push(AsmInst::Comment(format!("{} not found, allocating new register", value)));
+        self.instructions.push(AsmInst::Comment(format!("{value} not found, allocating new register")));
         self.get_reg(value)
     }
     
@@ -361,14 +365,14 @@ impl SimpleRegAlloc {
             let offset = self.next_spill_offset;
             self.next_spill_offset += 1;
             self.spill_slots.insert(value.to_string(), offset);
-            debug!("Allocated spill slot for '{}' at FP+{}", value, offset);
+            debug!("Allocated spill slot for '{value}' at FP+{offset}");
             offset
         }
     }
     
     /// Set the starting offset for spill slots (to avoid overlapping with user variables)
     pub fn set_spill_base(&mut self, offset: i16) {
-        debug!("Setting spill base offset to {}", offset);
+        debug!("Setting spill base offset to {offset}");
         self.next_spill_offset = offset;
     }
     

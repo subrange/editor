@@ -62,7 +62,7 @@ impl ModuleLowerer {
                     // Registers will be freed at statement boundary
                 } else {
                     // Uninitialized global
-                    self.emit(AsmInst::Comment(format!("Load from @{} (uninitialized)", name)));
+                    self.emit(AsmInst::Comment(format!("Load from @{name} (uninitialized)")));
                     
                     // Allocate the destination register
                     let result_key = Self::temp_name(*result);
@@ -86,7 +86,7 @@ impl ModuleLowerer {
                     format!("ptr_reg_{}", self.label_counter)
                 };
                 
-                self.emit(AsmInst::Comment(format!("Pinning {} in register to prevent spilling", ptr_value_name)));
+                self.emit(AsmInst::Comment(format!("Pinning {ptr_value_name} in register to prevent spilling")));
                 self.reg_alloc.pin_value(ptr_value_name.clone());
                 let bank = self.get_bank_for_pointer(ptr)?;
                 // Don't unpin yet - we still need ptr_reg for the LOAD instruction!
@@ -117,7 +117,7 @@ impl ModuleLowerer {
                     }
 
                     // Load address part
-                    self.emit(AsmInst::Load(dest_reg, bank.clone(), final_ptr_reg));
+                    self.emit(AsmInst::Load(dest_reg, bank, final_ptr_reg));
 
                     // Capture the original bank value BEFORE any allocations
                     let original_bank_value = self.reg_alloc.get_register_value(bank);
@@ -133,18 +133,18 @@ impl ModuleLowerer {
                     // FIRST: Get the bank register for the load operation
                     // The bank register tells us which memory bank the fat pointer is stored in
                     // We need to do this BEFORE allocating bank_reg to avoid register conflicts
-                    self.emit(AsmInst::Comment(format!("Checking bank register status for loading bank tag")));
+                    self.emit(AsmInst::Comment("Checking bank register status for loading bank tag".to_string()));
                     let load_bank = if let Some(ref bname) = original_bank_value.clone() {
-                        self.emit(AsmInst::Comment(format!("Bank value was: {}", bname)));
+                        self.emit(AsmInst::Comment(format!("Bank value was: {bname}")));
                         // Check if the bank register is still valid
                         if self.reg_alloc.get_register_value(bank) == Some(bname.clone()) {
                             // Still valid, use it
-                            self.emit(AsmInst::Comment(format!("Bank register still valid in {:?}", bank)));
+                            self.emit(AsmInst::Comment(format!("Bank register still valid in {bank:?}")));
                             bank
                         } else {
                             // Was spilled, try to reload it  
                             // Note: bname contains a bank value (0 or 1), not a bank register
-                            self.emit(AsmInst::Comment(format!("Bank register was spilled, reloading {}", bname)));
+                            self.emit(AsmInst::Comment(format!("Bank register was spilled, reloading {bname}")));
                             
                             // Pin the bname so it doesn't get spilled again when we allocate bank_reg
                             self.reg_alloc.pin_value(bname.clone());
@@ -152,7 +152,7 @@ impl ModuleLowerer {
                             let reloaded = self.reg_alloc.reload(bname.clone());
                             let instructions = self.reg_alloc.take_instructions();
                             self.emit_many(instructions);
-                            self.emit(AsmInst::Comment(format!("Reloaded bank value to {:?}", reloaded)));
+                            self.emit(AsmInst::Comment(format!("Reloaded bank value to {reloaded:?}")));
                             
                             // Keep it pinned until after the LOAD
                             // It will be unpinned after line 172
@@ -163,7 +163,7 @@ impl ModuleLowerer {
                     } else {
                         // No bank value tracked, we need to regenerate it
                         // Since we're loading from a pointer on the stack, it's bank 1
-                        self.emit(AsmInst::Comment(format!("No bank value tracked, generating stack bank")));
+                        self.emit(AsmInst::Comment("No bank value tracked, generating stack bank".to_string()));
                         let temp_bank_name = self.generate_temp_name("stack_bank_load");
                         let temp_bank = self.get_reg(temp_bank_name);
                         self.emit(AsmInst::LI(temp_bank, 1));

@@ -30,7 +30,7 @@ impl ModuleLowerer {
         if is_string {
             // Parse the hex-encoded string from the name
             // Format: __str_ID_HEXDATA
-            if let Some(hex_part) = global.name.split('_').last() {
+            if let Some(hex_part) = global.name.split('_').next_back() {
                 let mut addr = address;
                 let mut chars = Vec::new();
 
@@ -50,12 +50,11 @@ impl ModuleLowerer {
                         b'\r' => "\\r".to_string(),
                         b'\\' => "\\\\".to_string(),
                         c if c.is_ascii_graphic() || c == b' ' => (c as char).to_string(),
-                        c => format!("\\x{:02x}", c),
+                        c => format!("\\x{c:02x}"),
                     })
                     .collect();
 
-                self.emit(AsmInst::Comment(format!("String literal {} at address {}",
-                                                   safe_str, address)));
+                self.emit(AsmInst::Comment(format!("String literal {safe_str} at address {address}")));
                 
                 // Store each character
                 for byte in chars {

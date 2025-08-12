@@ -7,8 +7,8 @@ use crate::module_lowering::{Location, ModuleLowerer};
 
 impl ModuleLowerer {
     pub(crate) fn lower_binary(&mut self, result: &TempId, op: &IrBinaryOp, lhs: &Value, rhs: &Value) -> Result<(), CompilerError> {
-        trace!("=== Processing Binary t{} ===", result);
-        self.emit(AsmInst::Comment(format!("=== Processing Binary t{} ===", result)));
+        trace!("=== Processing Binary t{result} ===");
+        self.emit(AsmInst::Comment(format!("=== Processing Binary t{result} ===")));
 
         // CRITICAL: Implement the algorithm from more-formalized-register-spilling.md
         // 1. Calculate need() for both operands
@@ -21,7 +21,7 @@ impl ModuleLowerer {
         let rhs_need = self.calculate_need(rhs);
 
         self.emit(AsmInst::Comment(
-            format!("Binary: need(lhs)={}, need(rhs)={}", lhs_need, rhs_need)
+            format!("Binary: need(lhs)={lhs_need}, need(rhs)={rhs_need}")
         ));
 
         // Simple implementation: always evaluate left first, then right
@@ -205,13 +205,13 @@ impl ModuleLowerer {
             }
             IrBinaryOp::Ult | IrBinaryOp::Ule | IrBinaryOp::Ugt | IrBinaryOp::Uge => {
                 return Err(CompilerError::codegen_error(
-                    format!("Unsigned comparison {:?} not yet implemented", op),
+                    format!("Unsigned comparison {op:?} not yet implemented"),
                     rcc_common::SourceLocation::new_simple(0, 0),
                 ));
             }
             _ => {
                 return Err(CompilerError::codegen_error(
-                    format!("Unsupported binary operation: {:?}", op),
+                    format!("Unsupported binary operation: {op:?}"),
                     rcc_common::SourceLocation::new_simple(0, 0),
                 ));
             }

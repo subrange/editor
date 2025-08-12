@@ -12,6 +12,12 @@ use log::debug;
 
 pub struct CallingConvention {}
 
+impl Default for CallingConvention {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CallingConvention {
     pub fn new() -> Self {
         Self {}
@@ -31,7 +37,7 @@ impl CallingConvention {
         for (idx, arg) in args.into_iter().enumerate().rev() {
             match arg {
                 CallArg::Scalar(src_reg) => {
-                    insts.push(AsmInst::Comment(format!("Push arg {} (scalar)", idx)));
+                    insts.push(AsmInst::Comment(format!("Push arg {idx} (scalar)")));
                     // Push scalar value
                     insts.push(AsmInst::Store(src_reg, Reg::R13, Reg::R14));
                     insts.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
@@ -39,7 +45,7 @@ impl CallingConvention {
                 }
                 
                 CallArg::FatPointer { addr, bank } => {
-                    insts.push(AsmInst::Comment(format!("Push arg {} (fat ptr)", idx)));
+                    insts.push(AsmInst::Comment(format!("Push arg {idx} (fat ptr)")));
                     // Push bank first (higher address)
                     insts.push(AsmInst::Store(bank, Reg::R13, Reg::R14));
                     insts.push(AsmInst::AddI(Reg::R14, Reg::R14, 1));
@@ -52,7 +58,7 @@ impl CallingConvention {
         }
         
         // Return stack adjustment so caller can clean up after call
-        allocator.instructions.push(AsmInst::Comment(format!("Pushed {} words to stack", stack_offset)));
+        allocator.instructions.push(AsmInst::Comment(format!("Pushed {stack_offset} words to stack")));
         
         insts
     }
@@ -62,7 +68,7 @@ impl CallingConvention {
     pub fn emit_call(&self, func_addr: u16, func_bank: u16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
-        insts.push(AsmInst::Comment(format!("Call function at bank:{}, addr:{}", func_bank, func_addr)));
+        insts.push(AsmInst::Comment(format!("Call function at bank:{func_bank}, addr:{func_addr}")));
         
         // JAL only jumps within current bank, saving RA/RAB
         // For cross-bank calls, we need to set PCB first
@@ -114,7 +120,7 @@ impl CallingConvention {
     pub fn cleanup_stack(&self, num_args_words: i16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         if num_args_words > 0 {
-            insts.push(AsmInst::Comment(format!("Clean up {} words from stack", num_args_words)));
+            insts.push(AsmInst::Comment(format!("Clean up {num_args_words} words from stack")));
             insts.push(AsmInst::AddI(Reg::R14, Reg::R14, -num_args_words));
         }
         insts
@@ -126,9 +132,9 @@ impl CallingConvention {
         // Parameters are before the frame (negative offsets from FP)
         // They are pushed in reverse order, so param 0 is closest to FP
         let param_offset = -(index as i16 + 3); // -3 because: -1 for FP, -1 for RA, -1 for first param
-        let dest = allocator.get_reg(format!("param{}", index));
+        let dest = allocator.get_reg(format!("param{index}"));
         
-        allocator.instructions.push(AsmInst::Comment(format!("Load param {} from FP{}", index, param_offset)));
+        allocator.instructions.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));
         allocator.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, param_offset));
         allocator.instructions.push(AsmInst::Load(dest, Reg::R13, Reg::R12));
         

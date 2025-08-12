@@ -52,6 +52,12 @@ pub enum BankInfo {
     Register(Reg), // Dynamic bank in a register
 }
 
+impl Default for RegAllocV2 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RegAllocV2 {
     /// Create a new allocator with R5-R11 available
     /// R3-R4 are reserved for return values/fat pointers
@@ -96,12 +102,12 @@ impl RegAllocV2 {
                 Reg::R13  // Stack bank register
             }
             Some(BankInfo::Register(reg)) => {
-                trace!("Using {:?} for dynamic bank", reg);
+                trace!("Using {reg:?} for dynamic bank");
                 *reg
             }
             None => {
                 // Default to stack if unknown
-                debug!("No bank info for '{}', defaulting to stack", ptr_value);
+                debug!("No bank info for '{ptr_value}', defaulting to stack");
                 if !self.r13_initialized {
                     panic!("R13 not initialized! Call init_stack_bank() first");
                 }
@@ -112,7 +118,7 @@ impl RegAllocV2 {
     
     /// Set bank info for a pointer value
     pub fn set_pointer_bank(&mut self, ptr_value: String, bank: BankInfo) {
-        debug!("Setting bank info for '{}': {:?}", ptr_value, bank);
+        debug!("Setting bank info for '{ptr_value}': {bank:?}");
         self.pointer_banks.insert(ptr_value, bank);
     }
     
@@ -122,9 +128,9 @@ impl RegAllocV2 {
         // Parameters are pushed before call, accessed via FP
         // param0 at FP-3, param1 at FP-4, etc.
         let offset = -(param_idx as i16 + 3);
-        let dest = self.get_reg(format!("param{}", param_idx));
+        let dest = self.get_reg(format!("param{param_idx}"));
         
-        self.instructions.push(AsmInst::Comment(format!("Load param {} from FP{}", param_idx, offset)));
+        self.instructions.push(AsmInst::Comment(format!("Load param {param_idx} from FP{offset}")));
         self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, offset));
         self.instructions.push(AsmInst::Load(dest, Reg::R13, Reg::R12));
         
@@ -137,13 +143,13 @@ impl RegAllocV2 {
         
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &for_value) {
-            trace!("  {} already in {:?}", for_value, reg);
+            trace!("  {for_value} already in {reg:?}");
             return reg;
         }
         
         // Try to get a free register
         if let Some(reg) = self.free_list.pop() {
-            trace!("  Allocated free {:?} for {}", reg, for_value);
+            trace!("  Allocated free {reg:?} for {for_value}");
             self.reg_contents.insert(reg, for_value);
             return reg;
         }
@@ -157,7 +163,7 @@ impl RegAllocV2 {
             .expect("No spillable registers!");
         
         let victim_value = self.reg_contents.remove(&victim).unwrap();
-        trace!("  Spilling {} from {:?}", victim_value, victim);
+        trace!("  Spilling {victim_value} from {victim:?}");
         
         // Spill the victim
         let spill_offset = self.get_spill_slot(&victim_value);
@@ -167,14 +173,14 @@ impl RegAllocV2 {
             self.init_stack_bank();
         }
         
-        self.instructions.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim_value, spill_offset)));
+        self.instructions.push(AsmInst::Comment(format!("Spilling {victim_value} to FP+{spill_offset}")));
         self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset));
         self.instructions.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
         
         // Preserve bank info if this was a pointer
         if let Some(_bank) = self.pointer_banks.get(&victim_value).cloned() {
             // We'll need to track this for reload
-            debug!("Preserved bank info for spilled pointer {}", victim_value);
+            debug!("Preserved bank info for spilled pointer {victim_value}");
         }
         
         self.last_spilled = Some((victim_value, spill_offset));
@@ -200,7 +206,7 @@ impl RegAllocV2 {
                 self.init_stack_bank();
             }
             
-            self.instructions.push(AsmInst::Comment(format!("Reloading {} from FP+{}", value, offset)));
+            self.instructions.push(AsmInst::Comment(format!("Reloading {value} from FP+{offset}")));
             self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, offset));
             self.instructions.push(AsmInst::Load(reg, Reg::R13, Reg::R12));
             return reg;
@@ -278,7 +284,7 @@ impl RegAllocV2 {
             let offset = self.next_spill_offset;
             self.next_spill_offset += 1;
             self.spill_slots.insert(value.to_string(), offset);
-            debug!("Allocated spill slot for '{}' at FP+{}", value, offset);
+            debug!("Allocated spill slot for '{value}' at FP+{offset}");
             offset
         }
     }

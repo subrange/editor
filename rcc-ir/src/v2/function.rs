@@ -16,6 +16,12 @@ pub struct FunctionLowering {
     pub instructions: Vec<AsmInst>,
 }
 
+impl Default for FunctionLowering {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FunctionLowering {
     pub fn new() -> Self {
         Self {
@@ -54,7 +60,7 @@ impl FunctionLowering {
         
         // Allocate space for locals
         if local_slots > 0 {
-            insts.push(AsmInst::Comment(format!("Allocate {} slots for locals", local_slots)));
+            insts.push(AsmInst::Comment(format!("Allocate {local_slots} slots for locals")));
             insts.push(AsmInst::AddI(Reg::R14, Reg::R14, local_slots));
         }
         
@@ -63,7 +69,7 @@ impl FunctionLowering {
         // Set spill base after locals
         self.allocator.set_spill_base(local_slots);
         
-        debug!("Generated prologue: locals={}", local_slots);
+        debug!("Generated prologue: locals={local_slots}");
         insts
     }
     
@@ -136,14 +142,14 @@ impl FunctionLowering {
     
     /// Get local variable address
     pub fn get_local_addr(&mut self, offset: i16) -> Reg {
-        let reg = self.allocator.get_reg(format!("local_{}", offset));
+        let reg = self.allocator.get_reg(format!("local_{offset}"));
         
-        self.instructions.push(AsmInst::Comment(format!("Get address of local at FP+{}", offset)));
+        self.instructions.push(AsmInst::Comment(format!("Get address of local at FP+{offset}")));
         self.instructions.push(AsmInst::Add(reg, Reg::R15, Reg::R0));
         self.instructions.push(AsmInst::AddI(reg, reg, offset));
         
         // Mark this as a stack pointer
-        self.allocator.set_pointer_bank(format!("local_{}", offset), 
+        self.allocator.set_pointer_bank(format!("local_{offset}"), 
                                         crate::v2::regalloc::BankInfo::Stack);
         reg
     }
@@ -152,10 +158,10 @@ impl FunctionLowering {
     pub fn load_local(&mut self, offset: i16, dest: Reg) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
-        insts.push(AsmInst::Comment(format!("Load from local at FP+{}", offset)));
+        insts.push(AsmInst::Comment(format!("Load from local at FP+{offset}")));
         
         // Calculate address
-        let addr_reg = self.allocator.get_reg(format!("local_addr_{}", offset));
+        let addr_reg = self.allocator.get_reg(format!("local_addr_{offset}"));
         insts.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
         insts.push(AsmInst::AddI(addr_reg, addr_reg, offset));
         
@@ -170,10 +176,10 @@ impl FunctionLowering {
     pub fn store_local(&mut self, offset: i16, src: Reg) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
-        insts.push(AsmInst::Comment(format!("Store to local at FP+{}", offset)));
+        insts.push(AsmInst::Comment(format!("Store to local at FP+{offset}")));
         
         // Calculate address
-        let addr_reg = self.allocator.get_reg(format!("local_addr_{}", offset));
+        let addr_reg = self.allocator.get_reg(format!("local_addr_{offset}"));
         insts.push(AsmInst::Add(addr_reg, Reg::R15, Reg::R0));
         insts.push(AsmInst::AddI(addr_reg, addr_reg, offset));
         

@@ -36,7 +36,7 @@ impl ModuleLowerer {
         let addr_reg = self.get_reg(result_key.clone());
         self.value_locations.insert(result_key, Location::Register(addr_reg));
 
-        self.emit(AsmInst::Comment(format!("Alloca for t{} at FP+{} (fat ptr: stack bank)", result, offset)));
+        self.emit(AsmInst::Comment(format!("Alloca for t{result} at FP+{offset} (fat ptr: stack bank)")));
 
         // Address = R15 (FP) + offset
         if offset > 0 {

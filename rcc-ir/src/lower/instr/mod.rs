@@ -48,7 +48,7 @@ impl ModuleLowerer {
             }
 
             _ => {
-                self.emit(AsmInst::Comment(format!("Unimplemented: {:?}", instruction)));
+                self.emit(AsmInst::Comment(format!("Unimplemented: {instruction:?}")));
             }
         }
 
@@ -85,7 +85,7 @@ impl ModuleLowerer {
         match value {
             Value::Constant(n) => {
                 // Use the centralized allocator for constants through the wrapper
-                let const_key = self.generate_temp_name(&format!("const_{}", n));
+                let const_key = self.generate_temp_name(&format!("const_{n}"));
                 let reg = self.get_reg(const_key);  // Use wrapper, not direct call!
 
                 self.emit(AsmInst::LI(reg, *n as i16));
@@ -96,7 +96,7 @@ impl ModuleLowerer {
                 if let Some(&offset) = self.local_offsets.get(id) {
                     // This is a stack variable - return its address
                     // Use a unique key to avoid conflicts
-                    let temp_name = self.generate_temp_name(&format!("addr_t{}", id));
+                    let temp_name = self.generate_temp_name(&format!("addr_t{id}"));
                     let reg = self.get_reg(temp_name);
                     if offset > 0 {
                         self.emit(AsmInst::AddI(reg, Reg::R15, offset));
@@ -108,7 +108,7 @@ impl ModuleLowerer {
                     // Regular temp value
                     let key =Self::temp_name(*id);
 
-                    self.emit(AsmInst::Comment(format!("Getting register for temp {}", key)));
+                    self.emit(AsmInst::Comment(format!("Getting register for temp {key}")));
 
                     // Use wrapper's reload which handles spill/reload instructions
                     let reg = self.reload(key.clone());
@@ -119,7 +119,7 @@ impl ModuleLowerer {
                         Reg::R9 => "R9", Reg::R10 => "R10", Reg::R11 => "R11",
                         _ => "R?",
                     };
-                    self.emit(AsmInst::Comment(format!("  {} is now in {}", key, reg_name)));
+                    self.emit(AsmInst::Comment(format!("  {key} is now in {reg_name}")));
 
                     // The wrapper already updates value_locations
                     Ok(reg)
@@ -128,7 +128,7 @@ impl ModuleLowerer {
             Value::Function(name) => {
                 // Function references not directly loadable
                 Err(CompilerError::codegen_error(
-                    format!("Cannot load function '{}' into register", name),
+                    format!("Cannot load function '{name}' into register"),
                     rcc_common::SourceLocation::new_simple(0, 0),
                 ))
             }
@@ -144,7 +144,7 @@ impl ModuleLowerer {
                     Ok(reg)
                 } else {
                     Err(CompilerError::codegen_error(
-                        format!("Undefined global variable '{}'", name),
+                        format!("Undefined global variable '{name}'"),
                         rcc_common::SourceLocation::new_simple(0, 0),
                     ))
                 }
@@ -156,7 +156,7 @@ impl ModuleLowerer {
             }
             _ => {
                 Err(CompilerError::codegen_error(
-                    format!("Unsupported value type: {:?}", value),
+                    format!("Unsupported value type: {value:?}"),
                     rcc_common::SourceLocation::new_simple(0, 0),
                 ))
             }
@@ -187,11 +187,11 @@ impl ModuleLowerer {
                 // Check if we have a bank tag for this pointer
                 // It might be in a register or might have been spilled
                 let has_bank_tag = self.reg_alloc.is_tracked(&bank_temp_key);
-                debug!("Checking bank for t{}, bank_temp_key={}, has_bank_tag={}", tid, bank_temp_key, has_bank_tag);
+                debug!("Checking bank for t{tid}, bank_temp_key={bank_temp_key}, has_bank_tag={has_bank_tag}");
                 
                 if has_bank_tag {
                     // Reload the bank tag (will get from register if already there, or reload from spill)
-                    self.emit(AsmInst::Comment(format!("Getting bank tag for t{}", tid)));
+                    self.emit(AsmInst::Comment(format!("Getting bank tag for t{tid}")));
                     let bank_reg = self.reload(bank_temp_key.clone());
                     
                     // Pin the bank register so it doesn't get spilled when we allocate result_reg
@@ -226,8 +226,8 @@ impl ModuleLowerer {
                     self.reg_alloc.unpin_value(&bank_temp_key);
 
                     // Mark this register as containing the bank to prevent reuse
-                    self.reg_alloc.mark_in_use(result_reg, format!("bank_for_t{}", tid));
-                    self.value_locations.insert(format!("bank_for_t{}", tid), Location::Register(result_reg));
+                    self.reg_alloc.mark_in_use(result_reg, format!("bank_for_t{tid}"));
+                    self.value_locations.insert(format!("bank_for_t{tid}"), Location::Register(result_reg));
 
                     return Ok(result_reg);
                 }
@@ -254,13 +254,13 @@ impl ModuleLowerer {
                         Ok(reg)
                     } else {
                         // This should never happen with properly tracked fat pointers
-                        warn!("get_bank_for_pointer called for t{}", tid);
+                        warn!("get_bank_for_pointer called for t{tid}");
                         warn!("  local_offsets: {:?}", self.local_offsets.contains_key(tid));
                         warn!("  fat_ptr_components: {:?}", self.fat_ptr_components.contains_key(tid));
-                        warn!("  value_locations contains t{}: {:?}", tid, self.value_locations.contains_key(&format!("t{}", tid)));
+                        warn!("  value_locations contains t{}: {:?}", tid, self.value_locations.contains_key(&format!("t{tid}")));
                         warn!("  value_locations contains t{}: {:?}", 100000 + tid, self.value_locations.contains_key(&format!("t{}", 100000 + tid)));
                         Err(CompilerError::codegen_error(
-                            format!("Missing bank information for pointer t{}. This is a compiler bug - all pointers should have bank tags.", tid),
+                            format!("Missing bank information for pointer t{tid}. This is a compiler bug - all pointers should have bank tags."),
                             rcc_common::SourceLocation::dummy(),
                         ))
                     }

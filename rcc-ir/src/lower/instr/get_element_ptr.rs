@@ -12,7 +12,7 @@ impl ModuleLowerer {
         if let Value::Temp(base_tid) = ptr {
             if *base_tid == *result {
                 self.emit(AsmInst::Comment(
-                    format!("WARNING: GetElementPtr result t{} overwrites input!", result)
+                    format!("WARNING: GetElementPtr result t{result} overwrites input!")
                 ));
             }
         }
@@ -21,7 +21,7 @@ impl ModuleLowerer {
         let base_reg = self.get_value_register(ptr)?;
         
         // Pin the base register to prevent it from being spilled when we get the index
-        let base_pin_key = format!("gep_base_{}", result);
+        let base_pin_key = format!("gep_base_{result}");
         self.reg_alloc.mark_in_use(base_reg, base_pin_key.clone());
         self.reg_alloc.pin_value(base_pin_key.clone());
         
@@ -37,7 +37,7 @@ impl ModuleLowerer {
         // For now, we only support single index (1D arrays)
         if indices.len() != 1 {
             return Err(CompilerError::codegen_error(
-                format!("Multi-dimensional arrays not yet supported"),
+                "Multi-dimensional arrays not yet supported".to_string(),
                 rcc_common::SourceLocation::new_simple(0, 0),
             ));
         }
@@ -48,7 +48,7 @@ impl ModuleLowerer {
         // Keep base pinned while we allocate result to prevent it from being spilled
         
         // Pin the index register too to ensure both operands remain valid
-        let index_pin_key = format!("gep_index_{}", result);
+        let index_pin_key = format!("gep_index_{result}");
         self.reg_alloc.mark_in_use(index_reg, index_pin_key.clone());
         self.reg_alloc.pin_value(index_pin_key.clone());
 
@@ -84,7 +84,7 @@ impl ModuleLowerer {
             
             // Check if the base pointer has a bank tag
             if let Some(bank_location) = self.value_locations.get(&base_bank_key).cloned() {
-                self.emit(AsmInst::Comment(format!("  Propagating bank tag from {} to {}", base_bank_key, result_bank_key)));
+                self.emit(AsmInst::Comment(format!("  Propagating bank tag from {base_bank_key} to {result_bank_key}")));
                 
                 // Check if the bank is actually still in a register or has been spilled
                 if let Location::Register(bank_reg) = bank_location {
@@ -98,14 +98,14 @@ impl ModuleLowerer {
                             // Register has been reused! The bank must have been spilled
                             // Check if it was spilled
                             if let Some(spill_slot) = self.reg_alloc.get_spilled_slot(&base_bank_key) {
-                                self.emit(AsmInst::Comment(format!("  Bank was spilled to FP+{}", spill_slot)));
+                                self.emit(AsmInst::Comment(format!("  Bank was spilled to FP+{spill_slot}")));
                                 self.value_locations.insert(result_bank_key.clone(), Location::Spilled(spill_slot));
                                 // CRITICAL: Also inform the register allocator that the result bank is at this spill slot
                                 // This allows the reload mechanism to work correctly
                                 self.reg_alloc.record_spilled_value(result_bank_key, spill_slot);
                             } else {
                                 // This shouldn't happen - value lost!
-                                self.emit(AsmInst::Comment(format!("  WARNING: Bank tag lost for {}", base_bank_key)));
+                                self.emit(AsmInst::Comment(format!("  WARNING: Bank tag lost for {base_bank_key}")));
                             }
                         }
                     } else {
@@ -116,7 +116,7 @@ impl ModuleLowerer {
                             self.reg_alloc.record_spilled_value(result_bank_key, spill_slot);
                         } else {
                             // Bank was never tracked or lost
-                            self.emit(AsmInst::Comment(format!("  WARNING: Bank {} not in register or spilled", base_bank_key)));
+                            self.emit(AsmInst::Comment(format!("  WARNING: Bank {base_bank_key} not in register or spilled")));
                         }
                     }
                 } else if let Location::Spilled(spill_slot) = bank_location {
@@ -139,7 +139,7 @@ impl ModuleLowerer {
                 addr_temp: *result,
                 bank_tag: crate::ir::BankTag::Global,
             });
-            self.emit(AsmInst::Comment(format!("  Global pointer - using global bank")));
+            self.emit(AsmInst::Comment("  Global pointer - using global bank".to_string()));
         }
         
         Ok(())

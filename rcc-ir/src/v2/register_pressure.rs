@@ -109,7 +109,7 @@ impl RegisterPressureManager {
             }
             Value::Temp(id) => {
                 // If already in register, need 0, else need 1
-                if self.reg_contents.values().any(|v| v == &format!("t{}", id)) {
+                if self.reg_contents.values().any(|v| v == &format!("t{id}")) {
                     RegisterNeed { count: 0, is_leaf: false }
                 } else {
                     RegisterNeed { count: 1, is_leaf: true }
@@ -166,7 +166,7 @@ impl RegisterPressureManager {
         if let Some(reg) = self.free_list.pop_front() {
             self.reg_contents.insert(reg, for_value.clone());
             self.lru_queue.push_back(reg);
-            debug!("Allocated {:?} for {}", reg, for_value);
+            debug!("Allocated {reg:?} for {for_value}");
             return reg;
         }
         
@@ -196,12 +196,12 @@ impl RegisterPressureManager {
                 });
             
             // Generate spill instructions using R12 as scratch
-            self.instructions.push(AsmInst::Comment(format!("Spill {} to slot {}", value, slot)));
+            self.instructions.push(AsmInst::Comment(format!("Spill {value} to slot {slot}")));
             self.instructions.push(AsmInst::Add(Reg::R12, Reg::R15, Reg::R0));
             self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R12, self.local_count + slot));
             self.instructions.push(AsmInst::Store(reg, Reg::R13, Reg::R12));
             
-            debug!("Spilled {} from {:?} to slot {}", value, reg, slot);
+            debug!("Spilled {value} from {reg:?} to slot {slot}");
         }
         
         self.reg_contents.remove(&reg);
@@ -219,12 +219,12 @@ impl RegisterPressureManager {
             let reg = self.get_register(value.clone());
             
             // Generate reload instructions
-            self.instructions.push(AsmInst::Comment(format!("Reload {} from slot {}", value, slot)));
+            self.instructions.push(AsmInst::Comment(format!("Reload {value} from slot {slot}")));
             self.instructions.push(AsmInst::Add(Reg::R12, Reg::R15, Reg::R0));
             self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R12, self.local_count + slot));
             self.instructions.push(AsmInst::Load(reg, Reg::R13, Reg::R12));
             
-            debug!("Reloaded {} into {:?} from slot {}", value, reg, slot);
+            debug!("Reloaded {value} into {reg:?} from slot {slot}");
             return reg;
         }
         
@@ -256,25 +256,25 @@ impl RegisterPressureManager {
     pub fn get_value_register(&mut self, value: &Value) -> Reg {
         match value {
             Value::Temp(id) => {
-                self.get_register(format!("t{}", id))
+                self.get_register(format!("t{id}"))
             }
             Value::Constant(val) => {
-                let reg = self.get_register(format!("const_{}", val));
+                let reg = self.get_register(format!("const_{val}"));
                 self.instructions.push(AsmInst::LI(reg, *val as i16));
                 reg
             }
             Value::Global(name) => {
                 // For globals, we need to load the address
-                let reg = self.get_register(format!("global_{}", name));
+                let reg = self.get_register(format!("global_{name}"));
                 // This would need proper global offset calculation
-                self.instructions.push(AsmInst::Comment(format!("Load global {}", name)));
+                self.instructions.push(AsmInst::Comment(format!("Load global {name}")));
                 reg
             }
             Value::FatPtr(ptr) => {
                 // Handle fat pointer - needs special handling
-                let addr_reg = self.get_value_register(&ptr.addr);
+                
                 // Bank would need separate handling
-                addr_reg
+                self.get_value_register(&ptr.addr)
             }
             _ => {
                 panic!("Unsupported value type for register allocation");
@@ -335,7 +335,7 @@ impl RegisterPressureManager {
             }
             // ... other operations
             _ => {
-                insts.push(AsmInst::Comment(format!("TODO: Binary op {:?}", op)));
+                insts.push(AsmInst::Comment(format!("TODO: Binary op {op:?}")));
             }
         }
         
@@ -343,7 +343,7 @@ impl RegisterPressureManager {
         self.free_register(second_reg);
         
         // Update register contents to track the result
-        self.reg_contents.insert(result_reg, format!("t{}", result_temp));
+        self.reg_contents.insert(result_reg, format!("t{result_temp}"));
         
         insts
     }

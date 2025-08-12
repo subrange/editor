@@ -60,7 +60,7 @@ impl ModuleLowerer {
                         _ => unreachable!(),
                     };
 
-                    trace!("DEBUG: Setting up pointer parameter {} - address in {:?}, bank in {:?}", param_id, addr_reg, bank_reg);
+                    trace!("DEBUG: Setting up pointer parameter {param_id} - address in {addr_reg:?}, bank in {bank_reg:?}");
                     
                     // Inform the centralized allocator that the address register is in use
                     self.reg_alloc.mark_in_use(addr_reg, Self::temp_name(*param_id));
@@ -71,7 +71,7 @@ impl ModuleLowerer {
                     // For fat pointers, we need to use the bank register at runtime
                     // Store it in a temp that we can track
                     let bank_temp_key = Self::bank_temp_key(*param_id);
-                    trace!("DEBUG: Marking bank register {:?} with key {}", bank_reg, bank_temp_key);
+                    trace!("DEBUG: Marking bank register {bank_reg:?} with key {bank_temp_key}");
                     self.value_locations.insert(bank_temp_key.clone(), crate::module_lowering::Location::Register(bank_reg));
                     self.reg_alloc.mark_in_use(bank_reg, bank_temp_key);
                     self.reg_alloc.mark_as_parameter(bank_reg);
