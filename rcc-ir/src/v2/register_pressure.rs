@@ -3,12 +3,12 @@
 //! Based on the formalized register spilling algorithm with Sethi-Ullman
 //! expression evaluation order to minimize register pressure.
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
 use crate::ir::{BasicBlock, Instruction, Value, IrBinaryOp};
-use crate::v2::regalloc::{RegAllocV2, BankInfo};
-use log::{debug, trace};
+use crate::v2::regalloc::RegAllocV2;
+use log::debug;
 
 /// Register need calculation result
 #[derive(Debug, Clone)]

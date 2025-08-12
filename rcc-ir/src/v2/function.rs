@@ -7,7 +7,7 @@
 
 use rcc_codegen::{AsmInst, Reg};
 use crate::v2::regalloc::RegAllocV2;
-use log::{debug, trace};
+use log::debug;
 
 pub struct FunctionLowering {
     pub allocator: RegAllocV2,

@@ -3,13 +3,12 @@
 //! This module implements the lowering from the full IR (Module/Function/Instruction)
 //! to Ripple assembly instructions.
 
-use crate::ir::{Module, Instruction, Value, IrType, IrBinaryOp, BankTag};
+use crate::ir::{Module, Value, BankTag};
 use crate::simple_regalloc::SimpleRegAlloc;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::CompilerError;
 use std::collections::HashMap;
-use crate::lower::instr::arithmetic::emit_ne;
-use log::{debug, trace, info};
+use log::{debug, trace};
 
 
 /// Fat pointer components tracking

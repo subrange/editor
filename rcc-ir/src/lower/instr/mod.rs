@@ -1,10 +1,9 @@
 use rcc_codegen::{AsmInst, Reg};
-use rcc_common::{CompilerError, TempId};
-use crate::{Instruction, IrBinaryOp, IrType, Value};
+use rcc_common::CompilerError;
+use crate::{Instruction, IrType, Value};
 use crate::ir::BankTag;
-use crate::lower::instr::arithmetic::emit_ne;
 use crate::module_lowering::{Location, ModuleLowerer};
-use log::{debug, trace, warn};
+use log::{debug, warn};
 
 pub mod arithmetic;
 mod alloca;

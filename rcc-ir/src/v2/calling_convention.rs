@@ -7,8 +7,8 @@
 //! - Stack parameters pushed before call, accessed via FP in callee
 
 use rcc_codegen::{AsmInst, Reg};
-use crate::v2::regalloc::{RegAllocV2, BankInfo};
-use log::{debug, trace};
+use crate::v2::regalloc::RegAllocV2;
+use log::debug;
 
 pub struct CallingConvention {}
 

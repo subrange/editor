@@ -172,7 +172,7 @@ impl RegAllocV2 {
         self.instructions.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
         
         // Preserve bank info if this was a pointer
-        if let Some(bank) = self.pointer_banks.get(&victim_value).cloned() {
+        if let Some(_bank) = self.pointer_banks.get(&victim_value).cloned() {
             // We'll need to track this for reload
             debug!("Preserved bank info for spilled pointer {}", victim_value);
         }

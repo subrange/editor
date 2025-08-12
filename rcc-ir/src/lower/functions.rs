@@ -150,7 +150,7 @@ impl ModuleLowerer {
         let mut max_stack_offset = 0i16;
         for block in &function.blocks {
             for instruction in &block.instructions {
-                if let Instruction::Alloca { result, alloc_type, count, .. } = instruction {
+                if let Instruction::Alloca {  alloc_type, count, .. } = instruction {
                     // Calculate size for this alloca
                     let base_size = self.get_type_size_in_words(alloc_type);
                     let total_size = match count {
