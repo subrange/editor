@@ -77,41 +77,13 @@ impl ModuleLowerer {
                         stored_bank_reg
                     } else {
                         // Fall back to get_bank_for_pointer
-                        let bank_reg = self.get_bank_for_pointer(arg)?;
-                        if bank_reg == Reg::R0 {
-                            // Global bank = 0
-                            let temp_name = self.generate_temp_name("bank_global");
-                            let temp_reg = self.get_reg(temp_name);
-                            self.emit(AsmInst::LI(temp_reg, 0));
-                            temp_reg
-                        } else if bank_reg == Reg::R13 {
-                            // Stack bank = 1
-                            let temp_name = self.generate_temp_name("bank_tag_stack");
-                            let temp_reg = self.get_reg(temp_name);
-                            self.emit(AsmInst::LI(temp_reg, 1));
-                            temp_reg
-                        } else {
-                            bank_reg // Already a value register
-                        }
+                        // This now returns a register containing the bank value (0 or 1)
+                        self.get_bank_for_pointer(arg)?
                     }
                 } else {
                     // Not a temp, use get_bank_for_pointer
-                    let bank_reg = self.get_bank_for_pointer(arg)?;
-                    if bank_reg == Reg::R0 {
-                        // Global bank = 0
-                        let temp_name = self.generate_temp_name("bank_global");
-                        let temp_reg = self.get_reg(temp_name);
-                        self.emit(AsmInst::LI(temp_reg, 0));
-                        temp_reg
-                    } else if bank_reg == Reg::R13 {
-                        // Stack bank = 1
-                        let temp_name = self.generate_temp_name("bank_tag_stack");
-                        let temp_reg = self.get_reg(temp_name);
-                        self.emit(AsmInst::LI(temp_reg, 1));
-                        temp_reg
-                    } else {
-                        bank_reg // Already a value register
-                    }
+                    // This now returns a register containing the bank value (0 or 1)
+                    self.get_bank_for_pointer(arg)?
                 };
 
                 arg_regs.push((bank_val_reg, bank_param_reg));
@@ -132,30 +104,12 @@ impl ModuleLowerer {
                             stored_bank_reg
                         } else {
                             // Get bank and convert to value
-                            let bank_reg = self.get_bank_for_pointer(arg)?;
-                            let temp_name = self.generate_temp_name("bank_val");
-                            let temp_reg = self.get_reg(temp_name);
-                            if bank_reg == Reg::R0 {
-                                self.emit(AsmInst::LI(temp_reg, 0));
-                            } else if bank_reg == Reg::R13 {
-                                self.emit(AsmInst::LI(temp_reg, 1));
-                            } else {
-                                self.emit(AsmInst::Add(temp_reg, bank_reg, Reg::R0));
-                            }
-                            temp_reg
+                            // get_bank_for_pointer now returns a register with the value
+                            self.get_bank_for_pointer(arg)?
                         }
                     } else {
-                        let bank_reg = self.get_bank_for_pointer(arg)?;
-                        let temp_name = self.generate_temp_name("bank_val");
-                        let temp_reg = self.get_reg(temp_name);
-                        if bank_reg == Reg::R0 {
-                            self.emit(AsmInst::LI(temp_reg, 0));
-                        } else if bank_reg == Reg::R13 {
-                            self.emit(AsmInst::LI(temp_reg, 1));
-                        } else {
-                            self.emit(AsmInst::Add(temp_reg, bank_reg, Reg::R0));
-                        }
-                        temp_reg
+                        // get_bank_for_pointer now returns a register with the value
+                        self.get_bank_for_pointer(arg)?
                     };
                     stack_args.push(bank_val);
                 } else {

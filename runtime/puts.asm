@@ -102,7 +102,7 @@ puts_L5:
     ADD R6, R0, R0
     BEQ R0, R0, puts_bank_done_8
 puts_bank_stack_7:
-    ADD R6, R13, R0
+    LI R6, 1
 puts_bank_done_8:
 ; === ModuleLowerer::get_reg for 't3' ===
 ; get_reg for 't3'
@@ -147,7 +147,7 @@ puts_L6:
     ADD R6, R0, R0
     BEQ R0, R0, puts_bank_done_11
 puts_bank_stack_10:
-    ADD R6, R13, R0
+    LI R6, 1
 puts_bank_done_11:
 ; === ModuleLowerer::get_reg for 't4' ===
 ; get_reg for 't4'
@@ -212,7 +212,7 @@ puts_bank_done_11:
     ADD R5, R0, R0
     BEQ R0, R0, puts_bank_done_16
 puts_bank_stack_15:
-    ADD R5, R13, R0
+    LI R5, 1
 puts_bank_done_16:
 ; Store t5 to [t0]
 ; Getting register for temp t5

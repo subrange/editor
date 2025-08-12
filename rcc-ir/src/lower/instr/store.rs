@@ -85,14 +85,9 @@ impl ModuleLowerer {
             let bank = self.get_bank_for_pointer(ptr)?;
 
             // If bank is a dynamically selected register, we need to preserve it
-            // Check if it's not R0 or R13 (static banks)
-            let bank_needs_preservation = bank != Reg::R0 && bank != Reg::R13;
-            let preserved_bank = if bank_needs_preservation {
-                // The bank was dynamically calculated, preserve it
-                bank
-            } else {
-                bank
-            };
+            // Check if it's not R0 (the only static bank register now)
+            let bank_needs_preservation = bank != Reg::R0;
+            let preserved_bank = bank;
             
             // Unpin the pointer register
             self.reg_alloc.unpin_value(&ptr_pin_key);
@@ -121,22 +116,29 @@ impl ModuleLowerer {
                 self.emit(AsmInst::Store(value_reg, preserved_bank.clone(), ptr_reg));
 
                 // Get bank tag for the value
-                let value_bank_tag = self.get_bank_for_pointer(value)?;
-                let bank_tag_val = if value_bank_tag == Reg::R0 {
-                    0 // Global
-                } else if value_bank_tag == Reg::R13 {
-                    1 // Stack
-                } else {
-                    // It's a dynamic bank - need to extract the tag value
-                    // This is complex, for now default to the tag based on static analysis
-                    match value {
-                        Value::Temp(tid) if self.fat_ptr_components.contains_key(tid) => {
-                            match self.fat_ptr_components[tid].bank_tag {
-                                BankTag::Global => 0,
-                                BankTag::Stack => 1,
-                            }
+                // get_bank_for_pointer now returns a register containing the bank value
+                let value_bank_reg = self.get_bank_for_pointer(value)?;
+                
+                // We need to extract the value from the register
+                // For now, we'll use static analysis to determine the tag
+                let bank_tag_val = match value {
+                    Value::Temp(tid) if self.fat_ptr_components.contains_key(tid) => {
+                        match self.fat_ptr_components[tid].bank_tag {
+                            BankTag::Global => 0,
+                            BankTag::Stack => 1,
                         }
-                        _ => 0,
+                    }
+                    _ => {
+                        // Check if it's a local (stack) variable
+                        if let Value::Temp(tid) = value {
+                            if self.local_offsets.contains_key(tid) {
+                                1 // Stack
+                            } else {
+                                0 // Default to global
+                            }
+                        } else {
+                            0 // Default to global
+                        }
                     }
                 };
 

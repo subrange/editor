@@ -169,7 +169,13 @@ impl ModuleLowerer {
                 // For fat pointers, return the appropriate bank register
                 match ptr.bank {
                     BankTag::Global => Ok(Reg::R0),
-                    BankTag::Stack => Ok(Reg::R13),
+                    BankTag::Stack => {
+                        // For stack bank, we need a register containing 1
+                        let temp_name = self.generate_temp_name("stack_bank");
+                        let reg = self.get_reg(temp_name);
+                        self.emit(AsmInst::LI(reg, 1));
+                        Ok(reg)
+                    }
                 }
             }
             Value::Temp(tid) => {
@@ -207,9 +213,9 @@ impl ModuleLowerer {
                         AsmInst::Add(result_reg, Reg::R0, Reg::R0),
                         AsmInst::Beq(Reg::R0, Reg::R0, done_label.clone()),
 
-                        // Bank is 1 (stack) - use R13
+                        // Bank is 1 (stack) - use bank value 1
                         AsmInst::Label(stack_label),
-                        AsmInst::Add(result_reg, Reg::R13, Reg::R0),
+                        AsmInst::LI(result_reg, 1),
 
                         AsmInst::Label(done_label)
                     ]);
@@ -228,12 +234,22 @@ impl ModuleLowerer {
                 if let Some(components) = self.fat_ptr_components.get(tid) {
                     match components.bank_tag {
                         BankTag::Global => Ok(Reg::R0),
-                        BankTag::Stack => Ok(Reg::R13),
+                        BankTag::Stack => {
+                            // For stack bank, we need a register containing 1
+                            let temp_name = self.generate_temp_name("stack_bank");
+                            let reg = self.get_reg(temp_name);
+                            self.emit(AsmInst::LI(reg, 1));
+                            Ok(reg)
+                        }
                     }
                 } else {
                     // Check if it's a direct alloca
                     if self.local_offsets.contains_key(tid) {
-                        Ok(Reg::R13)
+                        // Stack-allocated variable, need bank 1
+                        let temp_name = self.generate_temp_name("stack_bank");
+                        let reg = self.get_reg(temp_name);
+                        self.emit(AsmInst::LI(reg, 1));
+                        Ok(reg)
                     } else {
                         // This should never happen with properly tracked fat pointers
                         warn!("get_bank_for_pointer called for t{}", tid);

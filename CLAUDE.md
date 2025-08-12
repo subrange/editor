@@ -202,6 +202,7 @@ If ran with --backend bf, then instead of `.bin` you will have:
 You can then manually inspect or run individual compilation steps.
 
 IMPORTANT: Use `rcc compile file.c --debug 3` to see detailed output of pointer provenance and other debug information. It is VERY helpful.
+IMPORTANT: Use "log" crate's `trace!` and `debug!` macros to log detailed information during compilation. This will help you understand how the compiler processes your code.
 
 # RVM — Ripple Virtual Machine
 
