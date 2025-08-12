@@ -18,6 +18,9 @@ mod gep_integration_tests;
 #[cfg(test)]
 mod binary_tests;
 
+#[cfg(test)]
+mod unary_tests;
+
 // Future test modules as instructions are implemented:
 // mod icmp_tests;
 // mod branch_tests;

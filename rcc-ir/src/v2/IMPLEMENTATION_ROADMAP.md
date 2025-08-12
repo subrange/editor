@@ -4,7 +4,7 @@
 
 This roadmap provides a complete guide for implementing the remaining components of the V2 backend. The V2 infrastructure (register management, function structure, calling convention) is complete and tested. This document outlines the steps to implement instruction lowering and integrate V2 into the main compilation pipeline.
 
-**Latest Update (Phase 1 Complete)**: All memory operations are now fully implemented! Load, Store, and GEP instructions are complete with proper bank handling, fat pointer support, and runtime bank overflow detection. Phase 1 is 100% complete with all 179 tests passing. Ready to proceed to Phase 2: Arithmetic & Control Flow.
+**Latest Update (Phase 2 Mostly Complete)**: Binary and comparison operations are now fully implemented! The binary operation module has been refactored into a clean modular structure with separate files for arithmetic, comparison, and helper functions. All arithmetic operations (Add, Sub, Mul, Div, Mod), logical operations (And, Or, Xor), shift operations, and all comparison predicates are working with Sethi-Ullman ordering for optimal register usage. 196+ tests passing (179 infrastructure + 17 binary operation tests). Only branch instructions remain to complete Phase 2.
 
 ## Current State
 
@@ -18,11 +18,10 @@ This roadmap provides a complete guide for implementing the remaining components
 - **Load Instruction** (`instr/load.rs`) - Loads from global/stack with proper bank handling
 - **Store Instruction** (`instr/store.rs`) - Stores to global/stack with fat pointer support
 - **GEP Instruction** (`instr/gep.rs`) - Full runtime bank overflow handling with DIV/MOD
-- **Test Infrastructure** - 179+ passing tests (156 infrastructure + 23 GEP tests)
+- **Binary Operations** (`instr/binary/`) - All arithmetic, logical, and comparison operations with Sethi-Ullman ordering
+- **Test Infrastructure** - 196+ passing tests (179 infrastructure + 17 binary operation tests)
 
 ### ❌ Missing Components
-- Binary operations lowering
-- Comparison operations
 - Branch instructions
 - Integration with main IR lowering pipeline
 
@@ -330,39 +329,32 @@ new_addr = total_offset % BANK_SIZE
 
 ## Phase 2: Arithmetic & Control Flow (Week 2)
 
-### Task 2.1: Complete Binary Operations
+### Task 2.1: Complete Binary Operations ✅ COMPLETED
 
-**File to modify**: `rcc-ir/src/v2/regmgmt/pressure.rs`
+**Files created**: 
+- `rcc-ir/src/v2/instr/binary/mod.rs` - Module structure
+- `rcc-ir/src/v2/instr/binary/lowering.rs` - Main lowering logic with Sethi-Ullman ordering
+- `rcc-ir/src/v2/instr/binary/arithmetic.rs` - Arithmetic operations (Add, Sub, Mul, Div, Mod, And, Or, Xor, Shift)
+- `rcc-ir/src/v2/instr/binary/comparison.rs` - Comparison operations (Eq, Ne, Lt, Le, Gt, Ge, both signed and unsigned)
+- `rcc-ir/src/v2/instr/binary/helpers.rs` - Helper functions for register allocation
 
-The `emit_binary_op` method is partially implemented. Complete it for all operations:
+**Implementation completed**:
+- ✅ All arithmetic operations (Add, Sub, Mul, Div, Mod)
+- ✅ All logical operations (And, Or, Xor)
+- ✅ All shift operations (Shl, LShr, AShr)
+- ✅ All comparison operations (Eq, Ne, Slt, Sle, Sgt, Sge, Ult, Ule, Ugt, Uge)
+- ✅ Sethi-Ullman ordering for optimal register usage
+- ✅ Immediate value optimizations (AddI, MulI, DivI, ModI)
+- ✅ Comprehensive test suite (17 tests in `binary_tests.rs`)
 
-```rust
-pub fn emit_binary_op(&mut self, op: IrBinaryOp, ...) -> Vec<AsmInst> {
-    // Already handles Sethi-Ullman ordering
-    // Add cases for:
-    // - Mul, Div, Mod (use MUL, DIV, MOD instructions)
-    // - And, Or, Xor (use AND, OR, XOR instructions)  
-    // - Shl, Shr (use SLL, SRL instructions)
-}
-```
+### Task 2.2: Implement Comparison Operations ✅ COMPLETED
 
-### Task 2.2: Implement Comparison Operations
+**Note**: Comparison operations were implemented as part of binary operations in `binary/comparison.rs`
 
-**File to create**: `rcc-ir/src/v2/instr/icmp.rs`
-
-```rust
-pub fn lower_icmp(
-    mgr: &mut RegisterPressureManager,
-    pred: IcmpPredicate,
-    lhs: &Value,
-    rhs: &Value,
-    result_name: String,
-) -> Vec<AsmInst> {
-    // Use SLT, SLTU for comparisons
-    // Combine with XOR for equality checks
-    // Store 0 or 1 in result register
-}
-```
+All comparison predicates are fully implemented:
+- Equality (Eq, Ne) using XOR and SLTU
+- Signed comparisons (Slt, Sle, Sgt, Sge) using SLT
+- Unsigned comparisons (Ult, Ule, Ugt, Uge) using SLTU
 
 ### Task 2.3: Implement Branch Instructions
 
@@ -511,10 +503,10 @@ Compare V1 vs V2:
 - [x] Verify R13 initialization works
 
 ### Week 2: Arithmetic & Control
-- [ ] Complete binary operations
-- [ ] Implement comparison operations
+- [x] Complete binary operations
+- [x] Implement comparison operations
 - [ ] Implement branch instructions
-- [ ] Unit tests for each operation type
+- [x] Unit tests for binary and comparison operations
 
 ### Week 3: Integration
 - [ ] Create main V2 lowering function
