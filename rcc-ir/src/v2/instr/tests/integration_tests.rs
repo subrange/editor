@@ -34,10 +34,10 @@ fn test_multiple_loads_no_conflicts() {
     assert!(!insts1.is_empty());
     assert!(!insts2.is_empty());
     
-    // First should use R0, second should use R13
+    // First should use GP, second should use SB
     assert!(insts1.iter().any(|i| {
         if let AsmInst::Load(_, bank, _) = i {
-            *bank == Reg::R0
+            *bank == Reg::Gp
         } else {
             false
         }

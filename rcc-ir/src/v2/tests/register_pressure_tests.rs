@@ -28,15 +28,15 @@ fn test_lru_spilling() {
     let mut rpm = RegisterPressureManager::new(5);
     rpm.init();
     
-    // Allocate all 7 registers
-    for i in 0..7 {
+    // Allocate all 12 registers
+    for i in 0..12 {
         let reg = rpm.get_register(format!("val{}", i));
-        assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+        assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     }
     
     // Next allocation should spill LRU (val0)
-    let reg = rpm.get_register("val7".to_string());
-    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    let reg = rpm.get_register("val12".to_string());
+    assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     // Check that spill happened
     let insts = rpm.take_instructions();
@@ -48,14 +48,14 @@ fn test_reload() {
     let mut rpm = RegisterPressureManager::new(0);
     rpm.init();
     
-    // Allocate and force spill
-    for i in 0..8 {
+    // Allocate and force spill (allocate more than 12 registers)
+    for i in 0..13 {
         rpm.get_register(format!("val{}", i));
     }
     
     // Reload a spilled value
     let reg = rpm.reload_value("val0".to_string());
-    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     // Check that reload happened
     let insts = rpm.take_instructions();
@@ -74,7 +74,7 @@ fn test_empty_manager_initialization() {
     
     // Should be able to allocate a register
     let reg = rpm.get_register("test".to_string());
-    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
 }
 
 #[test]
@@ -98,23 +98,23 @@ fn test_free_and_reallocate() {
     
     // Allocate a specific register first
     let reg1 = rpm.get_register("val1".to_string());
-    assert_eq!(reg1, Reg::A0); // First allocation should always be R5 (first in free list)
+    assert_eq!(reg1, Reg::S3); // First allocation should always be S3 (first in free list)
     
     rpm.free_register(reg1);
     
-    // After freeing R5, it goes to the back of the free list
-    // Next allocation should get R6 (now at front of free list)
+    // After freeing S3, it goes to the back of the free list
+    // Next allocation should get S2 (now at front of free list)
     let reg2 = rpm.get_register("val2".to_string());
-    assert_eq!(reg2, Reg::A1); // Should get R6 since R5 is at the back
+    assert_eq!(reg2, Reg::S2); // Should get S2 since S3 is at the back
     
     // Now allocate another one
     let reg3 = rpm.get_register("val3".to_string());
-    assert_eq!(reg3, Reg::A2); // Should get R7
+    assert_eq!(reg3, Reg::S1); // Should get S1
     
-    // Free R6 and reallocate - should get R8 (next in free list)
+    // Free S2 and reallocate - should get S0 (next in free list)
     rpm.free_register(reg2);
     let reg4 = rpm.get_register("val4".to_string());
-    assert_eq!(reg4, Reg::A3); // R6 is at back, so we get R8
+    assert_eq!(reg4, Reg::S0); // S2 is at back, so we get S0
 }
 
 #[test]
@@ -131,9 +131,9 @@ fn test_spill_all() {
     rpm.spill_all();
     
     // All registers should be free now
-    for i in 5..12 {
+    for i in 0..12 {
         let reg = rpm.get_register(format!("new_val{}", i));
-        assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+        assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     }
     
     // Should have spilled the original 5 values
@@ -151,7 +151,7 @@ fn test_maximum_spill_pressure() {
     }
     
     // The spill count depends on LRU eviction pattern
-    // We should have at least some spills since we requested more than 7 registers
+    // We should have at least some spills since we requested more than 12 registers
     let spill_count = rpm.get_spill_count();
     assert!(spill_count > 0, "Should have spilled some values");
     
@@ -160,7 +160,7 @@ fn test_maximum_spill_pressure() {
     let store_count = insts.iter().filter(|i| matches!(i, AsmInst::Store(_, _, _))).count();
     assert!(store_count > 0, "Should have generated spill stores");
     
-    // The exact count depends on reuse patterns, but we should have spilled at least (20-7) unique values
+    // The exact count depends on reuse patterns, but we should have spilled at least (20-12) unique values
     // However, due to potential reuse, the actual count might be different
 }
 
@@ -171,7 +171,7 @@ fn test_reload_non_existent_value() {
     
     // Reload a value that was never allocated - should just allocate new
     let reg = rpm.reload_value("never_seen".to_string());
-    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     // No reload instruction should be generated
     let insts = rpm.take_instructions();
@@ -193,12 +193,12 @@ fn test_lru_ordering_preservation() {
     assert_eq!(reg0, reg0_again);
     
     // Fill remaining registers
-    for i in 3..7 {
+    for i in 3..12 {
         rpm.get_register(format!("val{}", i));
     }
     
     // Next allocation should spill val1 (LRU), not val0 (MRU)
-    rpm.get_register("val7".to_string());
+    rpm.get_register("val12".to_string());
     
     // val0 should still be in register
     let reg0_check = rpm.get_register("val0".to_string());
@@ -246,7 +246,7 @@ fn test_value_types_handling() {
     
     // Test constant
     let const_reg = rpm.get_value_register(&Value::Constant(42));
-    assert!(matches!(const_reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(const_reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     // Check LI instruction was generated
     let insts = rpm.take_instructions();
@@ -256,13 +256,13 @@ fn test_value_types_handling() {
     let mut rpm2 = RegisterPressureManager::new(0);
     rpm2.init();
     let temp_reg = rpm2.get_value_register(&Value::Temp(5));
-    assert!(matches!(temp_reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(temp_reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     // Test global
     let mut rpm3 = RegisterPressureManager::new(0);
     rpm3.init();
     let global_reg = rpm3.get_value_register(&Value::Global("test_global".to_string()));
-    assert!(matches!(global_reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(global_reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
 }
 
 #[test]
@@ -387,7 +387,7 @@ fn test_large_local_count_offset() {
     rpm.init();
     
     // Force a spill
-    for i in 0..8 {
+    for i in 0..13 {
         rpm.get_register(format!("val{}", i));
     }
     
@@ -471,7 +471,7 @@ fn test_alternating_spill_reload() {
     // Create a pattern of allocate -> spill -> reload
     for cycle in 0..3 {
         // Allocate to fill registers
-        for i in 0..7 {
+        for i in 0..12 {
             rpm.get_register(format!("cycle{}_val{}", cycle, i));
         }
         
@@ -499,21 +499,21 @@ fn test_consecutive_free_operations() {
     rpm.init();
     
     let reg = rpm.get_register("test".to_string());
-    assert_eq!(reg, Reg::A0); // First allocation is deterministically R5
+    assert_eq!(reg, Reg::S3); // First allocation is deterministically S3
     
     // Free the same register multiple times - should be idempotent
     rpm.free_register(reg);
     rpm.free_register(reg);
     rpm.free_register(reg);
     
-    // After freeing R5 multiple times, it should only be in free list once
-    // Next allocation should get R6 (next in original free list)
+    // After freeing S3 multiple times, it should only be in free list once
+    // Next allocation should get S2 (next in original free list)
     let new_reg = rpm.get_register("new".to_string());
-    assert_eq!(new_reg, Reg::A1); // R5 is at back of free list, so we get R6
+    assert_eq!(new_reg, Reg::S2); // S3 is at back of free list, so we get S2
     
     // Allocate one more to verify ordering
     let another_reg = rpm.get_register("another".to_string());
-    assert_eq!(another_reg, Reg::A2); // Next should be R7
+    assert_eq!(another_reg, Reg::S1); // Next should be S1
 }
 
 #[test]
@@ -652,7 +652,7 @@ fn test_reload_after_spill_all() {
     
     // Try to reload spilled values
     let reg = rpm.reload_value("val2".to_string());
-    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     // Should have reload instructions
     let insts = rpm.take_instructions();
@@ -666,7 +666,7 @@ fn test_boundary_local_count() {
     rpm.init();
     
     // Force spilling
-    for i in 0..10 {
+    for i in 0..13 {
         rpm.get_register(format!("val{}", i));
     }
     
@@ -685,7 +685,7 @@ fn test_zero_local_count() {
     rpm.init();
     
     // Should work with zero local count
-    for i in 0..10 {
+    for i in 0..15 {  // Changed from 10 to 15 to force spilling with 12 registers
         rpm.get_register(format!("val{}", i));
     }
     
@@ -709,7 +709,7 @@ fn test_register_contents_tracking() {
     let reg3 = rpm.get_register("unique_value".to_string());
     
     // Might get different register after freeing
-    assert!(matches!(reg3, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(reg3, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
 }
 
 #[test]
@@ -762,14 +762,14 @@ fn test_all_registers_occupied() {
     
     // Exactly fill all available registers
     let mut regs = Vec::new();
-    for i in 0..7 {
+    for i in 0..12 {
         regs.push(rpm.get_register(format!("occupy{}", i)));
     }
     
     // All should be unique
     regs.sort();
     regs.dedup();
-    assert_eq!(regs.len(), 7);
+    assert_eq!(regs.len(), 12);
     
     // Next allocation must spill
     rpm.get_register("force_spill".to_string());
@@ -814,7 +814,7 @@ fn test_negative_local_count() {
     rpm.init();
     
     // Should still work, though offsets might be unusual
-    for i in 0..10 {
+    for i in 0..15 {  // Changed from 10 to 15 to force spilling with 12 registers
         rpm.get_register(format!("val{}", i));
     }
     

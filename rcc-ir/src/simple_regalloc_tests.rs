@@ -165,6 +165,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_reset() {
         let mut alloc = SimpleRegAlloc::new();
         

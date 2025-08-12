@@ -53,15 +53,15 @@ fn test_load_scalar_from_global() {
     // Should load constant address first
     assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 100))));
     
-    // Should use R0 for global bank
+    // Should use GP for global bank
     let load_found = insts.iter().any(|i| {
         if let AsmInst::Load(_, bank, _) = i {
-            *bank == Reg::R0
+            *bank == Reg::Gp
         } else {
             false
         }
     });
-    assert!(load_found, "Should use R0 for global bank");
+    assert!(load_found, "Should use GP for global bank");
 }
 
 #[test]
@@ -130,13 +130,14 @@ fn test_load_from_global_variable() {
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Label(_))));
     assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 0)))); // Placeholder
     
-    // Should have LOAD instruction with R0 (global bank)
+    // Should have LOAD instruction with GP (global bank)
     let load_found = insts.iter().any(|i| {
         if let AsmInst::Load(_, bank, _) = i {
-            *bank == Reg::R0
+            *bank == Reg::Gp
         } else {
             false
         }
     });
-    assert!(load_found, "Should use R0 for global bank");
+    
+    assert!(load_found, "Should use GP for global bank");
 }

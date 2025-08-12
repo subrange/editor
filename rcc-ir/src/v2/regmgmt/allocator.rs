@@ -11,6 +11,16 @@ use std::collections::{HashMap, BTreeMap, BTreeSet};
 use log::{debug, trace};
 use super::bank::BankInfo;
 
+/// The allocatable registers for the 32-register architecture
+/// Order matters: we prefer saved registers (S0-S3) first as they're callee-saved
+/// Then temporaries (T0-T7) which are caller-saved
+pub(crate) const ALLOCATABLE_REGISTERS: [Reg; 12] = [
+    // Saved registers first (callee-saved, less likely to need spilling across calls)
+    Reg::S3, Reg::S2, Reg::S1, Reg::S0,
+    // Then temporaries (caller-saved)
+    Reg::T7, Reg::T6, Reg::T5, Reg::T4, Reg::T3, Reg::T2, Reg::T1, Reg::T0,
+];
+
 /// V2 register allocator with 32-register architecture
 pub(super) struct RegAllocV2 {
     /// Free list of available registers (T0-T7, S0-S3)
@@ -34,10 +44,6 @@ pub(super) struct RegAllocV2 {
     /// Set of values that are temporarily pinned (BTreeSet for determinism)
     pinned_values: BTreeSet<String>,
     
-    /// Stack offset for parameters (obsolete - params are on stack)
-    /// Kept for compatibility but not used
-    _parameter_placeholder: Option<()>,
-    
     /// Track if SB has been initialized for this function
     pub(super) sb_initialized: bool,
     
@@ -59,20 +65,14 @@ impl RegAllocV2 {
     /// A0-A3 are reserved for arguments
     pub(super) fn new() -> Self {
         Self {
-            // T0-T7 and S0-S3 are allocatable (12 registers total)
-            free_list: vec![
-                // Saved registers first (callee-saved, less likely to be spilled)
-                Reg::S3, Reg::S2, Reg::S1, Reg::S0,
-                // Then temporaries (caller-saved)
-                Reg::T7, Reg::T6, Reg::T5, Reg::T4, Reg::T3, Reg::T2, Reg::T1, Reg::T0
-            ],
+            // Use the centralized list, reversed for pop() which takes from the end
+            free_list: ALLOCATABLE_REGISTERS.iter().rev().copied().collect(),
             reg_contents: HashMap::new(),
             spill_slots: BTreeMap::new(),
             next_spill_offset: 0,
             instructions: Vec::new(),
             last_spilled: None,
             pinned_values: BTreeSet::new(),
-            _parameter_placeholder: None,
             sb_initialized: false,
             pointer_banks: BTreeMap::new(),
         }
@@ -256,13 +256,8 @@ impl RegAllocV2 {
         
         self.reg_contents.clear();
         
-        // Reset free list to all allocatable registers (T0-T7 and S0-S3)
-        self.free_list = vec![
-            // Saved registers first (callee-saved, less likely to be spilled)
-            Reg::S3, Reg::S2, Reg::S1, Reg::S0,
-            // Then temporaries (caller-saved)
-            Reg::T7, Reg::T6, Reg::T5, Reg::T4, Reg::T3, Reg::T2, Reg::T1, Reg::T0
-        ];
+        // Reset free list using the centralized constant, reversed for pop()
+        self.free_list = ALLOCATABLE_REGISTERS.iter().rev().copied().collect();
     }
     
     /// Mark a register as in use
@@ -351,19 +346,13 @@ impl RegAllocV2 {
     pub(super) fn reset(&mut self) {
         debug!("Resetting allocator for new function");
         trace!("  Clearing spill_slots: {:?}, reg_contents: {:?}", self.spill_slots, self.reg_contents);
-        self.free_list = vec![
-            // Saved registers first (callee-saved, less likely to be spilled)
-            Reg::S3, Reg::S2, Reg::S1, Reg::S0,
-            // Then temporaries (caller-saved)
-            Reg::T7, Reg::T6, Reg::T5, Reg::T4, Reg::T3, Reg::T2, Reg::T1, Reg::T0
-        ];
+        self.free_list = ALLOCATABLE_REGISTERS.iter().rev().copied().collect();
         self.reg_contents.clear();
         self.spill_slots.clear();
         self.next_spill_offset = 0;
         self.instructions.clear();
         self.last_spilled = None;
         self.pinned_values.clear();
-        self._parameter_placeholder = None;
         self.sb_initialized = false;
         self.pointer_banks.clear();
     }
@@ -387,5 +376,9 @@ impl RegAllocV2 {
     
     pub fn test_next_spill_offset(&self) -> i16 {
         self.next_spill_offset
+    }
+    
+    pub fn test_spill_slots(&self) -> &BTreeMap<String, i16> {
+        &self.spill_slots
     }
 }

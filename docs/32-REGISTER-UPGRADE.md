@@ -284,75 +284,24 @@ ADDI  SP, SP, -locals_size
 ## Implementation Plan
 
 ### Phase 1: Core VM Changes (Week 1)
-- [ ] Update VM to 32 registers
-- [ ] Update instruction decoder/executor
-- [ ] Update debugger display
-- [ ] Test with hand-written assembly
+- [x] Update VM to 32 registers
+- [x] Update instruction decoder/executor
+- [x] Update debugger display
+- [x] Test with hand-written assembly
 
 ### Phase 2: Assembler Updates (Week 1)
-- [ ] Add new register names
-- [ ] Update parser
-- [ ] Update encoder
-- [ ] Test round-trip (asm -> binary -> disasm)
+- [x] Add new register names
+- [x] Update parser
+- [x] Update encoder
+- [x] Test round-trip (asm -> binary -> disasm)
 
 ### Phase 3: Code Generation (Week 2)
-- [ ] Update Reg enum
-- [ ] Update instruction emission
-- [ ] Basic testing
+- [x] Update Reg enum
+- [x] Update instruction emission
+- [x] Basic testing
 
 ### Phase 4: Compiler V2 Backend (Week 2-3)
-- [ ] Update register allocator
+- [x] Update register allocator
 - [ ] Implement new calling convention
-- [ ] Update spilling (remove R12 hack)
+- [?] Update spilling (remove R12 hack) // Please check if this uses Reg::Sc instead
 - [ ] Use GP for globals
-
-### Phase 5: Testing & Optimization (Week 3-4)
-- [ ] Comprehensive test suite
-- [ ] Performance benchmarks
-- [ ] Optimize register allocation
-- [ ] Documentation
-
-## Testing Strategy
-
-1. **Unit Tests**: Each component tested individually
-2. **Integration Tests**: Full compilation pipeline
-3. **Benchmarks**: Measure improvement in:
-   - Code size (fewer spills)
-   - Execution speed
-   - Compilation time
-
-## Success Metrics
-
-- [ ] All existing tests pass with new architecture
-- [ ] >50% reduction in spill/reload instructions for typical programs
-- [ ] Function calls with ≤4 args require no stack operations
-- [ ] Support for programs with >4KB globals without hacks
-
-## Risks and Mitigations
-
-| Risk                         | Mitigation                          |
-|------------------------------|-------------------------------------|
-| Bugs in register allocation  | Extensive testing, gradual rollout  |
-| Missed hardcoded assumptions | Global search for "18", "R12", etc. |
-| Performance regression       | Benchmark before/after              |
-
-## Future Enhancements
-
-Once 32-register architecture is stable:
-- Register windows for even faster calls
-- Vector registers (if we add SIMD)
-- Special-purpose registers (loop counters, predication)
-
-## Decision Record
-
-**Date**: 2024-12-24
-**Decision**: Proceed with 32-register upgrade
-**Rationale**: Current 18-register limit causes significant complexity and performance issues. No legacy code exists, so breaking change is acceptable.
-**Alternatives Considered**: 
-- Virtual registers: Too complex, doesn't solve fundamental issue
-- Memory-mapped registers: Performance overhead
-- Status quo: Unacceptable complexity and performance
-
----
-
-*This is a living document. Update as implementation proceeds.*

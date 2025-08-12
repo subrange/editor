@@ -19,14 +19,14 @@ fn test_r13_initialization() {
 fn test_allocatable_registers() {
     let mut alloc = RegAllocV2::new();
     
-    // Should allocate R5-R11 in order
+    // Should allocate from S3, S2, S1, S0, T7, T6, T5... (saved regs first, then temps)
     let r1 = alloc.get_reg("val1".to_string());
     let r2 = alloc.get_reg("val2".to_string());
     let r3 = alloc.get_reg("val3".to_string());
     
-    assert_eq!(r1, Reg::A0);
-    assert_eq!(r2, Reg::A1);
-    assert_eq!(r3, Reg::A2);
+    assert_eq!(r1, Reg::S3);
+    assert_eq!(r2, Reg::S2);
+    assert_eq!(r3, Reg::S1);
 }
 
 #[test]
@@ -36,7 +36,8 @@ fn test_load_parameter() {
     
     // Load param 0 (should be at FP-3)
     let reg = alloc.load_parameter(0);
-    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    // Should allocate from the allocatable pool (S3, S2, S1, S0, T7-T0)
+    assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     let insts = alloc.take_instructions();
     // Should have load from FP-3
@@ -45,20 +46,20 @@ fn test_load_parameter() {
 }
 
 #[test]
-fn test_spilling_with_r13() {
+fn test_spilling_with_sc() {
     let mut alloc = RegAllocV2::new();
     alloc.init_stack_bank();
     
-    // Allocate all 7 registers
-    for i in 0..7 {
+    // Allocate all 12 registers
+    for i in 0..12 {
         alloc.get_reg(format!("val{}", i));
     }
     
     // Next allocation should trigger spill
-    alloc.get_reg("val7".to_string());
+    alloc.get_reg("val13".to_string());
     
     let insts = alloc.take_instructions();
-    // Should have R13 init + spill operations
+    // Should have Sb init + spill operations
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(_, Reg::Sb, _))));
 }
 
@@ -69,15 +70,15 @@ fn test_bank_info_tracking() {
     alloc.set_pointer_bank("global_ptr".to_string(), BankInfo::Global);
     alloc.set_pointer_bank("stack_ptr".to_string(), BankInfo::Stack);
     
-    assert_eq!(alloc.get_bank_register("global_ptr"), Reg::R0);
+    assert_eq!(alloc.get_bank_register("global_ptr"), Reg::Gp);
     
     alloc.init_stack_bank(); // Must init before using stack bank
     assert_eq!(alloc.get_bank_register("stack_ptr"), Reg::Sb);
 }
 
 #[test]
-#[should_panic(expected = "R13 not initialized")]
-fn test_panic_without_r13_init() {
+#[should_panic(expected = "SB not initialized")]
+fn test_panic_without_sb_init() {
     let mut alloc = RegAllocV2::new();
     alloc.set_pointer_bank("stack_ptr".to_string(), BankInfo::Stack);
     
@@ -90,21 +91,32 @@ fn test_reload_from_spill() {
     let mut alloc = RegAllocV2::new();
     alloc.init_stack_bank();
     
-    // Fill all registers
-    for i in 0..7 {
+    // Fill all 12 allocatable registers (S0-S3, T0-T7)
+    for i in 0..12 {
         alloc.get_reg(format!("val{}", i));
     }
     
-    // Force spill
+    // Force spill - 13th allocation should cause a spill
     alloc.get_reg("new_val".to_string());
     
-    // Reload spilled value
-    let reg = alloc.reload("val0".to_string());
-    assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    // Check what was actually spilled
+    let spill_slots = alloc.test_spill_slots();
+    assert!(!spill_slots.is_empty(), "Should have at least one spilled value");
+    
+    // Get the first spilled value (any will do for this test)
+    let spilled_value = spill_slots.keys().next().unwrap().clone();
+    
+    // Clear instructions from spilling
+    alloc.take_instructions();
+    
+    // Reload the actually spilled value
+    let reg = alloc.reload(spilled_value);
+    assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     let insts = alloc.take_instructions();
     // Should have load instruction for reload
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::Sb, _))));
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::Sb, _))), 
+           "Expected Load instruction with Sb, got: {:?}", insts);
 }
 
 #[test]
@@ -116,8 +128,8 @@ fn test_pinning() {
     let r1 = alloc.get_reg("pinned".to_string());
     alloc.pin_value("pinned".to_string());
     
-    // Fill other registers
-    for i in 1..7 {
+    // Fill other registers (11 more to fill the 12 allocatable)
+    for i in 1..12 {
         alloc.get_reg(format!("val{}", i));
     }
     
@@ -149,14 +161,14 @@ fn test_free_temporaries_clears_all() {
     let r6 = alloc.get_reg("new6".to_string());
     let r7 = alloc.get_reg("new7".to_string());
     
-    // Should get all 7 registers
-    assert!(matches!(r1, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
-    assert!(matches!(r2, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
-    assert!(matches!(r3, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
-    assert!(matches!(r4, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
-    assert!(matches!(r5, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
-    assert!(matches!(r6, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
-    assert!(matches!(r7, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    // Should get all registers from allocatable pool
+    assert!(matches!(r1, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
+    assert!(matches!(r2, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
+    assert!(matches!(r3, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
+    assert!(matches!(r4, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
+    assert!(matches!(r5, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
+    assert!(matches!(r6, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
+    assert!(matches!(r7, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
 }
 
 // ========================================================================
@@ -171,7 +183,7 @@ fn stress_test_massive_spill_cascade() {
     
     let mut allocated = Vec::new();
     
-    // Allocate 100 values, forcing 93 spills (only 7 registers available)
+    // Allocate 100 values, forcing 88 spills (12 registers available)
     for i in 0..100 {
         let reg = alloc.get_reg(format!("val_{}", i));
         allocated.push((format!("val_{}", i), reg));
@@ -185,7 +197,7 @@ fn stress_test_massive_spill_cascade() {
     let spill_count = insts.iter()
         .filter(|i| matches!(i, AsmInst::Store(_, Reg::Sb, _)))
         .count();
-    assert!(spill_count >= 93, "Expected at least 93 spills, got {}", spill_count);
+    assert!(spill_count >= 88, "Expected at least 88 spills, got {}", spill_count);
 }
 
 #[test]
@@ -194,8 +206,8 @@ fn stress_test_interleaved_spill_reload() {
     let mut alloc = RegAllocV2::new();
     alloc.init_stack_bank();
     
-    // Phase 1: Fill all registers
-    for i in 0..7 {
+    // Phase 1: Fill all 12 registers
+    for i in 0..12 {
         alloc.get_reg(format!("phase1_{}", i));
     }
     
@@ -215,16 +227,21 @@ fn stress_test_interleaved_spill_reload() {
     alloc.free_temporaries();
     
     // Phase 3: Reload individual spilled values and verify
-    let reg1 = alloc.reload(format!("phase1_0"));
+    // Find a value that was actually spilled
+    let spill_slots = alloc.test_spill_slots();
+    assert!(!spill_slots.is_empty(), "Should have spilled values");
+    let spilled_value = spill_slots.keys().next().unwrap().clone();
+    
+    let reg1 = alloc.reload(spilled_value.clone());
     let insts = alloc.take_instructions();
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Load(_, Reg::Sb, _))),
             "Reloading spilled value should generate load");
     
     // Verify the value is now in a register
-    assert!(matches!(reg1, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(reg1, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     
     // Reload same value again - should not generate another load
-    let reg2 = alloc.reload(format!("phase1_0"));
+    let reg2 = alloc.reload(spilled_value);
     let insts2 = alloc.take_instructions();
     assert_eq!(insts2.len(), 0, "Reloading already-loaded value should not generate instructions");
     assert_eq!(reg1, reg2, "Should return same register for already-loaded value");
@@ -236,8 +253,8 @@ fn stress_test_pinning_exhaustion() {
     let mut alloc = RegAllocV2::new();
     alloc.init_stack_bank();
     
-    // Allocate and pin 6 registers (leave one free)
-    for i in 0..6 {
+    // Allocate and pin 11 registers (leave one free from 12 allocatable)
+    for i in 0..11 {
         alloc.get_reg(format!("pinned_{}", i));
         alloc.pin_value(format!("pinned_{}", i));
     }
@@ -248,7 +265,7 @@ fn stress_test_pinning_exhaustion() {
     }
     
     // Verify pinned values are still in registers
-    for i in 0..6 {
+    for i in 0..11 {
         let _reg = alloc.reload(format!("pinned_{}", i));
         // Should not generate load instructions for pinned values
         let insts = alloc.take_instructions();
@@ -264,8 +281,8 @@ fn stress_test_pin_all_registers_panic() {
     let mut alloc = RegAllocV2::new();
     alloc.init_stack_bank();
     
-    // Allocate and pin all 7 registers
-    for i in 0..7 {
+    // Allocate and pin all 12 registers
+    for i in 0..12 {
         alloc.get_reg(format!("pinned_{}", i));
         alloc.pin_value(format!("pinned_{}", i));
     }
@@ -289,7 +306,7 @@ fn stress_test_bank_tracking_complex() {
     alloc.set_pointer_bank("dynamic_ptr".to_string(), BankInfo::Register(bank_reg));
     
     // Verify correct bank registers are returned
-    assert_eq!(alloc.get_bank_register("global_array"), Reg::R0);
+    assert_eq!(alloc.get_bank_register("global_array"), Reg::Gp);
     assert_eq!(alloc.get_bank_register("stack_array"), Reg::Sb);
     assert_eq!(alloc.get_bank_register("dynamic_ptr"), bank_reg);
     
@@ -300,7 +317,7 @@ fn stress_test_bank_tracking_complex() {
     
     // Reload and check bank is preserved
     let reloaded_bank = alloc.get_bank_register("dynamic_ptr");
-    assert!(matches!(reloaded_bank, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+    assert!(matches!(reloaded_bank, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
 }
 
 #[test]
@@ -311,7 +328,7 @@ fn stress_test_parameter_loading_edge_cases() {
     // Test loading many parameters (more than available registers)
     for i in 0..20 {
         let reg = alloc.load_parameter(i);
-        assert!(matches!(reg, Reg::A0 | Reg::A1 | Reg::A2 | Reg::A3 | Reg::X0 | Reg::X1 | Reg::X2));
+        assert!(matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3 | Reg::T0 | Reg::T1 | Reg::T2 | Reg::T3 | Reg::T4 | Reg::T5 | Reg::T6 | Reg::T7));
     }
     
     // Should have many loads and spills
@@ -323,11 +340,11 @@ fn stress_test_parameter_loading_edge_cases() {
         .count();
     assert_eq!(load_count, 20, "Should have 20 parameter loads");
     
-    // Parameters beyond index 6 should cause spills
+    // Parameters beyond index 11 should cause spills
     let spill_count = insts.iter()
         .filter(|i| matches!(i, AsmInst::Store(_, Reg::Sb, _)))
         .count();
-    assert!(spill_count >= 13, "Should spill for params beyond available registers");
+    assert!(spill_count >= 8, "Should spill for params beyond available registers");
 }
 
 #[test]

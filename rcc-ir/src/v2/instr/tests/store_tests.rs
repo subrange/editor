@@ -56,15 +56,15 @@ fn test_store_scalar_to_global() {
     // Should load destination address
     assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 200))));
     
-    // Should use R0 for global bank
+    // Should use GP for global bank
     let store_found = insts.iter().any(|i| {
         if let AsmInst::Store(_, bank, _) = i {
-            *bank == Reg::R0
+            *bank == Reg::Gp
         } else {
             false
         }
     });
-    assert!(store_found, "Should use R0 for global bank");
+    assert!(store_found, "Should use GP for global bank");
 }
 
 #[test]
@@ -117,15 +117,15 @@ fn test_store_to_temp_pointer() {
     // Should load constant
     assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 99))));
     
-    // Should use R0 for global bank (from the pointer bank info)
+    // Should use GP for global bank (from the pointer bank info)
     let store_found = insts.iter().any(|i| {
         if let AsmInst::Store(_, bank, _) = i {
-            *bank == Reg::R0
+            *bank == Reg::Gp
         } else {
             false
         }
     });
-    assert!(store_found, "Should use R0 for global pointer");
+    assert!(store_found, "Should use GP for global pointer");
 }
 
 #[test]
@@ -171,13 +171,13 @@ fn test_store_to_global_variable() {
     assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 0)))); // Placeholder for address
     assert!(insts.iter().any(|i| matches!(i, AsmInst::LI(_, 777)))); // Value to store
     
-    // Should have STORE instruction with R0 (global bank)
+    // Should have STORE instruction with GP (global bank)
     let store_found = insts.iter().any(|i| {
         if let AsmInst::Store(_, bank, _) = i {
-            *bank == Reg::R0
+            *bank == Reg::Gp
         } else {
             false
         }
     });
-    assert!(store_found, "Should use R0 for global bank");
+    assert!(store_found, "Should use GP for global bank");
 }

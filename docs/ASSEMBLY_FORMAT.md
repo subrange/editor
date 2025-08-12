@@ -22,14 +22,7 @@ R0	reads 0, writes are ignored
 
 2. Register file
 
-nr	name	purpose
-0	R0	constant 0
-1	PC	offset (0…15) within current bank
-2	PCB	current bank number
-3	RA	return address (low)
-4	RAB	return bank  (high)
-5 – 17	R3 … R15	general purpose
-
+See 32-REGISTER-UPGRADE.md for the full register set.
 
 ⸻
 

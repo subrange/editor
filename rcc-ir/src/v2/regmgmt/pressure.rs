@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, VecDeque};
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
 use crate::ir::{BasicBlock, Instruction, Value, IrBinaryOp};
-use super::allocator::RegAllocV2;
+use super::allocator::{RegAllocV2, ALLOCATABLE_REGISTERS};
 use super::bank::BankInfo;
 use log::{debug, trace};
 
@@ -72,15 +72,11 @@ pub struct RegisterPressureManager {
 
 impl RegisterPressureManager {
     pub fn new(local_count: i16) -> Self {
-        // Initialize with R5-R11 available
+        // Initialize free_list with allocatable registers from centralized constant
         let mut free_list = VecDeque::new();
-        free_list.push_back(Reg::A0);
-        free_list.push_back(Reg::A1);
-        free_list.push_back(Reg::A2);
-        free_list.push_back(Reg::A3);
-        free_list.push_back(Reg::X0);
-        free_list.push_back(Reg::X1);
-        free_list.push_back(Reg::X2);
+        for &reg in ALLOCATABLE_REGISTERS.iter() {
+            free_list.push_back(reg);
+        }
         
         Self {
             allocator: RegAllocV2::new(),
