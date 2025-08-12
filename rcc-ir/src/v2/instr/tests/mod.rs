@@ -12,6 +12,12 @@ mod store_tests;
 #[cfg(test)]
 mod gep_tests;
 
+#[cfg(test)]
+mod gep_integration_tests;
+
+#[cfg(test)]
+mod binary_tests;
+
 // Future test modules as instructions are implemented:
 // mod icmp_tests;
 // mod branch_tests;

@@ -4,7 +4,7 @@
 
 This roadmap provides a complete guide for implementing the remaining components of the V2 backend. The V2 infrastructure (register management, function structure, calling convention) is complete and tested. This document outlines the steps to implement instruction lowering and integrate V2 into the main compilation pipeline.
 
-**Latest Update (Phase 4 Complete)**: The 32-register migration is fully complete with proper calling convention implementation, parameter type tracking, and callee-saved register preservation. All 156 infrastructure tests pass.
+**Latest Update (Phase 1 Complete)**: All memory operations are now fully implemented! Load, Store, and GEP instructions are complete with proper bank handling, fat pointer support, and runtime bank overflow detection. Phase 1 is 100% complete with all 179 tests passing. Ready to proceed to Phase 2: Arithmetic & Control Flow.
 
 ## Current State
 
@@ -17,10 +17,10 @@ This roadmap provides a complete guide for implementing the remaining components
 - **Unified Parameter Placement Logic** - Consistent behavior between caller and callee
 - **Load Instruction** (`instr/load.rs`) - Loads from global/stack with proper bank handling
 - **Store Instruction** (`instr/store.rs`) - Stores to global/stack with fat pointer support
-- **Test Infrastructure** - 156+ passing tests covering all infrastructure
+- **GEP Instruction** (`instr/gep.rs`) - Full runtime bank overflow handling with DIV/MOD
+- **Test Infrastructure** - 179+ passing tests (156 infrastructure + 23 GEP tests)
 
 ### ❌ Missing Components
-- GEP (GetElementPtr) with bank overflow handling
 - Binary operations lowering
 - Comparison operations
 - Branch instructions
@@ -105,13 +105,21 @@ RUST_LOG=trace cargo run -- compile test.c
 
 **NOTE**: The V2 register management module now has comprehensive logging (added in this session). Use it as a reference for logging patterns.
 
-## Phase 1: Memory Operations (Week 1)
+## Phase 1: Memory Operations (Week 1) ✅ COMPLETE
 
-### Task 1.1: Implement Load Instruction Lowering
+### Task 1.1: Implement Load Instruction Lowering ✅ COMPLETED
 
-**File to create**: `rcc-ir/src/v2/instr/load.rs`
+**File created**: `rcc-ir/src/v2/instr/load.rs`
 
-**Implementation steps**:
+**Implementation completed**:
+- ✅ Loads from global memory with GP register
+- ✅ Loads from stack memory with SB register  
+- ✅ Dynamic bank support for runtime-determined banks
+- ✅ Fat pointer loading (both address and bank components)
+- ✅ Proper integration with RegisterPressureManager
+- ✅ Comprehensive unit and integration tests
+
+**Original implementation steps**:
 1. Create the load module structure:
 ```rust
 use crate::ir::{Value, Type};
@@ -205,11 +213,20 @@ pub fn lower_load(
 - Test loading fat pointers (both components)
 - Test with register pressure (spilling)
 
-### Task 1.2: Implement Store Instruction Lowering
+### Task 1.2: Implement Store Instruction Lowering ✅ COMPLETED
 
-**File to create**: `rcc-ir/src/v2/instr/store.rs`
+**File created**: `rcc-ir/src/v2/instr/store.rs`
 
-**Implementation steps**:
+**Implementation completed**:
+- ✅ Stores to global memory with GP register
+- ✅ Stores to stack memory with SB register
+- ✅ Dynamic bank support for runtime-determined banks
+- ✅ Fat pointer storing (both address and bank components)
+- ✅ Immediate value handling (loading into registers first)
+- ✅ Proper integration with RegisterPressureManager
+- ✅ Comprehensive unit and integration tests
+
+**Original implementation steps**:
 1. Similar structure to load but reversed:
 ```rust
 pub fn lower_store(
@@ -230,11 +247,21 @@ pub fn lower_store(
 - Handle immediate values that need to be loaded into registers first
 - Correctly identify bank from pointer provenance
 
-### Task 1.3: Implement GEP with Bank Overflow Handling
+### Task 1.3: Implement GEP with Bank Overflow Handling ✅ COMPLETED
 
-**File to create**: `rcc-ir/src/v2/instr/gep.rs`
+**File created**: `rcc-ir/src/v2/instr/gep.rs`
 
-**Implementation steps**:
+**Implementation completed**:
+- ✅ Full runtime bank overflow handling with DIV/MOD instructions
+- ✅ Static offset optimization for compile-time known indices
+- ✅ Power-of-2 element size optimization using shift instructions
+- ✅ Support for Stack, Global, and dynamic bank pointers
+- ✅ Proper fat pointer propagation through GEP operations
+- ✅ 13 unit tests covering all GEP scenarios
+- ✅ 10 integration tests with load/store operations
+- ✅ Chained GEP support for multi-dimensional arrays
+
+**Original implementation steps**:
 ```rust
 use log::{debug, trace, warn};
 
@@ -479,8 +506,8 @@ Compare V1 vs V2:
 ### Week 1: Memory Operations
 - [x] Implement Load instruction
 - [x] Implement Store instruction  
-- [ ] Implement GEP with bank overflow
-- [x] Unit tests for memory operations (load/store)
+- [x] Implement GEP with bank overflow
+- [x] Unit tests for memory operations (load/store/GEP)
 - [x] Verify R13 initialization works
 
 ### Week 2: Arithmetic & Control
