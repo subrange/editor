@@ -203,7 +203,7 @@ Branching & Joins
 •	Values that must survive are in memory (locals/globals) and are reloaded when needed.
 
 Function Return
-•	Place return value in R3 before epilogue.
+•	Place return value in R3 and R4 before epilogue.
 •	Emit epilogue (restore SP, JALR R0,R0,RA).
 
 Bank Selection for Pointers
