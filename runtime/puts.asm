@@ -256,7 +256,7 @@ puts_bank_done_11:
 ;     R4 contains 't100000'
 ;     R5 contains 'addr_t5_17'
 ;     R6 contains 'stack_bank_18'
-;     R7 contains 't6'
+;     R7 contains 'gep_base_7'
 ;     R8 contains 'next_addr_19'
 ;     R9 contains 't100007'
 ;     R10 contains 'const_1_21'
@@ -274,7 +274,7 @@ puts_bank_done_11:
 ;     R4 contains 't100000'
 ;     R5 contains 'addr_t5_17'
 ;     R6 contains 'stack_bank_18'
-;     R7 contains 't6'
+;     R7 contains 'gep_base_7'
 ;     R8 contains 'next_addr_19'
 ;     R9 contains 't100007'
 ;     R10 contains 'const_1_21'
@@ -292,7 +292,7 @@ puts_bank_done_11:
 ;   R4 contains bank_preserve_26
 ;   R5 contains addr_t5_17
 ;   R6 contains stack_bank_18
-;   R7 contains t6
+;   R7 contains gep_base_7
 ;   R8 contains next_addr_19
 ;   R? contains t100007
 ;   R? contains const_1_21

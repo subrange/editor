@@ -120,7 +120,7 @@ memset_L2:
 ;   Base t0 in R3
 ; Getting register for temp t6
 ; Looking for t6 in registers
-;   R3 contains t0
+;   R3 contains gep_base_7
 ;   R4 contains t100000
 ;   R5 contains t1
 ;   R7 contains addr_t3_8
@@ -136,7 +136,7 @@ memset_L2:
 ; === Processing instruction #2: Store { value: Temp(1), ptr: Temp(7) } ===
 ; Getting register for temp t7
 ; Looking for t7 in registers
-;   R3 contains t0
+;   R3 contains gep_base_7
 ;   R4 contains t100007
 ;   R5 contains t1
 ;   R7 contains addr_t3_8
@@ -147,7 +147,7 @@ memset_L2:
 ;   t7 is now in R10
 ; Getting bank tag for t7
 ; Looking for t100007 in registers
-;   R3 contains t0
+;   R3 contains gep_base_7
 ;   R4 contains t100007
 ;   R5 contains t1
 ;   R7 contains addr_t3_8
@@ -169,7 +169,7 @@ memset_bank_done_13:
 ; Store t1 to [t7]
 ; Getting register for temp t1
 ; Looking for t1 in registers
-;   R3 contains t0
+;   R3 contains gep_base_7
 ;   R4 contains t100007
 ;   R5 contains t1
 ;   R7 contains addr_t3_8
@@ -204,7 +204,7 @@ memset_L3:
 ; Binary: need(lhs)=1, need(rhs)=1
 ; Getting register for temp t8
 ; Looking for t8 in registers
-;   R3 contains t0
+;   R3 contains gep_base_7
 ;   R4 contains t100007
 ;   R5 contains t1
 ;   R7 contains addr_t3_16
@@ -231,7 +231,7 @@ memset_L3:
 ; Store t9 to [t3]
 ; Getting register for temp t9
 ; Looking for t9 in registers
-;   R3 contains t0
+;   R3 contains gep_base_7
 ;   R4 contains t100007
 ;   R5 contains t1
 ;   R7 contains addr_t3_16

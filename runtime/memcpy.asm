@@ -163,7 +163,7 @@ memcpy_L2:
 ;   R3 contains t4
 ;   R4 contains t100000
 ;   R5 contains t1
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100002
 ;   R8 contains t3
 ;   R? contains addr_t5_8
@@ -177,7 +177,7 @@ memcpy_L2:
 ;     R3 contains 't4'
 ;     R4 contains 't100000'
 ;     R5 contains 't1'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100002'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
@@ -197,7 +197,7 @@ memcpy_L2:
 ;   R3 contains t9
 ;   R4 contains t100000
 ;   R5 contains t1
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_8
@@ -211,7 +211,7 @@ memcpy_L2:
 ;   R3 contains t9
 ;   R4 contains t100000
 ;   R5 contains t1
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_8
@@ -224,7 +224,7 @@ memcpy_L2:
 ;     R3 contains 't9'
 ;     R4 contains 't100000'
 ;     R5 contains 't1'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
@@ -249,7 +249,7 @@ memcpy_bank_done_12:
 ;     R3 contains 't9'
 ;     R4 contains 'bank_for_t9'
 ;     R5 contains 't1'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
@@ -269,7 +269,7 @@ memcpy_bank_done_12:
 ;     R3 contains 't9'
 ;     R4 contains 'bank_for_t9'
 ;     R5 contains 't10'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
@@ -288,7 +288,7 @@ memcpy_bank_done_12:
 ;     R3 contains 'addr_t5_13'
 ;     R4 contains 'bank_for_t9'
 ;     R5 contains 't10'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
@@ -306,7 +306,7 @@ memcpy_bank_done_12:
 ;     R3 contains 'addr_t5_13'
 ;     R4 contains 'stack_bank_14'
 ;     R5 contains 't10'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
@@ -325,7 +325,7 @@ memcpy_bank_done_12:
 ;   R3 contains addr_t5_13
 ;   R4 contains stack_bank_14
 ;   R5 contains t11
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_8
@@ -336,7 +336,7 @@ memcpy_bank_done_12:
 ;     R3 contains 'addr_t5_13'
 ;     R4 contains 'stack_bank_14'
 ;     R5 contains 't11'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
@@ -354,10 +354,10 @@ memcpy_bank_done_12:
 ;   Base t0 in R3
 ; Getting register for temp t11
 ; Looking for t11 in registers
-;   R3 contains t0
+;   R3 contains gep_base_12
 ;   R4 contains stack_bank_14
 ;   R5 contains t11
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_8
@@ -368,18 +368,18 @@ memcpy_bank_done_12:
 ; === ModuleLowerer::get_reg for 't12' ===
 ; get_reg for 't12'
 ;   No free registers, need to spill for t12
-;     R3 contains 't0'
+;     R3 contains 'gep_base_12'
 ;     R4 contains 'stack_bank_14'
 ;     R5 contains 't11'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
 ;     R10 contains 'stack_bank_9'
 ;     R11 contains 't8'
-;   Chose to spill t0 from R3
-; Spilling t0 to FP+2
-    ADDI R12, R15, 2
+;   Chose to spill gep_base_12 from R3
+; Spilling gep_base_12 to FP+11
+    ADDI R12, R15, 11
     STORE R3, R13, R12
 ;   Now R3 will contain t12
     ADD R3, R3, R5
@@ -390,7 +390,7 @@ memcpy_bank_done_12:
 ;   R3 contains t12
 ;   R4 contains t100012
 ;   R5 contains t11
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_8
@@ -403,7 +403,7 @@ memcpy_bank_done_12:
 ;   R3 contains ptr_preserve_15
 ;   R4 contains t100012
 ;   R5 contains t11
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_8
@@ -416,15 +416,15 @@ memcpy_bank_done_12:
 ;     R3 contains 'ptr_preserve_15'
 ;     R4 contains 't100012'
 ;     R5 contains 't11'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
 ;     R10 contains 'stack_bank_9'
 ;     R11 contains 't8'
 ;   Chose to spill t11 from R5
-; Spilling t11 to FP+11
-    ADDI R12, R15, 11
+; Spilling t11 to FP+12
+    ADDI R12, R15, 12
     STORE R5, R13, R12
 ;   Now R5 will contain bank_select_16
 ; Select bank register based on tag
@@ -441,7 +441,7 @@ memcpy_bank_done_18:
 ;   R3 contains ptr_preserve2_19
 ;   R4 contains t100012
 ;   R5 contains bank_preserve_20
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_8
@@ -452,15 +452,15 @@ memcpy_bank_done_18:
 ;     R3 contains 'ptr_preserve2_19'
 ;     R4 contains 't100012'
 ;     R5 contains 'bank_preserve_20'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_8'
 ;     R10 contains 'stack_bank_9'
 ;     R11 contains 't8'
 ;   Chose to spill t100012 from R4
-; Spilling t100012 to FP+12
-    ADDI R12, R15, 12
+; Spilling t100012 to FP+13
+    ADDI R12, R15, 13
     STORE R4, R13, R12
 ;   Now R4 will contain t10
 ; Reloading t10 from FP+9
@@ -495,7 +495,7 @@ memcpy_L3:
 ;   R3 contains ptr_preserve2_19
 ;   R4 contains t10
 ;   R5 contains bank_preserve_20
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_21
@@ -509,15 +509,15 @@ memcpy_L3:
 ;     R3 contains 'ptr_preserve2_19'
 ;     R4 contains 't10'
 ;     R5 contains 'bank_preserve_20'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_21'
 ;     R10 contains 'stack_bank_22'
 ;     R11 contains 't13'
 ;   Chose to spill ptr_preserve2_19 from R3
-; Spilling ptr_preserve2_19 to FP+13
-    ADDI R12, R15, 13
+; Spilling ptr_preserve2_19 to FP+14
+    ADDI R12, R15, 14
     STORE R3, R13, R12
 ;   Now R3 will contain const_1_23
     LI R3, 1
@@ -531,15 +531,15 @@ memcpy_L3:
 ;     R3 contains 'const_1_23'
 ;     R4 contains 't10'
 ;     R5 contains 'bank_preserve_20'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_21'
 ;     R10 contains 'stack_bank_22'
 ;     R11 contains 't14'
 ;   Chose to spill const_1_23 from R3
-; Spilling const_1_23 to FP+14
-    ADDI R12, R15, 14
+; Spilling const_1_23 to FP+15
+    ADDI R12, R15, 15
     STORE R3, R13, R12
 ;   Now R3 will contain addr_t5_24
     ADDI R3, R15, 1
@@ -549,7 +549,7 @@ memcpy_L3:
 ;     R3 contains 'ptr_preserve_25'
 ;     R4 contains 't10'
 ;     R5 contains 'bank_preserve_20'
-;     R6 contains 't2'
+;     R6 contains 'gep_base_9'
 ;     R7 contains 't100009'
 ;     R8 contains 't3'
 ;     R9 contains 'addr_t5_21'
@@ -567,7 +567,7 @@ memcpy_L3:
 ;   R3 contains ptr_preserve2_27
 ;   R4 contains bank_preserve_28
 ;   R5 contains bank_preserve_20
-;   R6 contains t2
+;   R6 contains gep_base_9
 ;   R7 contains t100009
 ;   R8 contains t3
 ;   R? contains addr_t5_21

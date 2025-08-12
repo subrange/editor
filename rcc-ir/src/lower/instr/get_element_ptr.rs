@@ -19,6 +19,12 @@ impl ModuleLowerer {
 
         // Get base pointer
         let base_reg = self.get_value_register(ptr)?;
+        
+        // Pin the base register to prevent it from being spilled when we get the index
+        let base_pin_key = format!("gep_base_{}", result);
+        self.reg_alloc.mark_in_use(base_reg, base_pin_key.clone());
+        self.reg_alloc.pin_value(base_pin_key.clone());
+        
         self.emit(AsmInst::Comment(
             format!("  Base {} in {}", self.value_to_string(ptr),
                     match base_reg {
@@ -38,6 +44,9 @@ impl ModuleLowerer {
 
         // Get index value
         let index_reg = self.get_value_register(&indices[0])?;
+        
+        // Unpin the base register now that we have both
+        self.reg_alloc.unpin_value(&base_pin_key);
 
         // Allocate register for result
         let result_key = Self::temp_name(*result);
@@ -82,6 +91,13 @@ impl ModuleLowerer {
                 addr_temp: *result,
                 bank_tag: fat_ptr.bank,
             });
+        } else if let Value::Global(_) = ptr {
+            // Global pointers are in global memory (bank 0)
+            self.fat_ptr_components.insert(*result, FatPtrComponents {
+                addr_temp: *result,
+                bank_tag: crate::ir::BankTag::Global,
+            });
+            self.emit(AsmInst::Comment(format!("  Global pointer - using global bank")));
         }
         
         Ok(())
