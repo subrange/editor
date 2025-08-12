@@ -118,6 +118,10 @@ impl<'a> ExpressionGenerator<'a> {
                 // Global variables always need to be loaded
                 let temp = self.builder.build_load(value.clone(), var_type.clone())?;
                 Ok(Value::Temp(temp))
+            } else if self.parameter_variables.contains(name) && var_type.is_pointer() {
+                // This is a pointer parameter that hasn't been reassigned
+                // Use it directly without loading
+                Ok(value.clone())
             } else {
                 // Check if this is a pointer type (variable that needs to be loaded)
                 match var_type {
@@ -126,10 +130,6 @@ impl<'a> ExpressionGenerator<'a> {
                         // Arrays decay to pointers when used as rvalues
                         if self.array_variables.contains(name) {
                             // Arrays decay to pointers when used as rvalues
-                            Ok(value.clone())
-                        } else if self.parameter_variables.contains(name) {
-                            // Non-pointer parameters are immutable and used directly
-                            // (pointer parameters are now handled with allocas and not in this set)
                             Ok(value.clone())
                         } else if element_type.is_pointer() {
                             // This is a pointer to a pointer (like an alloca of a pointer parameter)

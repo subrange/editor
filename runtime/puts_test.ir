@@ -1,0 +1,30 @@
+define puts {
+  param %0: Ptr(I8)
+L0:
+  %1 = eq i1 %0, 0
+  br %1 %1, label %1, label %3
+L1:
+  %2 = sub i16 0, 1
+  ret %2
+L4:
+  br label %3
+L3:
+  br label %5
+L5:
+  %3 = load i8, i8* %0
+  br %3 %3, label %6, label %7
+L6:
+  %4 = load i8, i8* %0
+  call @putchar(%4)
+  %5 = alloca i8*
+  store %0, i16* %5
+  %6 = load i8*, i8** %5
+  %7 = getelementptr %6, 1
+  store %7, i16* %5
+  br label %5
+L7:
+  call @putchar(10)
+  ret 0
+L8:
+  ret void
+}

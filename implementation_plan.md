@@ -1,3 +1,4 @@
+
 # Ripple C99 Compiler (rcc) - Implementation Plan
 
 ## Overview
@@ -368,6 +369,7 @@ fn test_hello_world() {
     assert_contains!(asm, "STORE R3, R0, R0"); // putchar
 }
 ```
+
 
 ### Conformance Tests
 - C99 standard compliance tests

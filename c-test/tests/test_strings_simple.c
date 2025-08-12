@@ -1,6 +1,6 @@
 int puts(char* c);
 
 int main() {
-    puts("Hello!\n");
+    puts("Hello!");
     return 0;
 }

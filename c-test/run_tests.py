@@ -368,7 +368,7 @@ def main():
         (f"{BASE_DIR}/tests/test_list_sim.c", "ABC\nAXBC\nABC\n", True),
         (f"{BASE_DIR}/tests/test_list_sim_functions.c", "ABC\nAXBC\nABC\n", True),
 
-        (f"{BASE_DIR}/tests/test_puts.c", "Hello, World!\n", True),
+        (f"{BASE_DIR}/tests/test_puts.c", "Hello\nWorld\nTest!\n\nX\n", True),
 
 
         # Pointer provenance tests with fat pointers
@@ -388,7 +388,7 @@ def main():
         (f"{BASE_DIR}/tests/test_complex_bool.c", "12345\n", True),
         (f"{BASE_DIR}/tests/test_complex_simple.c", "123\n", True),
         (f"{BASE_DIR}/tests/test_mul.c", "Y", True),
-        (f"{BASE_DIR}/tests/test_puts_string.c", "Hello, World!\n", True),
+        (f"{BASE_DIR}/tests/test_puts_string.c", "ABC\nHello\n!\n", True),
         (f"{BASE_DIR}/tests/test_pointer_swap.c", "AB\n", True),
         (f"{BASE_DIR}/tests/test_strings_simple.c", "Hello!\n", True),
     ]

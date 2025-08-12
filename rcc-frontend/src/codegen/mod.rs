@@ -13,7 +13,7 @@ pub use errors::CodegenError;
 use std::collections::{HashMap, HashSet};
 use rcc_ir::{Module, Function, Value, IrType, IrBuilder, GlobalVariable, Linkage, LabelId as Label};
 use crate::ast::{TranslationUnit, TopLevelItem, FunctionDefinition, Declaration, Type, 
-                 InitializerKind, ExpressionKind};
+                 InitializerKind, ExpressionKind, Statement, StatementKind, Expression, BinaryOp};
 use crate::CompilerError;
 use self::statements::StatementGenerator;
 use self::types::{convert_type, get_ast_type_size};
@@ -74,6 +74,75 @@ impl CodeGenerator {
         Ok(())
     }
     
+    /// Find parameters that are reassigned in a statement
+    fn find_reassigned_params(&self, stmt: &Statement, reassigned: &mut HashSet<String>) {
+        match &stmt.kind {
+            StatementKind::Expression(expr) => {
+                self.find_reassigned_params_in_expr(expr, reassigned);
+            }
+            StatementKind::Compound(stmts) => {
+                for s in stmts {
+                    self.find_reassigned_params(s, reassigned);
+                }
+            }
+            StatementKind::If { condition, then_stmt, else_stmt } => {
+                self.find_reassigned_params_in_expr(condition, reassigned);
+                self.find_reassigned_params(then_stmt, reassigned);
+                if let Some(else_s) = else_stmt {
+                    self.find_reassigned_params(else_s, reassigned);
+                }
+            }
+            StatementKind::While { condition, body } |
+            StatementKind::DoWhile { body, condition } => {
+                self.find_reassigned_params_in_expr(condition, reassigned);
+                self.find_reassigned_params(body, reassigned);
+            }
+            StatementKind::For { init, condition, update, body } => {
+                if let Some(init_stmt) = init {
+                    self.find_reassigned_params(init_stmt, reassigned);
+                }
+                if let Some(cond) = condition {
+                    self.find_reassigned_params_in_expr(cond, reassigned);
+                }
+                if let Some(upd) = update {
+                    self.find_reassigned_params_in_expr(upd, reassigned);
+                }
+                self.find_reassigned_params(body, reassigned);
+            }
+            _ => {}
+        }
+    }
+    
+    /// Find parameters that are reassigned in an expression
+    fn find_reassigned_params_in_expr(&self, expr: &Expression, reassigned: &mut HashSet<String>) {
+        match &expr.kind {
+            ExpressionKind::Binary { op: BinaryOp::Assign, left, right } => {
+                // Check if we're assigning to a parameter
+                if let ExpressionKind::Identifier { name, .. } = &left.kind {
+                    // Check if this is a parameter
+                    if self.parameter_variables.contains(name) {
+                        reassigned.insert(name.clone());
+                    }
+                }
+                // Also check the right side for nested assignments
+                self.find_reassigned_params_in_expr(right, reassigned);
+            }
+            ExpressionKind::Binary { left, right, .. } => {
+                self.find_reassigned_params_in_expr(left, reassigned);
+                self.find_reassigned_params_in_expr(right, reassigned);
+            }
+            ExpressionKind::Unary { operand, .. } => {
+                self.find_reassigned_params_in_expr(operand, reassigned);
+            }
+            ExpressionKind::Call { arguments, .. } => {
+                for arg in arguments {
+                    self.find_reassigned_params_in_expr(arg, reassigned);
+                }
+            }
+            _ => {}
+        }
+    }
+    
     /// Generate IR for a function definition
     fn generate_function(&mut self, func_def: &FunctionDefinition) -> Result<(), CompilerError> {
         // Save global variables before clearing
@@ -114,15 +183,40 @@ impl CodeGenerator {
         self.builder.create_block(entry)?;
         
         // Add parameters to variables map
+        // First, mark all parameters temporarily so we can scan for reassignments
+        for (i, param) in func_def.parameters.iter().enumerate() {
+            let param_name = param.name.clone().unwrap_or_else(|| format!("arg{}", i));
+            self.parameter_variables.insert(param_name);
+        }
+        
+        // Find which parameters are reassigned in the function
+        let mut reassigned_params = HashSet::new();
+        self.find_reassigned_params(&func_def.body, &mut reassigned_params);
+        
+        // Now process parameters based on whether they're reassigned
         for (i, param) in func_def.parameters.iter().enumerate() {
             let param_value = Value::Temp(i as u32);
             let param_type = param_types[i].clone();
-            // Use parameter name if available, otherwise generate one
             let param_name = param.name.clone().unwrap_or_else(|| format!("arg{}", i));
-            self.variables.insert(param_name.clone(), (param_value, param_type));
             
-            // Mark this as a parameter variable
-            self.parameter_variables.insert(param_name);
+            if reassigned_params.contains(&param_name) {
+                // This parameter is reassigned - create an alloca for it
+                let alloca_temp = self.builder.build_alloca(param_type.clone(), None)?;
+                
+                // Store the original parameter value
+                self.builder.build_store(param_value, Value::Temp(alloca_temp))?;
+                
+                // Map the parameter to the alloca
+                let var_type = IrType::Ptr(Box::new(param_type));
+                self.variables.insert(param_name.clone(), (Value::Temp(alloca_temp), var_type));
+                
+                // Remove from parameter_variables since it now uses an alloca
+                self.parameter_variables.remove(&param_name);
+            } else {
+                // This parameter is never reassigned - use it directly
+                self.variables.insert(param_name, (param_value, param_type));
+                // Keep it in parameter_variables for direct use
+            }
         }
         
         // Generate function body

@@ -77,6 +77,8 @@ impl ModuleLowerer {
                     self.reg_alloc.mark_as_parameter(bank_reg);
 
                     // The bank is in a register, tracked above
+                    // Note: We don't add to fat_ptr_components here because pointer parameters
+                    // have their bank tracked separately via bank_temp_key
                     next_param_reg_idx += 1;
                 } else if next_param_reg_idx == 5 {
                     // Address in R8, bank on stack
