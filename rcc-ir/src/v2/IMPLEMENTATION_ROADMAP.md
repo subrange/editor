@@ -4,7 +4,7 @@
 
 This roadmap provides a complete guide for implementing the remaining components of the V2 backend. The V2 infrastructure (register management, function structure, calling convention) is complete and tested. This document outlines the steps to implement instruction lowering and integrate V2 into the main compilation pipeline.
 
-**Latest Update (Phase 2 Mostly Complete)**: Binary and comparison operations are now fully implemented! The binary operation module has been refactored into a clean modular structure with separate files for arithmetic, comparison, and helper functions. All arithmetic operations (Add, Sub, Mul, Div, Mod), logical operations (And, Or, Xor), shift operations, and all comparison predicates are working with Sethi-Ullman ordering for optimal register usage. 196+ tests passing (179 infrastructure + 17 binary operation tests). Only branch instructions remain to complete Phase 2.
+**Latest Update (Phase 2 Complete!)**: All Phase 2 instructions are now fully implemented! Binary operations, comparison operations, and branch instructions are all working. The branch module supports both conditional and unconditional branches, with proper handling of comparison-based branching patterns. All branches use relative addressing (BEQ/BNE/BLT/BGE) as required by the VM. Unconditional branches are implemented using BEQ R0, R0, label. 211+ tests passing across all V2 modules.
 
 ## Current State
 
@@ -19,10 +19,10 @@ This roadmap provides a complete guide for implementing the remaining components
 - **Store Instruction** (`instr/store.rs`) - Stores to global/stack with fat pointer support
 - **GEP Instruction** (`instr/gep.rs`) - Full runtime bank overflow handling with DIV/MOD
 - **Binary Operations** (`instr/binary/`) - All arithmetic, logical, and comparison operations with Sethi-Ullman ordering
-- **Test Infrastructure** - 196+ passing tests (179 infrastructure + 17 binary operation tests)
+- **Branch Instructions** (`instr/branch.rs`) - Conditional and unconditional branches with label support
+- **Test Infrastructure** - 211+ passing tests across all V2 modules
 
 ### ❌ Missing Components
-- Branch instructions
 - Integration with main IR lowering pipeline
 
 ## Critical Development Practices
@@ -356,24 +356,23 @@ All comparison predicates are fully implemented:
 - Signed comparisons (Slt, Sle, Sgt, Sge) using SLT
 - Unsigned comparisons (Ult, Ule, Ugt, Uge) using SLTU
 
-### Task 2.3: Implement Branch Instructions
+### Task 2.3: Implement Branch Instructions ✅ COMPLETED
 
-**File to create**: `rcc-ir/src/v2/instr/branch.rs`
+**File created**: `rcc-ir/src/v2/instr/branch.rs`
 
-```rust
-pub fn lower_branch(
-    mgr: &mut RegisterPressureManager,
-    condition: Option<&Value>,
-    true_label: &str,
-    false_label: Option<&str>,
-) -> Vec<AsmInst> {
-    if let Some(cond) = condition {
-        // Conditional branch using BEQ/BNE
-    } else {
-        // Unconditional jump using JAL
-    }
-}
-```
+**Implementation completed**:
+- ✅ Unconditional branches using BEQ R0, R0, label
+- ✅ Conditional branches with BEQ/BNE/BLT/BGE
+- ✅ Comparison-based branching patterns
+- ✅ Support for all comparison types (Eq, Ne, Lt, Le, Gt, Ge)
+- ✅ Proper label generation and relative addressing
+- ✅ 18 unit tests for branch patterns
+
+**Key design decisions**:
+- Use BEQ R0, R0, label for unconditional branches (always true since R0 == R0)
+- All branches use relative addressing as required by the VM
+- Inverse logic for GT and LE comparisons using swapped operands
+- Labels are passed as strings to be resolved by the assembler
 
 ## Phase 3: Integration (Week 3)
 
@@ -505,8 +504,8 @@ Compare V1 vs V2:
 ### Week 2: Arithmetic & Control
 - [x] Complete binary operations
 - [x] Implement comparison operations
-- [ ] Implement branch instructions
-- [x] Unit tests for binary and comparison operations
+- [x] Implement branch instructions
+- [x] Unit tests for binary, comparison, and branch operations
 
 ### Week 3: Integration
 - [ ] Create main V2 lowering function

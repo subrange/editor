@@ -3,17 +3,21 @@
 //! This module contains the implementation for lowering individual IR instructions
 //! to Ripple assembly instructions.
 
+pub mod helpers;
 pub mod load;
 pub mod store;
 pub mod gep;
 pub mod binary;
 pub mod unary;
+pub mod branch;
 
+pub use helpers::get_value_register;
 pub use load::lower_load;
 pub use store::lower_store;
 pub use gep::lower_gep;
 pub use binary::{lower_binary_op, lower_binary_op_immediate};
 pub use unary::lower_unary_op;
+pub use branch::{lower_branch, lower_branch_cond, lower_compare_and_branch, ComparisonType};
 
 // Test modules
 #[cfg(test)]
@@ -21,7 +25,6 @@ mod tests;
 
 // TODO: Add these modules as they are implemented
 // pub mod icmp;
-// pub mod branch;
 // pub mod alloca;
 // pub mod call;
 // pub mod ret;

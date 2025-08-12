@@ -151,6 +151,12 @@ impl NameGenerator {
         format!("store_global_{}_{}", global_name, label_id)
     }
     
+    /// Generate a standard label name from a label ID
+    /// This is used for branch targets and other control flow labels
+    pub fn label_name(&self, label_id: rcc_common::LabelId) -> String {
+        format!("L{}", label_id)
+    }
+    
     // ===== GEP operation naming (future) =====
     
     /// Get name for GEP intermediate calculations
@@ -203,6 +209,142 @@ impl NameGenerator {
     pub fn local_addr_name(&mut self, offset: i16) -> String {
         let op_id = self.next_operation_id();
         format!("local_addr_f{}_op{}_off{}", self.function_id, op_id, offset)
+    }
+    
+    // ===== Constant value naming =====
+    
+    /// Get name for a constant value register
+    pub fn const_value(&mut self, value: i64) -> String {
+        let op_id = self.next_operation_id();
+        format!("const_f{}_op{}_{}", self.function_id, op_id, value)
+    }
+    
+    /// Get name for a function address
+    pub fn func_addr(&mut self, func_name: &str) -> String {
+        let op_id = self.next_operation_id();
+        format!("func_f{}_op{}_{}", self.function_id, op_id, func_name)
+    }
+    
+    // ===== Unary operation naming =====
+    
+    /// Get name for all ones register (used in NOT operation)
+    pub fn all_ones(&mut self) -> String {
+        let op_id = self.next_operation_id();
+        format!("all_ones_f{}_op{}", self.function_id, op_id)
+    }
+    
+    /// Get name for zero register (used in NEG operation)
+    pub fn zero_temp(&mut self) -> String {
+        let op_id = self.next_operation_id();
+        format!("zero_f{}_op{}", self.function_id, op_id)
+    }
+    
+    /// Get name for mask register (used in truncation)
+    pub fn mask_i8(&mut self) -> String {
+        let op_id = self.next_operation_id();
+        format!("mask_i8_f{}_op{}", self.function_id, op_id)
+    }
+    
+    /// Get name for mask register (used in truncation to i1)
+    pub fn mask_i1(&mut self) -> String {
+        let op_id = self.next_operation_id();
+        format!("mask_i1_f{}_op{}", self.function_id, op_id)
+    }
+    
+    // ===== Comparison operation naming =====
+    
+    /// Get name for XOR temporary in comparison
+    pub fn xor_temp(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("xor_temp_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for constant 1 in comparison
+    pub fn const_one(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("const_1_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for constant 0 in comparison
+    pub fn const_zero(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("const_0_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for SLE temporary
+    pub fn sle_temp(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("sle_temp_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for SGE temporary
+    pub fn sge_temp(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("sge_temp_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for ULE temporary
+    pub fn ule_temp(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("ule_temp_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for UGE temporary
+    pub fn uge_temp(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("uge_temp_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    // ===== Binary operation naming =====
+    
+    /// Get name for immediate value register
+    pub fn imm_value(&mut self, value: i16) -> String {
+        let op_id = self.next_operation_id();
+        format!("imm_f{}_op{}_{}", self.function_id, op_id, value)
+    }
+    
+    // ===== GEP additional naming =====
+    
+    /// Get name for GEP shift amount
+    pub fn gep_shift(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("gep_shift_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for GEP element size
+    pub fn gep_size(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("gep_size_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for GEP bank delta
+    pub fn gep_bank_delta(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("gep_bank_delta_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for GEP bank size constant
+    pub fn gep_bank_size(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("gep_bank_size_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for GEP new address
+    pub fn gep_new_addr(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("gep_new_addr_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for GEP new bank
+    pub fn gep_new_bank(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("gep_new_bank_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
+    /// Get name for GEP global address
+    pub fn gep_global(&mut self, global_name: &str) -> String {
+        let op_id = self.next_operation_id();
+        format!("gep_global_f{}_op{}_{}", self.function_id, op_id, global_name)
     }
 }
 

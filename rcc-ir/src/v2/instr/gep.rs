@@ -101,7 +101,7 @@ pub fn lower_gep(
         Value::Global(name) => {
             // Global pointers use GP (Global Pointer) register for bank
             trace!("  Base pointer is global: {}", name);
-            let addr_reg_name = format!("gep_global_{}", name);
+            let addr_reg_name = naming.gep_global(name);
             let addr_reg = mgr.get_register(addr_reg_name);
             
             // Load global address (to be resolved by linker)
@@ -234,7 +234,7 @@ pub fn lower_gep(
         } else if element_size > 0 && (element_size & (element_size - 1)) == 0 {
             // Use shift for power-of-2 sizes
             let shift_amount = element_size.trailing_zeros() as i16;
-            let shift_reg = mgr.get_register(format!("gep_shift_{}", result_temp));
+            let shift_reg = mgr.get_register(naming.gep_shift(result_temp));
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::LI(shift_reg, shift_amount));
             insts.push(AsmInst::Sll(offset_reg, index_reg, shift_reg));
@@ -242,7 +242,7 @@ pub fn lower_gep(
             trace!("  Using shift by {} for element size {}", shift_amount, element_size);
         } else {
             // Need multiplication
-            let size_reg = mgr.get_register(format!("gep_size_{}", result_temp));
+            let size_reg = mgr.get_register(naming.gep_size(result_temp));
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::LI(size_reg, element_size));
             insts.push(AsmInst::Mul(offset_reg, index_reg, size_reg));
@@ -260,8 +260,8 @@ pub fn lower_gep(
         ));
         
         // Calculate how many banks we've crossed: bank_delta = result_addr / BANK_SIZE
-        let bank_delta_reg = mgr.get_register(format!("gep_bank_delta_{}", result_temp));
-        let bank_size_reg = mgr.get_register(format!("gep_bank_size_{}", result_temp));
+        let bank_delta_reg = mgr.get_register(naming.gep_bank_delta(result_temp));
+        let bank_size_reg = mgr.get_register(naming.gep_bank_size(result_temp));
         insts.extend(mgr.take_instructions());
         
         insts.push(AsmInst::LI(bank_size_reg, BANK_SIZE_INSTRUCTIONS as i16));
@@ -269,7 +269,7 @@ pub fn lower_gep(
         trace!("  Calculated bank delta (banks crossed)");
         
         // Calculate address within new bank: new_addr = result_addr % BANK_SIZE
-        let new_addr_reg = mgr.get_register(format!("gep_new_addr_{}", result_temp));
+        let new_addr_reg = mgr.get_register(naming.gep_new_addr(result_temp));
         insts.extend(mgr.take_instructions());
         insts.push(AsmInst::Mod(new_addr_reg, result_addr_reg, bank_size_reg));
         trace!("  Calculated address within new bank");
@@ -278,7 +278,7 @@ pub fn lower_gep(
         match base_bank_info {
             BankInfo::Stack => {
                 // Stack bank: new_bank = SB + bank_delta
-                let new_bank_reg = mgr.get_register(format!("gep_new_bank_{}", result_temp));
+                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
                 insts.extend(mgr.take_instructions());
                 insts.push(AsmInst::Add(new_bank_reg, Reg::Sb, bank_delta_reg));
                 result_bank_info = BankInfo::Register(new_bank_reg);
@@ -286,7 +286,7 @@ pub fn lower_gep(
             }
             BankInfo::Global => {
                 // Global bank: new_bank = GP + bank_delta
-                let new_bank_reg = mgr.get_register(format!("gep_new_bank_{}", result_temp));
+                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
                 insts.extend(mgr.take_instructions());
                 insts.push(AsmInst::Add(new_bank_reg, Reg::Gp, bank_delta_reg));
                 result_bank_info = BankInfo::Register(new_bank_reg);

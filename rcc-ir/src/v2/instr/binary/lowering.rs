@@ -7,8 +7,9 @@ use crate::v2::naming::NameGenerator;
 use rcc_codegen::AsmInst;
 use log::{debug, trace, warn};
 
+use crate::v2::instr::helpers::get_value_register;
 use super::{
-    get_value_register, is_commutative, can_reuse_register, calculate_register_needs,
+    is_commutative, can_reuse_register, calculate_register_needs,
     generate_arithmetic_instruction, generate_comparison_instructions
 };
 use super::comparison::is_comparison;
@@ -213,7 +214,7 @@ pub fn lower_binary_op_immediate(
         // Operations without immediate forms - load constant first
         IrBinaryOp::And | IrBinaryOp::Or | IrBinaryOp::Xor => {
             debug!("  No immediate form for {:?}, loading constant into register", op);
-            let rhs_reg = mgr.get_register(format!("imm_{}_{}", rhs_const, naming.next_operation_id()));
+            let rhs_reg = mgr.get_register(naming.imm_value(rhs_const));
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::LI(rhs_reg, rhs_const));
             
@@ -230,7 +231,7 @@ pub fn lower_binary_op_immediate(
         
         IrBinaryOp::Shl | IrBinaryOp::LShr | IrBinaryOp::AShr => {
             debug!("  No immediate form for shift, loading constant into register");
-            let rhs_reg = mgr.get_register(format!("imm_{}_{}", rhs_const, naming.next_operation_id()));
+            let rhs_reg = mgr.get_register(naming.imm_value(rhs_const));
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::LI(rhs_reg, rhs_const));
             

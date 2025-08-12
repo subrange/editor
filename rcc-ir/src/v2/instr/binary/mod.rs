@@ -19,6 +19,6 @@ mod helpers;
 pub use lowering::{lower_binary_op, lower_binary_op_immediate};
 
 // Internal exports for use within this module
-pub(self) use helpers::{get_value_register, is_commutative, can_reuse_register, calculate_register_needs};
+pub(self) use helpers::{is_commutative, can_reuse_register, calculate_register_needs};
 pub(self) use arithmetic::generate_arithmetic_instruction;
 pub(self) use comparison::generate_comparison_instructions;

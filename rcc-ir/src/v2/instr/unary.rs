@@ -7,6 +7,7 @@ use crate::ir::{Value, IrUnaryOp, IrType};
 use rcc_common::TempId;
 use crate::v2::regmgmt::RegisterPressureManager;
 use crate::v2::naming::NameGenerator;
+use crate::v2::instr::helpers::get_value_register;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 
@@ -58,7 +59,7 @@ pub fn lower_unary_op(
         IrUnaryOp::Not => {
             // Bitwise NOT: result = ~operand
             // In RISC architectures, NOT is often XOR with -1 (all ones)
-            let all_ones_reg = mgr.get_register(format!("all_ones_{}", naming.next_operation_id()));
+            let all_ones_reg = mgr.get_register(naming.all_ones());
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::LI(all_ones_reg, -1)); // Load -1 (0xFFFF)
             insts.push(AsmInst::Xor(result_reg, operand_reg, all_ones_reg));
@@ -69,7 +70,7 @@ pub fn lower_unary_op(
         IrUnaryOp::Neg => {
             // Arithmetic negation: result = -operand
             // Implement as: result = 0 - operand
-            let zero_reg = mgr.get_register(format!("zero_{}", naming.next_operation_id()));
+            let zero_reg = mgr.get_register(naming.zero_temp());
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::LI(zero_reg, 0));
             insts.push(AsmInst::Sub(result_reg, zero_reg, operand_reg));
@@ -106,7 +107,7 @@ pub fn lower_unary_op(
             match result_type {
                 IrType::I8 => {
                     // Truncate to 8 bits
-                    let mask_reg = mgr.get_register(format!("mask_i8_{}", naming.next_operation_id()));
+                    let mask_reg = mgr.get_register(naming.mask_i8());
                     insts.extend(mgr.take_instructions());
                     insts.push(AsmInst::LI(mask_reg, 0xFF)); // 8-bit mask
                     insts.push(AsmInst::And(result_reg, operand_reg, mask_reg));
@@ -115,7 +116,7 @@ pub fn lower_unary_op(
                 }
                 IrType::I1 => {
                     // Truncate to 1 bit (boolean)
-                    let mask_reg = mgr.get_register(format!("mask_i1_{}", naming.next_operation_id()));
+                    let mask_reg = mgr.get_register(naming.mask_i1());
                     insts.extend(mgr.take_instructions());
                     insts.push(AsmInst::LI(mask_reg, 1)); // 1-bit mask
                     insts.push(AsmInst::And(result_reg, operand_reg, mask_reg));
@@ -172,43 +173,5 @@ fn can_reuse_register(op: IrUnaryOp) -> bool {
     match op {
         IrUnaryOp::Not | IrUnaryOp::Neg => false, // Need both registers during operation
         _ => true, // Conversions can often reuse the register
-    }
-}
-
-/// Get register for a value (similar to binary operations helper)
-fn get_value_register(
-    mgr: &mut RegisterPressureManager,
-    naming: &mut NameGenerator,
-    value: &Value,
-) -> Reg {
-    match value {
-        Value::Temp(id) => {
-            let name = naming.temp_name(*id);
-            mgr.get_register(name)
-        }
-        Value::Constant(val) => {
-            // Create a unique name for this constant load
-            let name = format!("const_{}_{}", val, naming.next_operation_id());
-            let reg = mgr.get_register(name);
-            // The RegisterPressureManager will emit LI instruction
-            reg
-        }
-        Value::Global(name) => {
-            let global_name = naming.load_global_addr(name);
-            let reg = mgr.get_register(global_name);
-            reg
-        }
-        Value::Function(name) => {
-            let func_name = format!("func_{}_{}", name, naming.next_operation_id());
-            let reg = mgr.get_register(func_name);
-            reg
-        }
-        Value::FatPtr(fp) => {
-            // For unary ops on fat pointers, we typically just need the address part
-            get_value_register(mgr, naming, &fp.addr)
-        }
-        Value::Undef => {
-            panic!("Cannot use undefined value in unary operation");
-        }
     }
 }
