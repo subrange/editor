@@ -25,6 +25,9 @@ pub struct SimpleRegAlloc {
     /// Instructions to emit (for spill/reload code)
     instructions: Vec<AsmInst>,
     
+    /// Track the last spilled value and its offset for the get_reg caller
+    last_spilled: Option<(String, i16)>,
+    
     /// Set of values that are temporarily pinned and cannot be spilled
     /// Used during binary operations to prevent spilling operands
     pinned_values: std::collections::HashSet<String>,
@@ -45,6 +48,7 @@ impl SimpleRegAlloc {
             spill_slots: BTreeMap::new(),
             next_spill_offset: 0,
             instructions: Vec::new(),
+            last_spilled: None,
             pinned_values: std::collections::HashSet::new(),
             parameter_registers: std::collections::HashSet::new(),
         }
@@ -114,6 +118,9 @@ impl SimpleRegAlloc {
         self.instructions.push(AsmInst::Comment(format!("Spilling {} to FP+{}", victim_value, spill_offset)));
         self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, spill_offset));
         self.instructions.push(AsmInst::Store(victim, Reg::R13, Reg::R12));
+        
+        // Track what was spilled
+        self.last_spilled = Some((victim_value, spill_offset));
         
         // Now use this register for the new value
         self.instructions.push(AsmInst::Comment(format!("  Now {} will contain {}", victim_name, for_value)));
@@ -397,9 +404,24 @@ impl SimpleRegAlloc {
         self.reg_contents.get(&reg).cloned()
     }
     
+    /// Check if a value has been spilled and get its slot
+    pub fn get_spilled_slot(&self, value: &str) -> Option<i16> {
+        self.spill_slots.get(value).copied()
+    }
+    
     /// Get and clear any generated instructions
     pub fn take_instructions(&mut self) -> Vec<AsmInst> {
         std::mem::take(&mut self.instructions)
+    }
+    
+    /// Get and clear the last spilled value information
+    pub fn take_last_spilled(&mut self) -> Option<(String, i16)> {
+        self.last_spilled.take()
+    }
+    
+    /// Record that a value is spilled at a given offset (used for bank tag propagation)
+    pub fn record_spilled_value(&mut self, value: String, offset: i16) {
+        self.spill_slots.insert(value, offset);
     }
     
     /// Reset allocator state for a new function
@@ -410,6 +432,7 @@ impl SimpleRegAlloc {
         self.spill_slots.clear();
         self.next_spill_offset = 0;
         self.instructions.clear();
+        self.last_spilled = None;
         self.pinned_values.clear();
         self.parameter_registers.clear();
     }

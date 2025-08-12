@@ -218,12 +218,12 @@ puts_bank_done_11:
 ; get_reg for 'next_addr_19'
 ;   Allocated free register for next_addr_19
     ADDI R8, R5, 1
-; === ModuleLowerer::get_reg for 'load_bank_20' ===
-; get_reg for 'load_bank_20'
-;   Allocated free register for load_bank_20
 ; Checking bank register status for loading bank tag
 ; Bank value was: stack_bank_18
 ; Bank register still valid in R6
+; === ModuleLowerer::get_reg for 't100006' ===
+; get_reg for 't100006'
+;   Allocated free register for t100006
     LOAD R9, R6, R8
 ; === Processing instruction #5: GetElementPtr { result: 7, ptr: Temp(6), indices: [Constant(1)], result_type: Ptr(I16) } ===
 ; GetElementPtr t7 = t6 + offsets
@@ -239,9 +239,9 @@ puts_bank_done_11:
 ; t6 found in R7
 ;   t6 is now in R7
 ;   Base t6 in R7
-; === ModuleLowerer::get_reg for 'const_1_21' ===
-; get_reg for 'const_1_21'
-;   Allocated free register for const_1_21
+; === ModuleLowerer::get_reg for 'const_1_20' ===
+; get_reg for 'const_1_20'
+;   Allocated free register for const_1_20
     LI R10, 1
 ; === ModuleLowerer::get_reg for 't7' ===
 ; get_reg for 't7'
@@ -249,9 +249,9 @@ puts_bank_done_11:
     ADD R11, R7, R10
 ;   Propagating bank tag from t100006 to t100007
 ; === Processing instruction #6: Store { value: Temp(7), ptr: Temp(5) } ===
-; === ModuleLowerer::get_reg for 'addr_t5_22' ===
-; get_reg for 'addr_t5_22'
-;   No free registers, need to spill for addr_t5_22
+; === ModuleLowerer::get_reg for 'addr_t5_21' ===
+; get_reg for 'addr_t5_21'
+;   No free registers, need to spill for addr_t5_21
 ;     R3 contains 't1'
 ;     R4 contains 't100000'
 ;     R5 contains 'addr_t5_17'
@@ -259,43 +259,43 @@ puts_bank_done_11:
 ;     R7 contains 'gep_base_7'
 ;     R8 contains 'next_addr_19'
 ;     R9 contains 't100007'
-;     R10 contains 'const_1_21'
+;     R10 contains 'gep_index_7'
 ;     R11 contains 't7'
 ;   Chose to spill t1 from R3
 ; Spilling t1 to FP+3
     ADDI R12, R15, 3
     STORE R3, R13, R12
-;   Now R3 will contain addr_t5_22
+;   Now R3 will contain addr_t5_21
     ADDI R3, R15, 1
-; === ModuleLowerer::get_reg for 'stack_bank_24' ===
-; get_reg for 'stack_bank_24'
-;   No free registers, need to spill for stack_bank_24
-;     R3 contains 'ptr_preserve_23'
+; === ModuleLowerer::get_reg for 'stack_bank_23' ===
+; get_reg for 'stack_bank_23'
+;   No free registers, need to spill for stack_bank_23
+;     R3 contains 'ptr_preserve_22'
 ;     R4 contains 't100000'
 ;     R5 contains 'addr_t5_17'
 ;     R6 contains 'stack_bank_18'
 ;     R7 contains 'gep_base_7'
 ;     R8 contains 'next_addr_19'
 ;     R9 contains 't100007'
-;     R10 contains 'const_1_21'
+;     R10 contains 'gep_index_7'
 ;     R11 contains 't7'
 ;   Chose to spill t100000 from R4
 ; Spilling t100000 to FP+4
     ADDI R12, R15, 4
     STORE R4, R13, R12
-;   Now R4 will contain stack_bank_24
+;   Now R4 will contain stack_bank_23
     LI R4, 1
 ; Store t7 to [t5]
 ; Getting register for temp t7
 ; Looking for t7 in registers
-;   R3 contains ptr_preserve2_25
-;   R4 contains bank_preserve_26
+;   R3 contains ptr_preserve2_24
+;   R4 contains bank_preserve_25
 ;   R5 contains addr_t5_17
 ;   R6 contains stack_bank_18
 ;   R7 contains gep_base_7
 ;   R8 contains next_addr_19
 ;   R? contains t100007
-;   R? contains const_1_21
+;   R? contains gep_index_7
 ;   R? contains t7
 ; t7 found in R?
 ;   t7 is now in R11
@@ -305,17 +305,17 @@ puts_bank_done_11:
     BEQ R0, R0, puts_L5
 puts_L7:
 ; === Processing instruction #0: Call { result: None, function: Global("putchar"), args: [Constant(10)], result_type: Void } ===
-; === ModuleLowerer::get_reg for 'const_10_27' ===
-; get_reg for 'const_10_27'
-;   Allocated free register for const_10_27
+; === ModuleLowerer::get_reg for 'const_10_26' ===
+; get_reg for 'const_10_26'
+;   Allocated free register for const_10_26
     LI R5, 10
     ADD R3, R5, R0
     CALL putchar
 ; === Processing instruction #1: Return(Some(Constant(0))) ===
-; === ModuleLowerer::get_reg for 'const_0_28' ===
-; Clearing R5 which contained const_10_27
-; get_reg for 'const_0_28'
-;   Allocated free register for const_0_28
+; === ModuleLowerer::get_reg for 'const_0_27' ===
+; Clearing R5 which contained const_10_26
+; get_reg for 'const_0_27'
+;   Allocated free register for const_0_27
     LI R5, 0
     ADD R3, R5, R0
     ADD R14, R15, R0

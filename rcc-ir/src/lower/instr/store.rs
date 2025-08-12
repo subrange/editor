@@ -128,30 +128,52 @@ impl ModuleLowerer {
                             BankTag::Stack => 1,
                         }
                     }
-                    _ => {
+                    Value::Global(_) => 0, // Globals are always in global memory (bank 0)
+                    Value::Temp(tid) => {
                         // Check if it's a local (stack) variable
-                        if let Value::Temp(tid) = value {
-                            if self.local_offsets.contains_key(tid) {
-                                1 // Stack
-                            } else {
-                                0 // Default to global
-                            }
+                        if self.local_offsets.contains_key(tid) {
+                            1 // Stack
                         } else {
                             0 // Default to global
                         }
                     }
+                    _ => 0 // Default to global
                 };
 
                 // Store bank tag at next word
                 // Get register for bank value first
                 let bank_reg = self.get_reg(format!("store_bank_{}", self.label_counter));
-                    self.emit(AsmInst::LI(bank_reg, bank_tag_val));
+                self.emit(AsmInst::LI(bank_reg, bank_tag_val));
+                
+                // Pin the bank value register, preserved bank register, AND ptr_reg
+                let bank_val_pin_key = self.generate_temp_name("bank_val_preserve");
+                self.reg_alloc.mark_in_use(bank_reg, bank_val_pin_key.clone());
+                self.reg_alloc.pin_value(bank_val_pin_key.clone());
+                
+                // Also pin the preserved bank if it needs preservation
+                let preserved_bank_pin_key = self.generate_temp_name("preserved_bank_pin");
+                if bank_needs_preservation {
+                    self.reg_alloc.mark_in_use(preserved_bank, preserved_bank_pin_key.clone());
+                    self.reg_alloc.pin_value(preserved_bank_pin_key.clone());
+                }
+                
+                // IMPORTANT: Also pin ptr_reg so it doesn't get spilled when we allocate next_addr
+                let ptr_pin_key2 = self.generate_temp_name("ptr_pin_for_next");
+                self.reg_alloc.mark_in_use(ptr_reg, ptr_pin_key2.clone());
+                self.reg_alloc.pin_value(ptr_pin_key2.clone());
 
                 // Then calculate the address for next word
                 // Do this after loading bank value to avoid register conflicts
                 let temp_name = self.generate_temp_name("next_addr");
                 let next_addr = self.get_reg(temp_name);
-                    self.emit(AsmInst::AddI(next_addr, ptr_reg, 1));
+                self.emit(AsmInst::AddI(next_addr, ptr_reg, 1));
+                
+                // Unpin all the registers
+                self.reg_alloc.unpin_value(&ptr_pin_key2);
+                self.reg_alloc.unpin_value(&bank_val_pin_key);
+                if bank_needs_preservation {
+                    self.reg_alloc.unpin_value(&preserved_bank_pin_key);
+                }
 
                 // Store the bank tag
                 self.emit(AsmInst::Store(bank_reg, preserved_bank.clone(), next_addr));

@@ -141,7 +141,7 @@ memset_L2:
 ;   R5 contains t1
 ;   R7 contains addr_t3_8
 ;   R8 contains stack_bank_9
-;   R? contains t6
+;   R? contains gep_index_7
 ;   R? contains t7
 ; t7 found in R?
 ;   t7 is now in R10
@@ -152,7 +152,7 @@ memset_L2:
 ;   R5 contains t1
 ;   R7 contains addr_t3_8
 ;   R8 contains stack_bank_9
-;   R? contains t6
+;   R? contains gep_index_7
 ;   R? contains ptr_preserve_10
 ; t100007 found in R4
 ; === ModuleLowerer::get_reg for 'bank_select_11' ===
@@ -174,7 +174,7 @@ memset_bank_done_13:
 ;   R5 contains t1
 ;   R7 contains addr_t3_8
 ;   R8 contains stack_bank_9
-;   R? contains t6
+;   R? contains gep_index_7
 ;   R? contains ptr_preserve2_14
 ;   R? contains bank_preserve_15
 ; t1 found in R5

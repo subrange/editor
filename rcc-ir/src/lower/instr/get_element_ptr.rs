@@ -45,13 +45,21 @@ impl ModuleLowerer {
         // Get index value
         let index_reg = self.get_value_register(&indices[0])?;
         
-        // Unpin the base register now that we have both
-        self.reg_alloc.unpin_value(&base_pin_key);
+        // Keep base pinned while we allocate result to prevent it from being spilled
+        
+        // Pin the index register too to ensure both operands remain valid
+        let index_pin_key = format!("gep_index_{}", result);
+        self.reg_alloc.mark_in_use(index_reg, index_pin_key.clone());
+        self.reg_alloc.pin_value(index_pin_key.clone());
 
-        // Allocate register for result
+        // Allocate register for result - both base and index are pinned so won't be spilled
         let result_key = Self::temp_name(*result);
         let dest_reg = self.get_reg(result_key.clone());
         self.value_locations.insert(result_key, Location::Register(dest_reg));
+
+        // Now safe to unpin both operands
+        self.reg_alloc.unpin_value(&base_pin_key);
+        self.reg_alloc.unpin_value(&index_pin_key);
 
         // Calculate address: result = base + index
         // Note: This assumes element size is 1 word. For larger types, we'd need to multiply index by element size
@@ -74,14 +82,48 @@ impl ModuleLowerer {
             let base_bank_key = Self::bank_temp_key(*base_tid);
             let result_bank_key = Self::bank_temp_key(*result);
             
-            // Check if the base pointer has a bank tag in value_locations
+            // Check if the base pointer has a bank tag
             if let Some(bank_location) = self.value_locations.get(&base_bank_key).cloned() {
                 self.emit(AsmInst::Comment(format!("  Propagating bank tag from {} to {}", base_bank_key, result_bank_key)));
-                self.value_locations.insert(result_bank_key.clone(), bank_location.clone());
                 
-                // If the bank is in a register, mark it as in use for the result too
+                // Check if the bank is actually still in a register or has been spilled
                 if let Location::Register(bank_reg) = bank_location {
-                    self.reg_alloc.mark_in_use(bank_reg, result_bank_key);
+                    // Check if the register still contains the bank value
+                    if let Some(current_value) = self.reg_alloc.get_register_value(bank_reg) {
+                        if current_value == base_bank_key {
+                            // Register still has the bank tag - both can use it
+                            self.value_locations.insert(result_bank_key.clone(), Location::Register(bank_reg));
+                            self.reg_alloc.mark_in_use(bank_reg, result_bank_key.clone());
+                        } else {
+                            // Register has been reused! The bank must have been spilled
+                            // Check if it was spilled
+                            if let Some(spill_slot) = self.reg_alloc.get_spilled_slot(&base_bank_key) {
+                                self.emit(AsmInst::Comment(format!("  Bank was spilled to FP+{}", spill_slot)));
+                                self.value_locations.insert(result_bank_key.clone(), Location::Spilled(spill_slot));
+                                // CRITICAL: Also inform the register allocator that the result bank is at this spill slot
+                                // This allows the reload mechanism to work correctly
+                                self.reg_alloc.record_spilled_value(result_bank_key, spill_slot);
+                            } else {
+                                // This shouldn't happen - value lost!
+                                self.emit(AsmInst::Comment(format!("  WARNING: Bank tag lost for {}", base_bank_key)));
+                            }
+                        }
+                    } else {
+                        // Register is empty - check if spilled
+                        if let Some(spill_slot) = self.reg_alloc.get_spilled_slot(&base_bank_key) {
+                            self.value_locations.insert(result_bank_key.clone(), Location::Spilled(spill_slot));
+                            // CRITICAL: Also inform the register allocator that the result bank is at this spill slot
+                            self.reg_alloc.record_spilled_value(result_bank_key, spill_slot);
+                        } else {
+                            // Bank was never tracked or lost
+                            self.emit(AsmInst::Comment(format!("  WARNING: Bank {} not in register or spilled", base_bank_key)));
+                        }
+                    }
+                } else if let Location::Spilled(spill_slot) = bank_location {
+                    // Already spilled - propagate the spill location
+                    self.value_locations.insert(result_bank_key.clone(), bank_location);
+                    // CRITICAL: Also inform the register allocator that the result bank is at this spill slot
+                    self.reg_alloc.record_spilled_value(result_bank_key, spill_slot);
                 }
             }
 

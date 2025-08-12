@@ -372,7 +372,11 @@ impl fmt::Display for Instruction {
                 write!(f, "%{} = load {}, {}* {}", result, result_type, result_type, ptr)
             }
             Instruction::Store { value, ptr } => {
-                write!(f, "store {}, {}* {}", value, ptr, ptr)
+                // For stores, we print: store <value>, <type>* <ptr>
+                // Since we don't have type information in the Store instruction,
+                // we'll use a simple heuristic: i16* for most cases
+                // This is just for display - the actual execution uses the correct types
+                write!(f, "store {}, i16* {}", value, ptr)
             }
             Instruction::GetElementPtr { result, ptr, indices, result_type } => {
                 write!(f, "%{} = getelementptr {}", result, ptr)?;

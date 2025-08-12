@@ -223,10 +223,18 @@ impl ModuleLowerer {
         // Use the centralized allocator
         let reg = self.reg_alloc.get_reg(for_value.clone());
         
-        // Append any spill/reload instructions generated
-        self.instructions.append(&mut self.reg_alloc.take_instructions());
+        // Check if the allocator spilled anything
+        if let Some((spilled_value, spill_offset)) = self.reg_alloc.take_last_spilled() {
+            debug!("Register allocator spilled '{}' to FP+{}", spilled_value, spill_offset);
+            // Update value_locations to show this value is now spilled
+            self.value_locations.insert(spilled_value, Location::Spilled(spill_offset));
+        }
         
-        // Also track in value_locations for compatibility
+        // Append any spill/reload instructions generated
+        let spill_instructions = self.reg_alloc.take_instructions();
+        self.instructions.extend(spill_instructions);
+        
+        // Track the new value in its register
         self.value_locations.insert(for_value, Location::Register(reg));
         
         reg

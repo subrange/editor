@@ -135,8 +135,11 @@ impl ModuleLowerer {
             }
             Value::Global(name) => {
                 // Load global address into a register
+                // IMPORTANT: Global addresses should NEVER be spilled - always load fresh with LI
                 if let Some(&addr) = self.global_addresses.get(name) {
-                    let temp_name = self.generate_temp_name(&format!("global_{}", name));
+                    // Use a non-spillable temporary for global addresses
+                    // We generate a unique name each time to ensure it's always loaded fresh
+                    let temp_name = self.generate_temp_name(&format!("global_addr_{}", self.label_counter));
                     let reg = self.get_reg(temp_name);
                     self.emit(AsmInst::LI(reg, addr as i16));
                     Ok(reg)
