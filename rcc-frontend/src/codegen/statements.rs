@@ -117,6 +117,30 @@ impl<'a> StatementGenerator<'a> {
     fn generate_expression(&mut self, expr: &Expression) -> Result<Value, CompilerError> {
         // Special handling for assignment
         if let ExpressionKind::Binary { op: BinaryOp::Assign, left, right } = &expr.kind {
+            // Check if we're assigning to a parameter that needs special handling
+            if let ExpressionKind::Identifier { name, .. } = &left.kind {
+                if self.parameter_variables.contains(name) {
+                    // Check if this is a pointer parameter being reassigned
+                    if let Some((param_value, param_type)) = self.variables.get(name) {
+                        if param_type.is_pointer() && matches!(param_value, Value::Temp(_)) {
+                            // This is the first assignment to a pointer parameter
+                            // Create an alloca for it
+                            let alloca_temp = self.builder.build_alloca(param_type.clone(), None)?;
+                            
+                            // Store the original parameter value
+                            self.builder.build_store(param_value.clone(), Value::Temp(alloca_temp))?;
+                            
+                            // Update the variable to use the alloca
+                            let var_type = IrType::Ptr(Box::new(param_type.clone()));
+                            self.variables.insert(name.clone(), (Value::Temp(alloca_temp), var_type));
+                            
+                            // Remove from parameter_variables since it's now mutable
+                            self.parameter_variables.remove(name);
+                        }
+                    }
+                }
+            }
+            
             // Generate rvalue
             let rvalue = self.generate_expression(right)?;
             

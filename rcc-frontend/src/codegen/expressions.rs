@@ -122,15 +122,20 @@ impl<'a> ExpressionGenerator<'a> {
                 // Check if this is a pointer type (variable that needs to be loaded)
                 match var_type {
                     IrType::Ptr(element_type) => {
-                        // Check if this is an array variable or a pointer parameter
-                        // Arrays and pointer parameters decay to pointers when used as rvalues
-                        // They already contain the address, not a pointer to the address
+                        // Check if this is an array variable
+                        // Arrays decay to pointers when used as rvalues
                         if self.array_variables.contains(name) {
                             // Arrays decay to pointers when used as rvalues
                             Ok(value.clone())
                         } else if self.parameter_variables.contains(name) {
-                            // Pointer parameters already contain the address value directly
+                            // Non-pointer parameters are immutable and used directly
+                            // (pointer parameters are now handled with allocas and not in this set)
                             Ok(value.clone())
+                        } else if element_type.is_pointer() {
+                            // This is a pointer to a pointer (like an alloca of a pointer parameter)
+                            // Load the pointer value
+                            let temp = self.builder.build_load(value.clone(), *element_type.clone())?;
+                            Ok(Value::Temp(temp))
                         } else {
                             // Regular pointer variable (local or global), load its value
                             let temp = self.builder.build_load(value.clone(), *element_type.clone())?;
@@ -160,15 +165,30 @@ impl<'a> ExpressionGenerator<'a> {
                 let base_ptr = self.generate(left)?;
                 let index = self.generate(right)?;
                 
+                // Determine the element type from the array/pointer type
+                let element_type = if let Some(expr_type) = &left.expr_type {
+                    match expr_type {
+                        Type::Array { element_type, .. } => {
+                            convert_type(element_type, left.span.start.clone())?
+                        }
+                        Type::Pointer(target) => {
+                            convert_type(target, left.span.start.clone())?
+                        }
+                        _ => IrType::I16 // Default to i16 for int
+                    }
+                } else {
+                    IrType::I16 // Default to i16 for int
+                };
+                
                 // Use GetElementPtr for proper array indexing
                 let addr = self.builder.build_pointer_offset(
                     base_ptr,
                     index,
-                    IrType::Ptr(Box::new(IrType::I8))
+                    IrType::Ptr(Box::new(element_type.clone()))
                 )?;
                 
                 // Load from the calculated address
-                let result = self.builder.build_load(addr, IrType::I8)?;
+                let result = self.builder.build_load(addr, element_type)?;
                 Ok(Value::Temp(result))
             }
             BinaryOp::LogicalAnd | BinaryOp::LogicalOr => {
@@ -193,20 +213,77 @@ impl<'a> ExpressionGenerator<'a> {
                 }
             }
             _ => {
-                // Regular binary operation
-                let left_val = self.generate(left)?;
-                let right_val = self.generate(right)?;
+                // Check for pointer arithmetic (pointer + integer or integer + pointer)
+                let left_is_ptr = left.expr_type.as_ref().map_or(false, |t| t.is_pointer());
+                let right_is_ptr = right.expr_type.as_ref().map_or(false, |t| t.is_pointer());
                 
-                let ir_op = convert_binary_op(op).map_err(|msg| {
-                    CodegenError::UnsupportedConstruct {
-                        construct: msg,
-                        location: left.span.start.clone(),
+                if (left_is_ptr || right_is_ptr) && (op == BinaryOp::Add || op == BinaryOp::Sub) {
+                    // Handle pointer arithmetic
+                    if left_is_ptr && !right_is_ptr {
+                        // pointer + integer or pointer - integer
+                        let ptr_val = self.generate(left)?;
+                        let offset_val = self.generate(right)?;
+                        
+                        // For subtraction, negate the offset
+                        let final_offset = if op == BinaryOp::Sub {
+                            let neg_temp = self.builder.build_binary(
+                                IrBinaryOp::Sub, 
+                                Value::Constant(0), 
+                                offset_val, 
+                                IrType::I16
+                            )?;
+                            Value::Temp(neg_temp)
+                        } else {
+                            offset_val
+                        };
+                        
+                        // Use pointer offset which preserves bank information
+                        let result = self.builder.build_pointer_offset(
+                            ptr_val,
+                            final_offset,
+                            IrType::Ptr(Box::new(IrType::I16))
+                        )?;
+                        Ok(result)
+                    } else if !left_is_ptr && right_is_ptr && op == BinaryOp::Add {
+                        // integer + pointer (commutative)
+                        let offset_val = self.generate(left)?;
+                        let ptr_val = self.generate(right)?;
+                        
+                        let result = self.builder.build_pointer_offset(
+                            ptr_val,
+                            offset_val,
+                            IrType::Ptr(Box::new(IrType::I16))
+                        )?;
+                        Ok(result)
+                    } else if left_is_ptr && right_is_ptr && op == BinaryOp::Sub {
+                        // pointer - pointer (returns integer difference)
+                        // This is more complex and not needed for the current test
+                        return Err(CodegenError::UnsupportedConstruct {
+                            construct: "pointer difference".to_string(),
+                            location: left.span.start.clone(),
+                        }.into());
+                    } else {
+                        return Err(CodegenError::UnsupportedConstruct {
+                            construct: "invalid pointer arithmetic".to_string(),
+                            location: left.span.start.clone(),
+                        }.into());
                     }
-                })?;
-                let result_type = IrType::I16; // Simplified for MVP
-                
-                let temp = self.builder.build_binary(ir_op, left_val, right_val, result_type)?;
-                Ok(Value::Temp(temp))
+                } else {
+                    // Regular binary operation
+                    let left_val = self.generate(left)?;
+                    let right_val = self.generate(right)?;
+                    
+                    let ir_op = convert_binary_op(op).map_err(|msg| {
+                        CodegenError::UnsupportedConstruct {
+                            construct: msg,
+                            location: left.span.start.clone(),
+                        }
+                    })?;
+                    let result_type = IrType::I16; // Simplified for MVP
+                    
+                    let temp = self.builder.build_binary(ir_op, left_val, right_val, result_type)?;
+                    Ok(Value::Temp(temp))
+                }
             }
         }
     }
@@ -437,11 +514,26 @@ impl<'a> ExpressionGenerator<'a> {
                 let base_ptr = self.generate(left)?;
                 let index = self.generate(right)?;
                 
+                // Determine the element type from the array/pointer type
+                let element_type = if let Some(expr_type) = &left.expr_type {
+                    match expr_type {
+                        Type::Array { element_type, .. } => {
+                            convert_type(element_type, left.span.start.clone())?
+                        }
+                        Type::Pointer(target) => {
+                            convert_type(target, left.span.start.clone())?
+                        }
+                        _ => IrType::I16 // Default to i16 for int
+                    }
+                } else {
+                    IrType::I16 // Default to i16 for int
+                };
+                
                 // Use GetElementPtr for proper array indexing
                 let addr = self.builder.build_pointer_offset(
                     base_ptr,
                     index,
-                    IrType::Ptr(Box::new(IrType::I8))
+                    IrType::Ptr(Box::new(element_type))
                 )?;
                 
                 Ok(addr)
