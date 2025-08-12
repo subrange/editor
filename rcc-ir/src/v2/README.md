@@ -26,13 +26,18 @@ V2 fixes ALL these issues and is fully conformant to specifications.
 ```
 v2/
 ├── mod.rs                     # Module exports and constants
-├── regalloc.rs               # Register allocator with spilling
-├── function.rs               # Function prologue/epilogue
-├── calling_convention.rs     # Stack-based parameter passing
-└── tests/                    # All test files
+├── regmgmt/                   # Encapsulated register management module
+│   ├── mod.rs                 # Public API exports
+│   ├── pressure.rs            # RegisterPressureManager (main public interface)
+│   ├── allocator.rs           # RegAllocV2 (internal implementation)
+│   ├── bank.rs                # BankInfo for pointer bank tracking
+│   └── tests.rs               # Module-specific tests
+├── function.rs                # Function prologue/epilogue
+├── calling_convention.rs      # Stack-based parameter passing
+└── tests/                     # Integration tests
     ├── mod.rs
-    ├── regalloc_tests.rs     # 9 tests
-    ├── function_tests.rs     # 6 tests
+    ├── regalloc_tests.rs      # 9 tests
+    ├── function_tests.rs      # 6 tests
     └── calling_convention_tests.rs  # 8 tests
 ```
 
@@ -86,6 +91,39 @@ Parameters are at NEGATIVE offsets from FP:
 - param1: FP-4
 - param2: FP-5
 - etc.
+
+## Register Management Module (regmgmt)
+
+The V2 backend uses an encapsulated register management system that handles all register allocation, spilling, and bank management automatically.
+
+### Key Features
+- **Automatic R13 initialization** - No manual flag management needed
+- **LRU spilling policy** - Optimal register usage with automatic spill/reload
+- **Sethi-Ullman ordering** - Minimizes register pressure for expressions
+- **Bank tracking** - Ensures correct bank registers for all pointers
+
+### Public API
+```rust
+use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
+
+// Create manager with local variable count
+let mut mgr = RegisterPressureManager::new(local_count);
+mgr.init();  // Automatically initializes R13
+
+// Allocate registers
+let reg = mgr.get_register("value_name".to_string());
+
+// Set pointer bank information
+mgr.set_pointer_bank("ptr".to_string(), BankInfo::Stack);
+
+// Spill all registers before calls
+mgr.spill_all();
+
+// Get generated instructions
+let insts = mgr.take_instructions();
+```
+
+The module completely encapsulates RegAllocV2 and prevents direct access to internal state, ensuring safety invariants are maintained.
 
 ## Critical Implementation Details
 
@@ -220,13 +258,18 @@ JAL  0, addr_100
 ## Implementation Status
 
 ### ✅ Completed
-- Register allocator with spilling
+- **Register Management Module** (regmgmt)
+  - Encapsulated register allocator with LRU spilling
+  - Automatic R13 initialization for stack operations
+  - Sethi-Ullman expression ordering
+  - Bank information tracking for pointers
+  - Public API through RegisterPressureManager
 - Function prologue/epilogue with R13 init
 - Stack-based parameter passing
 - Fat pointer returns (R3=addr, R4=bank)
 - Cross-bank function calls
 - Bank register management
-- 23 comprehensive tests
+- 23+ comprehensive tests
 
 ### 🚧 TODO
 - Load/store instruction generation

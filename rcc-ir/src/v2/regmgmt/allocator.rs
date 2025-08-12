@@ -123,11 +123,13 @@ impl RegAllocV2 {
         // Parameters are pushed before call, accessed via FP
         // param0 at FP-3, param1 at FP-4, etc.
         let offset = -(param_idx as i16 + 3);
+        debug!("Loading parameter {} from stack at FP{}", param_idx, offset);
         let dest = self.get_reg(format!("param{param_idx}"));
         
         self.instructions.push(AsmInst::Comment(format!("Load param {param_idx} from FP{offset}")));
         self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, offset));
         self.instructions.push(AsmInst::Load(dest, Reg::R13, Reg::R12));
+        trace!("  Loaded param{} into {:?}", param_idx, dest);
         
         dest
     }
@@ -135,6 +137,7 @@ impl RegAllocV2 {
     /// Get a register for a value
     pub(super) fn get_reg(&mut self, for_value: String) -> Reg {
         trace!("get_reg for '{}', reg_contents: {:?}", for_value, self.reg_contents);
+        trace!("  free_list: {:?}, pinned: {:?}", self.free_list, self.pinned_values);
         
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &for_value) {
@@ -145,12 +148,14 @@ impl RegAllocV2 {
         // Try to get a free register
         if let Some(reg) = self.free_list.pop() {
             trace!("  Allocated free {reg:?} for {for_value}");
+            debug!("Allocated {reg:?} for '{for_value}' (was free)");
             self.reg_contents.insert(reg, for_value);
             return reg;
         }
         
         // Need to spill - find non-pinned victim
-        debug!("  Need to spill for {}, pinned: {:?}", for_value, self.pinned_values);
+        debug!("Need to spill for '{}', pinned: {:?}", for_value, self.pinned_values);
+        trace!("  Current register contents: {:?}", self.reg_contents);
         
         let victim = self.reg_contents.iter()
             .find(|(_, val)| !self.pinned_values.contains(*val))
@@ -158,6 +163,7 @@ impl RegAllocV2 {
             .expect("No spillable registers!");
         
         let victim_value = self.reg_contents.remove(&victim).unwrap();
+        debug!("Spilling '{}' from {:?} to make room for '{}'" , victim_value, victim, for_value);
         trace!("  Spilling {victim_value} from {victim:?}");
         
         // Spill the victim
@@ -187,49 +193,60 @@ impl RegAllocV2 {
     
     /// Reload a spilled value
     pub(super) fn reload(&mut self, value: String) -> Reg {
+        trace!("reload('{}'), spill_slots: {:?}", value, self.spill_slots);
+        
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &value) {
+            trace!("  '{}' already in {:?}, no reload needed", value, reg);
             return reg;
         }
         
         // Check if spilled
         if let Some(&offset) = self.spill_slots.get(&value) {
+            debug!("Reloading '{}' from spill slot FP+{}", value, offset);
             let reg = self.get_reg(value.clone());
             
             // Ensure R13 is initialized
             if !self.r13_initialized {
+                trace!("  Initializing R13 before reload");
                 self.init_stack_bank();
             }
             
             self.instructions.push(AsmInst::Comment(format!("Reloading {value} from FP+{offset}")));
             self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R15, offset));
             self.instructions.push(AsmInst::Load(reg, Reg::R13, Reg::R12));
+            debug!("Reloaded '{}' into {:?} from FP+{}", value, reg, offset);
             return reg;
         }
         
         // Not spilled, allocate new
+        trace!("  '{}' not spilled, allocating new register", value);
         self.get_reg(value)
     }
     
     /// Pin a value to prevent spilling
     pub(super) fn pin_value(&mut self, value: String) {
+        trace!("Pinning value '{}'", value);
         self.pinned_values.insert(value);
     }
     
     /// Unpin a value
     pub(super) fn unpin_value(&mut self, value: &str) {
+        trace!("Unpinning value '{}'", value);
         self.pinned_values.remove(value);
     }
     
     /// Clear all pins
     pub(super) fn clear_pins(&mut self) {
+        trace!("Clearing all pinned values (was: {:?})", self.pinned_values);
         self.pinned_values.clear();
     }
     
     /// Free all temporaries at statement boundaries
     /// Since params are on stack, we can free all registers
     pub(super) fn free_temporaries(&mut self) {
-        debug!("Freeing all temporaries");
+        debug!("Freeing all temporaries, was: {:?}", self.reg_contents);
+        trace!("  Resetting free_list to all allocatable registers");
         
         self.reg_contents.clear();
         
@@ -239,6 +256,7 @@ impl RegAllocV2 {
     
     /// Mark a register as in use
     pub(super) fn mark_in_use(&mut self, reg: Reg, value: String) {
+        trace!("Marking {:?} as in use for '{}'", reg, value);
         self.reg_contents.insert(reg, value);
         self.free_list.retain(|&r| r != reg);
     }
@@ -307,6 +325,8 @@ impl RegAllocV2 {
     
     /// Reset for new function
     pub(super) fn reset(&mut self) {
+        debug!("Resetting allocator for new function");
+        trace!("  Clearing spill_slots: {:?}, reg_contents: {:?}", self.spill_slots, self.reg_contents);
         self.free_list = vec![Reg::R11, Reg::R10, Reg::R9, Reg::R8, Reg::R7, Reg::R6, Reg::R5];
         self.reg_contents.clear();
         self.spill_slots.clear();

@@ -108,5 +108,4 @@ let instructions = manager.take_instructions();
 
 - RegAllocV2 is completely encapsulated and not exposed in the public API
 - All register management must go through RegisterPressureManager
-- Tests can access RegAllocV2 via `#[cfg(test)]` conditional compilation
 - The module design prevents direct manipulation of internal state

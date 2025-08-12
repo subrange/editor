@@ -9,7 +9,7 @@ use rcc_common::TempId;
 use crate::ir::{BasicBlock, Instruction, Value, IrBinaryOp};
 use super::allocator::RegAllocV2;
 use super::bank::BankInfo;
-use log::debug;
+use log::{debug, trace};
 
 /// Register need calculation result
 #[derive(Debug, Clone)]
@@ -98,10 +98,12 @@ impl RegisterPressureManager {
     
     /// Initialize the allocator (must be called before use)
     pub fn init(&mut self) {
+        debug!("Initializing RegisterPressureManager with {} locals", self.local_count);
         self.allocator.init_stack_bank();
         self.allocator.set_spill_base(self.local_count);
         // Take any initialization instructions from the allocator
         self.instructions.extend(self.allocator.take_instructions());
+        trace!("  R13 initialized, spill base set to FP+{}", self.local_count);
     }
     
     /// Initialize R13 for stack operations (called automatically when needed)
@@ -115,6 +117,7 @@ impl RegisterPressureManager {
     
     /// Set pointer bank information
     pub fn set_pointer_bank(&mut self, ptr_value: String, bank: BankInfo) {
+        trace!("Setting bank info for '{}': {:?}", ptr_value, bank);
         self.allocator.set_pointer_bank(ptr_value, bank);
     }
     
@@ -139,7 +142,7 @@ impl RegisterPressureManager {
     
     /// Calculate register need for an expression (Sethi-Ullman)
     pub fn calculate_need(&self, value: &Value) -> RegisterNeed {
-        match value {
+        let need = match value {
             Value::Constant(_) | Value::Global(_) | Value::Function(_) => {
                 RegisterNeed { count: 1, is_leaf: true }
             }
@@ -158,7 +161,9 @@ impl RegisterPressureManager {
             Value::Undef => {
                 RegisterNeed { count: 0, is_leaf: true }
             }
-        }
+        };
+        trace!("calculate_need({:?}) = {:?}", value, need);
+        need
     }
     
     /// Calculate register need for a binary operation
@@ -183,17 +188,23 @@ impl RegisterPressureManager {
             }
         };
         
+        trace!("calculate_binary_need: left={:?}, right={:?}, total={:?}, swap={}", 
+               left_need, right_need, total_need, swap);
+        
         (total_need, swap)
     }
     
     /// Get a register using LRU spilling
     pub fn get_register(&mut self, for_value: String) -> Reg {
+        trace!("get_register('{}'), LRU queue: {:?}", for_value, self.lru_queue);
+        
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &for_value) {
             // Move to back of LRU (most recently used)
             if let Some(pos) = self.lru_queue.iter().position(|&r| r == reg) {
                 self.lru_queue.remove(pos);
                 self.lru_queue.push_back(reg);
+                trace!("  '{}' already in {:?}, moved to MRU position", for_value, reg);
             }
             return reg;
         }
@@ -202,25 +213,31 @@ impl RegisterPressureManager {
         if let Some(reg) = self.free_list.pop_front() {
             self.reg_contents.insert(reg, for_value.clone());
             self.lru_queue.push_back(reg);
-            debug!("Allocated {reg:?} for {for_value}");
+            debug!("Allocated {:?} for '{}' (was free)", reg, for_value);
+            trace!("  Free list now: {:?}", self.free_list);
             return reg;
         }
         
         // Need to spill - pick LRU victim
+        debug!("No free registers, need to spill for '{}'", for_value);
         let victim = self.lru_queue.pop_front()
             .expect("No registers to spill!");
         
+        debug!("Spilling LRU victim {:?} to make room", victim);
         self.spill_register(victim);
         
         // Now victim is free
-        self.reg_contents.insert(victim, for_value);
+        self.reg_contents.insert(victim, for_value.clone());
         self.lru_queue.push_back(victim);
+        debug!("Reused {:?} for '{}' after spilling", victim, for_value);
         victim
     }
     
     /// Spill a register to stack
     fn spill_register(&mut self, reg: Reg) {
         if let Some(value) = self.reg_contents.get(&reg).cloned() {
+            trace!("spill_register({:?}) containing '{}'", reg, value);
+            
             // Ensure R13 is initialized before any stack operation
             self.ensure_r13_initialized();
             
@@ -231,6 +248,7 @@ impl RegisterPressureManager {
                     self.next_spill_slot += 1;
                     self.reg_to_slot.insert(reg, s);
                     self.value_to_slot.insert(value.clone(), s);
+                    trace!("  Allocated new spill slot {} for '{}'", s, value);
                     s
                 });
             
@@ -240,7 +258,9 @@ impl RegisterPressureManager {
             self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R12, self.local_count + slot));
             self.instructions.push(AsmInst::Store(reg, Reg::R13, Reg::R12));
             
-            debug!("Spilled {value} from {reg:?} to slot {slot}");
+            debug!("Spilled '{}' from {:?} to slot {} (FP+{})", value, reg, slot, self.local_count + slot);
+        } else {
+            trace!("spill_register({:?}) - register was empty", reg);
         }
         
         self.reg_contents.remove(&reg);
@@ -248,13 +268,17 @@ impl RegisterPressureManager {
     
     /// Reload a value from spill slot
     pub fn reload_value(&mut self, value: String) -> Reg {
+        trace!("reload_value('{}'), value_to_slot: {:?}", value, self.value_to_slot);
+        
         // Check if already in register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &value) {
+            trace!("  '{}' already in {:?}, no reload needed", value, reg);
             return reg;
         }
         
         // Check if spilled
         if let Some(&slot) = self.value_to_slot.get(&value) {
+            debug!("Reloading '{}' from spill slot {}", value, slot);
             let reg = self.get_register(value.clone());
             
             // Ensure R13 is initialized before any stack operation
@@ -266,32 +290,42 @@ impl RegisterPressureManager {
             self.instructions.push(AsmInst::AddI(Reg::R12, Reg::R12, self.local_count + slot));
             self.instructions.push(AsmInst::Load(reg, Reg::R13, Reg::R12));
             
-            debug!("Reloaded {value} into {reg:?} from slot {slot}");
+            debug!("Reloaded '{}' into {:?} from slot {} (FP+{})", value, reg, slot, self.local_count + slot);
             return reg;
         }
         
         // Not spilled, allocate new
+        trace!("  '{}' not spilled, allocating new register", value);
         self.get_register(value)
     }
     
     /// Free a register
     pub fn free_register(&mut self, reg: Reg) {
+        trace!("free_register({:?})", reg);
+        if let Some(value) = self.reg_contents.get(&reg) {
+            debug!("Freeing {:?} containing '{}'" , reg, value);
+        }
         if let Some(pos) = self.lru_queue.iter().position(|&r| r == reg) {
             self.lru_queue.remove(pos);
         }
         self.reg_contents.remove(&reg);
         if !self.free_list.contains(&reg) {
             self.free_list.push_back(reg);
+            trace!("  Added {:?} back to free list", reg);
         }
     }
     
     /// Spill all registers (e.g., before a call)
     pub fn spill_all(&mut self) {
+        debug!("Spilling all registers (e.g., for function call)");
+        trace!("  Current LRU queue: {:?}", self.lru_queue);
+        trace!("  Current contents: {:?}", self.reg_contents);
         let regs_to_spill: Vec<Reg> = self.lru_queue.iter().copied().collect();
         for reg in regs_to_spill {
             self.spill_register(reg);
             self.free_register(reg);
         }
+        debug!("All registers spilled, {} slots used", self.next_spill_slot);
     }
     
     /// Get register for a Value
@@ -330,12 +364,14 @@ impl RegisterPressureManager {
                           lhs: &Value, 
                           rhs: &Value,
                           result_temp: TempId) -> Vec<AsmInst> {
+        debug!("emit_binary_op({:?}, lhs={:?}, rhs={:?}) -> t{}", op, lhs, rhs, result_temp.0);
         let mut insts = Vec::new();
         
         // Calculate needs and determine evaluation order
         let (_, should_swap) = self.calculate_binary_need(lhs, rhs);
         
         let (first, second) = if should_swap {
+            trace!("  Swapping operands for better register usage");
             (rhs, lhs)
         } else {
             (lhs, rhs)
@@ -344,6 +380,7 @@ impl RegisterPressureManager {
         // Evaluate in optimal order
         let first_reg = self.get_value_register(first);
         let second_reg = self.get_value_register(second);
+        trace!("  Operands in {:?} and {:?}", first_reg, second_reg);
         
         // Emit the operation (reusing first register for result)
         let result_reg = first_reg;
