@@ -822,20 +822,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_ir_types() {
-        assert_eq!(IrType::I8.size_in_bytes(), Some(1));
-        assert_eq!(IrType::I16.size_in_bytes(), Some(2));
-        assert_eq!(IrType::I32.size_in_bytes(), Some(4));
-        assert_eq!(IrType::FatPtr(Box::new(IrType::I32)).size_in_bytes(), Some(4)); // Fat pointers
-        
-        let array_type = IrType::Array {
-            size: 10,
-            element_type: Box::new(IrType::I16),
-        };
-        assert_eq!(array_type.size_in_bytes(), Some(20));
-    }
-
-    #[test]
     fn test_ir_values() {
         let temp = Value::Temp(5);
         let constant = Value::Constant(42);

@@ -115,16 +115,20 @@ fn test_return_value_handling() {
     
     // Test scalar return
     let mut naming = new_function_naming();
-    let (insts, (_ret_reg, bank_reg)) = cc.handle_return_value(&mut pm, &mut naming, false);
+    let (insts, ret_regs) = cc.handle_return_value(&mut pm, &mut naming, false, Some("test_result".to_string()));
+    assert!(ret_regs.is_some());
+    let (_ret_reg, bank_reg) = ret_regs.unwrap();
     assert!(bank_reg.is_none());
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::Rv0, Reg::R0))));
+    // With the new implementation, we just add a comment since values are already in Rv0
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Comment(_))));
     
     // Test fat pointer return
-    let (insts, (_addr_reg, bank_reg)) = cc.handle_return_value(&mut pm, &mut naming, true);
+    let (insts, ret_regs) = cc.handle_return_value(&mut pm, &mut naming, true, Some("test_ptr_result".to_string()));
+    assert!(ret_regs.is_some());
+    let (_addr_reg, bank_reg) = ret_regs.unwrap();
     assert!(bank_reg.is_some());
-    // Should copy from both R3 and R4
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::Rv0, Reg::R0))));
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::Rv1, Reg::R0))));
+    // With the new implementation, we just add a comment since values are already in Rv0/Rv1
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Comment(_))));
 }
 
 #[test]

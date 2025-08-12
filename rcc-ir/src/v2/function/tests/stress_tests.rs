@@ -92,7 +92,9 @@ fn stress_test_nested_calls() {
         let call = cc.emit_call(100 + depth as u16, depth as u16 % 4);
         
         // Handle return
-        let (insts, (_ret, _)) = cc.handle_return_value(&mut pm, &mut naming, depth % 2 == 0);
+        let result_name = Some(format!("result_{}", depth));
+        let (insts, ret_regs) = cc.handle_return_value(&mut pm, &mut naming, depth % 2 == 0, result_name);
+        let _ret_regs = ret_regs; // Just to use it
         
         // Cleanup
         let cleanup = cc.cleanup_stack(3); // 1 scalar + 2 for fat pointer

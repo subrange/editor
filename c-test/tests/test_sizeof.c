@@ -33,7 +33,7 @@ int main() {
         putchar('X');
     }
     
-    if (size_ptr == 2) {
+    if (size_ptr == 4) {
         putchar('4');
     } else {
         putchar('X');

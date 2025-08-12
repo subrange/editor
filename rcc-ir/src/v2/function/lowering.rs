@@ -47,6 +47,23 @@ impl FunctionLowering {
         }
     }
     
+    /// Create a new function lowering with external pressure manager and naming
+    /// This is useful when integrating with existing lowering context
+    pub(super) fn with_external_context(
+        pressure_manager: RegisterPressureManager,
+        naming: NameGenerator,
+    ) -> Self {
+        debug!("Creating FunctionLowering with external context");
+        
+        Self {
+            pressure_manager,
+            naming,
+            local_count: 0,
+            spill_count: 0,
+            instructions: Vec::new(),
+        }
+    }
+    
     /// Helper to setup call arguments using this function's context
     pub(super) fn setup_call(&mut self, args: Vec<super::calling_convention::CallArg>) -> Vec<AsmInst> {
         debug!("Setting up {} call arguments", args.len());
@@ -60,9 +77,25 @@ impl FunctionLowering {
     pub(super) fn handle_call_return(&mut self, is_pointer: bool) -> (Vec<AsmInst>, (Reg, Option<Reg>)) {
         debug!("Handling call return value (is_pointer: {})", is_pointer);
         let cc = super::calling_convention::CallingConvention::new();
-        let result = cc.handle_return_value(&mut self.pressure_manager, &mut self.naming, is_pointer);
-        trace!("  Return handling generated {} instructions", result.0.len());
-        result
+        // For internal use in FunctionBuilder, we don't have a specific result name
+        // The builder will handle binding later
+        let (insts, regs) = cc.handle_return_value(
+            &mut self.pressure_manager, 
+            &mut self.naming, 
+            is_pointer,
+            None  // No specific result name - builder handles this
+        );
+        trace!("  Return handling generated {} instructions", insts.len());
+        // We need to return the registers even if None was returned
+        // Use Rv0/Rv1 directly since that's where the values are
+        let return_regs = regs.unwrap_or_else(|| {
+            if is_pointer {
+                (Reg::Rv0, Some(Reg::Rv1))
+            } else {
+                (Reg::Rv0, None)
+            }
+        });
+        (insts, return_regs)
     }
     
     /// Helper to load a parameter using this function's context

@@ -6,7 +6,7 @@ int main() {
     if (sizeof(char) == 1) putchar('Y'); else putchar('N');
     if (sizeof(int) == 2) putchar('Y'); else putchar('N');
     if (sizeof(long) == 4) putchar('Y'); else putchar('N');
-    if (sizeof(void*) == 2) putchar('Y'); else putchar('N');
+    if (sizeof(void*) == 4) putchar('Y'); else putchar('N');
     
     // Arrays
     char str[10];

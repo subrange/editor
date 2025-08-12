@@ -11,7 +11,7 @@ use crate::v2::regmgmt::RegisterPressureManager;
 use crate::v2::naming::NameGenerator;
 use log::{debug, trace, info};
 
-pub(super) struct CallingConvention {}
+pub struct CallingConvention {}
 
 impl Default for CallingConvention {
     fn default() -> Self {
@@ -20,7 +20,7 @@ impl Default for CallingConvention {
 }
 
 impl CallingConvention {
-    pub(super) fn new() -> Self {
+    pub fn new() -> Self {
         Self {}
     }
     
@@ -77,7 +77,7 @@ impl CallingConvention {
     /// First 4 scalar arguments or 2 fat pointers go in A0-A3
     /// Remaining arguments are passed on the stack
     /// Returns (instructions, stack_words_used)
-    pub(super) fn setup_call_args(&self, 
+    pub fn setup_call_args(&self, 
                            pressure_manager: &mut RegisterPressureManager,
                            _naming: &mut NameGenerator,
                            args: Vec<CallArg>) -> Vec<AsmInst> {
@@ -198,7 +198,7 @@ impl CallingConvention {
     
     /// Generate call instruction
     /// For cross-bank calls, sets PCB first then uses JAL
-    pub(super) fn emit_call(&self, func_addr: u16, func_bank: u16) -> Vec<AsmInst> {
+    pub fn emit_call(&self, func_addr: u16, func_bank: u16) -> Vec<AsmInst> {
         info!("Emitting call to function at bank:{}, addr:{}", func_bank, func_addr);
         let mut insts = Vec::new();
         
@@ -226,43 +226,46 @@ impl CallingConvention {
     }
     
     /// Handle return value after call
-    pub(super) fn handle_return_value(&self, 
+    /// Binds the return value to the specified result name in the register manager
+    pub fn handle_return_value(&self, 
                               pressure_manager: &mut RegisterPressureManager,
-                              naming: &mut NameGenerator,
-                              is_pointer: bool) -> (Vec<AsmInst>, (Reg, Option<Reg>)) {
+                              _naming: &mut NameGenerator,
+                              is_pointer: bool,
+                              result_name: Option<String>) -> (Vec<AsmInst>, Option<(Reg, Option<Reg>)>) {
         let mut insts = Vec::new();
         
-        if is_pointer {
-            // Fat pointer return in R3 (addr) and R4 (bank)
-            debug!("Handling fat pointer return");
-            
-            // Allocate registers for the return value
-            let addr_reg = pressure_manager.get_register(naming.ret_addr_name());
-            let bank_reg = pressure_manager.get_register(naming.ret_bank_name());
-            insts.extend(pressure_manager.take_instructions());
-            
-            // Copy from R3/R4
-            insts.push(AsmInst::Comment("Get fat pointer return value".to_string()));
-            insts.push(AsmInst::Add(addr_reg, Reg::Rv0, Reg::R0));
-            insts.push(AsmInst::Add(bank_reg, Reg::Rv1, Reg::R0));
-            
-            (insts, (addr_reg, Some(bank_reg)))
+        if let Some(name) = result_name {
+            if is_pointer {
+                // Fat pointer return in Rv0 (addr) and Rv1 (bank)
+                debug!("Handling fat pointer return for '{}'", name);
+                insts.push(AsmInst::Comment(format!("Fat pointer return value for {}", name)));
+                
+                // Bind Rv0 to the result name
+                pressure_manager.bind_value_to_register(name.clone(), Reg::Rv0);
+                
+                // Track that Rv1 has the bank
+                pressure_manager.set_pointer_bank(name, crate::v2::BankInfo::Register(Reg::Rv1));
+                
+                (insts, Some((Reg::Rv0, Some(Reg::Rv1))))
+            } else {
+                // Scalar return in Rv0
+                debug!("Handling scalar return for '{}'", name);
+                insts.push(AsmInst::Comment(format!("Scalar return value for {}", name)));
+                
+                // Bind Rv0 to the result name
+                pressure_manager.bind_value_to_register(name, Reg::Rv0);
+                
+                (insts, Some((Reg::Rv0, None)))
+            }
         } else {
-            // Scalar return in R3
-            debug!("Handling scalar return");
-            
-            let ret_reg = pressure_manager.get_register(naming.ret_val_name());
-            insts.extend(pressure_manager.take_instructions());
-            
-            insts.push(AsmInst::Comment("Get scalar return value".to_string()));
-            insts.push(AsmInst::Add(ret_reg, Reg::Rv0, Reg::R0));
-            
-            (insts, (ret_reg, None))
+            // No return value (void function)
+            debug!("No return value (void function)");
+            (insts, None)
         }
     }
     
     /// Clean up stack after call
-    pub(super) fn cleanup_stack(&self, num_args_words: i16) -> Vec<AsmInst> {
+    pub fn cleanup_stack(&self, num_args_words: i16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         if num_args_words > 0 {
             debug!("Cleaning up {} words from stack after call", num_args_words);
@@ -273,6 +276,106 @@ impl CallingConvention {
             trace!("No stack cleanup needed (0 arguments)");
         }
         insts
+    }
+    
+    /// Complete function call sequence including setup, call, return handling, and cleanup
+    /// This is the main entry point for making function calls in the lowering code
+    pub fn make_complete_call(
+        &self,
+        pressure_manager: &mut RegisterPressureManager,
+        naming: &mut NameGenerator,
+        func_addr: u16,
+        func_bank: u16,
+        args: Vec<CallArg>,
+        returns_pointer: bool,
+        result_name: Option<String>,
+    ) -> (Vec<AsmInst>, Option<(Reg, Option<Reg>)>) {
+        info!("Making complete call to function at bank:{}, addr:{} with {} args", 
+              func_bank, func_addr, args.len());
+        let mut insts = Vec::new();
+        
+        // Calculate stack words needed for cleanup
+        let stack_words = args.iter().map(|arg| match arg {
+            CallArg::Scalar(_) => 1,
+            CallArg::FatPointer { .. } => 2,
+        }).sum::<i16>();
+        debug!("  Call will use {} stack words", stack_words);
+        
+        // 1. Setup arguments
+        trace!("  Setting up call arguments");
+        let setup = self.setup_call_args(pressure_manager, naming, args);
+        insts.extend(setup);
+        
+        // 2. Emit call instruction
+        trace!("  Emitting call instruction");
+        let call = self.emit_call(func_addr, func_bank);
+        insts.extend(call);
+        
+        // 3. Handle return value (if any)
+        let (ret_insts, return_regs) = self.handle_return_value(
+            pressure_manager, 
+            naming, 
+            returns_pointer,
+            result_name
+        );
+        insts.extend(ret_insts);
+        
+        // 4. Clean up stack
+        trace!("  Cleaning up {} stack words", stack_words);
+        let cleanup = self.cleanup_stack(stack_words);
+        insts.extend(cleanup);
+        
+        debug!("Complete call sequence finished: {} total instructions", insts.len());
+        (insts, return_regs)
+    }
+    
+    /// Complete function call sequence with label-based addressing
+    /// Use this when calling functions by name rather than numeric address
+    pub fn make_complete_call_by_label(
+        &self,
+        pressure_manager: &mut RegisterPressureManager,
+        naming: &mut NameGenerator,
+        func_label: &str,
+        args: Vec<CallArg>,
+        returns_pointer: bool,
+        result_name: Option<String>,
+    ) -> (Vec<AsmInst>, Option<(Reg, Option<Reg>)>) {
+        info!("Making complete call to function '{}' with {} args", func_label, args.len());
+        let mut insts = Vec::new();
+        
+        // Calculate stack words needed for cleanup
+        let stack_words = args.iter().map(|arg| match arg {
+            CallArg::Scalar(_) => 1,
+            CallArg::FatPointer { .. } => 2,
+        }).sum::<i16>();
+        debug!("  Call will use {} stack words", stack_words);
+        
+        // 1. Setup arguments
+        trace!("  Setting up call arguments");
+        let setup = self.setup_call_args(pressure_manager, naming, args);
+        insts.extend(setup);
+        
+        // 2. Emit call instruction using label
+        trace!("  Emitting call instruction to label '{}'", func_label);
+        insts.push(AsmInst::Comment(format!("Call function {}", func_label)));
+        insts.push(AsmInst::Call(func_label.to_string()));
+        
+        // 3. Handle return value (if any)
+        let (ret_insts, return_regs) = self.handle_return_value(
+            pressure_manager, 
+            naming, 
+            returns_pointer,
+            result_name
+        );
+        insts.extend(ret_insts);
+        
+        // 4. Clean up stack
+        trace!("  Cleaning up {} stack words", stack_words);
+        let cleanup = self.cleanup_stack(stack_words);
+        insts.extend(cleanup);
+        
+        debug!("Complete call sequence finished: {} total instructions", insts.len());
+        (insts, return_regs)
     }
     
     /// Load parameter in callee

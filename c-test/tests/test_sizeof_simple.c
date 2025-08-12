@@ -16,7 +16,7 @@ int main() {
     putchar(' ');
     putchar('0' + size_int);   // Should be 2
     putchar(' ');
-    putchar('0' + size_ptr);   // Should be 2
+    putchar('0' + size_ptr);   // Should be 4
     putchar(' ');
     putchar('0' + size_arr);   // Should be 10 (5 * 2)
     putchar(10);

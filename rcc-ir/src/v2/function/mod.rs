@@ -18,7 +18,10 @@ mod builder;
 
 // Public exports - ONLY the safe API
 pub use builder::FunctionBuilder;
-pub use builder::CallArg;
+pub use calling_convention::{CallArg, CallingConvention};  // Re-export CallArg and CallingConvention
+
+// Note: setup_call_with_context was removed as it was unnecessary indirection.
+// Callers should directly use CallingConvention::new().setup_call_args() instead.
 
 // Tests
 #[cfg(test)]

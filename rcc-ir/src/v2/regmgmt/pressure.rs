@@ -123,7 +123,7 @@ impl RegisterPressureManager {
     }
     
     /// Get bank register for a pointer (internal use)
-    pub(super) fn get_bank_register(&mut self, ptr_value: &str) -> Reg {
+    pub fn get_bank_register(&mut self, ptr_value: &str) -> Reg {
         self.ensure_sb_initialized();
         self.allocator.get_bank_register(ptr_value)
     }
@@ -320,6 +320,36 @@ impl RegisterPressureManager {
             self.free_list.push_back(reg);
             trace!("  Added {:?} back to free list", reg);
         }
+    }
+    
+    /// Bind a value to a specific register (e.g., after a function call)
+    /// This is used when we know a value is in a specific register (like Rv0 after a call)
+    pub fn bind_value_to_register(&mut self, value: String, reg: Reg) {
+        debug!("Binding '{}' to {:?}", value, reg);
+        
+        // First, if the register contains something else, we need to handle that
+        if let Some(old_value) = self.reg_contents.get(&reg).cloned() {
+            if old_value != value {
+                trace!("  {:?} previously contained '{}', marking as free", reg, old_value);
+                // The old value is no longer in a register
+            }
+        }
+        
+        // Remove register from free list if it's there
+        if let Some(pos) = self.free_list.iter().position(|&r| r == reg) {
+            self.free_list.remove(pos);
+            trace!("  Removed {:?} from free list", reg);
+        }
+        
+        // Update LRU queue
+        if let Some(pos) = self.lru_queue.iter().position(|&r| r == reg) {
+            self.lru_queue.remove(pos);
+        }
+        self.lru_queue.push_back(reg); // Mark as most recently used
+        
+        // Update contents
+        self.reg_contents.insert(reg, value);
+        trace!("  {:?} now contains bound value", reg);
     }
     
     /// Spill all registers (e.g., before a call)
