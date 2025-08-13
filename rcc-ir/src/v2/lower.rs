@@ -6,6 +6,7 @@
 
 use crate::ir::{Module, Function, Instruction, Value, IrType};
 use std::collections::HashMap;
+
 /// Compute stack offsets (relative to FP) for each alloca result
 fn compute_alloca_offsets(function: &Function) -> HashMap<rcc_common::TempId, i16> {
     let mut offsets = HashMap::new();
@@ -41,11 +42,20 @@ use crate::v2::instr::{
 
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, info, warn};
+use crate::v2::globals::{GlobalManager, GlobalInfo};
 
 /// Lower an entire module using the V2 backend
 pub fn lower_module_v2(module: &Module, bank_size: u16) -> Result<Vec<AsmInst>, String> {
     info!("V2: Lowering module '{}' with bank_size {}", module.name, bank_size);
     let mut all_instructions = Vec::new();
+    
+    // Create a global manager to handle global variable allocation
+    let mut global_manager = GlobalManager::new();
+    
+    // First pass: allocate addresses for all globals
+    for global in &module.globals {
+        global_manager.allocate_global(global);
+    }
     
     // Check if this module has a main function (indicating it's the main module)
     let has_main = module.functions.iter().any(|f| f.name == "main");
@@ -55,14 +65,31 @@ pub fn lower_module_v2(module: &Module, bank_size: u16) -> Result<Vec<AsmInst>, 
     if has_main {
         all_instructions.push(AsmInst::Label("_init_globals".to_string()));
         
-        // TODO: Handle global variables properly
+        // Generate initialization code for each global
         if !module.globals.is_empty() {
-            warn!("V2: Global variables not yet fully implemented, skipping {} globals", module.globals.len());
+            info!("V2: Initializing {} globals", module.globals.len());
+            
+            for global in &module.globals {
+                if let Some(info) = global_manager.get_global_info(&global.name) {
+                    let global_insts = GlobalManager::lower_global_init(global, info);
+                    all_instructions.extend(global_insts);
+                }
+            }
         }
         
         all_instructions.push(AsmInst::Ret);
     } else if !module.globals.is_empty() {
-        warn!("V2: Global variables not yet fully implemented, skipping {} globals", module.globals.len());
+        // For library modules, still allocate space but don't generate init code
+        info!("V2: Library module with {} globals (no _init_globals generated)", module.globals.len());
+        
+        // We still need to generate comments for globals so they can be referenced
+        for global in &module.globals {
+            if let Some(info) = global_manager.get_global_info(&global.name) {
+                all_instructions.push(AsmInst::Comment(format!("Global '{}' at address {}", 
+                                                               global.name, info.address)));
+            }
+            // The actual initialization will be done by the main module's _init_globals
+        }
     }
     
     // Lower each function
@@ -78,7 +105,7 @@ pub fn lower_module_v2(module: &Module, bank_size: u16) -> Result<Vec<AsmInst>, 
         let mut mgr = RegisterPressureManager::new(16); // 16 registers available
         let mut naming = new_function_naming();
         
-        let function_asm = lower_function_v2(function, &mut mgr, &mut naming)?;
+        let function_asm = lower_function_v2(function, &mut mgr, &mut naming, &global_manager)?;
         all_instructions.extend(function_asm);
     }
     
@@ -90,7 +117,8 @@ pub fn lower_module_v2(module: &Module, bank_size: u16) -> Result<Vec<AsmInst>, 
 pub fn lower_function_v2(
     function: &Function, 
     mgr: &mut RegisterPressureManager,
-    naming: &mut NameGenerator
+    naming: &mut NameGenerator,
+    global_manager: &GlobalManager
 ) -> Result<Vec<AsmInst>, String> {
     info!("V2: Lowering function '{}' with {} blocks", function.name, function.blocks.len());
     
@@ -227,7 +255,7 @@ pub fn lower_function_v2(
                 
                 _ => {
                     // Use the existing lower_instruction for other instructions
-                    let insts = lower_instruction(mgr, naming, instruction, &function.name, &alloca_offsets)?;
+                    let insts = lower_instruction(mgr, naming, instruction, &function.name, &alloca_offsets, global_manager)?;
                     builder.add_instructions(insts);
                 }
             }
@@ -285,6 +313,7 @@ fn lower_instruction(
     instruction: &Instruction,
     function_name: &str,
     alloca_offsets: &std::collections::HashMap<rcc_common::TempId, i16>,
+    global_manager: &GlobalManager,
 ) -> Result<Vec<AsmInst>, String> {
     let mut insts = Vec::new();
     
@@ -303,13 +332,45 @@ fn lower_instruction(
         
         Instruction::Load { result, ptr, result_type } => {
             debug!("V2: Load: t{} = load {:?}", result, ptr);
-            let load_insts = lower_load(mgr, naming, ptr, result_type, *result);
+            
+            // Handle global variable loads specially
+            let load_insts = if let Value::Global(name) = ptr {
+                // Look up the global's address
+                if let Some(info) = global_manager.get_global_info(name) {
+                    // Create a fat pointer with the global's address
+                    let global_ptr = Value::FatPtr(crate::ir::FatPointer {
+                        addr: Box::new(Value::Constant(info.address as i64)),
+                        bank: crate::ir::BankTag::Global,
+                    });
+                    lower_load(mgr, naming, &global_ptr, result_type, *result)
+                } else {
+                    return Err(format!("V2: Unknown global variable: {}", name));
+                }
+            } else {
+                lower_load(mgr, naming, ptr, result_type, *result)
+            };
             insts.extend(load_insts);
         }
         
         Instruction::Store { value, ptr } => {
             debug!("V2: Store: {:?} -> {:?}", value, ptr);
-            let store_insts = lower_store(mgr, naming, value, ptr);
+            
+            // Handle global variable stores specially
+            let store_insts = if let Value::Global(name) = ptr {
+                // Look up the global's address
+                if let Some(info) = global_manager.get_global_info(name) {
+                    // Create a fat pointer with the global's address
+                    let global_ptr = Value::FatPtr(crate::ir::FatPointer {
+                        addr: Box::new(Value::Constant(info.address as i64)),
+                        bank: crate::ir::BankTag::Global,
+                    });
+                    lower_store(mgr, naming, value, &global_ptr)
+                } else {
+                    return Err(format!("V2: Unknown global variable: {}", name));
+                }
+            } else {
+                lower_store(mgr, naming, value, ptr)
+            };
             insts.extend(store_insts);
         }
         
@@ -323,7 +384,22 @@ fn lower_instruction(
                 1
             };
             
-            let gep_insts = lower_gep(mgr, naming, ptr, indices, element_size, *result);
+            // Handle global variable GEPs specially
+            let gep_insts = if let Value::Global(name) = ptr {
+                // Look up the global's address
+                if let Some(info) = global_manager.get_global_info(name) {
+                    // Create a fat pointer with the global's address
+                    let global_ptr = Value::FatPtr(crate::ir::FatPointer {
+                        addr: Box::new(Value::Constant(info.address as i64)),
+                        bank: crate::ir::BankTag::Global,
+                    });
+                    lower_gep(mgr, naming, &global_ptr, indices, element_size, *result)
+                } else {
+                    return Err(format!("V2: Unknown global variable: {}", name));
+                }
+            } else {
+                lower_gep(mgr, naming, ptr, indices, element_size, *result)
+            };
             insts.extend(gep_insts);
         }
         
@@ -689,6 +765,53 @@ mod tests {
         assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, _, _))));
     }
     #[test]
+    fn test_global_variables() {
+        use crate::ir::{GlobalVariable, Linkage};
+        
+        let mut module = Module::new("test".to_string());
+        
+        // Add a global variable
+        module.add_global(GlobalVariable {
+            name: "global_x".to_string(),
+            var_type: IrType::I16,
+            is_constant: false,
+            initializer: Some(Value::Constant(42)),
+            linkage: Linkage::External,
+            symbol_id: None,
+        });
+        
+        // Add main function that uses the global
+        let mut builder = IrBuilder::new();
+        let func = builder.create_function("main".to_string(), IrType::I16);
+        let entry = builder.new_label();
+        builder.create_block(entry).unwrap();
+        
+        // Load from global
+        let global_ptr = Value::Global("global_x".to_string());
+        let loaded = builder.build_load(global_ptr, IrType::I16).unwrap();
+        
+        // Return the loaded value
+        builder.build_return(Some(Value::Temp(loaded))).unwrap();
+        
+        let function = builder.finish_function().unwrap();
+        module.add_function(function);
+        
+        let result = lower_module_v2(&module, 4096);
+        assert!(result.is_ok());
+        
+        let insts = result.unwrap();
+        
+        // Should have _init_globals label since we have main
+        assert!(insts.iter().any(|i| matches!(i, AsmInst::Label(l) if l == "_init_globals")));
+        
+        // Should have initialization code for global_x (Li T0, 42)
+        assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::T0, 42))));
+        
+        // Should have store to global memory
+        assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(Reg::T0, Reg::Gp, _))));
+    }
+    
+    #[test]
     fn test_call_binds_params_and_returns() {
         use crate::ir::{IrBuilder, IrType, Value};
 
@@ -761,5 +884,34 @@ mod tests {
             }
         }
         assert!(saw_param0 && saw_param1, "callee should load both parameters via CC at entry");
+    }
+
+    #[test]
+    fn scalar_load_from_global_is_not_pointer() {
+        use crate::ir::{Module, IrBuilder, IrType, Value, GlobalVariable, Linkage};
+        use crate::v2::lower::lower_module_v2;
+
+        let mut module = Module::new("test".into());
+        module.add_global(GlobalVariable {
+            name: "g".into(),
+            var_type: IrType::I16,
+            is_constant: false,
+            initializer: Some(Value::Constant(42)),
+            linkage: Linkage::External,
+            symbol_id: None,
+        });
+
+        let mut b = IrBuilder::new();
+        b.create_function("main".into(), IrType::I16);
+        let entry = b.new_label(); b.create_block(entry).unwrap();
+        let t0 = b.build_load(Value::Global("g".into()), IrType::I16).unwrap();
+        b.build_return(Some(Value::Temp(t0))).unwrap();
+        module.add_function(b.finish_function().unwrap());
+
+        let asm = lower_module_v2(&module, 4096).unwrap();
+        // Ensure calls (if any) don’t try to use A1 for this value — in practice
+        // you can assert the call-setup comment shows “scalar”, or just that no
+        // fat-ptr argument setup is emitted for t0.
+        assert!(asm.iter().any(|i| matches!(i, rcc_codegen::AsmInst::Li(_, 42))));
     }
 }

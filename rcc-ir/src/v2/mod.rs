@@ -26,6 +26,7 @@ pub mod naming;
 pub mod instr;
 pub mod function;  // Now a module with controlled exports
 pub mod lower;  // Main lowering module
+pub mod globals;  // Global variable management
 
 #[cfg(test)]
 mod tests;

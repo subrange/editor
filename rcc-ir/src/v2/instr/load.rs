@@ -153,7 +153,9 @@ pub fn lower_load(
         insts.push(bank_load);
         
         // Store bank info for the loaded pointer
-        mgr.set_pointer_bank(result_name.clone(), BankInfo::Register(bank_dest_reg));
+        if result_type.is_pointer() {
+            mgr.set_pointer_bank(result_name.clone(), BankInfo::Register(bank_dest_reg));
+        }
         debug!("  Fat pointer loaded: addr in {:?}, bank in {:?}", dest_reg, bank_dest_reg);
         
         // Free the temporary bank address register

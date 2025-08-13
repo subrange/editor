@@ -186,6 +186,31 @@ impl TuiDebugger {
                 self.show_ascii = !self.show_ascii;
             }
 
+            // Jump to previous/next memory bank (works globally)
+            KeyCode::Char('[') => {
+                // Jump to previous bank
+                let current_bank = self.memory_base_addr / vm.bank_size as usize;
+                if current_bank > 0 {
+                    self.memory_base_addr = (current_bank - 1) * vm.bank_size as usize;
+                    self.memory_scroll = 0;
+                    self.memory_cursor_col = 0;
+                    // Switch to memory pane to show the change
+                    self.focused_pane = FocusedPane::Memory;
+                }
+            }
+            KeyCode::Char(']') => {
+                // Jump to next bank
+                let current_bank = self.memory_base_addr / vm.bank_size as usize;
+                let next_bank_start = (current_bank + 1) * vm.bank_size as usize;
+                if next_bank_start < vm.memory.len() {
+                    self.memory_base_addr = next_bank_start;
+                    self.memory_scroll = 0;
+                    self.memory_cursor_col = 0;
+                    // Switch to memory pane to show the change
+                    self.focused_pane = FocusedPane::Memory;
+                }
+            }
+
             // Quick memory edit - if in memory view and pressing hex digit
             KeyCode::Char(c) if self.focused_pane == FocusedPane::Memory && c.is_ascii_hexdigit() => {
                 let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS + self.memory_cursor_col;

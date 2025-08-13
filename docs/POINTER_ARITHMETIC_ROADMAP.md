@@ -410,6 +410,37 @@ LOAD R10, R9, R8  ; Load value using correct bank
 
 ## Conclusion
 
-Proper pointer arithmetic handling is critical for correctness in our segmented memory architecture. The infrastructure (IR and backend) is ready - we just need to connect the frontend properly. This will eliminate an entire class of bugs and make the compiler much more robust.
+Array and Struct Access → Direct Mapping to C Semantics
+
+In C, array indexing and struct member access have direct semantic equivalents that naturally lower to GetElementPtr (GEP) in IR.
+
+Key Rule
+•	arr[i] is exactly *(arr + i) in C.
+•	struct_ptr->field is exactly *((char*)struct_ptr + field_offset).
+
+Implication for Lowering
+•	Array indexing should never be compiled as raw pointer addition; it should be lowered to GEP(base_ptr, index) where the backend multiplies index by sizeof(element) and applies bank overflow rules.
+•	Struct field access should be lowered to GEP(struct_ptr, constant_offset_in_elements) — the offset is known at compile-time from the struct layout.
+
+Why This Matters
+•	This approach ensures correct scaling by element size.
+•	It automatically handles segmented/banked memory (because GEP is the only place bank overflow logic is implemented).
+•	It keeps IR type-safe — index stays an integer, base stays a pointer.
+•	It aligns perfectly with the C standard definition of these operators, so the compiler’s behavior matches programmer expectations.
+
+Practical Lowering Pattern
+
+// C:
+x = arr[i];
+
+// IR (conceptual):
+%elem_ptr = getelementptr i32* %arr, i32 %i
+%x = load i32, i32* %elem_ptr
+
+Takeaway
+Never special-case arrays or structs in backend assembly generation — always route them through the same GEP lowering path used for general pointer arithmetic.
+
+⸻
+
 
 Remember: **Every pointer arithmetic operation must go through GEP!**

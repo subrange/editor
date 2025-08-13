@@ -157,6 +157,22 @@ impl TuiDebugger {
                     }
                 }
             }
+            
+            // Bank navigation command
+            "bank" => {
+                // Usage: bank <number> - Jump to memory bank
+                if parts.len() > 1 {
+                    if let Ok(bank_num) = parts[1].parse::<usize>() {
+                        let bank_addr = bank_num * vm.bank_size as usize;
+                        if bank_addr < vm.memory.len() {
+                            self.memory_base_addr = bank_addr;
+                            self.memory_scroll = 0;
+                            self.memory_cursor_col = 0;
+                            self.focused_pane = crate::tui_debugger::FocusedPane::Memory;
+                        }
+                    }
+                }
+            }
 
             // Register commands
             "reg" => {
