@@ -4,7 +4,7 @@
 //! It handles the conversion from high-level C constructs to low-level IR.
 
 use crate::ast::*;
-use rcc_ir::{Module, Function, BasicBlock, Instruction, Value, IrType, IrBinaryOp, IrUnaryOp, IrBuilder, GlobalVariable, Linkage};
+use crate::ir::{Module, Function, BasicBlock, Instruction, Value, IrType, IrBinaryOp, IrUnaryOp, IrBuilder, GlobalVariable, Linkage};
 use rcc_common::{CompilerError, TempId, LabelId, SourceLocation};
 use std::collections::{HashMap, HashSet};
 

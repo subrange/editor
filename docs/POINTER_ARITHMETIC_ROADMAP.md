@@ -296,6 +296,14 @@ int main() {
 
 ## Implementation Checklist
 
+### Phase 0: Preparation
+- [ ] Cover the current IR with tests, use separate test directory for it.
+- [ ] Rename the current rcc-ir folder to rcc-backend
+- [ ] Move the ir implementation to rcc-frontend
+- [ ] Change the root package.json to correctly build the compiler from the new location
+- [ ] Update scripts/install.sh to reflect the new structure
+- [ ] In the new backend, let's remove the old v1 backend implementation — the entry point for v1 is module_lowering.rs
+
 ### Phase 1: Type System
 - [ ] Add type information to AST nodes
 - [ ] Implement type checker

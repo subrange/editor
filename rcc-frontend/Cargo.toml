@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 rcc-common = { workspace = true }
-rcc-ir = { path = "../rcc-ir" }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

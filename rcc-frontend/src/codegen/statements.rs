@@ -2,7 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 use rcc_common::TempId;
-use rcc_ir::{Value, IrType, IrBuilder, LabelId as Label};
+use crate::ir::{Value, IrType, IrBuilder};
+use rcc_common::LabelId as Label;
 use crate::ast::{Statement, StatementKind, Declaration, Expression, BinaryOp, Initializer, InitializerKind, ExpressionKind, Type, BankTag};
 use crate::CompilerError;
 use super::errors::CodegenError;
@@ -13,7 +14,7 @@ use super::VarInfo;
 /// Statement generator context
 pub struct StatementGenerator<'a> {
     pub builder: &'a mut IrBuilder,
-    pub module: &'a mut rcc_ir::Module,
+    pub module: &'a mut crate::ir::Module,
     pub variables: &'a mut HashMap<String, VarInfo>,
     pub array_variables: &'a mut HashSet<String>,
     pub parameter_variables: &'a mut HashSet<String>,

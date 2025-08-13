@@ -2,7 +2,7 @@
 members = [
     "rcc-codegen",
     "rcc-common",
-    "rcc-ir",
+    "rcc-backend",
     "rcc-driver",
     "rcc-frontend",
     "rvm",

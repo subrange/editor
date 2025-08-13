@@ -5,7 +5,7 @@
 
 use clap::{Parser, Subcommand};
 // use rcc_codegen::generate_assembly; // Not used currently
-use rcc_ir::Module;
+use rcc_backend::lower_module_to_assembly_with_options;
 use rcc_frontend::Frontend;
 use std::fs;
 use std::path::PathBuf;
@@ -221,7 +221,7 @@ fn compile_c99_file(
             let has_main = ir_module.functions.iter().any(|f| f.name == "main");
             
             // Lower Module to assembly with bank_size parameter
-            match rcc_ir::lower_module_to_assembly_with_options(ir_module, bank_size) {
+            match lower_module_to_assembly_with_options(ir_module, bank_size) {
                 Ok(asm_instructions) => {
                     println!("💕 Successfully lowered to assembly");
                     

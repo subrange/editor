@@ -1,8 +1,8 @@
 //! Expression code generation
 
 use std::collections::HashMap;
-use rcc_ir::{Value, IrType, IrBinaryOp, IrBuilder, GlobalVariable, Linkage};
-use rcc_ir::ir::{FatPointer, BankTag as IrBankTag};
+use crate::ir::{Value, IrType, IrBinaryOp, IrBuilder, GlobalVariable, Linkage, Module};
+use crate::ir::{FatPointer, BankTag as IrBankTag};
 use rcc_common::SourceLocation;
 use crate::ast::{Expression, ExpressionKind, BinaryOp, UnaryOp, Type, BankTag};
 use crate::CompilerError;
@@ -13,7 +13,7 @@ use super::VarInfo;
 /// Expression generator context
 pub struct ExpressionGenerator<'a> {
     pub builder: &'a mut IrBuilder,
-    pub module: &'a mut rcc_ir::Module,
+    pub module: &'a mut Module,
     pub variables: &'a HashMap<String, VarInfo>,
     pub array_variables: &'a std::collections::HashSet<String>,
     pub parameter_variables: &'a std::collections::HashSet<String>,

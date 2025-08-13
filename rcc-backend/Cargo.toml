@@ -1,0 +1,17 @@
+[package]
+name = "rcc-backend"
+version = "0.1.0"
+edition = "2021"
+description = "Ripple C99 Compiler - Backend (Assembly Generation)"
+
+[dependencies]
+rcc-common.workspace = true
+rcc-codegen = { path = "../rcc-codegen" }
+rcc-frontend = { path = "../rcc-frontend" }
+thiserror.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = "1.4"

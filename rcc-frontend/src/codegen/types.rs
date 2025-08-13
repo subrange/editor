@@ -1,7 +1,7 @@
 //! Type conversion utilities
 
 use crate::ast::Type;
-use rcc_ir::IrType;
+use crate::ir::IrType;
 use rcc_common::SourceLocation;
 use crate::CompilerError;
 use super::errors::CodegenError;

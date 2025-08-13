@@ -4,7 +4,7 @@
 mod tests {
     use super::super::*;
     use crate::Frontend;
-    use rcc_ir::{Value, IrType};
+    use crate::ir::{Value, IrType};
     
     #[test]
     fn test_global_variable_codegen() {

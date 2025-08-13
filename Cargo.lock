@@ -611,6 +611,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcc-backend"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "pretty_assertions",
+ "rcc-codegen",
+ "rcc-common",
+ "rcc-frontend",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "rcc-codegen"
 version = "0.1.0"
 dependencies = [
@@ -635,10 +649,10 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
+ "rcc-backend",
  "rcc-codegen",
  "rcc-common",
  "rcc-frontend",
- "rcc-ir",
  "thiserror",
 ]
 
@@ -646,20 +660,6 @@ dependencies = [
 name = "rcc-frontend"
 version = "0.1.0"
 dependencies = [
- "rcc-common",
- "rcc-ir",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "rcc-ir"
-version = "0.1.0"
-dependencies = [
- "log",
- "pretty_assertions",
- "rcc-codegen",
  "rcc-common",
  "serde",
  "serde_json",

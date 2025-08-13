@@ -11,6 +11,7 @@ pub mod parser;
 pub mod ast;
 pub mod semantic;
 pub mod codegen;
+pub mod ir;
 mod codegen_tests;
 
 pub use lexer::{Lexer, Token, TokenType};
@@ -24,7 +25,7 @@ pub use semantic::{SemanticAnalyzer, SemanticError};
 pub use codegen::{CodeGenerator, CodegenError};
 
 use rcc_common::CompilerError;
-use rcc_ir::Module;
+use crate::ir::Module;
 
 /// High-level frontend interface
 pub struct Frontend;

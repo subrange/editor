@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 rcc-common.workspace = true
-rcc-ir = { path = "../rcc-ir" }
+rcc-backend = { path = "../rcc-backend" }
 rcc-codegen = { path = "../rcc-codegen" }
 rcc-frontend = { workspace = true }
 clap = { version = "4.5", features = ["derive"] }

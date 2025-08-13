@@ -11,8 +11,9 @@ mod statements;
 pub use errors::CodegenError;
 
 use std::collections::{HashMap, HashSet};
-use rcc_ir::{Module, Function, Value, IrType, IrBuilder, GlobalVariable, Linkage, LabelId as Label};
-use rcc_ir::ir::{FatPointer, BankTag as IrBankTag};
+use crate::ir::{Module, Function, Value, IrType, IrBuilder, GlobalVariable, Linkage};
+use crate::ir::{FatPointer, BankTag as IrBankTag};
+use rcc_common::LabelId as Label;
 use crate::ast::{TranslationUnit, TopLevelItem, FunctionDefinition, Declaration, Type, 
                  InitializerKind, ExpressionKind, Statement, StatementKind, Expression, BinaryOp, BankTag};
 use crate::CompilerError;
