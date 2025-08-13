@@ -29,7 +29,7 @@ fn test_all_scalars_in_registers() {
     
     // All should be in registers
     for i in 0..4 {
-        let (insts, _reg) = cc.load_param(i, &param_types, &mut pm, &mut naming);
+        let (insts, _reg, _bank_reg) = cc.load_param(i, &param_types, &mut pm, &mut naming);
         let expected_reg = match i {
             0 => Reg::A0,
             1 => Reg::A1,
@@ -56,7 +56,7 @@ fn test_two_fat_pointers_fill_registers() {
     ];
     
     // First fat pointer should use A0-A1
-    let (insts, _reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A0, Reg::R0))),
             "First fat pointer address should be in A0");
     
@@ -79,12 +79,12 @@ fn test_scalar_fatptr_scalar_layout() {
     ];
     
     // Check parameter 0 is in A0
-    let (insts, _reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A0, Reg::R0))),
             "Parameter 0 should be in A0");
     
     // Check parameter 2 is in A3 (param 1 takes A1-A2)
-    let (insts, _reg) = cc.load_param(2, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(2, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A3, Reg::R0))),
             "Parameter 2 should be in A3 after fat pointer in A1-A2");
 }
@@ -105,7 +105,7 @@ fn test_fatptr_scalar_scalar_with_overflow() {
     ];
     
     // Parameter 3 should be on stack at FP-7
-    let (insts, _reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -7))),
             "Parameter 3 should be on stack at FP-7");
 }
@@ -126,7 +126,7 @@ fn test_three_scalars_then_fatptr() {
     ];
     
     // Parameter 3 (fat pointer) should have address in A3
-    let (insts, _reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
     // Since it's partially in register, it should load from A3
     // But the bank part would be on stack - our current implementation might need adjustment here
 }
@@ -150,12 +150,12 @@ fn test_all_stack_parameters() {
     ];
     
     // Parameter 4: first stack param at FP-7
-    let (insts, _reg) = cc.load_param(4, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(4, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -7))),
             "Parameter 4 should be at FP-7");
     
     // Parameter 6: after fat pointer at FP-10
-    let (insts, _reg) = cc.load_param(6, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(6, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -10))),
             "Parameter 6 should be at FP-10 (after fat pointer)");
 }
@@ -182,13 +182,13 @@ fn test_complex_mixed_layout() {
     // This is a tricky case that needs special handling
     
     // Parameter 3: first fully stack parameter
-    let (insts, _reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
     // Should be at FP-7 (base -6, then -1 for the bank part of param 2 that's on stack)
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, offset) if *offset <= -7)),
             "Parameter 3 should be on stack");
     
     // Parameter 5: scalar after fat pointer on stack
-    let (insts, _reg) = cc.load_param(5, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(5, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, offset) if *offset <= -10)),
             "Parameter 5 should be deep in stack after fat pointers");
 }
@@ -219,10 +219,12 @@ fn test_single_fat_pointer() {
         (0, IrType::FatPtr(Box::new(IrType::I16))), // A0-A1
     ];
     
-    // Should use A0 for address (and A1 for bank if we had load_fat_param)
-    let (insts, _reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
+    // Should use A0 for address and A1 for bank
+    let (insts, addr_reg, bank_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A0, Reg::R0))),
             "Fat pointer address should be in A0");
+    assert!(bank_reg.is_some(), "Fat pointer should have a bank register");
+    assert_eq!(bank_reg, Some(Reg::A1), "Fat pointer bank should be in A1");
 }
 
 #[test]
@@ -241,7 +243,7 @@ fn test_maximum_register_usage() {
     ];
     
     // Parameter 2 should be first on stack
-    let (insts, _reg) = cc.load_param(2, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(2, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -7))),
             "Parameter 2 should be first stack parameter at FP-7");
 }
@@ -278,7 +280,7 @@ fn test_stack_offset_calculation_accuracy() {
     ];
     
     for (param_idx, expected_offset) in expected_offsets {
-        let (insts, _reg) = cc.load_param(param_idx, &param_types, &mut pm, &mut naming);
+        let (insts, _reg, _bank_reg) = cc.load_param(param_idx, &param_types, &mut pm, &mut naming);
         assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, offset) if *offset == expected_offset)),
                 "Parameter {} should be at FP{}", param_idx, expected_offset);
     }

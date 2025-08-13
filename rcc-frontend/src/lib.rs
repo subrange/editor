@@ -26,7 +26,7 @@ pub use ast::{
 };
 pub use types::{Type, BankTag, StructField, EnumVariant, StorageClass};
 pub use semantic::{SemanticAnalyzer, SemanticError};
-pub use codegen::{CodeGenerator, CodegenError, TypedCodeGenerator};
+pub use codegen::{CodegenError, TypedCodeGenerator};
 pub use typed_ast::{TypedTranslationUnit, type_translation_unit};
 
 use rcc_common::CompilerError;
@@ -59,18 +59,6 @@ impl Frontend {
         analyzer.analyze(&mut ast)?;
         
         Ok(ast)
-    }
-    
-    /// Compile C99 source code to IR (old untyped path - deprecated)
-    pub fn compile_to_ir_untyped(source: &str, module_name: &str) -> Result<Module, CompilerError> {
-        // Parse and analyze
-        let ast = Self::analyze_source(source)?;
-        
-        // Generate IR
-        let codegen = CodeGenerator::new(module_name.to_string());
-        let module = codegen.generate(&ast)?;
-        
-        Ok(module)
     }
     
     /// Compile C99 source code to IR using typed AST (with GEP for pointer arithmetic)

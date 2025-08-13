@@ -63,22 +63,66 @@ pub fn lower_load(
                     panic!("Invalid fat pointer address type in LOAD: {:?}", fp.addr);
                 }
             };
-            
-            // Set bank info for the pointer
-            let bank_info = match fp.bank {
-                BankTag::Global => BankInfo::Global,
-                BankTag::Stack => BankInfo::Stack,
-                _ => panic!("BE: Unsupported bank type for fat pointer: {:?}", fp.bank),
+
+            // Determine how to source the bank for this fat pointer
+            // - Global/Stack: known at compile-time, record a unique key
+            // - Mixed: bank is runtime-determined and should already be tracked
+            //          against the *underlying temp* that holds the address
+            let ptr_name = match fp.bank {
+                BankTag::Global => {
+                    let key = naming.load_src_ptr_bank(result_temp);
+                    mgr.set_pointer_bank(key.clone(), BankInfo::Global);
+                    key
+                }
+                BankTag::Stack => {
+                    let key = naming.load_src_ptr_bank(result_temp);
+                    mgr.set_pointer_bank(key.clone(), BankInfo::Stack);
+                    key
+                }
+                BankTag::Mixed => {
+                    // For Mixed, the bank lives in a register associated with the
+                    // underlying temp for the address. Reuse that temp's name so the
+                    // manager can provide the correct BankInfo::Register(..).
+                    match fp.addr.as_ref() {
+                        Value::Temp(t) => {
+                            let name = naming.temp_name(*t);
+                            if mgr.get_pointer_bank(&name).is_none() {
+                                // This should have been set up by the parameter loader.
+                                // Default to Stack to avoid crashing, but warn loudly.
+                                warn!(
+                                    "lower_load: FatPtr(Mixed) for '{}' but no bank recorded; defaulting to Stack",
+                                    name
+                                );
+                                mgr.set_pointer_bank(name.clone(), BankInfo::Stack);
+                            }
+                            name
+                        }
+                        other => {
+                            panic!(
+                                "BE: LOAD: FatPtr(Mixed) must carry a Temp address so bank can be tracked, got: {:?}",
+                                other
+                            );
+                        }
+                    }
+                }
+                other => {
+                    // Future-proofing: if new BankTag variants appear, don't crash the backend.
+                    warn!(
+                        "BE: LOAD: Unsupported bank type {:?} for fat pointer; defaulting to Stack",
+                        other
+                    );
+                    let key = naming.load_src_ptr_bank(result_temp);
+                    mgr.set_pointer_bank(key.clone(), BankInfo::Stack);
+                    key
+                }
             };
-            let ptr_bank_key = naming.pointer_bank_key(&result_name);
-            mgr.set_pointer_bank(ptr_bank_key.clone(), bank_info);
-            
-            (addr_reg, ptr_bank_key)
+
+            (addr_reg, ptr_name)
         }
         Value::Global(name) => {
             trace!("  Loading from global: {}", name);
             mgr.set_pointer_bank(name.clone(), BankInfo::Global);
-            
+
             // For globals, we need to load the address
             // This would typically be resolved by the linker
             let addr_reg_name = naming.load_global_addr(name);
@@ -88,7 +132,7 @@ pub fn lower_load(
             insts.push(AsmInst::Label(label));
             // The actual address will be filled by the linker
             insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder
-            
+
             (addr_reg, name.clone())
         }
         _ => {

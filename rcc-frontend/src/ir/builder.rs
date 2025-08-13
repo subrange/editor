@@ -139,7 +139,7 @@ impl IrBuilder {
         let bank = if let Value::FatPtr(ref fat_ptr) = ptr {
             fat_ptr.bank
         } else {
-            BankTag::Stack // Default to stack if not specified
+            return Err(format!("Pointer must be a fat pointer, got: {:?}", ptr));
         };
         
         let instr = Instruction::GetElementPtr { 

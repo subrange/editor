@@ -440,6 +440,14 @@ pub fn type_translation_unit(
             }
             
             crate::ast::TopLevelItem::Declaration(decl) => {
+                // Skip function declarations (like extern void putchar(int))
+                // These are function declarations, not global variables
+                if matches!(decl.decl_type, Type::Function { .. }) {
+                    // Function declarations don't generate code or variables
+                    // They're just forward declarations that will be resolved at link time
+                    continue;
+                }
+                
                 let init = match decl.initializer.as_ref() {
                     Some(init) => match &init.kind {
                         crate::ast::InitializerKind::Expression(expr) => {

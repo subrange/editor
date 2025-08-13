@@ -5,6 +5,8 @@ mod tests {
     use super::super::*;
     use crate::Frontend;
     use crate::ir::{Value, IrType};
+    use crate::typed_ast::type_translation_unit;
+    use crate::codegen::TypedCodeGenerator;
     
     #[test]
     fn test_global_variable_codegen() {
@@ -19,9 +21,10 @@ mod tests {
         "#;
         
         let ast = Frontend::analyze_source(source).unwrap();
+        let typed_ast = type_translation_unit(&ast).unwrap();
         
-        let mut codegen = CodeGenerator::new("test".to_string());
-        let module = codegen.generate(&ast).unwrap();
+        let codegen = TypedCodeGenerator::new("test".to_string());
+        let module = codegen.generate(&typed_ast).unwrap();
         
         // Check that globals are in the module
         assert_eq!(module.globals.len(), 3);
@@ -45,9 +48,10 @@ mod tests {
         "#;
         
         let ast = Frontend::analyze_source(source).unwrap();
+        let typed_ast = type_translation_unit(&ast).unwrap();
         
-        let mut codegen = CodeGenerator::new("test".to_string());
-        let module = codegen.generate(&ast).unwrap();
+        let codegen = TypedCodeGenerator::new("test".to_string());
+        let module = codegen.generate(&typed_ast).unwrap();
         
         // Check that a string literal global was created
         let string_globals: Vec<_> = module.globals.iter()
@@ -79,9 +83,10 @@ mod tests {
         "#;
         
         let ast = Frontend::analyze_source(source).unwrap();
+        let typed_ast = type_translation_unit(&ast).unwrap();
         
-        let mut codegen = CodeGenerator::new("test".to_string());
-        let module = codegen.generate(&ast).unwrap();
+        let codegen = TypedCodeGenerator::new("test".to_string());
+        let module = codegen.generate(&typed_ast).unwrap();
         
         // Check that two string literal globals were created
         let string_globals: Vec<_> = module.globals.iter()
@@ -108,9 +113,10 @@ mod tests {
         "#;
         
         let ast = Frontend::analyze_source(source).unwrap();
+        let typed_ast = type_translation_unit(&ast).unwrap();
         
-        let mut codegen = CodeGenerator::new("test".to_string());
-        let module = codegen.generate(&ast).unwrap();
+        let codegen = TypedCodeGenerator::new("test".to_string());
+        let module = codegen.generate(&typed_ast).unwrap();
         
         // Should compile without errors
         assert_eq!(module.functions.len(), 1);
@@ -127,9 +133,10 @@ mod tests {
         "#;
         
         let ast = Frontend::analyze_source(source).unwrap();
+        let typed_ast = type_translation_unit(&ast).unwrap();
         
-        let mut codegen = CodeGenerator::new("test".to_string());
-        let module = codegen.generate(&ast).unwrap();
+        let codegen = TypedCodeGenerator::new("test".to_string());
+        let module = codegen.generate(&typed_ast).unwrap();
         
         // Check that string with special chars is handled
         let string_globals: Vec<_> = module.globals.iter()

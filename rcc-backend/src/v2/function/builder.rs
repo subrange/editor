@@ -105,9 +105,11 @@ impl FunctionBuilder {
         assert!(self.prologue_emitted, "Must emit prologue before loading parameters");
         assert!(!self.epilogue_emitted, "Cannot load parameters after epilogue");
         
-        let (insts, reg) = self.func.load_param(index, &self.param_types);
-        trace!("  Parameter {} loaded into {:?}, {} instructions generated", index, reg, insts.len());
+        let (insts, reg, bank_reg) = self.func.load_param(index, &self.param_types);
+        trace!("  Parameter {} loaded into {:?} (bank in {:?}), {} instructions generated", index, reg, bank_reg, insts.len());
         self.instructions.extend(insts);
+        // Note: For now, we're only returning the address register
+        // The caller should use the register manager to track the bank if needed
         reg
     }
     

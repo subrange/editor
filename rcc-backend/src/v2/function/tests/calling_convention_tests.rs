@@ -85,24 +85,24 @@ fn test_load_param_from_registers_and_stack() {
     ];
     
     // Load parameter 0 (should be from A0)
-    let (insts, _reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A0, Reg::R0))),
             "Param 0 should come from A0");
     
     // Load parameter 2 (should be from A2)
-    let (insts, _reg) = cc.load_param(2, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(2, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A2, Reg::R0))),
             "Param 2 should come from A2");
     
     // Load parameter 4 (should be from stack at FP-7)
     // With the new calculation: -6 (base) -1 (for param 4 itself) = -7
-    let (insts, _reg) = cc.load_param(4, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(4, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -7))),
             "Param 4 should come from stack at FP-7");
     
     // Load parameter 5 (should be from stack at FP-8)
     // With the new calculation: -6 (base) -1 (param 4) -1 (param 5 itself) = -8
-    let (insts, _reg) = cc.load_param(5, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(5, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -8))),
             "Param 5 should come from stack at FP-8");
 }
@@ -265,22 +265,22 @@ fn test_mixed_param_types_on_stack() {
     ];
     
     // Load parameter 0 (should be from A0)
-    let (insts, _reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A0, Reg::R0))),
             "Param 0 should come from A0");
     
     // Load parameter 2 (should be from A3 since param 1 uses A1-A2)
-    let (insts, _reg) = cc.load_param(2, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(2, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A3, Reg::R0))),
             "Param 2 should come from A3");
     
     // Load parameter 3 (first stack param, should be at FP-7)
-    let (insts, _reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -7))),
             "Param 3 should come from stack at FP-7");
     
     // Load parameter 5 (should be at FP-10: -6 base, -1 for param3, -2 for param4 fat ptr, -1 for param5)
-    let (insts, _reg) = cc.load_param(5, &param_types, &mut pm, &mut naming);
+    let (insts, _reg, _bank_reg) = cc.load_param(5, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sc, Reg::Fp, -10))),
             "Param 5 should come from stack at FP-10");
 }

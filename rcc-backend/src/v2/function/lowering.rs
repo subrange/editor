@@ -100,11 +100,11 @@ impl FunctionLowering {
     
     /// Helper to load a parameter using this function's context
     /// param_types: The types of all parameters to calculate correct stack offsets
-    pub(super) fn load_param(&mut self, index: usize, param_types: &[(rcc_common::TempId, rcc_frontend::ir::IrType)]) -> (Vec<AsmInst>, Reg) {
+    pub(super) fn load_param(&mut self, index: usize, param_types: &[(rcc_common::TempId, rcc_frontend::ir::IrType)]) -> (Vec<AsmInst>, Reg, Option<Reg>) {
         debug!("Loading parameter {}", index);
         let cc = super::calling_convention::CallingConvention::new();
         let result = cc.load_param(index, param_types, &mut self.pressure_manager, &mut self.naming);
-        trace!("  Parameter load generated {} instructions, result in {:?}", result.0.len(), result.1);
+        trace!("  Parameter load generated {} instructions, result in {:?}, bank in {:?}", result.0.len(), result.1, result.2);
         result
     }
     

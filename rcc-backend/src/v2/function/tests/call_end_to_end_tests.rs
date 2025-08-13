@@ -67,7 +67,7 @@ fn simulate_call_and_verify(
     
     // Verify register parameters
     for (param_idx, expected_reg) in expected_register_args {
-        let (load_insts, _dest) = cc.load_param(param_idx, &param_types, &mut callee_pm, &mut callee_naming);
+        let (load_insts, _dest, _bank_reg) = cc.load_param(param_idx, &param_types, &mut callee_pm, &mut callee_naming);
         
         // Should load from the expected register
         assert!(load_insts.iter().any(|i| matches!(i, AsmInst::Add(_, reg, Reg::R0) if *reg == expected_reg)),
@@ -76,7 +76,7 @@ fn simulate_call_and_verify(
     
     // Verify stack parameters
     for (param_idx, expected_offset) in expected_stack_args {
-        let (load_insts, _dest) = cc.load_param(param_idx, &param_types, &mut callee_pm, &mut callee_naming);
+        let (load_insts, _dest, _bank_reg) = cc.load_param(param_idx, &param_types, &mut callee_pm, &mut callee_naming);
         
         // Debug: print what we actually got
         for inst in &load_insts {
@@ -349,7 +349,7 @@ fn test_fat_pointer_loading_both_parts() {
     ];
     
     // Load the fat pointer parameter (currently loads address part)
-    let (insts, _addr_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
+    let (insts, _addr_reg, _bank_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
     
     // Should load address from A0
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A0, Reg::R0))),
@@ -404,7 +404,7 @@ fn test_stack_offset_correctness() {
     ];
     
     for (i, expected_reg, expected_offset) in expected_locations {
-        let (insts, _) = cc.load_param(i, &param_types, &mut pm, &mut naming);
+        let (insts, _, _) = cc.load_param(i, &param_types, &mut pm, &mut naming);
         
         if let Some(reg) = expected_reg {
             assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Add(_, r, Reg::R0) if *r == reg)),

@@ -27,60 +27,75 @@ memset:
     ADDI SP, SP, 20
 ; Load param 0 from A0
     ADD S3, A0, R0
+; Load param 0 bank from A1
 ; Load param 1 from A2
     ADD S2, A2, R0
 ; Load param 2 from A3
     ADD S1, A3, R0
-    ADD S2, FP, R0
-    STORE S3, SB, S2
-    ADD S1, FP, R0
-    ADDI S1, S1, 2
-    STORE S2, SB, S1
     ADD S0, FP, R0
-    ADDI S0, S0, 3
-    STORE S1, SB, S0
-    ADD T7, FP, R0
-    ADDI T7, T7, 4
-    LI T6, 0
-    STORE T6, SB, T7
+    STORE S3, SB, S0
+    ADDI T7, S0, 1
+    STORE A1, SB, T7
+    ADD T6, FP, R0
+    ADDI T6, T6, 2
+    STORE S2, SB, T6
+    ADD T5, FP, R0
+    ADDI T5, T5, 3
+    STORE S1, SB, T5
+    ADD T4, FP, R0
+    ADDI T4, T4, 4
+    LI T3, 0
+    STORE T3, SB, T4
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
 L_memset_1:
-    LOAD T5, SB, T7
-    LOAD T4, SB, S0
-    SLT T5, T5, T4
-    BEQ T5, R0, L_memset_4
+    LOAD T2, SB, T4
+    LOAD T1, SB, T5
+    SLT T2, T2, T1
+    BEQ T2, R0, L_memset_4
 ; Branch to L_memset_4 if condition is false
     BEQ R0, R0, L_memset_2
 ; Unconditional branch to L_memset_2 (condition was true)
 L_memset_2:
-    LOAD T3, SB, S2
-    ADDI T2, S2, 1
-    LOAD T1, SB, T2
-    LOAD T0, SB, T7
-    ADD T4, T0, R0
-    ADD T6, T3, T4
+    LOAD T0, SB, S0
+    ADDI T7, S0, 1
+    LOAD T3, SB, T7
+    LOAD T1, SB, T4
+    ADD T7, T1, R0
+    ADD T2, T0, T7
 ; Runtime bank overflow calculation for dynamic GEP
-    LI T2, 4096
-    DIV T5, T6, T2
 ; Initialize SB as stack bank (1)
     LI SB, 1
 ; Spill t0 to slot 0
     ADD SC, FP, R0
     ADDI SC, SC, 16
     STORE S3, SB, SC
-    MOD S3, T6, T2
-    ADD T1, T1, T5
-    ADD T6, S3, R0
-    LOAD T4, SB, S1
-    STORE T4, SB, T6
+; Spill t1 to slot 1
+    ADD SC, FP, R0
+    ADDI SC, SC, 17
+    STORE S2, SB, SC
+    LI S2, 4096
+    DIV S3, T2, S2
+; Spill t4 to slot 2
+    ADD SC, FP, R0
+    ADDI SC, SC, 18
+    STORE T6, SB, SC
+    MOD T6, T2, S2
+    ADD T3, T3, S3
+    ADD T2, T6, R0
+; Reload t4 from slot 2
+    ADD SC, FP, R0
+    ADDI SC, SC, 18
+    LOAD T7, SB, SC
+    LOAD S3, SB, T7
+    STORE S3, T3, T2
     BEQ R0, R0, L_memset_3
 ; Unconditional branch to L_memset_3
 L_memset_3:
-    LOAD T5, SB, T7
-    LI T2, 1
-    ADD T5, T5, T2
-    STORE T5, SB, T7
+    LOAD S2, SB, T4
+    LI T6, 1
+    ADD S2, S2, T6
+    STORE S2, SB, T4
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
 L_memset_4:

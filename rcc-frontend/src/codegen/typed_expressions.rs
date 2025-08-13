@@ -257,12 +257,25 @@ impl<'a> TypedExpressionGenerator<'a> {
                 let result = self
                     .builder
                     .build_load(var_info.value.clone(), var_info.ir_type.clone())?;
-                Ok(Value::Temp(result))
+                
+                // If it's a pointer type, we need to wrap the loaded value as a FatPtr
+                // For pointer parameters, we use Mixed bank to indicate runtime-determined bank
+                if var_info.ir_type.is_pointer() {
+                    Ok(Value::FatPtr(FatPointer {
+                        addr: Box::new(Value::Temp(result)),
+                        bank: BankTag::Mixed,  // Runtime-determined bank
+                    }))
+                } else {
+                    Ok(Value::Temp(result))
+                }
             } else {
                 // For regular variables, load the value
                 let result = self
                     .builder
                     .build_load(var_info.value.clone(), var_info.ir_type.clone())?;
+                
+                // Don't wrap loaded pointers in FatPtr here
+                // The backend tracks pointer bank information separately
                 Ok(Value::Temp(result))
             }
         } else {
@@ -398,11 +411,12 @@ impl<'a> TypedExpressionGenerator<'a> {
                 if let Some(var_info) = self.variables.get(name) {
                     Ok(var_info.as_fat_ptr())
                 } else {
-                    Err(CodegenError::UndefinedVariable {
-                        name: name.to_string(),
-                        location: rcc_common::SourceLocation::new_simple(0, 0),
-                    }
-                    .into())
+                    // If not a local variable, it might be a global
+                    // Return a FatPtr to the global with Global bank
+                    Ok(Value::FatPtr(FatPointer {
+                        addr: Box::new(Value::Global(name.to_string())),
+                        bank: BankTag::Global,
+                    }))
                 }
             }
             TypedExpr::ArrayIndex {
@@ -550,7 +564,23 @@ impl<'a> TypedExpressionGenerator<'a> {
         function: &TypedExpr,
         arguments: &[TypedExpr],
     ) -> Result<Value, CompilerError> {
-        let func_val = self.generate(function)?;
+        // For function calls, we need the function name directly, not its loaded value
+        let func_val = match function {
+            TypedExpr::Variable { name, .. } => {
+                // Check if it's a known variable (function pointer) or a direct function name
+                if self.variables.contains_key(name) {
+                    // It's a function pointer variable, load it
+                    self.generate(function)?
+                } else {
+                    // It's a direct function name
+                    Value::Global(name.to_string())
+                }
+            }
+            _ => {
+                // For other expressions (like function pointers), generate normally
+                self.generate(function)?
+            }
+        };
 
         let mut arg_vals = Vec::new();
         for arg in arguments {

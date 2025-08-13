@@ -4,7 +4,7 @@
 //! for all pointer arithmetic operations.
 
 use std::collections::{HashMap, HashSet};
-use crate::ir::{Module, Function, Value, IrType, IrBuilder, GlobalVariable, Linkage};
+use crate::ir::{Module, Function, Value, IrType, IrBuilder, GlobalVariable, Linkage, FatPointer};
 use crate::typed_ast::{TypedTranslationUnit, TypedTopLevelItem, TypedFunction, TypedExpr};
 use crate::types::{Type, BankTag};
 use crate::CompilerError;
@@ -77,10 +77,21 @@ impl TypedCodeGenerator {
     
     /// Generate IR for a function
     fn generate_function(&mut self, func: &TypedFunction) -> Result<(), CompilerError> {
+        // Save global variables before clearing
+        let globals: Vec<_> = self.variables.iter()
+            .filter(|(_, v)| matches!(v.value, Value::Global(_)))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        
         // Clear local state
         self.variables.clear();
         self.array_variables.clear();
         self.parameter_variables.clear();
+        
+        // Restore globals
+        for (k, v) in globals {
+            self.variables.insert(k, v);
+        }
         
         // Convert return type
         let ret_type = convert_type_default(&func.return_type)?;
@@ -98,12 +109,16 @@ impl TypedCodeGenerator {
         let entry_label = self.builder.new_label();
         self.builder.create_block(entry_label)?;
         
-        // Handle parameters
+        // First, add all parameters to the function
+        // This must be done before any allocas to ensure temp IDs don't conflict
+        for (i, (_, param_type)) in func.parameters.iter().enumerate() {
+            let ir_type = convert_type_default(param_type)?;
+            self.builder.add_parameter(i as rcc_common::TempId, ir_type);
+        }
+        
+        // Now handle parameter storage (allocas and stores)
         for (i, (param_name, param_type)) in func.parameters.iter().enumerate() {
             let ir_type = convert_type_default(param_type)?;
-            
-            // Add parameter to function
-            self.builder.add_parameter(i as rcc_common::TempId, ir_type.clone());
             
             // Allocate space for parameter
             let param_addr = self.builder.build_alloca(ir_type.clone(), None)?;
@@ -164,18 +179,38 @@ impl TypedCodeGenerator {
     ) -> Result<(), CompilerError> {
         let ir_type = convert_type_default(var_type)?;
         
-        // For now, just create an uninitialized global
-        // TODO: Handle initializers properly
+        // Handle initializer if present
+        let init_value = if let Some(init_expr) = initializer {
+            match init_expr {
+                TypedExpr::IntLiteral { value, .. } => Some(Value::Constant(*value)),
+                TypedExpr::CharLiteral { value, .. } => Some(Value::Constant(*value as i64)),
+                _ => {
+                    // For now, only support constant initializers
+                    // TODO: Support more complex initializers
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        
         let global = GlobalVariable {
             name: name.to_string(),
-            var_type: ir_type,
+            var_type: ir_type.clone(),
             is_constant: false,
-            initializer: None,
+            initializer: init_value,
             linkage: Linkage::External,
             symbol_id: None,
         };
         
         self.module.add_global(global);
+        
+        // Add to variables map for later reference
+        self.variables.insert(name.to_string(), VarInfo {
+            value: Value::Global(name.to_string()),
+            ir_type,
+            bank: Some(BankTag::Global),
+        });
         
         // Track global arrays
         if matches!(var_type, Type::Array { .. }) {

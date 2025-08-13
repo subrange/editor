@@ -27,113 +27,141 @@ memcpy:
     ADDI SP, SP, 20
 ; Load param 0 from A0
     ADD S3, A0, R0
+; Load param 0 bank from A1
 ; Load param 1 from A2
     ADD S2, A2, R0
 ; Load param 2 from FP-7
     ADDI SC, FP, -7
     LOAD S1, SB, SC
+; Load param 2 bank from FP-8
+    ADDI SC, FP, -8
+    LOAD S0, SB, SC
 ; Load param 3 from FP-9
     ADDI SC, FP, -9
-    LOAD S0, SB, SC
+    LOAD T7, SB, SC
 ; Load param 4 from FP-10
     ADDI SC, FP, -10
-    LOAD T7, SB, SC
-    ADD S2, FP, R0
-    STORE S3, SB, S2
-    ADD S1, FP, R0
-    ADDI S1, S1, 2
-    STORE S2, SB, S1
-    ADD S0, FP, R0
-    ADDI S0, S0, 3
-    STORE S1, SB, S0
-    ADD T7, FP, R0
-    ADDI T7, T7, 5
-    STORE S0, SB, T7
-    ADD T6, FP, R0
-    ADDI T6, T6, 6
-    STORE T7, SB, T6
+    LOAD T6, SB, SC
     ADD T5, FP, R0
-    ADDI T5, T5, 7
-    LI T4, 0
-    STORE T4, SB, T5
+    STORE S3, SB, T5
+    ADDI T4, T5, 1
+    STORE A1, SB, T4
+    ADD T3, FP, R0
+    ADDI T3, T3, 2
+    STORE S2, SB, T3
+    ADD T2, FP, R0
+    ADDI T2, T2, 3
+    STORE S1, SB, T2
+    ADDI T1, T2, 1
+    STORE S0, SB, T1
+    ADD T0, FP, R0
+    ADDI T0, T0, 5
+    STORE T7, SB, T0
+    ADD T4, FP, R0
+    ADDI T4, T4, 6
+    STORE T6, SB, T4
+    ADD T1, FP, R0
+    ADDI T1, T1, 7
+; Initialize SB as stack bank (1)
+    LI SB, 1
+; Spill param_bank_f0_op4_2 to slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 16
+    STORE S0, SB, SC
+    LI S0, 0
+    STORE S0, SB, T1
     BEQ R0, R0, L_memcpy_1
 ; Unconditional branch to L_memcpy_1
 L_memcpy_1:
-    LOAD T3, SB, T5
-    LOAD T2, SB, T6
-    SLT T3, T3, T2
-    BEQ T3, R0, L_memcpy_4
+    LOAD S0, SB, T1
+; Spill t0 to slot 1
+    ADD SC, FP, R0
+    ADDI SC, SC, 17
+    STORE S3, SB, SC
+    LOAD S3, SB, T4
+    SLT S0, S0, S3
+    BEQ S0, R0, L_memcpy_4
 ; Branch to L_memcpy_4 if condition is false
     BEQ R0, R0, L_memcpy_2
 ; Unconditional branch to L_memcpy_2 (condition was true)
 L_memcpy_2:
-    LOAD T1, SB, S2
-    ADDI T0, S2, 1
-    LOAD T4, SB, T0
-    LOAD T2, SB, T5
-    ADD T0, T2, R0
-    ADD T3, T1, T0
-; Runtime bank overflow calculation for dynamic GEP
-; Initialize SB as stack bank (1)
-    LI SB, 1
-; Spill t0 to slot 0
-    ADD SC, FP, R0
-    ADDI SC, SC, 16
-    STORE S3, SB, SC
-; Spill t2 to slot 1
-    ADD SC, FP, R0
-    ADDI SC, SC, 17
-    STORE S1, SB, SC
-    LI S1, 4096
-    DIV S3, T3, S1
-; Spill t3 to slot 2
+    LOAD S3, SB, T5
+    ADDI S0, T5, 1
+; Spill t1 to slot 2
     ADD SC, FP, R0
     ADDI SC, SC, 18
-    STORE S0, SB, SC
-    MOD S0, T3, S1
-    ADD T4, T4, S3
-    ADD T3, S0, R0
-; Reload t3 from slot 2
-    ADD SC, FP, R0
-    ADDI SC, SC, 18
-    LOAD T0, SB, SC
-    LOAD S3, SB, T0
-    ADDI S1, T0, 1
-    LOAD S0, SB, S1
-    LOAD T1, SB, T5
-; Spill t4 to slot 3
+    STORE S2, SB, SC
+    LOAD S2, SB, S0
+    LOAD S0, SB, T1
+; Spill t6 to slot 3
     ADD SC, FP, R0
     ADDI SC, SC, 19
-    STORE T7, SB, SC
-    ADD T7, T1, R0
-    ADD S1, S3, T7
-; Runtime bank overflow calculation for dynamic GEP
-; Spill t5 to slot 4
+    STORE T3, SB, SC
+; Spill t2 to slot 4
     ADD SC, FP, R0
     ADDI SC, SC, 20
-    STORE T6, SB, SC
-; Spill t1 to slot 5
+    STORE S1, SB, SC
+    ADD S1, S0, R0
+    ADD T3, S3, S1
+; Runtime bank overflow calculation for dynamic GEP
+; Spill t7 to slot 5
     ADD SC, FP, R0
     ADDI SC, SC, 21
-    STORE S2, SB, SC
-    LI S2, 4096
-    DIV T6, S1, S2
-; Spill load_f0_op7_t10_bank_val to slot 6
+    STORE T2, SB, SC
+; Spill t3 to slot 6
     ADD SC, FP, R0
     ADDI SC, SC, 22
+    STORE T7, SB, SC
+    LI T7, 4096
+    DIV T2, T3, T7
+; Spill t8 to slot 7
+    ADD SC, FP, R0
+    ADDI SC, SC, 23
+    STORE T0, SB, SC
+    MOD T0, T3, T7
+    ADD S2, S2, T2
+    ADD T3, T0, R0
+; Reload t7 from slot 5
+    ADD SC, FP, R0
+    ADDI SC, SC, 21
+    LOAD S1, SB, SC
+    LOAD T2, SB, S1
+    ADDI T7, S1, 1
+    LOAD T0, SB, T7
+    LOAD S3, SB, T1
+; Spill t4 to slot 8
+    ADD SC, FP, R0
+    ADDI SC, SC, 24
+    STORE T6, SB, SC
+    ADD T6, S3, R0
+    ADD T7, T2, T6
+; Runtime bank overflow calculation for dynamic GEP
+; Spill t9 to slot 9
+    ADD SC, FP, R0
+    ADDI SC, SC, 25
     STORE T4, SB, SC
-    MOD T4, S1, S2
-    ADD S0, S0, T6
-    ADD S1, T4, R0
-    LOAD T7, SB, S1
-    STORE T7, SB, T3
+; Spill t5 to slot 10
+    ADD SC, FP, R0
+    ADDI SC, SC, 26
+    STORE T5, SB, SC
+    LI T5, 4096
+    DIV T4, T7, T5
+; Spill load_f0_op15_t14_bank_val to slot 11
+    ADD SC, FP, R0
+    ADDI SC, SC, 27
+    STORE S2, SB, SC
+    MOD S2, T7, T5
+    ADD T0, T0, T4
+    ADD T7, S2, R0
+    LOAD T6, T0, T7
+    STORE T6, S2, T3
     BEQ R0, R0, L_memcpy_3
 ; Unconditional branch to L_memcpy_3
 L_memcpy_3:
-    LOAD T6, SB, T5
-    LI S2, 1
-    ADD T6, T6, S2
-    STORE T6, SB, T5
+    LOAD T4, SB, T1
+    LI T5, 1
+    ADD T4, T4, T5
+    STORE T4, SB, T1
     BEQ R0, R0, L_memcpy_1
 ; Unconditional branch to L_memcpy_1
 L_memcpy_4:

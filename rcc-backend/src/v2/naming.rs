@@ -66,6 +66,14 @@ impl NameGenerator {
         format!("load_f{}_op{}_t{}_addr", self.function_id, op_id, result_temp)
     }
     
+    /// Get name for the source pointer's bank tracking during a load operation
+    /// This is used to track the bank info of the pointer being loaded FROM,
+    /// not the result of the load
+    pub fn load_src_ptr_bank(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("load_src_ptr_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
     /// Get name for the bank address during pointer load
     pub fn load_bank_addr(&mut self, result_temp: TempId) -> String {
         let op_id = self.next_operation_id();
@@ -194,6 +202,12 @@ impl NameGenerator {
     pub fn param_name(&mut self, index: usize) -> String {
         let op_id = self.next_operation_id();
         format!("param_f{}_op{}_{}", self.function_id, op_id, index)
+    }
+    
+    /// Get name for the bank part of a fat pointer parameter
+    pub fn param_bank_name(&mut self, index: usize) -> String {
+        let op_id = self.next_operation_id();
+        format!("param_bank_f{}_op{}_{}", self.function_id, op_id, index)
     }
     
     /// Get name for return address register

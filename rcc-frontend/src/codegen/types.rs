@@ -86,10 +86,10 @@ pub fn get_ast_type_size(ast_type: &Type) -> u64 {
         Type::Pointer { .. } => 4, // Fat pointers: 2 bytes address + 2 bytes bank
         Type::Array { element_type, size } => {
             let elem_size = get_ast_type_size(element_type);
+            
             if let Some(size) = size {
                 elem_size * size
             } else {
-                // Incomplete array type
                 0
             }
         }

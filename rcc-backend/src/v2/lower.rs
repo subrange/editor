@@ -154,14 +154,20 @@ pub fn lower_function_v2(
     {
         use crate::v2::function::CallingConvention;
         let cc = CallingConvention::new();
-        for (idx, (param_id, _ty)) in function.parameters.iter().enumerate() {
+        for (idx, (param_id, ty)) in function.parameters.iter().enumerate() {
             // Generate load instructions for this parameter
-            let (param_insts, preg) = cc.load_param(idx, &pt, mgr, naming);
+            let (param_insts, preg, bank_reg) = cc.load_param(idx, &pt, mgr, naming);
             // Emit them at the top of the function
             builder.add_instructions(param_insts);
             // Bind the temp name to the register so later uses resolve correctly
             let pname = naming.temp_name(*param_id);
-            mgr.bind_value_to_register(pname, preg);
+            mgr.bind_value_to_register(pname.clone(), preg);
+            
+            // If this is a fat pointer parameter, track the bank register
+            if let Some(bank_reg) = bank_reg {
+                debug!("Parameter {} is a fat pointer with bank in {:?}", idx, bank_reg);
+                mgr.set_pointer_bank(pname, crate::v2::BankInfo::Register(bank_reg));
+            }
         }
     }
     

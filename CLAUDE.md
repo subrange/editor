@@ -216,3 +216,4 @@ VERY IMPORTANT: ALWAYS read all files in full with READ tool, to fully understan
 VERY IMPORTANT: Just read the full file. JUST. READ. THE. FULL. FILE.
 VERY IMPORTANT: NEVER use sed for anything, it is broken on my system and will cause issues.
 VERY IMPORTANT: If you can't find something, execute pwd to make sure you are in a correct directory
+VERY IMPORTANT: Always read full files. Never read parts of files. When you read the full file, you understand the context. When you read part of the file, you are blind. Remember — ALWAYS read full files. Do not search in file. Do not grep. Do not use sed. Do not use any other tool that reads only part of the file. ALWAYS read the full file.

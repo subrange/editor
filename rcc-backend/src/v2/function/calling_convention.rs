@@ -394,13 +394,14 @@ impl CallingConvention {
     }
     
     /// Load parameter in callee
-    /// First 4 scalar parameters are in A0-A3
+    /// First 4 scalar parameters or two pointer params are in A0-A3
     /// Additional parameters are on the stack at negative offsets from FP
     /// param_types: The types of all parameters to calculate correct stack offsets
+    /// Returns (instructions, address_reg, optional_bank_reg for fat pointers)
     pub fn load_param(&self, index: usize, 
                      param_types: &[(rcc_common::TempId, rcc_frontend::ir::IrType)],
                      pressure_manager: &mut RegisterPressureManager,
-                     naming: &mut NameGenerator) -> (Vec<AsmInst>, Reg) {
+                     naming: &mut NameGenerator) -> (Vec<AsmInst>, Reg, Option<Reg>) {
         info!("Loading parameter {}", index);
         let mut insts = Vec::new();
         
@@ -436,6 +437,30 @@ impl CallingConvention {
             if dest != arg_reg {
                 insts.push(AsmInst::Add(dest, arg_reg, Reg::R0));
             }
+            
+            // If this is a fat pointer, also load the bank from the next register
+            let bank_reg = if index < param_types.len() && param_types[index].1.is_pointer() {
+                let bank_reg = match arg_reg {
+                    Reg::A0 => Reg::A1,
+                    Reg::A1 => Reg::A2,
+                    Reg::A2 => Reg::A3,
+                    _ => panic!("Invalid fat pointer register for param {}", index),
+                };
+                debug!("  Loading fat pointer bank from {:?}", bank_reg);
+                insts.push(AsmInst::Comment(format!("Load param {index} bank from {:?}", bank_reg)));
+                
+                // Track the bank in the register manager
+                let param_name = naming.param_name(index);
+                pressure_manager.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank_reg));
+                
+                Some(bank_reg)
+            } else {
+                None
+            };
+            
+            debug!("Parameter load complete: generated {} instructions, result in {:?}, bank in {:?}", 
+                   insts.len(), dest, bank_reg);
+            return (insts, dest, bank_reg);
         } else {
             // Parameter is on the stack
             // Stack parameters start after the 4 register parameters
@@ -468,11 +493,36 @@ impl CallingConvention {
             insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, param_offset));
             trace!("  Loading from stack (bank SB) at computed address into {:?}", dest);
             insts.push(AsmInst::Load(dest, Reg::Sb, Reg::Sc));
+            
+            // If this is a fat pointer, also load the bank from the next stack slot
+            let bank_reg = if index < param_types.len() && param_types[index].1.is_pointer() {
+                debug!("  Loading fat pointer bank from FP{}", param_offset - 1);
+                insts.push(AsmInst::Comment(format!("Load param {index} bank from FP{}", param_offset - 1)));
+                
+                // Allocate a register for the bank
+                let bank_reg_name = naming.param_bank_name(index);
+                let bank_reg = pressure_manager.get_register(bank_reg_name);
+                insts.extend(pressure_manager.take_instructions());
+                
+                // Load the bank from the next stack slot
+                insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, param_offset - 1));
+                insts.push(AsmInst::Load(bank_reg, Reg::Sb, Reg::Sc));
+                
+                // Track the bank in the register manager
+                let param_name = naming.param_name(index);
+                pressure_manager.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank_reg));
+                
+                Some(bank_reg)
+            } else {
+                None
+            };
+            
+            debug!("Parameter load complete: generated {} instructions, result in {:?}, bank in {:?}", 
+                   insts.len(), dest, bank_reg);
+            return (insts, dest, bank_reg);
         }
         
-        debug!("Parameter load complete: generated {} instructions, result in {:?}", 
-               insts.len(), dest);
-        (insts, dest)
+        unreachable!("Parameter must be either in register or on stack")
     }
 }
 

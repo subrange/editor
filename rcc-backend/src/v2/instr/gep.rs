@@ -68,7 +68,7 @@ pub fn lower_gep(
         }
         Value::FatPtr(fp) => {
             trace!("  Base pointer is fat pointer with bank {:?}", fp.bank);
-            
+
             // Get address register
             let addr_reg = match fp.addr.as_ref() {
                 Value::Temp(t) => {
@@ -88,14 +88,38 @@ pub fn lower_gep(
                     panic!("Invalid fat pointer address type in GEP")
                 }
             };
-            
+
             // Get bank info
             let bank_info = match fp.bank {
                 BankTag::Global => BankInfo::Global,
-                BankTag::Stack => BankInfo::Stack,
-                _ => panic!("Unsupported bank type for fat pointer: {:?}", fp.bank),
+                BankTag::Stack  => BankInfo::Stack,
+                BankTag::Mixed => {
+                    // For Mixed, the bank is determined at runtime. We expect the
+                    // address component to be a temp whose bank has been tracked
+                    // by the calling convention (load_param). Reuse that info.
+                    match fp.addr.as_ref() {
+                        Value::Temp(t) => {
+                            let temp_name = naming.temp_name(*t);
+                            if let Some(info) = mgr.get_pointer_bank(&temp_name) {
+                                info
+                            } else {
+                                warn!("GEP: No bank info for {}, defaulting to Stack for Mixed fat ptr", temp_name);
+                                BankInfo::Stack
+                            }
+                        }
+                        Value::Constant(_) => {
+                            // A Mixed bank with a constant address cannot carry a runtime bank.
+                            panic!("GEP: FatPtr with BankTag::Mixed cannot have a constant address");
+                        }
+                        other => {
+                            warn!("GEP: Unexpected address type for Mixed fat ptr: {:?}", other);
+                            BankInfo::Stack
+                        }
+                    }
+                }
+                other => panic!("Unsupported bank type for fat pointer: {:?}", other),
             };
-            
+
             let ptr_name = naming.pointer_bank_key(&result_name);
             (addr_reg, ptr_name, bank_info)
         }
