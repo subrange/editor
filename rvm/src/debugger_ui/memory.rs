@@ -1,7 +1,8 @@
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::prelude::{Color, Line, Span, Style};
+use ratatui::prelude::{Color, Line, Modifier, Span, Style};
 use ratatui::widgets::{Block, Borders, Paragraph};
+use ripple_asm::Register;
 use crate::tui_debugger::{FocusedPane, TuiDebugger};
 use crate::vm::VM;
 
@@ -18,6 +19,14 @@ impl TuiDebugger {
         
         // Calculate the cursor's absolute address
         let cursor_addr = self.memory_base_addr + self.memory_scroll * bytes_per_row + self.memory_cursor_col;
+        
+        // Get stack information
+        let sp = vm.registers[Register::Sp as usize];
+        let sb = vm.registers[Register::Sb as usize];
+        let fp = vm.registers[Register::Fp as usize];
+        let stack_base_addr = sb as usize * vm.bank_size as usize;
+        let stack_top_addr = stack_base_addr + sp as usize;
+        let frame_addr = stack_base_addr + fp as usize;
 
         for row in 0..visible_rows {
             let addr = start_addr + row * bytes_per_row;
@@ -25,7 +34,30 @@ impl TuiDebugger {
                 break;
             }
 
+            // Check if this row contains stack-related addresses
+            let mut row_indicator = "    ";
+            let mut indicator_color = Color::DarkGray;
+            
+            // Check if any address in this row is stack-related
+            for col in 0..bytes_per_row {
+                let check_addr = addr + col;
+                if check_addr == stack_top_addr {
+                    row_indicator = "SP→ ";
+                    indicator_color = Color::Green;
+                    break;
+                } else if check_addr == frame_addr {
+                    row_indicator = "FP→ ";
+                    indicator_color = Color::Cyan;
+                    break;
+                } else if check_addr >= stack_base_addr && check_addr < stack_top_addr {
+                    row_indicator = "STK ";
+                    indicator_color = Color::Yellow;
+                    // Don't break - SP or FP might be in same row
+                }
+            }
+
             let mut spans = vec![
+                Span::styled(row_indicator, Style::default().fg(indicator_color)),
                 Span::styled(format!("{:04X}: ", addr), Style::default().fg(Color::DarkGray)),
             ];
 
@@ -38,9 +70,27 @@ impl TuiDebugger {
                     // Check if this is the cursor position
                     let is_cursor = idx == cursor_addr && self.focused_pane == FocusedPane::Memory;
                     
+                    // Check if this is a stack-related address
+                    let is_stack = idx >= stack_base_addr && idx < stack_top_addr;
+                    let is_sp = idx == stack_top_addr;
+                    let is_fp = idx == frame_addr;
+                    
                     let style = if is_cursor {
                         // Highlight cursor position
                         Style::default().bg(Color::Yellow).fg(Color::Black)
+                    } else if is_sp {
+                        // Stack pointer position
+                        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+                    } else if is_fp {
+                        // Frame pointer position
+                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+                    } else if is_stack {
+                        // Stack area
+                        if value != 0 {
+                            Style::default().fg(Color::Yellow)
+                        } else {
+                            Style::default().fg(Color::Yellow).add_modifier(Modifier::DIM)
+                        }
                     } else if idx < 2 {
                         // Special I/O registers
                         Style::default().fg(Color::Magenta)

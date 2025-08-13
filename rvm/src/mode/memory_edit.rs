@@ -10,7 +10,38 @@ impl TuiDebugger {
                 self.command_buffer.clear();
             }
             KeyCode::Enter => {
-                // Parse "address:value" or just "value" if address is pre-filled
+                // Check if this is instruction editing (starts with 'i')
+                if self.command_buffer.starts_with('i') {
+                    // Format: i<instr_idx>:<byte_idx>:<hex_value>
+                    let parts: Vec<&str> = self.command_buffer[1..].split(':').collect();
+                    if parts.len() >= 3 {
+                        if let (Ok(instr_idx), Ok(byte_idx), Ok(value)) = (
+                            usize::from_str_radix(parts[0], 16),
+                            parts[1].parse::<usize>(),
+                            u8::from_str_radix(parts[2], 16),
+                        ) {
+                            if instr_idx < vm.instructions.len() && byte_idx < 8 {
+                                let instr = &mut vm.instructions[instr_idx];
+                                match byte_idx {
+                                    0 => instr.opcode = value,
+                                    1 => instr.word0 = value,
+                                    2 => instr.word1 = (instr.word1 & 0xFF00) | value as u16,
+                                    3 => instr.word1 = (instr.word1 & 0x00FF) | ((value as u16) << 8),
+                                    4 => instr.word2 = (instr.word2 & 0xFF00) | value as u16,
+                                    5 => instr.word2 = (instr.word2 & 0x00FF) | ((value as u16) << 8),
+                                    6 => instr.word3 = (instr.word3 & 0xFF00) | value as u16,
+                                    7 => instr.word3 = (instr.word3 & 0x00FF) | ((value as u16) << 8),
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    self.command_buffer.clear();
+                    self.mode = DebuggerMode::Normal;
+                    return;
+                }
+                
+                // Parse regular memory edit: "address:value" or just "value" if address is pre-filled
                 let parts: Vec<&str> = self.command_buffer.split(':').collect();
 
                 let (addr_str, value_str) = if parts.len() == 2 {

@@ -23,7 +23,68 @@ impl TuiDebugger {
                 self.command_buffer.pop();
             }
             KeyCode::Char(c) => {
-                self.command_buffer.push(c);
+                // Check if we're in toggle mode
+                if self.command_buffer == "toggle:" {
+                    match c {
+                        '1' => {
+                            // F1 = Disassembly (can't be hidden, it's always visible)
+                            // Just exit toggle mode
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
+                        '2' => {
+                            // F2 = Registers
+                            self.show_registers = !self.show_registers;
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
+                        '3' => {
+                            // F3 = Memory
+                            self.show_memory = !self.show_memory;
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
+                        '4' => {
+                            // F4 = Stack
+                            self.show_stack = !self.show_stack;
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
+                        '5' => {
+                            // F5 = Watches
+                            self.show_watches = !self.show_watches;
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
+                        '6' => {
+                            // F6 = Breakpoints
+                            self.show_breakpoints = !self.show_breakpoints;
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
+                        '7' => {
+                            // F7 = Output
+                            self.show_output = !self.show_output;
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
+                        _ => {
+                            // Not a valid toggle key, exit toggle mode
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
+                    }
+                } else {
+                    self.command_buffer.push(c);
+                }
             }
             KeyCode::Up => {
                 if self.command_history_idx > 0 {

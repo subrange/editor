@@ -5,72 +5,78 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use crate::tui_debugger::TuiDebugger;
 
 impl TuiDebugger {
-    pub(crate) fn draw_help(&self, frame: &mut Frame, area: Rect) {
-        let help_text = vec![
-            Line::from(Span::styled("RVM TUI Debugger Help", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))),
+    pub(crate) fn draw_help(&mut self, frame: &mut Frame, area: Rect) {
+        // Compact help text - fits better in window
+        let all_help = vec![
+            Line::from(Span::styled("RVM Debugger (↑/↓ scroll, ? close)", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))),
             Line::from(""),
-            Line::from(Span::styled("Navigation:", Style::default().fg(Color::Yellow))),
-            Line::from("  F1-F6     Switch between panes"),
-            Line::from("  Tab       Cycle through panes forward"),
-            Line::from("  Shift+Tab Cycle through panes backward"),
-            Line::from("  h/j/k/l   Vim-style navigation"),
-            Line::from("  ↑/↓/←/→   Arrow key navigation"),
+            Line::from(Span::styled("── Navigation ──", Style::default().fg(Color::Yellow))),
+            Line::from("F1-F7,Tab  Panes | hjkl/↑↓←→  Move"),
             Line::from(""),
-            Line::from(Span::styled("Execution:", Style::default().fg(Color::Yellow))),
-            Line::from("  Space/s   Step single instruction"),
-            Line::from("  r         Run until breakpoint.rs/halt"),
-            Line::from("  c         Continue from breakpoint.rs"),
-            Line::from("  R         Restart execution from beginning"),
+            Line::from(Span::styled("── Execution ──", Style::default().fg(Color::Yellow))),
+            Line::from("Space/s  Step | r  Run | c  Continue"),
+            Line::from("R  Restart | b  Breakpoint"),
             Line::from(""),
-            Line::from(Span::styled("Breakpoints:", Style::default().fg(Color::Yellow))),
-            Line::from("  b         Toggle breakpoint.rs at cursor"),
-            Line::from("  Shift+B   Set/toggle breakpoint.rs by number"),
-            Line::from("  B         Clear all breakpoints"),
+            Line::from(Span::styled("── Disassembly ──", Style::default().fg(Color::Yellow))),
+            Line::from("Shift+H  Hex view | 0-9,a-f  Edit"),
             Line::from(""),
-            Line::from(Span::styled("Memory:", Style::default().fg(Color::Yellow))),
-            Line::from("  g         Go to address"),
-            Line::from("  a         Toggle ASCII display (in Memory pane)"),
-            Line::from("  e         Edit memory (formats below)"),
-            Line::from("    addr:0xFF      Hex value"),
-            Line::from("    addr:255       Decimal value"),
-            Line::from("    addr:'A'       Character"),
-            Line::from("    addr:\"Hello\"   String"),
-            Line::from("  0-9,a-f   Quick edit (in Memory pane)"),
-            Line::from("  w         Add memory watch"),
-            Line::from("  W         Remove selected watch"),
+            Line::from(Span::styled("── Memory ──", Style::default().fg(Color::Yellow))),
+            Line::from("g  Go addr | Shift+G  Stack"),
+            Line::from("a  ASCII | e  Edit | w/W  Watch"),
             Line::from(""),
-            Line::from(Span::styled("Command Mode (:):", Style::default().fg(Color::Yellow))),
-            Line::from("  :break <addr>    Set breakpoint.rs"),
-            Line::from("  :delete <addr>   Remove breakpoint.rs"),
-            Line::from("  :watch <name> <addr>  Add memory watch"),
-            Line::from("  :mem <addr> <val>     Write to memory"),
-            Line::from("  :reg <#> <val>        Set register"),
-            Line::from("  :help            Show this help"),
-            Line::from("  :quit/:q         Quit debugger_ui"),
+            Line::from(Span::styled("── Panels (T+#) ──", Style::default().fg(Color::Yellow))),
+            Line::from("Shift+T then: 2-7 to toggle"),
+            Line::from("2 Reg | 3 Mem | 4 Stack"),
+            Line::from("5 Watch | 6 Break | 7 Output"),
             Line::from(""),
-            Line::from(Span::styled("Other:", Style::default().fg(Color::Yellow))),
-            Line::from("  :         Enter command mode"),
-            Line::from("  ?         Toggle this help"),
-            Line::from("  q         Quit debugger_ui"),
+            Line::from(Span::styled("── Commands (:) ──", Style::default().fg(Color::Yellow))),
+            Line::from(":break <a> | :mem <a> <v>"),
+            Line::from(":reg <#> <v> | :q  Quit"),
             Line::from(""),
-            Line::from(Span::styled("Press '?' to close help", Style::default().fg(Color::DarkGray))),
+            Line::from(Span::styled("── Edit Formats ──", Style::default().fg(Color::Yellow))),
+            Line::from("addr:0xFF  Hex | addr:255  Dec"),
+            Line::from("addr:'A'  Char | addr:\"hi\"  Str"),
+            Line::from(""),
+            Line::from("?  Help | q  Quit"),
         ];
 
-        let help_width = 50;
-        let help_height = 30;
+        // Calculate visible area
+        let help_width = 40;
+        let help_height = area.height.min(25);
         let help_area = Rect::new(
-            (area.width - help_width) / 2,
-            (area.height - help_height) / 2,
+            (area.width.saturating_sub(help_width)) / 2,
+            (area.height.saturating_sub(help_height)) / 2,
             help_width,
             help_height,
         );
 
+        // Calculate scrolling
+        let visible_lines = help_height.saturating_sub(2) as usize; // Account for borders
+        let total_lines = all_help.len();
+        let max_scroll = total_lines.saturating_sub(visible_lines);
+        
+        // Ensure scroll is within bounds
+        if self.help_scroll > max_scroll {
+            self.help_scroll = max_scroll;
+        }
+
+        // Get visible portion
+        let end = (self.help_scroll + visible_lines).min(total_lines);
+        let visible_help: Vec<Line> = all_help[self.help_scroll..end].to_vec();
+
+        // Add scroll indicator if needed
+        let title = if total_lines > visible_lines {
+            format!(" Help [{}/{}] ", self.help_scroll + 1, total_lines)
+        } else {
+            " Help ".to_string()
+        };
+
         let block = Block::default()
-            .title(" Help ")
+            .title(title)
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Cyan));
 
-        let paragraph = Paragraph::new(help_text)
+        let paragraph = Paragraph::new(visible_help)
             .block(block)
             .alignment(Alignment::Left);
 

@@ -56,6 +56,23 @@ impl TuiDebugger {
             _ => " | ?:help q:quit",
         };
         spans.push(Span::styled(hints, Style::default().fg(Color::DarkGray)));
+        
+        // Show hidden panels indicator
+        let mut hidden_panels = vec![];
+        if !self.show_registers { hidden_panels.push("Reg"); }
+        if !self.show_memory { hidden_panels.push("Mem"); }
+        if !self.show_stack { hidden_panels.push("Stk"); }
+        if !self.show_watches { hidden_panels.push("Wat"); }
+        if !self.show_breakpoints { hidden_panels.push("BP"); }
+        if !self.show_output { hidden_panels.push("Out"); }
+        
+        if !hidden_panels.is_empty() {
+            spans.push(Span::raw(" "));
+            spans.push(Span::styled(
+                format!(" Hidden: {} ", hidden_panels.join(",")),
+                Style::default().fg(Color::Magenta).add_modifier(Modifier::ITALIC)
+            ));
+        }
 
         // Right-align some info
         let total_breakpoints = self.breakpoints.len();

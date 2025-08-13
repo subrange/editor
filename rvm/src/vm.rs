@@ -711,6 +711,9 @@ impl VM {
         self.output_buffer.clear();
         self.output_ready = true;
         
+        // Clear all memory (reset to zeros)
+        self.memory.fill(0);
+        
         // Reset memory I/O registers
         self.memory[0] = 0;
         self.memory[1] = 1;

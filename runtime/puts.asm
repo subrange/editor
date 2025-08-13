@@ -76,8 +76,6 @@ L_puts_6:
     ADD SC, FP, R0
     ADDI SC, SC, 18
     STORE T0, SB, SC
-; Raise SP to cover FP+18 spills
-    ADDI SP, FP, 19
 ; Call function putchar
     CALL putchar
 ; Reload t2 from slot 1
@@ -108,8 +106,6 @@ L_puts_7:
     ADD SC, FP, R0
     ADDI SC, SC, 19
     STORE T7, SB, SC
-; Raise SP to cover FP+19 spills
-    ADDI SP, FP, 20
 ; Call function putchar
     CALL putchar
     LI RV0, 0

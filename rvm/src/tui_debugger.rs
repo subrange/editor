@@ -64,6 +64,8 @@ pub struct TuiDebugger {
     
     // Scrolling positions
     pub(crate) disasm_scroll: usize,
+    pub(crate) disasm_cursor_row: usize,  // Row within visible area
+    pub(crate) disasm_cursor_byte: usize, // Which byte in the instruction (0-7)
     pub(crate) memory_scroll: usize,
     pub(crate) memory_base_addr: usize,
     pub(crate) memory_cursor_col: usize,  // Column position within the row (0-7)
@@ -85,7 +87,17 @@ pub struct TuiDebugger {
     
     // Display preferences
     pub(crate) show_help: bool,
+    pub(crate) help_scroll: usize,
     pub(crate) show_ascii: bool,
+    pub(crate) show_instruction_hex: bool,
+    
+    // Panel visibility toggles
+    pub(crate) show_registers: bool,
+    pub(crate) show_memory: bool,
+    pub(crate) show_stack: bool,
+    pub(crate) show_watches: bool,
+    pub(crate) show_breakpoints: bool,
+    pub(crate) show_output: bool,
     
     // Performance
     last_step_time: Instant,
@@ -106,6 +118,8 @@ impl TuiDebugger {
             mode: DebuggerMode::Normal,
             
             disasm_scroll: 0,
+            disasm_cursor_row: 0,
+            disasm_cursor_byte: 0,
             memory_scroll: 0,
             memory_base_addr: 0,
             memory_cursor_col: 0,
@@ -124,7 +138,16 @@ impl TuiDebugger {
             command_history_idx: 0,
             
             show_help: false,
+            help_scroll: 0,
             show_ascii: true,
+            show_instruction_hex: true,
+            
+            show_registers: true,
+            show_memory: true,
+            show_stack: true,
+            show_watches: true,
+            show_breakpoints: true,
+            show_output: true,
             
             last_step_time: Instant::now(),
             step_frequency: Duration::from_millis(100),
@@ -217,55 +240,139 @@ impl TuiDebugger {
             ])
             .split(main_area);
         
-        // Left column: Disassembly + Output
+        // Left column: Build constraints based on visible panels
+        let mut left_constraints = vec![];
+        if self.show_output {
+            left_constraints.push(Constraint::Min(15));     // Disassembly
+            left_constraints.push(Constraint::Length(10));  // Output
+        } else {
+            left_constraints.push(Constraint::Min(15));     // Disassembly takes full space
+        }
+        
         let left_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Min(15),     // Disassembly
-                Constraint::Length(10),  // Output
-            ])
+            .constraints(left_constraints)
             .split(main_chunks[0]);
         
-        // Right column: Split horizontally for (Registers+Memory) and (Stack+Watches)
-        let right_chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(65), // Left: Registers + Memory
-                Constraint::Percentage(35), // Right: Stack + Watches
-            ])
-            .split(main_chunks[1]);
+        // Right column: Split horizontally only if we have panels on both sides
+        let show_left_panels = self.show_registers || self.show_memory;
+        let show_right_panels = self.show_stack || self.show_watches || self.show_breakpoints;
         
-        // Left part of right side: Registers on top, Memory below
-        let registers_memory_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(11),  // Registers (increased for 32 registers display)
-                Constraint::Min(14),     // Memory
-            ])
-            .split(right_chunks[0]);
+        let (left_panel_area, right_panel_area) = if show_left_panels && show_right_panels {
+            let right_chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Percentage(65), // Left: Registers + Memory
+                    Constraint::Percentage(35), // Right: Stack + Watches
+                ])
+                .split(main_chunks[1]);
+            (Some(right_chunks[0]), Some(right_chunks[1]))
+        } else if show_left_panels {
+            (Some(main_chunks[1]), None)
+        } else if show_right_panels {
+            (None, Some(main_chunks[1]))
+        } else {
+            (None, None)
+        };
         
-        // Right part: Stack + Watches + Breakpoints (vertically stacked, full height)
-        let stack_watches_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Percentage(33), // Stack
-                Constraint::Percentage(33), // Watches
-                Constraint::Percentage(34), // Breakpoints
-            ])
-            .split(right_chunks[1]);
+        // Left part of right side: Registers and Memory
+        if let Some(area) = left_panel_area {
+            let mut constraints = vec![];
+            if self.show_registers && self.show_memory {
+                constraints.push(Constraint::Length(11));  // Registers
+                constraints.push(Constraint::Min(14));     // Memory
+            } else if self.show_registers {
+                constraints.push(Constraint::Min(11));     // Registers only
+            } else if self.show_memory {
+                constraints.push(Constraint::Min(14));     // Memory only
+            }
+            
+            if !constraints.is_empty() {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(constraints)
+                    .split(area);
+                
+                let mut chunk_idx = 0;
+                if self.show_registers {
+                    self.draw_registers(frame, chunks[chunk_idx], vm);
+                    chunk_idx += 1;
+                }
+                if self.show_memory {
+                    self.draw_memory(frame, chunks[chunk_idx], vm);
+                }
+            }
+        }
         
-        // Draw each component
+        // Right part: Stack, Watches, and Breakpoints
+        if let Some(area) = right_panel_area {
+            let mut constraints = vec![];
+            let mut panels = vec![];
+            
+            if self.show_stack {
+                constraints.push(Constraint::Ratio(1, 3));
+                panels.push("stack");
+            }
+            if self.show_watches {
+                constraints.push(Constraint::Ratio(1, 3));
+                panels.push("watches");
+            }
+            if self.show_breakpoints {
+                constraints.push(Constraint::Ratio(1, 3));
+                panels.push("breakpoints");
+            }
+            
+            // Adjust constraints based on number of visible panels
+            let visible_count = panels.len() as u32;
+            if visible_count > 0 {
+                constraints.clear();
+                for _ in 0..visible_count {
+                    constraints.push(Constraint::Ratio(1, visible_count));
+                }
+                
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(constraints)
+                    .split(area);
+                
+                let mut chunk_idx = 0;
+                for panel in panels {
+                    match panel {
+                        "stack" => {
+                            self.draw_stack(frame, chunks[chunk_idx], vm);
+                            chunk_idx += 1;
+                        }
+                        "watches" => {
+                            self.draw_watches(frame, chunks[chunk_idx], vm);
+                            chunk_idx += 1;
+                        }
+                        "breakpoints" => {
+                            self.draw_breakpoints(frame, chunks[chunk_idx], vm);
+                            chunk_idx += 1;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        
+        // Always draw disassembly
         self.draw_disassembly(frame, left_chunks[0], vm);
-        self.draw_output(frame, left_chunks[1], vm);
-        self.draw_registers(frame, registers_memory_chunks[0], vm);
-        self.draw_memory(frame, registers_memory_chunks[1], vm);
-        self.draw_stack(frame, stack_watches_chunks[0], vm);
-        self.draw_watches(frame, stack_watches_chunks[1], vm);
-        self.draw_breakpoints(frame, stack_watches_chunks[2], vm);
+        
+        // Draw output if visible
+        if self.show_output && left_chunks.len() > 1 {
+            self.draw_output(frame, left_chunks[1], vm);
+        }
         
         // Draw status/input line at bottom
         match self.mode {
-            DebuggerMode::Command => self.draw_input_line(frame, status_area, "Command"),
+            DebuggerMode::Command => {
+                if self.command_buffer == "toggle:" {
+                    self.draw_input_line(frame, status_area, "Toggle Panel (2-7, 1=Disasm fixed)");
+                } else {
+                    self.draw_input_line(frame, status_area, "Command");
+                }
+            }
             DebuggerMode::GotoAddress => self.draw_input_line(frame, status_area, "Go to address (hex)"),
             DebuggerMode::AddWatch => self.draw_input_line(frame, status_area, "Add watch (name:addr[:format])"),
             DebuggerMode::SetBreakpoint => self.draw_input_line(frame, status_area, "Set breakpoint.rs (instr# or 0xAddr)"),

@@ -27,8 +27,7 @@ impl TuiDebugger {
 
             // Format the instruction
             let addr = format!("{:04X}", idx);
-            let instr_spans = self.format_instruction_spans(instr);
-
+            
             // Build the line with appropriate styling
             let mut spans = vec![];
 
@@ -75,7 +74,46 @@ impl TuiDebugger {
 
             spans.push(Span::raw("  "));
 
+            // Add hex view if enabled
+            if self.show_instruction_hex {
+                // Show the 8 bytes of the instruction
+                let bytes = [
+                    instr.opcode,
+                    instr.word0,
+                    (instr.word1 & 0xFF) as u8,
+                    ((instr.word1 >> 8) & 0xFF) as u8,
+                    (instr.word2 & 0xFF) as u8,
+                    ((instr.word2 >> 8) & 0xFF) as u8,
+                    (instr.word3 & 0xFF) as u8,
+                    ((instr.word3 >> 8) & 0xFF) as u8,
+                ];
+                
+                for (byte_idx, &byte) in bytes.iter().enumerate() {
+                    // Check if this byte is under cursor
+                    let relative_row = idx.saturating_sub(self.disasm_scroll);
+                    let is_cursor = self.focused_pane == crate::tui_debugger::FocusedPane::Disassembly
+                        && relative_row == self.disasm_cursor_row
+                        && byte_idx == self.disasm_cursor_byte;
+                    
+                    let style = if is_cursor {
+                        Style::default().bg(Color::Yellow).fg(Color::Black)
+                    } else if byte == 0 {
+                        Style::default().fg(Color::DarkGray)
+                    } else {
+                        Style::default().fg(Color::Cyan)
+                    };
+                    
+                    spans.push(Span::styled(format!("{:02X}", byte), style));
+                    if byte_idx < 7 {
+                        spans.push(Span::raw(" "));
+                    }
+                }
+                
+                spans.push(Span::raw("  "));
+            }
+
             // Add instruction spans with syntax highlighting
+            let instr_spans = self.format_instruction_spans(instr);
             spans.extend(instr_spans);
 
             items.push(ListItem::new(Line::from(spans)));
