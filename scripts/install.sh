@@ -1,10 +1,32 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-npm run build:native && \
-  cp src/rust-bf/target/release/bf /usr/local/bin && \
-  cp src/ripple-asm/target/release/rasm /usr/local/bin && \
-  cp src/ripple-asm/target/release/rlink /usr/local/bin && \
-  cp rbt/target/release/rbt /usr/local/bin && \
-  cp target/release/rcc /usr/local/bin && \
-  cp target/release/rvm /usr/local/bin && \
-  cp src/bf-macro-expander/target/release/bfm /usr/local/bin
+# Build everything as the current user (do NOT run this script with sudo)
+# This avoids creating root-owned files under ./target which will break `cargo test`.
+npm run build:native
+
+# Binaries that should exist after the build
+binaries=(
+  "src/rust-bf/target/release/bf"
+  "src/ripple-asm/target/release/rasm"
+  "src/ripple-asm/target/release/rlink"
+  "rbt/target/release/rbt"
+  "target/release/rcc"
+  "target/release/rvm"
+  "src/bf-macro-expander/target/release/bfm"
+)
+
+# Verify artifacts exist
+for bin in "${binaries[@]}"; do
+  if [[ ! -x "$bin" ]]; then
+    echo "error: expected built binary '$bin' not found or not executable" >&2
+    exit 1
+  fi
+done
+
+# Use sudo ONLY for the install step
+DEST="/usr/local/bin"
+echo "Installing to $DEST (you may be prompted for your password)…"
+sudo install -m 0755 "${binaries[@]}" "$DEST"
+
+echo "Done."

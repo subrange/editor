@@ -143,7 +143,7 @@ impl CallingConvention {
                 }
             }
         }
-        
+
         // Then, move register arguments to A0-A3
         if !reg_args.is_empty() {
             insts.push(AsmInst::Comment(format!("Setting up {} register arguments", reg_args.len())));
@@ -176,17 +176,12 @@ impl CallingConvention {
                 }
             }
         }
-        
-        // Spill all registers before call (except A0-A3 which hold arguments)
-        debug!("  Spilling all registers before call");
-        pressure_manager.spill_all();
-        let spill_insts = pressure_manager.take_instructions();
-        if !spill_insts.is_empty() {
-            trace!("  Generated {} spill instructions", spill_insts.len());
-        }
-        insts.extend(spill_insts);
 
-        // Add comment about stack adjustment
+        // Note: We intentionally do not call spill_all() here.
+        // Spilling can clobber source registers for arguments (both stack and A0–A3).
+        // The caller is responsible for ensuring live temps are saved before invoking this helper.
+
+        // (No global spill here; caller should manage liveness before call.)
         if stack_offset > 0 {
             insts.push(AsmInst::Comment(format!("Pushed {stack_offset} words to stack")));
         }
@@ -402,7 +397,7 @@ impl CallingConvention {
     /// First 4 scalar parameters are in A0-A3
     /// Additional parameters are on the stack at negative offsets from FP
     /// param_types: The types of all parameters to calculate correct stack offsets
-    pub(super) fn load_param(&self, index: usize, 
+    pub fn load_param(&self, index: usize, 
                      param_types: &[(rcc_common::TempId, crate::ir::IrType)],
                      pressure_manager: &mut RegisterPressureManager,
                      naming: &mut NameGenerator) -> (Vec<AsmInst>, Reg) {
@@ -418,10 +413,6 @@ impl CallingConvention {
             trace!("  Generated {} spill/reload instructions", spill_insts.len());
         }
         insts.extend(spill_insts);
-        if let Some(k) = pressure_manager.max_spill_fp_offset() {
-            insts.push(AsmInst::Comment(format!("Raise SP to cover FP+{k} spills")));
-            insts.push(AsmInst::AddI(Reg::Sp, Reg::Fp, k + 1));
-        }
         // Use common logic to determine placement
         let (register_params, first_stack_param) = self.analyze_param_placement(param_types);
         

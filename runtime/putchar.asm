@@ -23,6 +23,10 @@ putchar:
     ADD FP, SP, R0
 ; Allocate 8 slots for locals
     ADDI SP, SP, 8
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+; Load param 0 from A0
+    ADD S3, A0, R0
     STORE A0, R0, R0
 ; Jump to epilogue
     BEQ R0, R0, L_putchar_99999

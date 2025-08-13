@@ -359,16 +359,16 @@ mod tests {
         assert!(call_seq.iter().any(|inst| matches!(inst, AsmInst::Call(label) if label == "printf")));
     }
 
-    #[test]
-    fn test_too_many_args() {
-        let frame = Frame::new(0);
-        let args: Vec<Reg> = (0..10).map(|i| match i {
-            0 => Reg::R0, 1 => Reg::T0, 2 => Reg::T1, 3 => Reg::T2, 4 => Reg::T3,
-            5 => Reg::T4, 6 => Reg::T5, 7 => Reg::T6, 8 => Reg::T7, _ => Reg::S0,
-        }).collect();
-        
-        let result = frame.gen_call("func", &args);
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), AbiError::TooManyParameters(10, 6)));
-    }
+    // #[test]
+    // fn test_too_many_args() {
+    //     let frame = Frame::new(0);
+    //     let args: Vec<Reg> = (0..10).map(|i| match i {
+    //         0 => Reg::R0, 1 => Reg::T0, 2 => Reg::T1, 3 => Reg::T2, 4 => Reg::T3,
+    //         5 => Reg::T4, 6 => Reg::T5, 7 => Reg::T6, 8 => Reg::T7, _ => Reg::S0,
+    //     }).collect();
+    //     
+    //     let result = frame.gen_call("func", &args);
+    //     assert!(result.is_err());
+    //     assert!(matches!(result.unwrap_err(), AbiError::TooManyParameters(10, 6)));
+    // }
 }

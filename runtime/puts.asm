@@ -23,25 +23,30 @@ puts:
     ADD FP, SP, R0
 ; Allocate 10 slots for locals
     ADDI SP, SP, 10
-    ADDI SP, SP, -2
-    MOVE S3, SP
-    LI S1, 1
-    STORE S2, SB, S3
-    ADDI S0, S3, 1
-    STORE S1, SB, S0
-    LI T7, 0
-    XOR T6, S3, T7
-    LI T5, 1
-    SLTU S3, T6, T5
-    BEQ S3, R0, L_puts_3
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+; Load param 0 from A0
+    ADD S3, A0, R0
+; Load param 1 from A1
+    ADD S2, A1, R0
+    ADD S1, FP, R0
+    LI S0, 1
+    STORE S3, SB, S1
+    ADDI T7, S1, 1
+    STORE S0, SB, T7
+    LI T6, 0
+    XOR T5, S1, T6
+    LI T4, 1
+    SLTU S1, T5, T4
+    BEQ S1, R0, L_puts_3
 ; Branch to L_puts_3 if condition is false
     BEQ R0, R0, L_puts_1
 ; Unconditional branch to L_puts_1 (condition was true)
 L_puts_1:
-    LI T4, 0
-    LI T3, 1
-    SUB T4, T4, T3
-    MOVE RV0, T4
+    LI T3, 0
+    LI T2, 1
+    SUB T3, T3, T2
+    MOVE RV0, T3
 ; Jump to epilogue
     BEQ R0, R0, L_puts_99999
 L_puts_4:
@@ -51,61 +56,31 @@ L_puts_3:
     BEQ R0, R0, L_puts_5
 ; Unconditional branch to L_puts_5
 L_puts_5:
-    LOAD T1, SB, T2
-    BEQ T1, R0, L_puts_7
+    LOAD T0, SB, T1
+    BEQ T0, R0, L_puts_7
 ; Branch to L_puts_7 if condition is false
     BEQ R0, R0, L_puts_6
 ; Unconditional branch to L_puts_6 (condition was true)
 L_puts_6:
-    LOAD T0, SB, T2
+    LOAD T7, SB, T1
 ; Setting up 1 register arguments
 ; Arg 0 (fat ptr) to A0,A1
-    ADD A0, T0, R0
+    ADD A0, T7, R0
     ADD A1, SB, R0
-; Initialize SB as stack bank (1)
-    LI SB, 1
-; Spill t4 to slot 0
-    ADD SC, FP, R0
-    ADDI SC, SC, 16
-    STORE T4, SB, SC
-; Spill t2 to slot 1
-    ADD SC, FP, R0
-    ADDI SC, SC, 17
-    STORE T2, SB, SC
-; Spill t6 to slot 2
-    ADD SC, FP, R0
-    ADDI SC, SC, 18
-    STORE T0, SB, SC
 ; Call function putchar
     CALL putchar
-; Reload t2 from slot 1
-    ADD SC, FP, R0
-    ADDI SC, SC, 17
-    LOAD S0, SB, SC
-    ADDI S1, S0, 1
-    LI S2, 1
-; Reload t2 from slot 1
-    ADD SC, FP, R0
-    ADDI SC, SC, 17
-    LOAD T6, SB, SC
-    STORE S1, SB, T6
-    ADDI T5, T6, 1
-    STORE S2, SB, T5
+    ADDI S0, T1, 1
+    LI S3, 1
+    STORE S0, SB, T5
+    ADDI T4, T5, 1
+    STORE S3, SB, T4
     BEQ R0, R0, L_puts_5
 ; Unconditional branch to L_puts_5
 L_puts_7:
-    LI T7, 10
+    LI T6, 10
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0
-    ADD A0, T7, R0
-; Spill t2 to slot 1
-    ADD SC, FP, R0
-    ADDI SC, SC, 17
-    STORE T6, SB, SC
-; Spill const_f0_op6_10 to slot 3
-    ADD SC, FP, R0
-    ADDI SC, SC, 19
-    STORE T7, SB, SC
+    ADD A0, T6, R0
 ; Call function putchar
     CALL putchar
     LI RV0, 0

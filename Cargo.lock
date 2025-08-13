@@ -742,6 +742,8 @@ dependencies = [
  "crossterm 0.27.0",
  "ratatui 0.26.3",
  "ripple-asm",
+ "serde",
+ "serde_json",
  "tui-textarea",
 ]
 

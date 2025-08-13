@@ -16,6 +16,7 @@ use ratatui::{
 };
 use ripple_asm::Register;
 use crate::vm::{VM, VMState, Instr};
+use crate::settings::DebuggerSettings;
 
 // Fixed memory columns for navigation (actual display adjusts dynamically)
 pub(crate) const MEMORY_NAV_COLS: usize = 8;
@@ -113,6 +114,9 @@ pub struct TuiDebugger {
 
 impl TuiDebugger {
     pub fn new() -> Self {
+        // Load settings from disk
+        let settings = DebuggerSettings::load();
+        
         Self {
             focused_pane: FocusedPane::Disassembly,
             mode: DebuggerMode::Normal,
@@ -139,15 +143,15 @@ impl TuiDebugger {
             
             show_help: false,
             help_scroll: 0,
-            show_ascii: true,
-            show_instruction_hex: true,
+            show_ascii: settings.show_ascii,
+            show_instruction_hex: settings.show_instruction_hex,
             
-            show_registers: true,
-            show_memory: true,
-            show_stack: true,
-            show_watches: true,
-            show_breakpoints: true,
-            show_output: true,
+            show_registers: settings.show_registers,
+            show_memory: settings.show_memory,
+            show_stack: settings.show_stack,
+            show_watches: settings.show_watches,
+            show_breakpoints: settings.show_breakpoints,
+            show_output: settings.show_output,
             
             last_step_time: Instant::now(),
             step_frequency: Duration::from_millis(100),
@@ -173,6 +177,9 @@ impl TuiDebugger {
         // Main loop
         let result = self.run_app(&mut terminal, vm);
         
+        // Save settings before exiting
+        self.save_settings();
+        
         // Restore terminal
         disable_raw_mode()?;
         execute!(
@@ -183,6 +190,23 @@ impl TuiDebugger {
         terminal.show_cursor()?;
         
         result
+    }
+    
+    fn save_settings(&self) {
+        let settings = DebuggerSettings {
+            show_registers: self.show_registers,
+            show_memory: self.show_memory,
+            show_stack: self.show_stack,
+            show_watches: self.show_watches,
+            show_breakpoints: self.show_breakpoints,
+            show_output: self.show_output,
+            show_ascii: self.show_ascii,
+            show_instruction_hex: self.show_instruction_hex,
+        };
+        
+        if let Err(e) = settings.save() {
+            eprintln!("Warning: Failed to save debugger settings: {}", e);
+        }
     }
     
     fn run_app<B: Backend>(&mut self, terminal: &mut Terminal<B>, vm: &mut VM) -> io::Result<()> {

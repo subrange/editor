@@ -5,6 +5,28 @@
 //! implementations from the instr/ subdirectory.
 
 use crate::ir::{Module, Function, Instruction, Value, IrType};
+use std::collections::HashMap;
+/// Compute stack offsets (relative to FP) for each alloca result
+fn compute_alloca_offsets(function: &Function) -> HashMap<rcc_common::TempId, i16> {
+    let mut offsets = HashMap::new();
+    let mut cur: i16 = 0;
+    for block in &function.blocks {
+        for inst in &block.instructions {
+            if let Instruction::Alloca { result, alloc_type, count, .. } = inst {
+                let type_size = alloc_type.size_in_bytes().unwrap_or(1) as i16;
+                let total_size = if let Some(Value::Constant(n)) = count {
+                    type_size * (*n as i16)
+                } else {
+                    type_size
+                };
+                // Assign the lowest available offset for this alloca
+                offsets.insert(*result, cur);
+                cur += total_size;
+            }
+        }
+    }
+    offsets
+}
 use crate::v2::RegisterPressureManager;
 use crate::v2::naming::{NameGenerator, new_function_naming};
 use crate::v2::function::CallArg;
@@ -86,13 +108,33 @@ pub fn lower_function_v2(
         .map(|(id, ty)| (*id, ty.clone()))
         .collect();
     
+    let pt = param_types.clone();
+    
     let mut builder = FunctionBuilder::with_params(param_types);
     
     // Calculate local slots needed (simplified - you may need better calculation)
     let local_slots = calculate_local_slots(function);
+
+    let alloca_offsets = compute_alloca_offsets(function);
     
     // Begin the function (this will emit the prologue)
     builder.begin_function(local_slots);
+
+    // === Bind function parameters at entry ===
+    // Load parameters using the calling convention and bind them to their SSA temps
+    {
+        use crate::v2::function::CallingConvention;
+        let cc = CallingConvention::new();
+        for (idx, (param_id, _ty)) in function.parameters.iter().enumerate() {
+            // Generate load instructions for this parameter
+            let (param_insts, preg) = cc.load_param(idx, &pt, mgr, naming);
+            // Emit them at the top of the function
+            builder.add_instructions(param_insts);
+            // Bind the temp name to the register so later uses resolve correctly
+            let pname = naming.temp_name(*param_id);
+            mgr.bind_value_to_register(pname, preg);
+        }
+    }
     
     // Track basic block labels for branching
     let mut block_labels = std::collections::HashMap::new();
@@ -185,7 +227,7 @@ pub fn lower_function_v2(
                 
                 _ => {
                     // Use the existing lower_instruction for other instructions
-                    let insts = lower_instruction(mgr, naming, instruction, &function.name)?;
+                    let insts = lower_instruction(mgr, naming, instruction, &function.name, &alloca_offsets)?;
                     builder.add_instructions(insts);
                 }
             }
@@ -242,6 +284,7 @@ fn lower_instruction(
     naming: &mut NameGenerator,
     instruction: &Instruction,
     function_name: &str,
+    alloca_offsets: &std::collections::HashMap<rcc_common::TempId, i16>,
 ) -> Result<Vec<AsmInst>, String> {
     let mut insts = Vec::new();
     
@@ -286,34 +329,23 @@ fn lower_instruction(
         
         Instruction::Alloca { result, alloc_type, count, .. } => {
             debug!("V2: Alloca: t{} = alloca {:?}", result, alloc_type);
-            
-            // Calculate size to allocate
-            let type_size = alloc_type.size_in_bytes().unwrap_or(1) as i16;
-            let total_size = if let Some(count_val) = count {
-                match count_val {
-                    Value::Constant(n) => type_size * (*n as i16),
-                    _ => {
-                        warn!("V2: Dynamic alloca not yet fully implemented");
-                        type_size
-                    }
-                }
-            } else {
-                type_size
-            };
-            
-            // Allocate on stack by adjusting SP
-            insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -total_size));
-            
-            // Store SP as the result
+
+            // Fetch the precomputed offset for this alloca
+            let offset = *alloca_offsets.get(result).expect("alloca offset missing");
+
+            // Compute pointer = FP + offset (locals live in [FP..FP+local_slots))
             let result_name = naming.temp_name(*result);
             let result_reg = mgr.get_register(result_name.clone());
             insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::Move(result_reg, Reg::Sp));
-            
+            insts.push(AsmInst::Add(result_reg, Reg::Fp, Reg::R0));
+            if offset != 0 {
+                insts.push(AsmInst::AddI(result_reg, result_reg, offset));
+            }
+
             // Mark as stack pointer
             mgr.set_pointer_bank(result_name, crate::v2::BankInfo::Stack);
-            
-            debug!("V2: Allocated {} bytes on stack", total_size);
+
+            debug!("V2: Alloca FP+{}", offset);
         }
         
         Instruction::Call { result, function: func, args, result_type } => {
@@ -655,5 +687,79 @@ mod tests {
         let insts = result.unwrap();
         // Should contain actual Add instruction from lower_binary_op
         assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, _, _))));
+    }
+    #[test]
+    fn test_call_binds_params_and_returns() {
+        use crate::ir::{IrBuilder, IrType, Value};
+
+        // Build a module with an `add(a,b)` callee and a `main` that calls it.
+        let mut module = Module::new("call_bind_test".to_string());
+
+        // --- callee: int add(int a, int b) { return a + b; }
+        let mut b = IrBuilder::new();
+        let add_fn = b.create_function("add".to_string(), IrType::I16);
+        add_fn.add_parameter(0, IrType::I16);
+        add_fn.add_parameter(1, IrType::I16);
+        let entry = b.new_label();
+        b.create_block(entry).unwrap();
+        let sum = b
+            .build_binary(
+                crate::IrBinaryOp::Add,
+                Value::Temp(0),
+                Value::Temp(1),
+                IrType::I16,
+            )
+            .unwrap();
+        b.build_return(Some(Value::Temp(sum))).unwrap();
+        let add_ir = b.finish_function().unwrap();
+        module.add_function(add_ir);
+
+        // --- caller: int main() { return add(5, 10); }
+        let mut b = IrBuilder::new();
+        let _main_fn = b.create_function("main".to_string(), IrType::I16);
+        let entry = b.new_label();
+        b.create_block(entry).unwrap();
+        let res = b
+            .build_call(
+                Value::Function("add".to_string()),
+                vec![Value::Constant(5), Value::Constant(10)],
+                IrType::I16,
+            )
+            .unwrap().unwrap();
+        b.build_return(Some(Value::Temp(res))).unwrap();
+        let main_ir = b.finish_function().unwrap();
+        module.add_function(main_ir);
+
+        // Lower and inspect the assembly
+        let insts = lower_module_v2(&module, 4096).expect("lowering failed");
+
+        // 1) Caller should emit a CALL to `add`
+        let saw_call_add = insts.iter().any(|i| match i {
+            AsmInst::Call(name) if name == "add" => true,
+            _ => false,
+        });
+        assert!(saw_call_add, "main should contain a CALL to add");
+
+        // 2) Callee should load both parameters at entry using the CC loader
+        //    (our CC injects comments like "Load param 0 ..." and "Load param 1 ...")
+        let mut in_add = false;
+        let mut saw_param0 = false;
+        let mut saw_param1 = false;
+        for i in &insts {
+            match i {
+                AsmInst::Label(l) if l == "add" => {
+                    in_add = true;
+                }
+                AsmInst::Label(l) if l == "main" => {
+                    in_add = false; // left the add function
+                }
+                AsmInst::Comment(c) if in_add => {
+                    if c.starts_with("Load param 0") { saw_param0 = true; }
+                    if c.starts_with("Load param 1") { saw_param1 = true; }
+                }
+                _ => {}
+            }
+        }
+        assert!(saw_param0 && saw_param1, "callee should load both parameters via CC at entry");
     }
 }

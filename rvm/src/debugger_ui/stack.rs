@@ -101,19 +101,31 @@ impl TuiDebugger {
                     
                     let mut spans = vec![];
                     
-                    // Mark current frame pointer position and SP position
+                    // Mark current positions - combine markers when they overlap
                     // Note: SP points to next free slot, so last value is at SP-1
-                    if display_idx == sp as usize {
-                        spans.push(Span::styled("SP→", Style::default().fg(Color::Green)));  // Stack Pointer (next free)
-                    } else if display_idx == fp as usize {
-                        spans.push(Span::styled("FP→", Style::default().fg(Color::Cyan)));
-                    } else if sp > 0 && display_idx == (sp as usize - 1) {
-                        spans.push(Span::styled("TOS", Style::default().fg(Color::Yellow)));  // Top of Stack
-                    } else if display_idx > sp as usize {
-                        spans.push(Span::styled("   ", Style::default().fg(Color::DarkGray)));  // Beyond SP
+                    let is_sp = display_idx == sp as usize;
+                    let is_fp = display_idx == fp as usize;
+                    let is_tos = sp > 0 && display_idx == (sp as usize - 1);
+                    let is_beyond = display_idx > sp as usize;
+                    
+                    // Build marker string based on what's at this position
+                    let marker = if is_sp && is_fp {
+                        Span::styled("S+F", Style::default().fg(Color::Magenta))  // Both SP and FP
+                    } else if is_tos && is_fp {
+                        Span::styled("T+F", Style::default().fg(Color::Magenta))  // TOS and FP
+                    } else if is_sp {
+                        Span::styled("SP→", Style::default().fg(Color::Green))  // Stack Pointer (next free)
+                    } else if is_fp {
+                        Span::styled("FP→", Style::default().fg(Color::Cyan))  // Frame Pointer
+                    } else if is_tos {
+                        Span::styled("TOS", Style::default().fg(Color::Yellow))  // Top of Stack
+                    } else if is_beyond {
+                        Span::styled("   ", Style::default().fg(Color::DarkGray))  // Beyond SP
                     } else {
-                        spans.push(Span::raw("   "));
-                    }
+                        Span::raw("   ")
+                    };
+                    
+                    spans.push(marker);
                     
                     // Show stack offset from initial base (e.g., +0, +1, +2...)
                     // Color differently if beyond SP

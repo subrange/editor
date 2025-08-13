@@ -23,37 +23,46 @@ memset:
     ADD FP, SP, R0
 ; Allocate 9 slots for locals
     ADDI SP, SP, 9
-    ADDI SP, SP, -1
-    MOVE S3, SP
-    LI S2, 0
-    STORE S2, SB, S3
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+; Load param 0 from A0
+    ADD S3, A0, R0
+; Load param 1 from A1
+    ADD S2, A1, R0
+; Load param 2 from A2
+    ADD S1, A2, R0
+; Load param 3 from A3
+    ADD S0, A3, R0
+    ADD T7, FP, R0
+    LI T6, 0
+    STORE T6, SB, T7
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
 L_memset_1:
-    LOAD S1, SB, S3
-    SLT S1, S1, S0
-    BEQ S1, R0, L_memset_4
+    LOAD T5, SB, T7
+    SLT T5, T5, S0
+    BEQ T5, R0, L_memset_4
 ; Branch to L_memset_4 if condition is false
     BEQ R0, R0, L_memset_2
 ; Unconditional branch to L_memset_2 (condition was true)
 L_memset_2:
-    LOAD T7, SB, S3
-    ADD T4, T7, R0
-    ADD T5, T6, T4
+    LOAD T4, SB, T7
+    ADD T2, T4, R0
+    ADD T3, S3, T2
 ; Runtime bank overflow calculation for dynamic GEP
-    LI T2, 4096
-    DIV T3, T5, T2
-    MOD T1, T5, T2
-    ADD T0, SB, T3
-    ADD T5, T1, R0
-    STORE S2, SB, T5
+    LI T0, 4096
+    DIV T1, T3, T0
+    MOD T6, T3, T0
+    ADD S0, SB, T1
+    ADD T3, T6, R0
+    STORE S1, SB, T3
     BEQ R0, R0, L_memset_3
 ; Unconditional branch to L_memset_3
 L_memset_3:
-    LOAD S0, SB, S3
-    LI S1, 1
-    ADD S0, S0, S1
-    STORE S0, SB, S3
+    LOAD T5, SB, T7
+    LI T2, 1
+    ADD T5, T5, T2
+    STORE T5, SB, T7
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
 L_memset_4:

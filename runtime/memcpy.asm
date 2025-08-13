@@ -23,53 +23,95 @@ memcpy:
     ADD FP, SP, R0
 ; Allocate 9 slots for locals
     ADDI SP, SP, 9
-    ADDI SP, SP, -1
-    MOVE S3, SP
-    LI S2, 0
-    STORE S2, SB, S3
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+; Load param 0 from A0
+    ADD S3, A0, R0
+; Load param 1 from A1
+    ADD S2, A1, R0
+; Load param 2 from A2
+    ADD S1, A2, R0
+; Load param 3 from A3
+    ADD S0, A3, R0
+; Load param 4 from FP-7
+    ADDI SC, FP, -7
+    LOAD T7, SB, SC
+; Load param 5 from FP-8
+    ADDI SC, FP, -8
+    LOAD T6, SB, SC
+; Load param 6 from FP-9
+    ADDI SC, FP, -9
+    LOAD T5, SB, SC
+    ADD T4, FP, R0
+    LI T3, 0
+    STORE T3, SB, T4
     BEQ R0, R0, L_memcpy_1
 ; Unconditional branch to L_memcpy_1
 L_memcpy_1:
-    LOAD S1, SB, S3
-    SLT S1, S1, S0
-    BEQ S1, R0, L_memcpy_4
+    LOAD T2, SB, T4
+    SLT T2, T2, T5
+    BEQ T2, R0, L_memcpy_4
 ; Branch to L_memcpy_4 if condition is false
     BEQ R0, R0, L_memcpy_2
 ; Unconditional branch to L_memcpy_2 (condition was true)
 L_memcpy_2:
-    LOAD T7, SB, S3
-    ADD T4, T7, R0
-    ADD T5, T6, T4
+    LOAD T1, SB, T4
+    ADD T3, T1, R0
+    ADD T0, S0, T3
 ; Runtime bank overflow calculation for dynamic GEP
     LI T2, 4096
-    DIV T3, T5, T2
-    MOD T1, T5, T2
-    ADD T0, SB, T3
-    ADD T5, T1, R0
-    LOAD S2, SB, T5
-    LOAD S0, SB, S3
-    ADD T3, S0, R0
-    ADD T4, S1, T3
-; Runtime bank overflow calculation for dynamic GEP
-    LI T1, 4096
-    DIV T2, T4, T1
-    MOD T6, T4, T1
+    DIV T5, T0, T2
 ; Initialize SB as stack bank (1)
     LI SB, 1
-; Spill t10 to slot 0
+; Spill t0 to slot 0
     ADD SC, FP, R0
     ADDI SC, SC, 16
+    STORE S3, SB, SC
+    MOD S3, T0, T2
+; Spill t1 to slot 1
+    ADD SC, FP, R0
+    ADDI SC, SC, 17
+    STORE S2, SB, SC
+    ADD S2, SB, T5
+    ADD T0, S3, R0
+    LOAD T3, SB, T0
+    LOAD T5, SB, T4
+; Reload t0 from slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 16
+    LOAD T2, SB, SC
+    ADD S0, T5, R0
+    ADD S3, T2, S0
+; Runtime bank overflow calculation for dynamic GEP
+; Spill t2 to slot 2
+    ADD SC, FP, R0
+    ADDI SC, SC, 18
+    STORE S1, SB, SC
+; Spill t4 to slot 3
+    ADD SC, FP, R0
+    ADDI SC, SC, 19
     STORE T7, SB, SC
-    ADD T7, SB, T2
-    ADD T4, T6, R0
-    STORE S2, SB, T4
+    LI T7, 4096
+    DIV S1, S3, T7
+; Spill t5 to slot 4
+    ADD SC, FP, R0
+    ADDI SC, SC, 20
+    STORE T6, SB, SC
+    MOD T6, S3, T7
+; Spill t10 to slot 5
+    ADD SC, FP, R0
+    ADDI SC, SC, 21
+    STORE T1, SB, SC
+    ADD T1, SB, S1
+    ADD S3, T6, R0
+    STORE T3, SB, S3
     BEQ R0, R0, L_memcpy_3
 ; Unconditional branch to L_memcpy_3
 L_memcpy_3:
-    LOAD T3, SB, S3
-    LI T2, 1
-    ADD T3, T3, T2
-    STORE T3, SB, S3
+    LOAD S0, SB, T4
+    LI S1, 1
+    ADD S0, S0, S1
+    STORE S0, SB, T4
     BEQ R0, R0, L_memcpy_1
 ; Unconditional branch to L_memcpy_1
 L_memcpy_4:

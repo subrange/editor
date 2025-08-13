@@ -166,6 +166,13 @@ impl FunctionLowering {
         } else {
             trace!("  No local slots to allocate");
         }
+
+        // Reserve extra space for register spills so FP+local_count+slot stays within frame
+        const RESERVED_SPILL_SLOTS: i16 = 20;
+        insts.push(AsmInst::Comment(format!(
+            "Reserve {RESERVED_SPILL_SLOTS} spill slots above locals"
+        )));
+        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, RESERVED_SPILL_SLOTS));
         
         self.local_count = local_slots;
         

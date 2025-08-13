@@ -4,6 +4,7 @@ mod tui_debugger;
 mod vm;
 mod debugger_ui;
 mod mode;
+mod settings;
 
 use std::env;
 use std::fs;
