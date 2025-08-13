@@ -12,6 +12,12 @@ impl TuiDebugger {
             Line::from(Span::styled("── Navigation ──", Style::default().fg(Color::Yellow))),
             Line::from("F1-F7,Tab  Panes | hjkl/↑↓←→  Move"),
             Line::from(""),
+            Line::from(Span::styled("── Mouse Support ──", Style::default().fg(Color::Yellow))),
+            Line::from("Click: Select panel"),
+            Line::from("Scroll: Navigate in panel"),
+            Line::from("Dbl-click Disasm: Toggle breakpoint"),
+            Line::from("Dbl-click Memory: Edit cell"),
+            Line::from(""),
             Line::from(Span::styled("── Execution ──", Style::default().fg(Color::Yellow))),
             Line::from("Space/s  Step | r  Run | c  Continue"),
             Line::from("R  Restart | b  Breakpoint"),
@@ -87,7 +93,7 @@ impl TuiDebugger {
         }
         
         display_lines.push(Line::from(Span::styled(
-            "Press ? to close", 
+            "Press ? or ESC to close", 
             Style::default().fg(Color::Green)
         )));
         display_lines.push(Line::from(""));  // Separator line

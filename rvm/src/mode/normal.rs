@@ -9,6 +9,13 @@ impl TuiDebugger {
             KeyCode::Char('q') if modifiers == KeyModifiers::NONE => return false,
             KeyCode::Char('Q') if modifiers == KeyModifiers::SHIFT => return false,
 
+            // Escape key - close help if open, otherwise do nothing
+            KeyCode::Esc => {
+                if self.show_help {
+                    self.show_help = false;
+                }
+            }
+
             // Help
             KeyCode::Char('?') => {
                 self.show_help = !self.show_help;

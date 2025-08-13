@@ -144,13 +144,13 @@ impl TuiDebugger {
             text.push(Line::from(spans));
         }
 
-        // Calculate current bank
-        let current_bank = self.memory_base_addr / vm.bank_size as usize;
+        // Calculate bank based on cursor position
+        let cursor_bank = cursor_addr / vm.bank_size as usize;
         let total_banks = (vm.memory.len() + vm.bank_size as usize - 1) / vm.bank_size as usize;
         
         let ascii_indicator = if self.show_ascii { " [ASCII]" } else { "" };
         let title = format!(" Memory Bank {}/{} @ {:04X}{} (cursor: {:04X}) [{}] ",
-                            current_bank,
+                            cursor_bank,
                             total_banks,
                             self.memory_base_addr,
                             ascii_indicator,

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io;
 use std::time::{Duration, Instant};
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers, MouseEvent, MouseEventKind, MouseButton},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -21,7 +21,7 @@ use crate::settings::DebuggerSettings;
 // Fixed memory columns for navigation (actual display adjusts dynamically)
 pub(crate) const MEMORY_NAV_COLS: usize = 8;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum FocusedPane {
     Disassembly,
     Registers,
@@ -110,6 +110,11 @@ pub struct TuiDebugger {
     
     // Register highlights (changed registers)
     pub(crate) register_changes: HashMap<usize, u16>,
+    
+    // Panel areas for mouse support
+    panel_areas: HashMap<FocusedPane, Rect>,
+    last_click_time: Option<Instant>,
+    last_click_pos: Option<(u16, u16)>,
 }
 
 impl TuiDebugger {
@@ -160,6 +165,10 @@ impl TuiDebugger {
             max_history: 1000,
             
             register_changes: HashMap::new(),
+            
+            panel_areas: HashMap::new(),
+            last_click_time: None,
+            last_click_pos: None,
         }
     }
     
@@ -216,31 +225,37 @@ impl TuiDebugger {
             
             // Handle input
             if event::poll(Duration::from_millis(10))? {
-                if let Event::Key(key) = event::read()? {
-                    match self.mode {
-                        DebuggerMode::Normal => {
-                            if !self.handle_normal_mode(key.code, key.modifiers, vm) {
-                                break 'main; // Exit requested
+                match event::read()? {
+                    Event::Key(key) => {
+                        match self.mode {
+                            DebuggerMode::Normal => {
+                                if !self.handle_normal_mode(key.code, key.modifiers, vm) {
+                                    break 'main; // Exit requested
+                                }
                             }
-                        }
-                        DebuggerMode::Command => {
-                            if !self.handle_command_mode(key.code, vm) {
-                                break 'main; // Exit the debugger_ui
+                            DebuggerMode::Command => {
+                                if !self.handle_command_mode(key.code, vm) {
+                                    break 'main; // Exit the debugger_ui
+                                }
                             }
-                        }
-                        DebuggerMode::GotoAddress => {
-                            self.handle_goto_mode(key.code);
-                        }
-                        DebuggerMode::AddWatch => {
-                            self.handle_add_watch_mode(key.code);
-                        }
-                        DebuggerMode::SetBreakpoint => {
-                            self.handle_breakpoint_mode(key.code, vm);
-                        }
-                        DebuggerMode::MemoryEdit => {
-                            self.handle_memory_edit_mode(key.code, vm);
+                            DebuggerMode::GotoAddress => {
+                                self.handle_goto_mode(key.code);
+                            }
+                            DebuggerMode::AddWatch => {
+                                self.handle_add_watch_mode(key.code);
+                            }
+                            DebuggerMode::SetBreakpoint => {
+                                self.handle_breakpoint_mode(key.code, vm);
+                            }
+                            DebuggerMode::MemoryEdit => {
+                                self.handle_memory_edit_mode(key.code, vm);
+                            }
                         }
                     }
+                    Event::Mouse(mouse) => {
+                        self.handle_mouse_event(mouse, vm);
+                    }
+                    _ => {}
                 }
             }
         }
@@ -250,6 +265,9 @@ impl TuiDebugger {
     
     fn draw_ui(&mut self, frame: &mut Frame, vm: &VM) {
         let size = frame.size();
+        
+        // Clear panel areas for fresh tracking
+        self.panel_areas.clear();
         
         // Reserve bottom line for status/input
         let main_area = Rect::new(0, 0, size.width, size.height - 1);
@@ -319,10 +337,12 @@ impl TuiDebugger {
                 
                 let mut chunk_idx = 0;
                 if self.show_registers {
+                    self.panel_areas.insert(FocusedPane::Registers, chunks[chunk_idx]);
                     self.draw_registers(frame, chunks[chunk_idx], vm);
                     chunk_idx += 1;
                 }
                 if self.show_memory {
+                    self.panel_areas.insert(FocusedPane::Memory, chunks[chunk_idx]);
                     self.draw_memory(frame, chunks[chunk_idx], vm);
                 }
             }
@@ -363,14 +383,17 @@ impl TuiDebugger {
                 for panel in panels {
                     match panel {
                         "stack" => {
+                            self.panel_areas.insert(FocusedPane::Stack, chunks[chunk_idx]);
                             self.draw_stack(frame, chunks[chunk_idx], vm);
                             chunk_idx += 1;
                         }
                         "watches" => {
+                            self.panel_areas.insert(FocusedPane::Watches, chunks[chunk_idx]);
                             self.draw_watches(frame, chunks[chunk_idx], vm);
                             chunk_idx += 1;
                         }
                         "breakpoints" => {
+                            self.panel_areas.insert(FocusedPane::Breakpoints, chunks[chunk_idx]);
                             self.draw_breakpoints(frame, chunks[chunk_idx], vm);
                             chunk_idx += 1;
                         }
@@ -381,10 +404,12 @@ impl TuiDebugger {
         }
         
         // Always draw disassembly
+        self.panel_areas.insert(FocusedPane::Disassembly, left_chunks[0]);
         self.draw_disassembly(frame, left_chunks[0], vm);
         
         // Draw output if visible
         if self.show_output && left_chunks.len() > 1 {
+            self.panel_areas.insert(FocusedPane::Output, left_chunks[1]);
             self.draw_output(frame, left_chunks[1], vm);
         }
         
@@ -487,7 +512,137 @@ impl TuiDebugger {
             }
         }
     }
-   
     
+    fn handle_mouse_event(&mut self, mouse: MouseEvent, vm: &mut VM) {
+        // Only handle left button clicks in normal mode
+        if self.mode != DebuggerMode::Normal {
+            return;
+        }
+        
+        match mouse.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                let click_pos = (mouse.column, mouse.row);
+                let now = Instant::now();
+                
+                // Check for double-click (within 500ms and same position)
+                let is_double_click = if let (Some(last_time), Some(last_pos)) = (self.last_click_time, self.last_click_pos) {
+                    now.duration_since(last_time).as_millis() < 500 && 
+                    last_pos == click_pos
+                } else {
+                    false
+                };
+                
+                // Update click tracking
+                self.last_click_time = Some(now);
+                self.last_click_pos = Some(click_pos);
+                
+                // Check which panel was clicked
+                for (pane, rect) in &self.panel_areas {
+                    if click_pos.0 >= rect.x && 
+                       click_pos.0 < rect.x + rect.width &&
+                       click_pos.1 >= rect.y && 
+                       click_pos.1 < rect.y + rect.height {
+                        // Found the clicked panel
+                        self.focused_pane = *pane;
+                        
+                        // Handle double-click actions
+                        if is_double_click {
+                            match pane {
+                                FocusedPane::Disassembly => {
+                                    // Double-click in disassembly toggles breakpoint at clicked line
+                                    let relative_row = (click_pos.1 - rect.y) as usize;
+                                    let addr = self.disasm_scroll + relative_row;
+                                    if addr < vm.instructions.len() {
+                                        if self.breakpoints.contains_key(&addr) {
+                                            self.breakpoints.remove(&addr);
+                                        } else {
+                                            self.breakpoints.insert(addr, true);
+                                        }
+                                    }
+                                }
+                                FocusedPane::Memory => {
+                                    // Double-click in memory enters edit mode
+                                    let relative_row = (click_pos.1 - rect.y) as usize;
+                                    let relative_col = (click_pos.0 - rect.x) as usize;
+                                    
+                                    // Calculate which memory cell was clicked (rough estimate)
+                                    // Each cell takes about 5 chars (4 hex + space)
+                                    let col_offset = relative_col.saturating_sub(10) / 5; // Skip address prefix
+                                    if col_offset < MEMORY_NAV_COLS {
+                                        let addr = self.memory_base_addr + relative_row * MEMORY_NAV_COLS + col_offset;
+                                        self.command_buffer = format!("{:04x}:", addr);
+                                        self.mode = DebuggerMode::MemoryEdit;
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            MouseEventKind::ScrollDown => {
+                // Scroll down in the focused pane
+                match self.focused_pane {
+                    FocusedPane::Disassembly => {
+                        self.disasm_scroll = self.disasm_scroll.saturating_add(3);
+                    }
+                    FocusedPane::Memory => {
+                        self.memory_scroll = self.memory_scroll.saturating_add(1);
+                    }
+                    FocusedPane::Stack => {
+                        self.stack_scroll = self.stack_scroll.saturating_add(1);
+                    }
+                    FocusedPane::Output => {
+                        self.output_scroll = self.output_scroll.saturating_add(1);
+                    }
+                    FocusedPane::Watches => {
+                        if self.selected_watch < self.memory_watches.len().saturating_sub(1) {
+                            self.selected_watch += 1;
+                        }
+                    }
+                    FocusedPane::Breakpoints => {
+                        if self.selected_breakpoint < self.breakpoints.len().saturating_sub(1) {
+                            self.selected_breakpoint += 1;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            MouseEventKind::ScrollUp => {
+                // Scroll up in the focused pane
+                match self.focused_pane {
+                    FocusedPane::Disassembly => {
+                        self.disasm_scroll = self.disasm_scroll.saturating_sub(3);
+                    }
+                    FocusedPane::Memory => {
+                        if self.memory_scroll > 0 {
+                            self.memory_scroll -= 1;
+                        } else if self.memory_base_addr >= MEMORY_NAV_COLS {
+                            self.memory_base_addr -= MEMORY_NAV_COLS;
+                        }
+                    }
+                    FocusedPane::Stack => {
+                        self.stack_scroll = self.stack_scroll.saturating_sub(1);
+                    }
+                    FocusedPane::Output => {
+                        self.output_scroll = self.output_scroll.saturating_sub(1);
+                    }
+                    FocusedPane::Watches => {
+                        if self.selected_watch > 0 {
+                            self.selected_watch -= 1;
+                        }
+                    }
+                    FocusedPane::Breakpoints => {
+                        if self.selected_breakpoint > 0 {
+                            self.selected_breakpoint -= 1;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
 
 }
