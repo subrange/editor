@@ -6,7 +6,7 @@
 use rcc_common::TempId;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use crate::ir::types::{BankTag, FatPointer};
+use crate::ir::types::{FatPointer};
 
 /// IR Value - represents operands in IR instructions
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

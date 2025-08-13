@@ -1,0 +1,63 @@
+//! Typed statements
+//!
+//! This module defines typed statements produced by semantic analysis.
+
+use super::expressions::TypedExpr;
+use crate::types::Type;
+use rcc_common::SymbolId;
+
+/// Typed statement - produced by semantic analysis
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypedStmt {
+    /// Expression statement
+    Expression(TypedExpr),
+    
+    /// Compound statement (block)
+    Compound(Vec<TypedStmt>),
+    
+    /// Variable declaration
+    Declaration {
+        name: String,
+        decl_type: Type,
+        initializer: Option<TypedExpr>,
+        symbol_id: Option<SymbolId>,
+    },
+    
+    /// If statement
+    If {
+        condition: TypedExpr,
+        then_stmt: Box<TypedStmt>,
+        else_stmt: Option<Box<TypedStmt>>,
+    },
+    
+    /// While loop
+    While {
+        condition: TypedExpr,
+        body: Box<TypedStmt>,
+    },
+    
+    /// For loop
+    For {
+        init: Option<Box<TypedStmt>>,
+        condition: Option<TypedExpr>,
+        update: Option<TypedExpr>,
+        body: Box<TypedStmt>,
+    },
+    
+    /// Return statement
+    Return(Option<TypedExpr>),
+    
+    /// Break statement
+    Break,
+    
+    /// Continue statement
+    Continue,
+    
+    /// Inline assembly
+    InlineAsm {
+        assembly: String,
+    },
+    
+    /// Empty statement
+    Empty,
+}

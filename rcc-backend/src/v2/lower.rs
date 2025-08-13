@@ -42,6 +42,7 @@ use crate::v2::instr::{
 
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, info, warn};
+use rcc_frontend::BankTag;
 use crate::v2::globals::{GlobalManager, GlobalInfo};
 
 /// Lower an entire module using the V2 backend
@@ -340,7 +341,7 @@ fn lower_instruction(
                     // Create a fat pointer with the global's address
                     let global_ptr = Value::FatPtr(rcc_frontend::ir::FatPointer {
                         addr: Box::new(Value::Constant(info.address as i64)),
-                        bank: rcc_frontend::ir::BankTag::Global,
+                        bank: rcc_frontend::types::BankTag::Global,
                     });
                     lower_load(mgr, naming, &global_ptr, result_type, *result)
                 } else {
@@ -362,7 +363,7 @@ fn lower_instruction(
                     // Create a fat pointer with the global's address
                     let global_ptr = Value::FatPtr(rcc_frontend::ir::FatPointer {
                         addr: Box::new(Value::Constant(info.address as i64)),
-                        bank: rcc_frontend::ir::BankTag::Global,
+                        bank: rcc_frontend::types::BankTag::Global,
                     });
                     lower_store(mgr, naming, value, &global_ptr)
                 } else {
@@ -391,7 +392,7 @@ fn lower_instruction(
                     // Create a fat pointer with the global's address
                     let global_ptr = Value::FatPtr(rcc_frontend::ir::FatPointer {
                         addr: Box::new(Value::Constant(info.address as i64)),
-                        bank: rcc_frontend::ir::BankTag::Global,
+                        bank: rcc_frontend::types::BankTag::Global,
                     });
                     lower_gep(mgr, naming, &global_ptr, indices, element_size, *result)
                 } else {
@@ -478,8 +479,12 @@ fn lower_instruction(
                         insts.extend(mgr.take_instructions());
                         
                         let bank_reg = match fp.bank {
-                            rcc_frontend::ir::BankTag::Stack => Reg::Sb,
-                            rcc_frontend::ir::BankTag::Global => Reg::Gp,
+                            BankTag::Stack => Reg::Sb,
+                            BankTag::Global => Reg::Gp,
+                            _ => {
+                                warn!("V2: Unsupported bank type for fat pointer: {:?}", fp.bank);
+                                panic!("Unsupported bank type for fat pointer");
+                            }
                         };
                         
                         call_args.push(CallArg::FatPointer { addr: addr_reg, bank: bank_reg });

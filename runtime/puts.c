@@ -8,7 +8,8 @@ int puts(char *s) {
     // The compiler will pass s as a fat pointer (address + bank tag)
     // and handle the bank tag automatically for all operations
     
-    if (!s) return -1;
+    // For now, skip the null check to simplify
+    // if (!s) return -1;
     
     // Output each character
     while (*s) {

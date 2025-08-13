@@ -7,16 +7,20 @@ mod errors;
 mod types;
 mod expressions;
 mod statements;
+pub mod typed_expressions;
+pub mod typed_statements;
+pub mod typed_codegen;
 
 pub use errors::CodegenError;
+pub use typed_codegen::TypedCodeGenerator;
 
 use std::collections::{HashMap, HashSet};
 use crate::ir::{Module, Function, Value, IrType, IrBuilder, GlobalVariable, Linkage};
-use crate::ir::{FatPointer, BankTag as IrBankTag};
+use crate::ir::{FatPointer};
 use rcc_common::LabelId as Label;
-use crate::ast::{TranslationUnit, TopLevelItem, FunctionDefinition, Declaration, Type, 
-                 InitializerKind, ExpressionKind, Statement, StatementKind, Expression, BinaryOp, BankTag};
-use crate::CompilerError;
+use crate::ast::{TranslationUnit, TopLevelItem, FunctionDefinition, Declaration,
+                 InitializerKind, ExpressionKind, Statement, StatementKind, Expression, BinaryOp, };
+use crate::{BankTag, CompilerError, StorageClass, Type};
 use self::statements::StatementGenerator;
 use self::types::{convert_type, get_ast_type_size};
 
@@ -31,16 +35,16 @@ pub struct VarInfo {
 impl VarInfo {
     /// Get the value as a fat pointer if it's a pointer with bank info
     pub fn as_fat_ptr(&self) -> Value {
+        // If the value is already a FatPtr, return it as-is
+        if matches!(self.value, Value::FatPtr(_)) {
+            return self.value.clone();
+        }
+        
+        // Otherwise, wrap it if we have bank info
         if let Some(bank) = self.bank {
-            // Convert to fat pointer representation
-            let bank_tag = match bank {
-                BankTag::Global => IrBankTag::Global,
-                BankTag::Stack => IrBankTag::Stack,
-                _ => IrBankTag::Stack, // Default to stack for unknown
-            };
             Value::FatPtr(FatPointer {
                 addr: Box::new(self.value.clone()),
-                bank: bank_tag,
+                bank,
             })
         } else {
             self.value.clone()
@@ -251,7 +255,7 @@ impl CodeGenerator {
                 // This is a pointer parameter - create fat pointer
                 Value::FatPtr(FatPointer {
                     addr: Box::new(Value::Temp(addr_temp_id)),
-                    bank: IrBankTag::Stack, // Will be determined at runtime from bank_id
+                    bank: BankTag::Stack, // Will be determined at runtime from bank_id
                 })
             } else {
                 Value::Temp(addr_temp_id)
@@ -268,24 +272,26 @@ impl CodeGenerator {
                 // This parameter is reassigned - create an alloca for it
                 let alloca_val = self.builder.build_alloca(param_type.clone(), None)?;
                 
-                // Store the original parameter value (alloca_val is already a FatPtr)
-                self.builder.build_store(param_value, alloca_val.clone())?;
-                
-                // Extract temp ID for variable mapping
-                let alloca_temp = if let Value::FatPtr(ref fp) = alloca_val {
-                    if let Value::Temp(id) = *fp.addr {
-                        id
-                    } else {
-                        return Err("Unexpected alloca result".to_string().into());
-                    }
+                // Store the original parameter value
+                // For the store, we need to extract just the address from alloca_val
+                let alloca_addr = if let Value::FatPtr(ref fp) = alloca_val {
+                    // Use just the address component, not the full FatPtr
+                    (*fp.addr).clone()
                 } else {
                     return Err("Alloca should return FatPtr".to_string().into());
                 };
                 
-                // Map the parameter to the alloca
+                // Create the destination as a simple FatPtr for the store
+                let store_dest = Value::FatPtr(FatPointer {
+                    addr: Box::new(alloca_addr.clone()),
+                    bank: BankTag::Stack,
+                });
+                self.builder.build_store(param_value, store_dest)?;
+                
+                // Map the parameter to the alloca address
                 let var_type = IrType::FatPtr(Box::new(param_type));
                 self.variables.insert(param_name.clone(), VarInfo {
-                    value: Value::Temp(alloca_temp),
+                    value: alloca_addr,
                     ir_type: var_type,
                     bank: Some(BankTag::Stack), // Parameters are on the stack
                 });
@@ -360,9 +366,13 @@ impl CodeGenerator {
                 None
             },
             linkage: match decl.storage_class {
-                crate::ast::StorageClass::Static => Linkage::Internal,
-                crate::ast::StorageClass::Extern => Linkage::External,
-                _ => Linkage::External,
+                StorageClass::Static => Linkage::Internal,
+                StorageClass::Extern => Linkage::External,
+                // For every other storage class, emit an error
+                _ => return Err(CodegenError::UnsupportedStorageClass {
+                    class: decl.storage_class.clone().to_string(),
+                    location: decl.span.start.clone(),
+                }.into()),
             },
             symbol_id: decl.symbol_id,
         };

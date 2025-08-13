@@ -1,6 +1,6 @@
 //! Type conversion utilities
 
-use crate::ast::Type;
+use crate::types::Type;
 use crate::ir::IrType;
 use rcc_common::SourceLocation;
 use crate::CompilerError;
@@ -61,6 +61,11 @@ pub fn convert_type(ast_type: &Type, location: SourceLocation) -> Result<IrType,
             }
             // Return as array of I16 (words)
             Ok(IrType::Array { size: max_words, element_type: Box::new(IrType::I16) })
+        }
+        Type::Function { .. } => {
+            // Function types are only valid as part of function pointers
+            // When used directly (e.g., in parameter types), treat as a pointer
+            Ok(IrType::FatPtr(Box::new(IrType::I16)))
         }
         _ => Err(CodegenError::InvalidType {
             ast_type: ast_type.clone(),

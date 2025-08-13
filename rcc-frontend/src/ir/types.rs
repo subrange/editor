@@ -5,14 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
-/// Memory bank tag for fat pointers
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BankTag {
-    Global = 0,  // Global memory (bank R0)
-    Stack = 1,   // Stack memory (bank R13)
-    // Future: Heap = 2
-}
+use crate::BankTag;
 
 /// Fat pointer representation - carries both address and bank
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

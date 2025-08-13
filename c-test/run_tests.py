@@ -364,6 +364,8 @@ def main():
         (f"{BASE_DIR}/tests/test_sizeof.c", "123456\n", True),
         (f"{BASE_DIR}/tests/test_sizeof_final.c", "YYYYYYYYY\n", True),
         (f"{BASE_DIR}/tests/test_strings_addr.c", "A", True),
+        (f"{BASE_DIR}/tests/test_pointer_arithmetic_basic.c", "12345\n", True),
+        (f"{BASE_DIR}/tests/test_pointer_bank_crossing.c", "12345\n", True),
         (f"{BASE_DIR}/tests/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
         (f"{BASE_DIR}/tests/test_list_sim.c", "ABC\nAXBC\nABC\n", True),
         (f"{BASE_DIR}/tests/test_list_sim_functions.c", "ABC\nAXBC\nABC\n", True),

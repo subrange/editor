@@ -2,10 +2,11 @@
 
 use std::collections::HashMap;
 use crate::ir::{Value, IrType, IrBinaryOp, IrBuilder, GlobalVariable, Linkage, Module};
-use crate::ir::{FatPointer, BankTag as IrBankTag};
+use crate::ir::{FatPointer};
 use rcc_common::SourceLocation;
-use crate::ast::{Expression, ExpressionKind, BinaryOp, UnaryOp, Type, BankTag};
-use crate::CompilerError;
+use crate::ast::{Expression, ExpressionKind, BinaryOp, UnaryOp};
+use crate::{BankTag, CompilerError, Type};
+use crate::type_checker::{TypeChecker, TypedBinaryOp};
 use super::errors::CodegenError;
 use super::types::convert_type;
 use super::VarInfo;
@@ -147,9 +148,8 @@ impl<'a> ExpressionGenerator<'a> {
                             Ok(Value::FatPtr(FatPointer {
                                 addr: Box::new(Value::Temp(temp)),
                                 bank: match var_info.bank {
-                                    Some(BankTag::Global) => IrBankTag::Global,
-                                    Some(BankTag::Stack) => IrBankTag::Stack,
-                                    _ => IrBankTag::Stack,
+                                    Some(bank) => bank,
+                                    _ => panic!("Unknown pointer bank")
                                 },
                             }))
                         } else {
@@ -175,55 +175,154 @@ impl<'a> ExpressionGenerator<'a> {
     /// Generate binary operation
     pub fn generate_binary_operation(&mut self, op: BinaryOp, left: &Expression, right: &Expression) 
         -> Result<Value, CompilerError> {
-        match op {
-            BinaryOp::Index => {
-                // Array indexing: arr[idx]
+        // Use the type checker to classify the operation
+        let typed_op = TypeChecker::check_binary_op(op, left, right, left.span.start.clone())
+            .map_err(|msg| CodegenError::InternalError {
+                message: msg,
+                location: left.span.start.clone(),
+            })?;
+        
+        match typed_op {
+            TypedBinaryOp::IntegerArithmetic { op, .. } => {
+                // Regular integer arithmetic
+                let left_val = self.generate(left)?;
+                let right_val = self.generate(right)?;
+                
+                let ir_op = convert_binary_op(op).map_err(|msg| {
+                    CodegenError::UnsupportedConstruct {
+                        construct: msg,
+                        location: left.span.start.clone(),
+                    }
+                })?;
+                let result_type = IrType::I16; // Simplified for MVP
+                
+                let temp = self.builder.build_binary(ir_op, left_val, right_val, result_type)?;
+                Ok(Value::Temp(temp))
+            }
+            
+            TypedBinaryOp::PointerOffset { ptr_type, elem_type, elem_size, is_add } => {
+                // Pointer arithmetic: always use GEP
+                let (ptr_val, offset_val) = if left.expr_type.as_ref().map_or(false, |t| t.is_pointer()) {
+                    // pointer + integer or pointer - integer
+                    (self.generate(left)?, self.generate(right)?)
+                } else {
+                    // integer + pointer (commutative)
+                    (self.generate(right)?, self.generate(left)?)
+                };
+                
+                // For subtraction, negate the offset
+                let final_offset = if !is_add {
+                    let neg_temp = self.builder.build_binary(
+                        IrBinaryOp::Sub, 
+                        Value::Constant(0), 
+                        offset_val, 
+                        IrType::I16
+                    )?;
+                    Value::Temp(neg_temp)
+                } else {
+                    offset_val
+                };
+                
+                // Use pointer offset which handles element size scaling and bank overflow
+                let elem_ir_type = convert_type(&elem_type, left.span.start.clone())?;
+                let result = self.builder.build_pointer_offset(
+                    ptr_val,
+                    final_offset,
+                    IrType::FatPtr(Box::new(elem_ir_type))
+                )?;
+                Ok(result)
+            }
+            
+            TypedBinaryOp::PointerDifference { elem_type, elem_size } => {
+                // pointer - pointer: returns number of elements between them
+                let left_val = self.generate(left)?;
+                let right_val = self.generate(right)?;
+                
+                // Extract addresses from fat pointers if needed
+                let left_addr = if let Value::FatPtr(ref fp) = left_val {
+                    *fp.addr.clone()
+                } else {
+                    left_val.clone()
+                };
+                
+                let right_addr = if let Value::FatPtr(ref fp) = right_val {
+                    *fp.addr.clone()
+                } else {
+                    right_val.clone()
+                };
+                
+                // Calculate byte difference
+                let byte_diff_temp = self.builder.build_binary(
+                    IrBinaryOp::Sub,
+                    left_addr,
+                    right_addr,
+                    IrType::I16
+                )?;
+                
+                // Divide by element size to get element count
+                if elem_size > 1 {
+                    let size_val = Value::Constant(elem_size as i64);
+                    let result_temp = self.builder.build_binary(
+                        IrBinaryOp::SDiv,
+                        Value::Temp(byte_diff_temp),
+                        size_val,
+                        IrType::I16
+                    )?;
+                    Ok(Value::Temp(result_temp))
+                } else {
+                    // Element size is 1, no division needed
+                    Ok(Value::Temp(byte_diff_temp))
+                }
+            }
+            
+            TypedBinaryOp::ArrayIndex { elem_type, .. } => {
+                // Array indexing: arr[idx] - always uses GEP
                 let base_ptr = self.generate(left)?;
                 let index = self.generate(right)?;
                 
-                // Determine the element type from the array/pointer type
-                let element_type = if let Some(expr_type) = &left.expr_type {
-                    match expr_type {
-                        Type::Array { element_type, .. } => {
-                            convert_type(element_type, left.span.start.clone())?
-                        }
-                        Type::Pointer { target, .. } => {
-                            convert_type(target, left.span.start.clone())?
-                        }
-                        _ => IrType::I16 // Default to i16 for int
-                    }
-                } else {
-                    IrType::I16 // Default to i16 for int
-                };
+                let elem_ir_type = convert_type(&elem_type, left.span.start.clone())?;
                 
-                // Use GetElementPtr for proper array indexing
-                // Note: For bank-aware GEP, we need to ensure the backend handles bank overflow
-                // The backend should check: (base_addr + index * elem_size) / bank_size
-                // and adjust the bank register if needed
+                // Use GetElementPtr for proper array indexing with bank overflow handling
                 let addr = self.builder.build_pointer_offset(
                     base_ptr,
                     index,
-                    IrType::FatPtr(Box::new(element_type.clone()))
+                    IrType::FatPtr(Box::new(elem_ir_type.clone()))
                 )?;
                 
                 // Load from the calculated address
-                let result = self.builder.build_load(addr, element_type)?;
+                let result = self.builder.build_load(addr, elem_ir_type)?;
                 Ok(Value::Temp(result))
             }
-            BinaryOp::LogicalAnd | BinaryOp::LogicalOr => {
-                // For now, compile as simple arithmetic operations
+            
+            TypedBinaryOp::Comparison { op, is_pointer_compare } => {
+                // Comparison operations
+                let left_val = self.generate(left)?;
+                let right_val = self.generate(right)?;
+                
+                // For pointer comparisons, we might need special handling in the future
+                // For now, treat them the same as integer comparisons
+                let ir_op = convert_binary_op(op).map_err(|msg| {
+                    CodegenError::UnsupportedConstruct {
+                        construct: msg,
+                        location: left.span.start.clone(),
+                    }
+                })?;
+                
+                let temp = self.builder.build_binary(ir_op, left_val, right_val, IrType::I1)?;
+                Ok(Value::Temp(temp))
+            }
+            
+            TypedBinaryOp::Logical { op } => {
+                // Logical operations
                 // TODO: Implement proper short-circuit evaluation
                 let left_val = self.generate(left)?;
                 let right_val = self.generate(right)?;
                 
-                // Both values should be 0 or 1 from comparison operations
-                // For AND: both must be true (multiply works)
-                // For OR: at least one must be true (add then clamp to 0/1)
                 let result_type = IrType::I16;
                 
                 if op == BinaryOp::LogicalAnd {
                     // AND: result = left & right (both are 0 or 1)
-                    let temp = self.builder.build_binary(IrBinaryOp::And, left_val, right_val, result_type.clone())?;
+                    let temp = self.builder.build_binary(IrBinaryOp::And, left_val, right_val, result_type)?;
                     Ok(Value::Temp(temp))
                 } else {
                     // OR: result = left | right (both are already 0 or 1)
@@ -231,78 +330,21 @@ impl<'a> ExpressionGenerator<'a> {
                     Ok(Value::Temp(temp))
                 }
             }
-            _ => {
-                // Check for pointer arithmetic (pointer + integer or integer + pointer)
-                let left_is_ptr = left.expr_type.as_ref().map_or(false, |t| t.is_pointer());
-                let right_is_ptr = right.expr_type.as_ref().map_or(false, |t| t.is_pointer());
-                
-                if (left_is_ptr || right_is_ptr) && (op == BinaryOp::Add || op == BinaryOp::Sub) {
-                    // Handle pointer arithmetic
-                    if left_is_ptr && !right_is_ptr {
-                        // pointer + integer or pointer - integer
-                        let ptr_val = self.generate(left)?;
-                        let offset_val = self.generate(right)?;
-                        
-                        // For subtraction, negate the offset
-                        let final_offset = if op == BinaryOp::Sub {
-                            let neg_temp = self.builder.build_binary(
-                                IrBinaryOp::Sub, 
-                                Value::Constant(0), 
-                                offset_val, 
-                                IrType::I16
-                            )?;
-                            Value::Temp(neg_temp)
-                        } else {
-                            offset_val
-                        };
-                        
-                        // Use pointer offset which preserves bank information
-                        let result = self.builder.build_pointer_offset(
-                            ptr_val,
-                            final_offset,
-                            IrType::FatPtr(Box::new(IrType::I16))
-                        )?;
-                        Ok(result)
-                    } else if !left_is_ptr && right_is_ptr && op == BinaryOp::Add {
-                        // integer + pointer (commutative)
-                        let offset_val = self.generate(left)?;
-                        let ptr_val = self.generate(right)?;
-                        
-                        let result = self.builder.build_pointer_offset(
-                            ptr_val,
-                            offset_val,
-                            IrType::FatPtr(Box::new(IrType::I16))
-                        )?;
-                        Ok(result)
-                    } else if left_is_ptr && right_is_ptr && op == BinaryOp::Sub {
-                        // pointer - pointer (returns integer difference)
-                        // This is more complex and not needed for the current test
-                        return Err(CodegenError::UnsupportedConstruct {
-                            construct: "pointer difference".to_string(),
-                            location: left.span.start.clone(),
-                        }.into());
-                    } else {
-                        return Err(CodegenError::UnsupportedConstruct {
-                            construct: "invalid pointer arithmetic".to_string(),
-                            location: left.span.start.clone(),
-                        }.into());
-                    }
-                } else {
-                    // Regular binary operation
-                    let left_val = self.generate(left)?;
-                    let right_val = self.generate(right)?;
-                    
-                    let ir_op = convert_binary_op(op).map_err(|msg| {
-                        CodegenError::UnsupportedConstruct {
-                            construct: msg,
-                            location: left.span.start.clone(),
-                        }
-                    })?;
-                    let result_type = IrType::I16; // Simplified for MVP
-                    
-                    let temp = self.builder.build_binary(ir_op, left_val, right_val, result_type)?;
-                    Ok(Value::Temp(temp))
-                }
+            
+            TypedBinaryOp::Assignment { lhs_type } => {
+                // Assignment operation - handled elsewhere
+                Err(CodegenError::InternalError {
+                    message: "Assignment should be handled in statement generation".to_string(),
+                    location: left.span.start.clone(),
+                }.into())
+            }
+            
+            TypedBinaryOp::CompoundAssignment { op, lhs_type, is_pointer } => {
+                // Compound assignment - handled elsewhere
+                Err(CodegenError::InternalError {
+                    message: "Compound assignment should be handled in statement generation".to_string(),
+                    location: left.span.start.clone(),
+                }.into())
             }
         }
     }
@@ -396,13 +438,17 @@ impl<'a> ExpressionGenerator<'a> {
                 // Try to determine bank from expression type
                 if let Some(Type::Pointer { bank, .. }) = &expr.expr_type {
                     let ir_bank = match bank {
-                        Some(BankTag::Global) => IrBankTag::Global,
-                        Some(BankTag::Stack) => IrBankTag::Stack,
-                        _ => IrBankTag::Stack, // Default to stack
+                        Some(bank) => bank,
+                        None => {
+                            return Err(CodegenError::InternalError {
+                                message: "Pointer expression has no bank information".to_string(),
+                                location: expr.span.start.clone(),
+                            }.into());
+                        }
                     };
                     Ok(Value::FatPtr(FatPointer {
                         addr: Box::new(val),
-                        bank: ir_bank,
+                        bank: *ir_bank,
                     }))
                 } else {
                     Ok(val)
@@ -412,20 +458,47 @@ impl<'a> ExpressionGenerator<'a> {
     }
     
     /// Determine the bank for an operand
-    fn determine_bank_for_operand(&self, operand: &Expression) -> Result<IrBankTag, CompilerError> {
+    fn determine_bank_for_operand(&self, operand: &Expression) -> Result<BankTag, CompilerError> {
         match &operand.kind {
             ExpressionKind::Identifier { name, .. } => {
                 if let Some(var_info) = self.variables.get(name) {
                     match var_info.bank {
-                        Some(BankTag::Global) => Ok(IrBankTag::Global),
-                        Some(BankTag::Stack) => Ok(IrBankTag::Stack),
-                        _ => Ok(IrBankTag::Stack), // Default to stack
+                        Some(bank) => Ok(bank),
+                        None => {
+                            return Err(CodegenError::InternalError {
+                                message: format!("Variable '{}' has no bank information", name),
+                                location: operand.span.start.clone(),
+                            }.into());
+                        }
                     }
                 } else {
-                    Ok(IrBankTag::Stack)
+                    return Err(CodegenError::InternalError {
+                        message: format!("Unknown variable '{}'", name),
+                        location: operand.span.start.clone(),
+                    }.into());
                 }
             }
-            _ => Ok(IrBankTag::Stack), // Default to stack
+            ExpressionKind::Unary { op: UnaryOp::AddressOf, operand } => {
+                // Address-of operation - determine bank from operand
+                self.determine_bank_for_operand(operand)
+            }
+            _ => {
+                // For other expressions, we need to analyze the type
+                if let Some(Type::Pointer { bank, .. }) = &operand.expr_type {
+                    match bank {
+                        Some(bank) => Ok(*bank),
+                        None => Err(CodegenError::InternalError {
+                            message: "Pointer expression has no bank information".to_string(),
+                            location: operand.span.start.clone(),
+                        }.into()),
+                    }
+                } else {
+                    Err(CodegenError::InternalError {
+                        message: "Expression is not a pointer type".to_string(),
+                        location: operand.span.start.clone(),
+                    }.into())
+                }
+            }
         }
     }
     
@@ -672,15 +745,8 @@ impl<'a> ExpressionGenerator<'a> {
         match &expr.kind {
             ExpressionKind::Identifier { name, .. } => {
                 if let Some(var_info) = self.variables.get(name) {
-                    let value = &var_info.value;
-                    match value {
-                        Value::Global(_) => Ok(value.clone()), // Global variables are already addresses
-                        Value::Temp(_) => Ok(value.clone()),    // Local variables
-                        _ => Err(CodegenError::InternalError {
-                            message: "Invalid lvalue".to_string(),
-                            location: expr.span.start.clone(),
-                        }.into()),
-                    }
+                    // For lvalues, we need to return the address as a fat pointer if it has bank info
+                    Ok(var_info.as_fat_ptr())
                 } else {
                     Err(CodegenError::UndefinedVariable {
                         name: name.clone(),

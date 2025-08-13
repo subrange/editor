@@ -4,13 +4,13 @@
 //! GEP is critical for array/struct access and must correctly handle
 //! crossing bank boundaries (4096 instruction / 16384 byte boundaries).
 
-use rcc_frontend::ir::{Value, BankTag};
+use rcc_frontend::ir::{Value};
 use rcc_common::TempId;
 use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
 use crate::v2::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
-
+use rcc_frontend::BankTag;
 // Use the bank size constant from V2 module
 // TODO: This should eventually be passed as a parameter from rcc-driver
 use crate::v2::BANK_SIZE_INSTRUCTIONS;
@@ -93,6 +93,7 @@ pub fn lower_gep(
             let bank_info = match fp.bank {
                 BankTag::Global => BankInfo::Global,
                 BankTag::Stack => BankInfo::Stack,
+                _ => panic!("Unsupported bank type for fat pointer: {:?}", fp.bank),
             };
             
             let ptr_name = naming.pointer_bank_key(&result_name);

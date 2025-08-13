@@ -3,13 +3,14 @@
 //! Tests that GEP works correctly with load/store operations
 //! and within the context of functions.
 
-use rcc_frontend::ir::{Value, IrType, BankTag, FatPointer};
+use rcc_frontend::ir::{Value, IrType, FatPointer};
 use crate::v2::instr::{lower_gep, lower_store, lower_load};
 use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
 use crate::v2::naming::new_function_naming;
 use crate::v2::function::FunctionBuilder;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
+use rcc_frontend::BankTag;
 
 #[test]
 fn test_gep_then_store() {

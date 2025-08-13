@@ -3,8 +3,9 @@
 //! Provides utilities for constructing IR programmatically.
 
 use rcc_common::{TempId, LabelId};
+use crate::BankTag;
 use crate::ir::{
-    Value, IrType, BankTag, FatPointer,
+    Value, IrType, FatPointer,
     IrBinaryOp, IrUnaryOp, Instruction,
     BasicBlock, Function
 };

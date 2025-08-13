@@ -3,12 +3,13 @@
 //! Handles loading values from memory with proper bank management.
 //! Supports both scalar loads and fat pointer loads (2-component).
 
-use rcc_frontend::ir::{Value, IrType as Type, BankTag};
+use rcc_frontend::ir::{Value, IrType as Type};
 use rcc_common::TempId;
 use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
 use crate::v2::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
+use rcc_frontend::BankTag;
 
 /// Lower a Load instruction to assembly
 /// 
@@ -59,7 +60,7 @@ pub fn lower_load(
                 }
                 _ => {
                     warn!("  Unexpected address type in fat pointer: {:?}", fp.addr);
-                    panic!("Invalid fat pointer address type")
+                    panic!("Invalid fat pointer address type in LOAD: {:?}", fp.addr);
                 }
             };
             
@@ -67,6 +68,7 @@ pub fn lower_load(
             let bank_info = match fp.bank {
                 BankTag::Global => BankInfo::Global,
                 BankTag::Stack => BankInfo::Stack,
+                _ => panic!("BE: Unsupported bank type for fat pointer: {:?}", fp.bank),
             };
             let ptr_bank_key = naming.pointer_bank_key(&result_name);
             mgr.set_pointer_bank(ptr_bank_key.clone(), bank_info);

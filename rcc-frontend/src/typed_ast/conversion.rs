@@ -1,0 +1,477 @@
+//! AST to Typed AST conversion
+//!
+//! This module implements the conversion from the untyped AST to the typed AST.
+
+use super::expressions::TypedExpr;
+use super::statements::TypedStmt;
+use super::translation_unit::{TypedFunction, TypedTopLevelItem, TypedTranslationUnit};
+use super::errors::TypeError;
+use crate::types::{Type, BankTag};
+use crate::type_checker::{TypeChecker, TypedBinaryOp};
+
+/// Type environment for looking up variable types
+pub struct TypeEnvironment {
+    // For now, this is a placeholder
+    // In a real implementation, this would track variable types in scope
+    // TODO: Implement proper type environment
+}
+
+/// Convert an untyped AST expression to a typed expression
+/// This is the main entry point for the typing phase
+pub fn type_expression(
+    expr: &crate::ast::Expression,
+    type_env: &TypeEnvironment,
+) -> Result<TypedExpr, TypeError> {
+    use crate::ast::ExpressionKind;
+    
+    match &expr.kind {
+        ExpressionKind::IntLiteral(value) => {
+            Ok(TypedExpr::IntLiteral {
+                value: *value,
+                expr_type: expr.expr_type.clone().unwrap_or(Type::Int),
+            })
+        }
+        
+        ExpressionKind::CharLiteral(value) => {
+            Ok(TypedExpr::CharLiteral {
+                value: *value,
+                expr_type: Type::Char,
+            })
+        }
+        
+        ExpressionKind::StringLiteral(value) => {
+            Ok(TypedExpr::StringLiteral {
+                value: value.clone(),
+                expr_type: Type::Pointer {
+                    target: Box::new(Type::Char),
+                    bank: Some(BankTag::Global),
+                },
+            })
+        }
+        
+        ExpressionKind::Identifier { name, symbol_id } => {
+            let var_type = expr.expr_type.clone()
+                .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?;
+            
+            Ok(TypedExpr::Variable {
+                name: name.clone(),
+                symbol_id: *symbol_id,
+                expr_type: var_type,
+            })
+        }
+        
+        ExpressionKind::Binary { op, left, right } => {
+            // Use the type checker to classify the operation
+            let typed_op = TypeChecker::check_binary_op(
+                *op,
+                left,
+                right,
+                expr.span.start.clone(),
+            ).map_err(|msg| TypeError::TypeMismatch(msg))?;
+            
+            match typed_op {
+                TypedBinaryOp::IntegerArithmetic { op, result_type } => {
+                    let left_typed = type_expression(left, type_env)?;
+                    let right_typed = type_expression(right, type_env)?;
+                    
+                    Ok(TypedExpr::Binary {
+                        op,
+                        left: Box::new(left_typed),
+                        right: Box::new(right_typed),
+                        expr_type: result_type,
+                    })
+                }
+                
+                TypedBinaryOp::PointerOffset { ptr_type, elem_type, elem_size: _, is_add } => {
+                    // Determine which operand is the pointer
+                    let (ptr_expr, offset_expr) = if left.expr_type.as_ref()
+                        .map_or(false, |t| t.is_pointer()) {
+                        (left, right)
+                    } else {
+                        (right, left)
+                    };
+                    
+                    let ptr_typed = type_expression(ptr_expr, type_env)?;
+                    let offset_typed = type_expression(offset_expr, type_env)?;
+                    
+                    Ok(TypedExpr::PointerArithmetic {
+                        ptr: Box::new(ptr_typed),
+                        offset: Box::new(offset_typed),
+                        elem_type,
+                        is_add,
+                        expr_type: ptr_type,
+                    })
+                }
+                
+                TypedBinaryOp::PointerDifference { elem_type, elem_size: _ } => {
+                    let left_typed = type_expression(left, type_env)?;
+                    let right_typed = type_expression(right, type_env)?;
+                    
+                    Ok(TypedExpr::PointerDifference {
+                        left: Box::new(left_typed),
+                        right: Box::new(right_typed),
+                        elem_type,
+                        expr_type: Type::Int,  // Pointer difference returns integer
+                    })
+                }
+                
+                TypedBinaryOp::ArrayIndex { elem_type, elem_size: _ } => {
+                    let array_typed = type_expression(left, type_env)?;
+                    let index_typed = type_expression(right, type_env)?;
+                    
+                    Ok(TypedExpr::ArrayIndex {
+                        array: Box::new(array_typed),
+                        index: Box::new(index_typed),
+                        elem_type: elem_type.clone(),
+                        expr_type: elem_type,
+                    })
+                }
+                
+                TypedBinaryOp::Comparison { op, is_pointer_compare: _ } => {
+                    let left_typed = type_expression(left, type_env)?;
+                    let right_typed = type_expression(right, type_env)?;
+                    
+                    Ok(TypedExpr::Binary {
+                        op,
+                        left: Box::new(left_typed),
+                        right: Box::new(right_typed),
+                        expr_type: Type::Bool,  // Comparisons return bool
+                    })
+                }
+                
+                TypedBinaryOp::Logical { op } => {
+                    let left_typed = type_expression(left, type_env)?;
+                    let right_typed = type_expression(right, type_env)?;
+                    
+                    Ok(TypedExpr::Binary {
+                        op,
+                        left: Box::new(left_typed),
+                        right: Box::new(right_typed),
+                        expr_type: Type::Bool,
+                    })
+                }
+                
+                TypedBinaryOp::Assignment { lhs_type } => {
+                    let lhs_typed = type_expression(left, type_env)?;
+                    let rhs_typed = type_expression(right, type_env)?;
+                    
+                    Ok(TypedExpr::Assignment {
+                        lhs: Box::new(lhs_typed),
+                        rhs: Box::new(rhs_typed),
+                        expr_type: lhs_type,
+                    })
+                }
+                
+                TypedBinaryOp::CompoundAssignment { op, lhs_type, is_pointer } => {
+                    let lhs_typed = type_expression(left, type_env)?;
+                    let rhs_typed = type_expression(right, type_env)?;
+                    
+                    Ok(TypedExpr::CompoundAssignment {
+                        op,
+                        lhs: Box::new(lhs_typed),
+                        rhs: Box::new(rhs_typed),
+                        is_pointer,
+                        expr_type: lhs_type,
+                    })
+                }
+            }
+        }
+        
+        ExpressionKind::Unary { op, operand } => {
+            let operand_typed = type_expression(operand, type_env)?;
+            let result_type = expr.expr_type.clone()
+                .ok_or_else(|| TypeError::TypeMismatch("Unary expression has no type".to_string()))?;
+            
+            Ok(TypedExpr::Unary {
+                op: *op,
+                operand: Box::new(operand_typed),
+                expr_type: result_type,
+            })
+        }
+        
+        ExpressionKind::Call { function, arguments } => {
+            let func_typed = type_expression(function, type_env)?;
+            let args_typed: Result<Vec<_>, _> = arguments.iter()
+                .map(|arg| type_expression(arg, type_env))
+                .collect();
+            
+            let result_type = expr.expr_type.clone()
+                .ok_or_else(|| TypeError::TypeMismatch("Call expression has no type".to_string()))?;
+            
+            Ok(TypedExpr::Call {
+                function: Box::new(func_typed),
+                arguments: args_typed?,
+                expr_type: result_type,
+            })
+        }
+        
+        ExpressionKind::Cast { target_type, operand } => {
+            let operand_typed = type_expression(operand, type_env)?;
+            
+            Ok(TypedExpr::Cast {
+                operand: Box::new(operand_typed),
+                target_type: target_type.clone(),
+                expr_type: target_type.clone(),
+            })
+        }
+        
+        ExpressionKind::SizeofExpr(operand) => {
+            let operand_typed = type_expression(operand, type_env)?;
+            
+            Ok(TypedExpr::SizeofExpr {
+                operand: Box::new(operand_typed),
+                expr_type: Type::Int,  // sizeof returns size_t, which we treat as int
+            })
+        }
+        
+        ExpressionKind::SizeofType(target_type) => {
+            Ok(TypedExpr::SizeofType {
+                target_type: target_type.clone(),
+                expr_type: Type::Int,
+            })
+        }
+        
+        ExpressionKind::Member { .. } => {
+            // TODO: Implement struct/union member access
+            Err(TypeError::UnsupportedConstruct(
+                "Struct/union member access not yet implemented".to_string()
+            ))
+        }
+        
+        ExpressionKind::Conditional { condition, then_expr, else_expr } => {
+            let cond_typed = type_expression(condition, type_env)?;
+            let then_typed = type_expression(then_expr, type_env)?;
+            let else_typed = type_expression(else_expr, type_env)?;
+            
+            // TODO: Verify that then_expr and else_expr have compatible types
+            let result_type = then_typed.get_type().clone();
+            
+            Ok(TypedExpr::Conditional {
+                condition: Box::new(cond_typed),
+                then_expr: Box::new(then_typed),
+                else_expr: Box::new(else_typed),
+                expr_type: result_type,
+            })
+        }
+        
+        ExpressionKind::CompoundLiteral { .. } => {
+            // TODO: Implement compound literals (C99 feature)
+            Err(TypeError::UnsupportedConstruct(
+                "Compound literals not yet implemented".to_string()
+            ))
+        }
+    }
+}
+
+/// Convert an untyped statement to a typed statement
+pub fn type_statement(
+    stmt: &crate::ast::Statement,
+    type_env: &TypeEnvironment,
+) -> Result<TypedStmt, TypeError> {
+    use crate::ast::StatementKind;
+    
+    match &stmt.kind {
+        StatementKind::Expression(expr) => {
+            let typed_expr = type_expression(expr, type_env)?;
+            Ok(TypedStmt::Expression(typed_expr))
+        }
+        
+        StatementKind::Declaration { declarations } => {
+            // For now, handle only the first declaration
+            // TODO: Handle multiple declarations properly
+            if let Some(decl) = declarations.first() {
+                let init = match decl.initializer.as_ref() {
+                    Some(init) => match &init.kind {
+                        crate::ast::InitializerKind::Expression(expr) => {
+                            Some(type_expression(expr, type_env)?)
+                        }
+                        _ => {
+                            // TODO: Handle list initializers for arrays/structs
+                            return Err(TypeError::UnsupportedConstruct(
+                                "List initializers not yet supported".to_string()
+                            ));
+                        }
+                    },
+                    None => None,
+                };
+                
+                Ok(TypedStmt::Declaration {
+                    name: decl.name.clone(),
+                    decl_type: decl.decl_type.clone(),
+                    initializer: init,
+                    symbol_id: None,
+                })
+            } else {
+                Ok(TypedStmt::Empty)
+            }
+        }
+        
+        StatementKind::Compound(stmts) => {
+            let typed_stmts: Result<Vec<_>, _> = stmts.iter()
+                .map(|s| type_statement(s, type_env))
+                .collect();
+            
+            Ok(TypedStmt::Compound(typed_stmts?))
+        }
+        
+        StatementKind::If { condition, then_stmt, else_stmt } => {
+            let typed_condition = type_expression(condition, type_env)?;
+            let typed_then = type_statement(then_stmt, type_env)?;
+            let typed_else = else_stmt.as_ref()
+                .map(|s| type_statement(s, type_env))
+                .transpose()?;
+            
+            Ok(TypedStmt::If {
+                condition: typed_condition,
+                then_stmt: Box::new(typed_then),
+                else_stmt: typed_else.map(Box::new),
+            })
+        }
+        
+        StatementKind::While { condition, body } => {
+            let typed_condition = type_expression(condition, type_env)?;
+            let typed_body = type_statement(body, type_env)?;
+            
+            Ok(TypedStmt::While {
+                condition: typed_condition,
+                body: Box::new(typed_body),
+            })
+        }
+        
+        StatementKind::For { init, condition, update, body } => {
+            let typed_init = init.as_ref()
+                .map(|s| type_statement(s, type_env))
+                .transpose()?
+                .map(Box::new);
+            let typed_condition = condition.as_ref()
+                .map(|e| type_expression(e, type_env))
+                .transpose()?;
+            let typed_update = update.as_ref()
+                .map(|e| type_expression(e, type_env))
+                .transpose()?;
+            let typed_body = type_statement(body, type_env)?;
+            
+            Ok(TypedStmt::For {
+                init: typed_init,
+                condition: typed_condition,
+                update: typed_update,
+                body: Box::new(typed_body),
+            })
+        }
+        
+        StatementKind::Return(expr) => {
+            let typed_expr = expr.as_ref()
+                .map(|e| type_expression(e, type_env))
+                .transpose()?;
+            
+            Ok(TypedStmt::Return(typed_expr))
+        }
+        
+        StatementKind::Break => Ok(TypedStmt::Break),
+        StatementKind::Continue => Ok(TypedStmt::Continue),
+        StatementKind::Empty => Ok(TypedStmt::Empty),
+        
+        StatementKind::DoWhile { .. } => {
+            Err(TypeError::UnsupportedConstruct(
+                "Do-while loops not yet implemented".to_string()
+            ))
+        }
+        
+        StatementKind::Switch { .. } => {
+            Err(TypeError::UnsupportedConstruct(
+                "Switch statements not yet implemented".to_string()
+            ))
+        }
+        
+        StatementKind::Case { .. } => {
+            Err(TypeError::UnsupportedConstruct(
+                "Case labels not yet implemented".to_string()
+            ))
+        }
+        
+        StatementKind::Default { .. } => {
+            Err(TypeError::UnsupportedConstruct(
+                "Default labels not yet implemented".to_string()
+            ))
+        }
+        
+        StatementKind::Goto(_) => {
+            Err(TypeError::UnsupportedConstruct(
+                "Goto statements not yet implemented".to_string()
+            ))
+        }
+        
+        StatementKind::Label { .. } => {
+            Err(TypeError::UnsupportedConstruct(
+                "Label statements not yet implemented".to_string()
+            ))
+        }
+        
+        StatementKind::InlineAsm { assembly } => {
+            Ok(TypedStmt::InlineAsm {
+                assembly: assembly.clone(),
+            })
+        }
+    }
+}
+
+/// Convert an untyped translation unit to a typed one
+pub fn type_translation_unit(
+    ast: &crate::ast::TranslationUnit,
+) -> Result<TypedTranslationUnit, TypeError> {
+    let type_env = TypeEnvironment {};
+    let mut typed_items = Vec::new();
+    
+    for item in &ast.items {
+        match item {
+            crate::ast::TopLevelItem::Function(func) => {
+                let typed_body = type_statement(&func.body, &type_env)?;
+                
+                let typed_func = TypedFunction {
+                    name: func.name.clone(),
+                    return_type: func.return_type.clone(),
+                    parameters: func.parameters.iter()
+                        .map(|p| (p.name.clone().unwrap_or_else(|| "unnamed".to_string()), p.param_type.clone()))
+                        .collect(),
+                    body: typed_body,
+                };
+                
+                typed_items.push(TypedTopLevelItem::Function(typed_func));
+            }
+            
+            crate::ast::TopLevelItem::Declaration(decl) => {
+                let init = match decl.initializer.as_ref() {
+                    Some(init) => match &init.kind {
+                        crate::ast::InitializerKind::Expression(expr) => {
+                            Some(type_expression(expr, &type_env)?)
+                        }
+                        _ => {
+                            // TODO: Handle list initializers for arrays/structs
+                            return Err(TypeError::UnsupportedConstruct(
+                                "List initializers not yet supported".to_string()
+                            ));
+                        }
+                    },
+                    None => None,
+                };
+                
+                typed_items.push(TypedTopLevelItem::GlobalVariable {
+                    name: decl.name.clone(),
+                    var_type: decl.decl_type.clone(),
+                    initializer: init,
+                });
+            }
+            
+            crate::ast::TopLevelItem::TypeDefinition { .. } => {
+                // TODO: Add struct/union/enum/typedef support
+                // For now, skip type definitions as they don't directly generate code
+                // but should be tracked in the type environment
+                return Err(TypeError::UnsupportedConstruct(
+                    "Type definitions not yet supported".to_string()
+                ));
+            }
+        }
+    }
+    
+    Ok(TypedTranslationUnit { items: typed_items })
+}

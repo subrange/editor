@@ -1,0 +1,233 @@
+//! Statement parsing for C99
+//! 
+//! This module handles parsing of all statement types.
+
+use crate::ast::*;
+use crate::lexer::TokenType;
+use crate::parser::Parser;
+use rcc_common::{CompilerError, SourceSpan};
+
+impl Parser {
+    /// Parse compound statement (block)
+    pub fn parse_compound_statement(&mut self) -> Result<Statement, CompilerError> {
+        let start_location = self.current_location();
+        
+        self.expect(TokenType::LeftBrace, "compound statement")?;
+        
+        let mut statements = Vec::new();
+        while !self.check(&TokenType::RightBrace) && !self.check(&TokenType::EndOfFile) {
+            statements.push(self.parse_statement()?);
+        }
+        
+        self.expect(TokenType::RightBrace, "compound statement")?;
+        
+        let end_location = self.current_location();
+        
+        Ok(Statement {
+            node_id: self.node_id_gen.next(),
+            kind: StatementKind::Compound(statements),
+            span: SourceSpan::new(start_location, end_location),
+        })
+    }
+    
+    /// Parse statement
+    pub fn parse_statement(&mut self) -> Result<Statement, CompilerError> {
+        let start_location = self.current_location();
+        
+        let kind = match self.peek().map(|t| &t.token_type) {
+            Some(TokenType::LeftBrace) => {
+                return self.parse_compound_statement();
+            }
+            Some(TokenType::If) => {
+                self.advance();
+                self.parse_if_statement()?
+            }
+            Some(TokenType::While) => {
+                self.advance();
+                self.parse_while_statement()?
+            }
+            Some(TokenType::For) => {
+                self.advance();
+                self.parse_for_statement()?
+            }
+            Some(TokenType::Do) => {
+                self.advance();
+                self.parse_do_while_statement()?
+            }
+            Some(TokenType::Return) => {
+                self.advance();
+                self.parse_return_statement()?
+            }
+            Some(TokenType::Break) => {
+                self.advance();
+                self.expect(TokenType::Semicolon, "break statement")?;
+                StatementKind::Break
+            }
+            Some(TokenType::Continue) => {
+                self.advance();
+                self.expect(TokenType::Semicolon, "continue statement")?;
+                StatementKind::Continue
+            }
+            Some(TokenType::Asm) => {
+                self.advance();
+                self.parse_inline_asm_statement()?
+            }
+            Some(TokenType::Semicolon) => {
+                self.advance();
+                StatementKind::Empty
+            }
+            // Check for declaration vs expression statement
+            _ => {
+                // This is a simplified check - a full parser would need more lookahead
+                if self.is_declaration_start() {
+                    self.parse_declaration_statement()?
+                } else {
+                    self.parse_expression_statement()?
+                }
+            }
+        };
+        
+        let end_location = self.current_location();
+        
+        Ok(Statement {
+            node_id: self.node_id_gen.next(),
+            kind,
+            span: SourceSpan::new(start_location, end_location),
+        })
+    }
+    
+    /// Parse expression statement
+    pub fn parse_expression_statement(&mut self) -> Result<StatementKind, CompilerError> {
+        let expr = self.parse_expression()?;
+        self.expect(TokenType::Semicolon, "expression statement")?;
+        Ok(StatementKind::Expression(expr))
+    }
+    
+    /// Parse if statement
+    pub fn parse_if_statement(&mut self) -> Result<StatementKind, CompilerError> {
+        self.expect(TokenType::LeftParen, "if statement")?;
+        let condition = self.parse_expression()?;
+        self.expect(TokenType::RightParen, "if statement")?;
+        
+        let then_stmt = Box::new(self.parse_statement()?);
+        
+        let else_stmt = if self.match_token(&TokenType::Else) {
+            Some(Box::new(self.parse_statement()?))
+        } else {
+            None
+        };
+        
+        Ok(StatementKind::If { condition, then_stmt, else_stmt })
+    }
+    
+    /// Parse while statement
+    pub fn parse_while_statement(&mut self) -> Result<StatementKind, CompilerError> {
+        self.expect(TokenType::LeftParen, "while statement")?;
+        let condition = self.parse_expression()?;
+        self.expect(TokenType::RightParen, "while statement")?;
+        
+        let body = Box::new(self.parse_statement()?);
+        
+        Ok(StatementKind::While { condition, body })
+    }
+    
+    /// Parse for statement
+    pub fn parse_for_statement(&mut self) -> Result<StatementKind, CompilerError> {
+        self.expect(TokenType::LeftParen, "for statement")?;
+        
+        // Parse init (can be declaration or expression)
+        let init = if self.check(&TokenType::Semicolon) {
+            None
+        } else if self.is_declaration_start() {
+            Some(Box::new(Statement {
+                node_id: self.node_id_gen.next(),
+                kind: self.parse_declaration_statement()?,
+                span: SourceSpan::new(self.current_location(), self.current_location()),
+            }))
+        } else {
+            let expr = self.parse_expression()?;
+            self.expect(TokenType::Semicolon, "for statement init")?;
+            Some(Box::new(Statement {
+                node_id: self.node_id_gen.next(),
+                kind: StatementKind::Expression(expr),
+                span: SourceSpan::new(self.current_location(), self.current_location()),
+            }))
+        };
+        
+        if init.is_none() {
+            self.expect(TokenType::Semicolon, "for statement init")?;
+        }
+        
+        // Parse condition
+        let condition = if self.check(&TokenType::Semicolon) {
+            None
+        } else {
+            Some(self.parse_expression()?)
+        };
+        self.expect(TokenType::Semicolon, "for statement condition")?;
+        
+        // Parse update
+        let update = if self.check(&TokenType::RightParen) {
+            None
+        } else {
+            Some(self.parse_expression()?)
+        };
+        self.expect(TokenType::RightParen, "for statement")?;
+        
+        let body = Box::new(self.parse_statement()?);
+        
+        Ok(StatementKind::For { init, condition, update, body })
+    }
+    
+    /// Parse do-while statement
+    pub fn parse_do_while_statement(&mut self) -> Result<StatementKind, CompilerError> {
+        let body = Box::new(self.parse_statement()?);
+        
+        self.expect(TokenType::While, "do-while statement")?;
+        self.expect(TokenType::LeftParen, "do-while statement")?;
+        let condition = self.parse_expression()?;
+        self.expect(TokenType::RightParen, "do-while statement")?;
+        self.expect(TokenType::Semicolon, "do-while statement")?;
+        
+        Ok(StatementKind::DoWhile { body, condition })
+    }
+    
+    /// Parse return statement
+    pub fn parse_return_statement(&mut self) -> Result<StatementKind, CompilerError> {
+        let value = if self.check(&TokenType::Semicolon) {
+            None
+        } else {
+            Some(self.parse_expression()?)
+        };
+        
+        self.expect(TokenType::Semicolon, "return statement")?;
+        Ok(StatementKind::Return(value))
+    }
+    
+    /// Parse inline assembly statement
+    pub fn parse_inline_asm_statement(&mut self) -> Result<StatementKind, CompilerError> {
+        // Basic syntax: asm("assembly code");
+        // TODO: Support extended syntax with constraints
+        self.expect(TokenType::LeftParen, "inline assembly")?;
+        
+        // Expect a string literal containing the assembly code
+        let assembly = match self.peek().map(|t| &t.token_type) {
+            Some(TokenType::StringLiteral(s)) => {
+                let code = s.clone();
+                self.advance();
+                code
+            }
+            _ => {
+                return Err(CompilerError::parse_error(
+                    "Expected string literal for inline assembly".to_string(),
+                    self.current_location(),
+                ));
+            }
+        };
+        
+        self.expect(TokenType::RightParen, "inline assembly")?;
+        self.expect(TokenType::Semicolon, "inline assembly")?;
+        
+        Ok(StatementKind::InlineAsm { assembly })
+    }
+}

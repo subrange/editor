@@ -3,11 +3,12 @@
 //! Handles storing values to memory with proper bank management.
 //! Supports both scalar stores and fat pointer stores (2-component).
 
-use rcc_frontend::ir::{Value, BankTag};
+use rcc_frontend::ir::{Value};
 use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
 use crate::v2::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
+use rcc_frontend::BankTag;
 
 /// Lower a Store instruction to assembly
 /// 
@@ -75,7 +76,19 @@ pub fn lower_store(
                     insts.push(AsmInst::Li(temp_reg, *c as i16));
                     temp_reg
                 }
-                _ => panic!("Invalid fat pointer address type")
+                Value::Global(name) => {
+                    // For global addresses, we need to load the address
+                    trace!("  Storing fat pointer global address: {}", name);
+                    let addr_reg_name = naming.store_global_addr(name);
+                    let addr_reg = mgr.get_register(addr_reg_name);
+                    insts.extend(mgr.take_instructions());
+                    insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
+                    let label = naming.store_global_label(name);
+                    insts.push(AsmInst::Label(label));
+                    insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder for linker
+                    addr_reg
+                }
+                _ => panic!("Invalid fat pointer address type: {:?} in STORE", fp.addr),
             };
             
             // Get bank value into a register
@@ -85,6 +98,7 @@ pub fn lower_store(
             let bank_val = match fp.bank {
                 BankTag::Global => 0,
                 BankTag::Stack => 1,
+                _ => panic!("Unsupported bank type for fat pointer: {:?}", fp.bank),
             };
             insts.push(AsmInst::Li(bank_reg, bank_val));
             
@@ -134,13 +148,14 @@ pub fn lower_store(
                     trace!("  Loaded destination address {} into {:?}", c, temp_reg);
                     temp_reg
                 }
-                _ => panic!("Invalid fat pointer address type")
+                _ => panic!("Invalid fat pointer address type: {:?} in STORE", fp.addr),
             };
             
             // Set bank info for the pointer
             let bank_info = match fp.bank {
                 BankTag::Global => BankInfo::Global,
                 BankTag::Stack => BankInfo::Stack,
+                _ => panic!("BE: Unsupported bank type for fat pointer: {:?}", fp.bank),
             };
             let dest_ptr_key = naming.pointer_bank_key("dest_ptr");
             mgr.set_pointer_bank(dest_ptr_key.clone(), bank_info);

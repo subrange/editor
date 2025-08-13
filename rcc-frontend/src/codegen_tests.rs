@@ -18,7 +18,7 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::parse_source(source).unwrap();
+        let ast = Frontend::analyze_source(source).unwrap();
         
         let mut codegen = CodeGenerator::new("test".to_string());
         let module = codegen.generate(&ast).unwrap();
@@ -44,7 +44,7 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::parse_source(source).unwrap();
+        let ast = Frontend::analyze_source(source).unwrap();
         
         let mut codegen = CodeGenerator::new("test".to_string());
         let module = codegen.generate(&ast).unwrap();
@@ -78,7 +78,7 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::parse_source(source).unwrap();
+        let ast = Frontend::analyze_source(source).unwrap();
         
         let mut codegen = CodeGenerator::new("test".to_string());
         let module = codegen.generate(&ast).unwrap();
@@ -107,7 +107,7 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::parse_source(source).unwrap();
+        let ast = Frontend::analyze_source(source).unwrap();
         
         let mut codegen = CodeGenerator::new("test".to_string());
         let module = codegen.generate(&ast).unwrap();
@@ -126,7 +126,7 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::parse_source(source).unwrap();
+        let ast = Frontend::analyze_source(source).unwrap();
         
         let mut codegen = CodeGenerator::new("test".to_string());
         let module = codegen.generate(&ast).unwrap();

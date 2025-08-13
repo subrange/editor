@@ -4,7 +4,6 @@
 //! the safe, public interfaces.
 
 use crate::v2::{FunctionBuilder, CallArg, lower_module_v2, lower_function_v2};
-use rcc_frontend::ir::{Module, IrBuilder, IrType, IrBinaryOp, Value};
 use rcc_codegen::{AsmInst, Reg};
 
 #[test]

@@ -1,7 +1,7 @@
 //! Code generation error types
 
 use rcc_common::SourceLocation;
-use crate::ast::Type;
+use crate::types::Type;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -38,6 +38,16 @@ pub enum CodegenError {
     
     #[error("Invalid lvalue at {location}")]
     InvalidLvalue {
+        location: SourceLocation,
+    },
+    #[error("Invalid break statement at {location}")]
+    InvalidBreak { location: SourceLocation },
+    #[error("Invalid continue statement at {location}")]
+    InvalidContinue { location: SourceLocation },
+
+    #[error("Unsupported Storage Class {class} at {location}")]
+    UnsupportedStorageClass {
+        class: String,
         location: SourceLocation,
     },
 }
@@ -80,6 +90,24 @@ impl From<CodegenError> for CompilerError {
             CodegenError::InvalidLvalue { location } => {
                 CompilerError::codegen_error(
                     "Invalid lvalue".to_string(),
+                    location,
+                )
+            }
+            CodegenError::InvalidBreak { location } => {
+                CompilerError::codegen_error(
+                    "Break statement outside of loop".to_string(),
+                    location,
+                )
+            }
+            CodegenError::InvalidContinue { location } => {
+                CompilerError::codegen_error(
+                    "Continue statement outside of loop".to_string(),
+                    location,
+                )
+            }
+            CodegenError::UnsupportedStorageClass { class, location } => {
+                CompilerError::codegen_error(
+                    format!("Unsupported storage class: {}", class),
                     location,
                 )
             }

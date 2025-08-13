@@ -1,3 +1,8 @@
+7138328 2025-08-13 17:58:49 +0200 Refactoring
+397ae01 2025-08-13 17:13:08 +0200 Debugger improvements
+997ce6c 2025-08-13 17:04:05 +0200 Improvements
+cbe30c3 2025-08-13 15:43:21 +0200 Fix issues
+45cfc6a 2025-08-13 14:23:06 +0200 Make debugger better
 977a7f6 2025-08-13 03:02:20 +0200 Long and exur... cxroo... excrutianable debug
 4802e08 2025-08-12 23:30:33 +0200 CONNECTED! BACKEND V2 IS ALIVE
 52fa375 2025-08-12 21:11:25 +0200 Connecting...

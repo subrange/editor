@@ -9,20 +9,25 @@
 pub mod lexer;
 pub mod parser;
 pub mod ast;
+pub mod types;  // Type system definitions
 pub mod semantic;
 pub mod codegen;
 pub mod ir;
+pub mod type_checker;
+pub mod typed_ast;
 mod codegen_tests;
 
 pub use lexer::{Lexer, Token, TokenType};
 pub use parser::{Parser, ParseError};
 pub use ast::{
-    Type, Expression, ExpressionKind, Statement, StatementKind,
+    Expression, ExpressionKind, Statement, StatementKind,
     Declaration, FunctionDefinition, TranslationUnit, TopLevelItem,
-    BinaryOp, UnaryOp, StorageClass, NodeIdGenerator
+    BinaryOp, UnaryOp, NodeIdGenerator
 };
+pub use types::{Type, BankTag, StructField, EnumVariant, StorageClass};
 pub use semantic::{SemanticAnalyzer, SemanticError};
-pub use codegen::{CodeGenerator, CodegenError};
+pub use codegen::{CodeGenerator, CodegenError, TypedCodeGenerator};
+pub use typed_ast::{TypedTranslationUnit, type_translation_unit};
 
 use rcc_common::CompilerError;
 use crate::ir::Module;
@@ -56,14 +61,30 @@ impl Frontend {
         Ok(ast)
     }
     
-    /// Compile C99 source code to IR
-    pub fn compile_to_ir(source: &str, module_name: &str) -> Result<Module, CompilerError> {
+    /// Compile C99 source code to IR (old untyped path - deprecated)
+    pub fn compile_to_ir_untyped(source: &str, module_name: &str) -> Result<Module, CompilerError> {
         // Parse and analyze
         let ast = Self::analyze_source(source)?;
         
         // Generate IR
-        let mut codegen = CodeGenerator::new(module_name.to_string());
+        let codegen = CodeGenerator::new(module_name.to_string());
         let module = codegen.generate(&ast)?;
+        
+        Ok(module)
+    }
+    
+    /// Compile C99 source code to IR using typed AST (with GEP for pointer arithmetic)
+    pub fn compile_to_ir(source: &str, module_name: &str) -> Result<Module, CompilerError> {
+        // Parse and analyze
+        let ast = Self::analyze_source(source)?;
+        
+        // Convert to typed AST
+        let typed_ast = type_translation_unit(&ast)
+            .map_err(|e| CompilerError::semantic_error(e.to_string(), rcc_common::SourceLocation::new_simple(0, 0)))?;
+        
+        // Generate IR from typed AST
+        let codegen = TypedCodeGenerator::new(module_name.to_string());
+        let module = codegen.generate(&typed_ast)?;
         
         Ok(module)
     }

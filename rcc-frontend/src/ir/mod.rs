@@ -16,7 +16,7 @@
 //! - `builder` - IR construction utilities
 
 // Public exports - clean API surface
-pub use self::types::{IrType, BankTag, FatPointer};
+pub use self::types::{IrType, FatPointer};
 pub use self::values::Value;
 pub use self::ops::{IrBinaryOp, IrUnaryOp};
 pub use self::instructions::Instruction;
