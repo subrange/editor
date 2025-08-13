@@ -120,20 +120,8 @@ pub fn lower_load(
             (addr_reg, ptr_name)
         }
         Value::Global(name) => {
-            trace!("  Loading from global: {}", name);
-            mgr.set_pointer_bank(name.clone(), BankInfo::Global);
-
-            // For globals, we need to load the address
-            // This would typically be resolved by the linker
-            let addr_reg_name = naming.load_global_addr(name);
-            let addr_reg = mgr.get_register(addr_reg_name);
-            insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
-            let label = naming.load_global_label(name);
-            insts.push(AsmInst::Label(label));
-            // The actual address will be filled by the linker
-            insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder
-
-            (addr_reg, name.clone())
+            // This should never happen - globals should be resolved to FatPtr in lower.rs
+            panic!("Unexpected Value::Global('{}') as load source - should have been resolved to FatPtr in lower.rs", name);
         }
         _ => {
             warn!("  Invalid pointer value for load: {:?}", ptr_value);

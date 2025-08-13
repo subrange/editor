@@ -371,10 +371,23 @@ pub fn type_statement(
         StatementKind::Continue => Ok(TypedStmt::Continue),
         StatementKind::Empty => Ok(TypedStmt::Empty),
         
-        StatementKind::DoWhile { .. } => {
-            Err(TypeError::UnsupportedConstruct(
-                "Do-while loops not yet implemented".to_string()
-            ))
+        StatementKind::DoWhile { body, condition } => {
+            // Transform do-while into: { body; while (condition) { body } }
+            // This ensures the body executes at least once
+            let typed_body = type_statement(body, type_env)?;
+            let typed_condition = type_expression(condition, type_env)?;
+            
+            // Create the equivalent structure
+            let while_loop = TypedStmt::While {
+                condition: typed_condition.clone(),
+                body: Box::new(typed_body.clone()),
+            };
+            
+            // Wrap in compound statement: body followed by while loop
+            Ok(TypedStmt::Compound(vec![
+                typed_body,
+                while_loop,
+            ]))
         }
         
         StatementKind::Switch { .. } => {

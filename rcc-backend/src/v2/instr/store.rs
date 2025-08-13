@@ -60,6 +60,10 @@ pub fn lower_store(
             insts.push(AsmInst::Li(temp_reg, *c as i16));
             (temp_reg, false, None)
         }
+        Value::Global(name) => {
+            // This should never be reached - globals should be resolved in lower.rs
+            panic!("Unexpected Value::Global('{}') as store value - should have been resolved in lower.rs", name);
+        }
         Value::FatPtr(fp) => {
             // Store fat pointer - need to handle both components
             trace!("  Storing fat pointer with bank {:?}", fp.bank);
@@ -78,16 +82,8 @@ pub fn lower_store(
                     temp_reg
                 }
                 Value::Global(name) => {
-                    // For global addresses, we need to load the address
-                    trace!("  Storing fat pointer global address: {}", name);
-                    let addr_reg_name = naming.store_global_addr(name);
-                    let addr_reg = mgr.get_register(addr_reg_name);
-                    insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
-                    let label = naming.store_global_label(name);
-                    insts.push(AsmInst::Label(label));
-                    insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder for linker
-                    addr_reg
+                    // This should never happen - globals should be resolved to constants in lower.rs
+                    panic!("Unexpected Value::Global('{}') in FatPtr address - should have been resolved to Constant in lower.rs", name);
                 }
                 _ => panic!("Invalid fat pointer address type: {:?} in STORE", fp.addr),
             };
@@ -196,16 +192,8 @@ pub fn lower_store(
                     temp_reg
                 }
                 Value::Global(name) => {
-                    // For global addresses in FatPtr, load the address
-                    trace!("  Loading global address in FatPtr: {}", name);
-                    let addr_reg_name = naming.store_global_addr(name);
-                    let addr_reg = mgr.get_register(addr_reg_name);
-                    insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
-                    let label = naming.store_global_label(name);
-                    insts.push(AsmInst::Label(label));
-                    insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder for linker
-                    addr_reg
+                    // This should never happen - globals should be resolved to constants in lower.rs
+                    panic!("Unexpected Value::Global('{}') in FatPtr destination address - should have been resolved to Constant in lower.rs", name);
                 }
                 _ => panic!("Invalid fat pointer address type: {:?} in STORE", fp.addr),
             };
@@ -247,19 +235,8 @@ pub fn lower_store(
             (addr_reg, dest_ptr_key)
         }
         Value::Global(name) => {
-            // Global variables are in bank 0
-            trace!("  Storing to global: {}", name);
-            mgr.set_pointer_bank(name.clone(), BankInfo::Global);
-            
-            let addr_reg_name = naming.store_global_addr(name);
-            let addr_reg = mgr.get_register(addr_reg_name);
-            insts.extend(mgr.take_instructions());
-            insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
-            let label = naming.store_global_label(name);
-            insts.push(AsmInst::Label(label));
-            insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder for linker
-            
-            (addr_reg, name.clone())
+            // This should never happen - globals should be resolved to FatPtr in lower.rs
+            panic!("Unexpected Value::Global('{}') as store destination - should have been resolved to FatPtr in lower.rs", name);
         }
         _ => {
             warn!("  Invalid pointer value for store: {:?}", ptr_value);
@@ -331,4 +308,79 @@ pub fn lower_store(
     
     debug!("lower_store complete: generated {} instructions", insts.len());
     insts
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rcc_frontend::ir::{FatPointer};
+    use rcc_frontend::types::BankTag;
+    
+    #[test]
+    #[should_panic(expected = "Unexpected Value::Global('test_global')")]
+    fn test_panic_on_unresolved_global_as_store_value() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Try to store a Global value directly - should panic
+        let value = Value::Global("test_global".to_string());
+        let ptr = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(0)),
+            bank: BankTag::Global,
+        });
+        
+        // This should panic
+        lower_store(&mut mgr, &mut naming, &value, &ptr);
+    }
+    
+    #[test]
+    #[should_panic(expected = "Unexpected Value::Global('test_global') as store destination")]
+    fn test_panic_on_unresolved_global_as_store_destination() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Try to store to a Global directly - should panic
+        let value = Value::Constant(42);
+        let ptr = Value::Global("test_global".to_string());
+        
+        // This should panic
+        lower_store(&mut mgr, &mut naming, &value, &ptr);
+    }
+    
+    #[test]
+    #[should_panic(expected = "Unexpected Value::Global('test_global') in FatPtr address")]
+    fn test_panic_on_unresolved_global_in_fatptr_value() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Try to store a FatPtr with Global in its address - should panic
+        let value = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Global("test_global".to_string())),
+            bank: BankTag::Global,
+        });
+        let ptr = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(0)),
+            bank: BankTag::Global,
+        });
+        
+        // This should panic
+        lower_store(&mut mgr, &mut naming, &value, &ptr);
+    }
+    
+    #[test]
+    #[should_panic(expected = "Unexpected Value::Global('test_global') in FatPtr destination")]
+    fn test_panic_on_unresolved_global_in_fatptr_destination() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Try to store to a FatPtr with Global in its address - should panic
+        let value = Value::Constant(42);
+        let ptr = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Global("test_global".to_string())),
+            bank: BankTag::Global,
+        });
+        
+        // This should panic
+        lower_store(&mut mgr, &mut naming, &value, &ptr);
+    }
 }

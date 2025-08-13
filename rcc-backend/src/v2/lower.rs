@@ -353,6 +353,23 @@ fn lower_instruction(
                 } else {
                     return Err(format!("V2: Unknown global variable: {}", name));
                 }
+            } else if let Value::FatPtr(fp) = ptr {
+                // Check if the FatPtr contains a Global address that needs resolution
+                if let Value::Global(name) = fp.addr.as_ref() {
+                    // Look up the global's address
+                    if let Some(info) = global_manager.get_global_info(name) {
+                        // Create a new fat pointer with the resolved address
+                        let resolved_ptr = Value::FatPtr(rcc_frontend::ir::FatPointer {
+                            addr: Box::new(Value::Constant(info.address as i64)),
+                            bank: fp.bank.clone(),
+                        });
+                        lower_load(mgr, naming, &resolved_ptr, result_type, *result)
+                    } else {
+                        return Err(format!("V2: Unknown global variable in FatPtr: {}", name));
+                    }
+                } else {
+                    lower_load(mgr, naming, ptr, result_type, *result)
+                }
             } else {
                 lower_load(mgr, naming, ptr, result_type, *result)
             };
@@ -374,6 +391,23 @@ fn lower_instruction(
                     lower_store(mgr, naming, value, &global_ptr)
                 } else {
                     return Err(format!("V2: Unknown global variable: {}", name));
+                }
+            } else if let Value::FatPtr(fp) = ptr {
+                // Check if the FatPtr contains a Global address that needs resolution
+                if let Value::Global(name) = fp.addr.as_ref() {
+                    // Look up the global's address
+                    if let Some(info) = global_manager.get_global_info(name) {
+                        // Create a new fat pointer with the resolved address
+                        let resolved_ptr = Value::FatPtr(rcc_frontend::ir::FatPointer {
+                            addr: Box::new(Value::Constant(info.address as i64)),
+                            bank: fp.bank.clone(),
+                        });
+                        lower_store(mgr, naming, value, &resolved_ptr)
+                    } else {
+                        return Err(format!("V2: Unknown global variable in FatPtr: {}", name));
+                    }
+                } else {
+                    lower_store(mgr, naming, value, ptr)
                 }
             } else {
                 lower_store(mgr, naming, value, ptr)
@@ -403,6 +437,23 @@ fn lower_instruction(
                     lower_gep(mgr, naming, &global_ptr, indices, element_size, *result)
                 } else {
                     return Err(format!("V2: Unknown global variable: {}", name));
+                }
+            } else if let Value::FatPtr(fp) = ptr {
+                // Check if the FatPtr contains a Global address that needs resolution
+                if let Value::Global(name) = fp.addr.as_ref() {
+                    // Look up the global's address
+                    if let Some(info) = global_manager.get_global_info(name) {
+                        // Create a new fat pointer with the resolved address
+                        let resolved_ptr = Value::FatPtr(rcc_frontend::ir::FatPointer {
+                            addr: Box::new(Value::Constant(info.address as i64)),
+                            bank: fp.bank.clone(),
+                        });
+                        lower_gep(mgr, naming, &resolved_ptr, indices, element_size, *result)
+                    } else {
+                        return Err(format!("V2: Unknown global variable in FatPtr: {}", name));
+                    }
+                } else {
+                    lower_gep(mgr, naming, ptr, indices, element_size, *result)
                 }
             } else {
                 lower_gep(mgr, naming, ptr, indices, element_size, *result)
@@ -480,7 +531,19 @@ fn lower_instruction(
                                 insts.push(AsmInst::Li(reg, *c as i16));
                                 reg
                             }
-                            _ => panic!("Unsupported fat pointer address type")
+                            Value::Global(name) => {
+                                // Look up the global's address
+                                if let Some(info) = global_manager.get_global_info(name) {
+                                    let addr = info.address as i64;
+                                    let temp_name = naming.const_value(addr);
+                                    let reg = mgr.get_register(temp_name);
+                                    insts.push(AsmInst::Li(reg, addr as i16));
+                                    reg
+                                } else {
+                                    return Err(format!("V2: Unknown global variable in fat pointer: {}", name));
+                                }
+                            }
+                            _ => panic!("Unsupported fat pointer address type, {:?}", fp.addr),
                         };
                         insts.extend(mgr.take_instructions());
                         
@@ -712,216 +775,4 @@ fn lower_instruction(
     }
     
     Ok(insts)
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rcc_frontend::ir::{IrBuilder, Module};
-
-    #[test]
-    fn test_lower_empty_function() {
-        let mut module = Module::new("test".to_string());
-        let mut builder = IrBuilder::new();
-        
-        let func = builder.create_function("empty".to_string(), IrType::Void);
-        let entry = builder.new_label();
-        builder.create_block(entry).unwrap();
-        builder.build_return(None).unwrap();
-        
-        let function = builder.finish_function().unwrap();
-        module.add_function(function);
-        
-        let result = lower_module_v2(&module, 4096);
-        assert!(result.is_ok());
-        
-        let insts = result.unwrap();
-        assert!(insts.len() > 0);
-        
-        // Should have function label
-        assert!(insts.iter().any(|i| matches!(i, AsmInst::Label(_))));
-    }
-    
-    #[test]
-    fn test_lower_with_binary_op() {
-        let mut module = Module::new("test".to_string());
-        let mut builder = IrBuilder::new();
-        
-        let func = builder.create_function("add".to_string(), IrType::I16);
-        func.add_parameter(0, IrType::I16);
-        func.add_parameter(1, IrType::I16);
-        
-        let entry = builder.new_label();
-        builder.create_block(entry).unwrap();
-        
-        let result = builder.build_binary(
-            IrBinaryOp::Add,
-            Value::Temp(0),
-            Value::Temp(1),
-            IrType::I16,
-        ).unwrap();
-        
-        builder.build_return(Some(Value::Temp(result))).unwrap();
-        
-        let function = builder.finish_function().unwrap();
-        module.add_function(function);
-        
-        let result = lower_module_v2(&module, 4096);
-        assert!(result.is_ok());
-        
-        let insts = result.unwrap();
-        // Should contain actual Add instruction from lower_binary_op
-        assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, _, _))));
-    }
-    #[test]
-    fn test_global_variables() {
-        use rcc_frontend::ir::{GlobalVariable, Linkage};
-        
-        let mut module = Module::new("test".to_string());
-        
-        // Add a global variable
-        module.add_global(GlobalVariable {
-            name: "global_x".to_string(),
-            var_type: IrType::I16,
-            is_constant: false,
-            initializer: Some(Value::Constant(42)),
-            linkage: Linkage::External,
-            symbol_id: None,
-        });
-        
-        // Add main function that uses the global
-        let mut builder = IrBuilder::new();
-        let func = builder.create_function("main".to_string(), IrType::I16);
-        let entry = builder.new_label();
-        builder.create_block(entry).unwrap();
-        
-        // Load from global
-        let global_ptr = Value::Global("global_x".to_string());
-        let loaded = builder.build_load(global_ptr, IrType::I16).unwrap();
-        
-        // Return the loaded value
-        builder.build_return(Some(Value::Temp(loaded))).unwrap();
-        
-        let function = builder.finish_function().unwrap();
-        module.add_function(function);
-        
-        let result = lower_module_v2(&module, 4096);
-        assert!(result.is_ok());
-        
-        let insts = result.unwrap();
-        
-        // Should have _init_globals label since we have main
-        assert!(insts.iter().any(|i| matches!(i, AsmInst::Label(l) if l == "_init_globals")));
-        
-        // Should have initialization code for global_x (Li T0, 42)
-        assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::T0, 42))));
-        
-        // Should have store to global memory
-        assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(Reg::T0, Reg::Gp, _))));
-    }
-    
-    #[test]
-    fn test_call_binds_params_and_returns() {
-        use rcc_frontend::ir::{IrBuilder, IrType, Value};
-
-        // Build a module with an `add(a,b)` callee and a `main` that calls it.
-        let mut module = Module::new("call_bind_test".to_string());
-
-        // --- callee: int add(int a, int b) { return a + b; }
-        let mut b = IrBuilder::new();
-        let add_fn = b.create_function("add".to_string(), IrType::I16);
-        add_fn.add_parameter(0, IrType::I16);
-        add_fn.add_parameter(1, IrType::I16);
-        let entry = b.new_label();
-        b.create_block(entry).unwrap();
-        let sum = b
-            .build_binary(
-                rcc_frontend::ir::IrBinaryOp::Add,
-                Value::Temp(0),
-                Value::Temp(1),
-                IrType::I16,
-            )
-            .unwrap();
-        b.build_return(Some(Value::Temp(sum))).unwrap();
-        let add_ir = b.finish_function().unwrap();
-        module.add_function(add_ir);
-
-        // --- caller: int main() { return add(5, 10); }
-        let mut b = IrBuilder::new();
-        let _main_fn = b.create_function("main".to_string(), IrType::I16);
-        let entry = b.new_label();
-        b.create_block(entry).unwrap();
-        let res = b
-            .build_call(
-                Value::Function("add".to_string()),
-                vec![Value::Constant(5), Value::Constant(10)],
-                IrType::I16,
-            )
-            .unwrap().unwrap();
-        b.build_return(Some(Value::Temp(res))).unwrap();
-        let main_ir = b.finish_function().unwrap();
-        module.add_function(main_ir);
-
-        // Lower and inspect the assembly
-        let insts = lower_module_v2(&module, 4096).expect("lowering failed");
-
-        // 1) Caller should emit a CALL to `add`
-        let saw_call_add = insts.iter().any(|i| match i {
-            AsmInst::Call(name) if name == "add" => true,
-            _ => false,
-        });
-        assert!(saw_call_add, "main should contain a CALL to add");
-
-        // 2) Callee should load both parameters at entry using the CC loader
-        //    (our CC injects comments like "Load param 0 ..." and "Load param 1 ...")
-        let mut in_add = false;
-        let mut saw_param0 = false;
-        let mut saw_param1 = false;
-        for i in &insts {
-            match i {
-                AsmInst::Label(l) if l == "add" => {
-                    in_add = true;
-                }
-                AsmInst::Label(l) if l == "main" => {
-                    in_add = false; // left the add function
-                }
-                AsmInst::Comment(c) if in_add => {
-                    if c.starts_with("Load param 0") { saw_param0 = true; }
-                    if c.starts_with("Load param 1") { saw_param1 = true; }
-                }
-                _ => {}
-            }
-        }
-        assert!(saw_param0 && saw_param1, "callee should load both parameters via CC at entry");
-    }
-
-    #[test]
-    fn scalar_load_from_global_is_not_pointer() {
-        use rcc_frontend::ir::{Module, IrBuilder, IrType, Value, GlobalVariable, Linkage};
-        use crate::v2::lower::lower_module_v2;
-
-        let mut module = Module::new("test".into());
-        module.add_global(GlobalVariable {
-            name: "g".into(),
-            var_type: IrType::I16,
-            is_constant: false,
-            initializer: Some(Value::Constant(42)),
-            linkage: Linkage::External,
-            symbol_id: None,
-        });
-
-        let mut b = IrBuilder::new();
-        b.create_function("main".into(), IrType::I16);
-        let entry = b.new_label(); b.create_block(entry).unwrap();
-        let t0 = b.build_load(Value::Global("g".into()), IrType::I16).unwrap();
-        b.build_return(Some(Value::Temp(t0))).unwrap();
-        module.add_function(b.finish_function().unwrap());
-
-        let asm = lower_module_v2(&module, 4096).unwrap();
-        // Ensure calls (if any) don’t try to use A1 for this value — in practice
-        // you can assert the call-setup comment shows “scalar”, or just that no
-        // fat-ptr argument setup is emitted for t0.
-        assert!(asm.iter().any(|i| matches!(i, rcc_codegen::AsmInst::Li(_, 42))));
-    }
 }

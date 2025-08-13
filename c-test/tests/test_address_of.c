@@ -1,6 +1,7 @@
 // Test address-of and dereference operators
 
 void putchar(int c);
+int puts(char* c);
 
 int main() {
     int x = 42;
@@ -17,6 +18,8 @@ int main() {
         putchar('O');
         putchar('K');
         putchar('\n');
+    } else {
+        puts("Failed to modify x through pointer");
     }
     
     return 0;

@@ -40,8 +40,8 @@ pub fn get_value_register(
             mgr.get_value_register(value)
         }
         Value::Global(name) => {
-            let global_name = naming.load_global_addr(name);
-            mgr.get_register(global_name)
+            // This should never happen - globals should be resolved in lower.rs
+            panic!("Unexpected Value::Global('{}') - should have been resolved to FatPtr in lower.rs", name);
         }
         Value::Function(name) => {
             // Function addresses are like globals
@@ -74,7 +74,7 @@ pub fn calculate_value_need(value: &Value) -> usize {
     match value {
         Value::Constant(_) => 1,    // Need to load into register
         Value::Temp(_) => 1,         // Temps need a register
-        Value::Global(_) => 1,       // Need to load address
+        Value::Global(_) => panic!("Value::Global should be resolved in lower.rs"),
         Value::FatPtr(_) => 2,       // Fat pointers need 2 registers (addr + bank)
         Value::Function(_) => 1,     // Function addresses need a register
         Value::Undef => 0,           // Undefined values don't need registers
