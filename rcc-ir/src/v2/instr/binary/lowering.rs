@@ -108,13 +108,19 @@ pub fn lower_binary_op(
         );
         insts.extend(comp_insts);
         
-        // Free registers and return early (comparisons handle their own cleanup)
+        // Ensure the result is properly bound to the result temp
+        // This is critical so future references to this temp get the right register
+        mgr.bind_value_to_register(result_name.clone(), result_reg);
+        
+        // Free only the operand registers that aren't being used for the result
         if result_reg != lhs_reg {
             mgr.free_register(lhs_reg);
         }
         if result_reg != rhs_reg {
             mgr.free_register(rhs_reg);
         }
+        
+        // Do NOT free result_reg - it contains our comparison result
         
         debug!("lower_binary_op complete: generated {} instructions", insts.len());
         return insts;
@@ -127,6 +133,9 @@ pub fn lower_binary_op(
     } else {
         panic!("Unexpected operation type: {:?}", op);
     }
+    
+    // Ensure the result is properly bound to the result temp
+    mgr.bind_value_to_register(result_name, result_reg);
     
     // Step 6: Free registers that are no longer needed
     if result_reg != lhs_reg {

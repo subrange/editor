@@ -159,19 +159,19 @@ impl NameGenerator {
     
     /// Generate a label for a basic block within a function
     pub fn block_label(&self, function_name: &str, block_id: rcc_common::LabelId) -> String {
-        format!(".L_{}_{}", function_name, block_id)
+        format!("L_{}_{}", function_name, block_id)
     }
     
     /// Generate a label for the true branch of a select instruction
     pub fn select_true_label(&mut self, result_temp: TempId) -> String {
         let label_id = self.next_label_id();
-        format!(".L_select_true_f{}_l{}_t{}", self.function_id, label_id, result_temp)
+        format!("L_select_true_f{}_l{}_t{}", self.function_id, label_id, result_temp)
     }
     
     /// Generate a label for the end of a select instruction
     pub fn select_end_label(&mut self, result_temp: TempId) -> String {
         let label_id = self.next_label_id();
-        format!(".L_select_end_f{}_l{}_t{}", self.function_id, label_id, result_temp)
+        format!("L_select_end_f{}_l{}_t{}", self.function_id, label_id, result_temp)
     }
     
     // ===== GEP operation naming (future) =====

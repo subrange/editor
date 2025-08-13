@@ -148,7 +148,7 @@ impl TuiDebugger {
                 spans.push(Span::raw(", "));
                 
                 // Bank operand (could be register or immediate)
-                if instr.word2 < 18 {
+                if instr.word2 < 32 {
                     spans.push(Span::styled(Self::register_name(instr.word2 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 } else {
                     spans.push(Span::styled(format!("0x{:X}", instr.word2), Style::default().fg(Color::Rgb(255, 140, 0))));
@@ -156,7 +156,7 @@ impl TuiDebugger {
                 spans.push(Span::raw(", "));
                 
                 // Address operand (could be register or immediate)
-                if instr.word3 < 18 {
+                if instr.word3 < 32 {
                     spans.push(Span::styled(Self::register_name(instr.word3 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 } else {
                     spans.push(Span::styled(format!("0x{:X}", instr.word3), Style::default().fg(Color::Rgb(255, 140, 0))));
@@ -298,12 +298,11 @@ impl TuiDebugger {
     }
 
     fn format_operand(value: u16) -> String {
-        if value < 18 {
+        // Check if this is a valid register (0-31)
+        if value < 32 {
             Self::register_name(value as u8).to_string()
-        } else if value > 9 {
-            format!("0x{:X}", value)
         } else {
-            format!("{}", value)
+            format!("0x{:X}", value)
         }
     }
 }

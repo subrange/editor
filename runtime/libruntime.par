@@ -7,10 +7,220 @@
         "version": 1,
         "instructions": [
           {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 28,
+            "word2": 1,
+            "word3": 0
+          },
+          {
             "opcode": 18,
             "word0": 18,
-            "word1": 5,
+            "word1": 3,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 30,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 23,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 30,
+            "word2": 29,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 8
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 7,
             "word2": 0,
+            "word3": 0
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 29,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65534
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 25,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65533
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 24,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65532
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65531
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 30,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 3,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 2,
+            "word2": 4,
             "word3": 0
           },
           {
@@ -23,6 +233,12 @@
         ],
         "data": [],
         "labels": {
+          "L_putchar_99999": {
+            "name": "L_putchar_99999",
+            "bank": 0,
+            "offset": 68,
+            "absolute_address": 68
+          },
           "putchar": {
             "name": "putchar",
             "bank": 0,
@@ -41,6 +257,13 @@
         "version": 1,
         "instructions": [
           {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 28,
+            "word2": 1,
+            "word3": 0
+          },
+          {
             "opcode": 18,
             "word0": 18,
             "word1": 3,
@@ -69,6 +292,62 @@
             "word3": 1
           },
           {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 23,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
             "opcode": 1,
             "word0": 1,
             "word1": 30,
@@ -80,413 +359,413 @@
             "word0": 10,
             "word1": 29,
             "word2": 29,
-            "word3": 22
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 7,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 8,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 9,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 9,
-            "word3": 8
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 10,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 11,
-            "word2": 0,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 12,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 13,
-            "word2": 12,
-            "word3": 1
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 11,
-            "word2": 9,
-            "word3": 13
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 7,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 8,
-            "word2": 0,
-            "word3": 0
-          },
-          {
-            "opcode": 9,
-            "word0": 9,
-            "word1": 10,
-            "word2": 7,
-            "word3": 8
-          },
-          {
-            "opcode": 9,
-            "word0": 9,
-            "word1": 9,
-            "word2": 8,
-            "word3": 7
-          },
-          {
-            "opcode": 4,
-            "word0": 4,
-            "word1": 7,
-            "word2": 10,
-            "word3": 9
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 9,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 2,
-            "word0": 2,
-            "word1": 7,
-            "word2": 9,
-            "word3": 7
-          },
-          {
-            "opcode": 22,
-            "word0": 22,
-            "word1": 7,
-            "word2": 0,
-            "word3": 2
-          },
-          {
-            "opcode": 21,
-            "word0": 21,
-            "word1": 0,
-            "word2": 0,
-            "word3": 12
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 7,
-            "word2": 0,
-            "word3": 0
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 8,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 2,
-            "word0": 2,
-            "word1": 7,
-            "word2": 7,
-            "word3": 8
-          },
-          {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 5,
-            "word2": 7,
-            "word3": 0
-          },
-          {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 29,
-            "word2": 30,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 29,
-            "word2": 29,
-            "word3": 65535
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 30,
-            "word2": 28,
-            "word3": 29
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 29,
-            "word2": 29,
-            "word3": 65535
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 3,
-            "word2": 28,
-            "word3": 29
-          },
-          {
-            "opcode": 20,
-            "word0": 20,
-            "word1": 0,
-            "word2": 0,
-            "word3": 3
-          },
-          {
-            "opcode": 21,
-            "word0": 21,
-            "word1": 0,
-            "word2": 0,
-            "word3": 1
-          },
-          {
-            "opcode": 21,
-            "word0": 21,
-            "word1": 0,
-            "word2": 0,
-            "word3": 1
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 7,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 8,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 9,
-            "word2": 8,
-            "word3": 7
-          },
-          {
-            "opcode": 22,
-            "word0": 22,
-            "word1": 9,
-            "word2": 0,
-            "word3": 2
-          },
-          {
-            "opcode": 21,
-            "word0": 21,
-            "word1": 0,
-            "word2": 0,
-            "word3": 22
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 7,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 8,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 9,
-            "word2": 8,
-            "word3": 7
-          },
-          {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 5,
-            "word2": 9,
-            "word3": 0
-          },
-          {
-            "opcode": 19,
-            "word0": 19,
-            "word1": 3,
-            "word2": 0,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 9,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 8,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 7,
-            "word2": 9,
-            "word3": 8
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 10,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 11,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 7,
-            "word2": 11,
             "word3": 10
           },
           {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65534
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 26,
+            "word2": 29,
+            "word3": 0
+          },
+          {
             "opcode": 14,
             "word0": 14,
-            "word1": 12,
+            "word1": 24,
             "word2": 1,
             "word3": 0
           },
           {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 26
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 23,
+            "word2": 26,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 23
+          },
+          {
             "opcode": 14,
             "word0": 14,
-            "word1": 13,
+            "word1": 22,
             "word2": 0,
             "word3": 0
           },
           {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 3
+            "opcode": 5,
+            "word0": 5,
+            "word1": 21,
+            "word2": 26,
+            "word3": 22
           },
           {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
+            "opcode": 14,
+            "word0": 14,
+            "word1": 20,
+            "word2": 1,
+            "word3": 0
           },
           {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 5,
-            "word2": 30,
-            "word3": 1
+            "opcode": 9,
+            "word0": 9,
+            "word1": 26,
+            "word2": 21,
+            "word3": 20
           },
           {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 4
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 6,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 6,
-            "word2": 5,
-            "word3": 1
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 13,
-            "word2": 11,
-            "word3": 6
+            "opcode": 21,
+            "word0": 21,
+            "word1": 26,
+            "word2": 0,
+            "word3": 8
           },
           {
             "opcode": 21,
             "word0": 21,
             "word1": 0,
             "word2": 0,
-            "word3": 65511
+            "word3": 1
           },
           {
             "opcode": 14,
             "word0": 14,
+            "word1": 19,
+            "word2": 0,
+            "word3": 0
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 18,
+            "word2": 1,
+            "word3": 0
+          },
+          {
+            "opcode": 2,
+            "word0": 2,
+            "word1": 19,
+            "word2": 19,
+            "word3": 18
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 5,
+            "word2": 19,
+            "word3": 0
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 46
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 16,
+            "word2": 28,
+            "word3": 17
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 16,
+            "word2": 0,
+            "word3": 29
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 15,
+            "word2": 28,
+            "word3": 17
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
             "word1": 7,
+            "word2": 15,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 8,
+            "word2": 28,
+            "word3": 0
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 28,
+            "word2": 1,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 16
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 19,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 17
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 17,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 18
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 15,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 30,
+            "word3": 19
+          },
+          {
+            "opcode": 19,
+            "word0": 19,
+            "word1": 3,
+            "word2": 0,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 17
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 24,
+            "word2": 23,
+            "word3": 1
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 25,
+            "word2": 1,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 17
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 21,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 21
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 20,
+            "word2": 21,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 20
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 65507
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 22,
             "word2": 10,
             "word3": 0
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 5,
-            "word2": 7,
+            "word1": 7,
+            "word2": 22,
             "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 17
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 21,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 19
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 22,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 30,
+            "word3": 20
           },
           {
             "opcode": 19,
@@ -498,58 +777,23 @@
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 7,
+            "word1": 5,
             "word2": 0,
             "word3": 0
           },
           {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 5,
-            "word2": 7,
-            "word3": 0
-          },
-          {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 29,
-            "word2": 30,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 29,
-            "word2": 29,
-            "word3": 65535
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 30,
-            "word2": 28,
-            "word3": 29
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 29,
-            "word2": 29,
-            "word3": 65535
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 3,
-            "word2": 28,
-            "word3": 29
-          },
-          {
-            "opcode": 20,
-            "word0": 20,
+            "opcode": 21,
+            "word0": 21,
             "word1": 0,
             "word2": 0,
-            "word3": 3
+            "word3": 2
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
           },
           {
             "opcode": 1,
@@ -561,9 +805,65 @@
           {
             "opcode": 10,
             "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65534
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 25,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65533
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 24,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65532
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
             "word1": 29,
             "word2": 29,
-            "word3": 65535
+            "word3": 65531
           },
           {
             "opcode": 17,
@@ -585,6 +885,13 @@
             "word1": 3,
             "word2": 28,
             "word3": 29
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 2,
+            "word2": 4,
+            "word3": 0
           },
           {
             "opcode": 20,
@@ -596,23 +903,17 @@
         ],
         "data": [],
         "labels": {
-          "puts_L4": {
-            "name": "puts_L4",
+          "L_puts_5": {
+            "name": "L_puts_5",
             "bank": 0,
             "offset": 136,
             "absolute_address": 136
           },
-          "puts_L1": {
-            "name": "puts_L1",
+          "L_puts_3": {
+            "name": "L_puts_3",
             "bank": 0,
-            "offset": 96,
-            "absolute_address": 96
-          },
-          "puts_L3": {
-            "name": "puts_L3",
-            "bank": 0,
-            "offset": 140,
-            "absolute_address": 140
+            "offset": 132,
+            "absolute_address": 132
           },
           "puts": {
             "name": "puts",
@@ -620,38 +921,50 @@
             "offset": 0,
             "absolute_address": 0
           },
-          "puts_L5": {
-            "name": "puts_L5",
+          "L_puts_8": {
+            "name": "L_puts_8",
             "bank": 0,
-            "offset": 144,
-            "absolute_address": 144
+            "offset": 304,
+            "absolute_address": 304
           },
-          "puts_L8": {
-            "name": "puts_L8",
+          "L_puts_6": {
+            "name": "L_puts_6",
             "bank": 0,
-            "offset": 292,
-            "absolute_address": 292
+            "offset": 148,
+            "absolute_address": 148
           },
-          "puts_L7": {
-            "name": "puts_L7",
+          "L_puts_99999": {
+            "name": "L_puts_99999",
             "bank": 0,
-            "offset": 248,
-            "absolute_address": 248
+            "offset": 308,
+            "absolute_address": 308
           },
-          "puts_L6": {
-            "name": "puts_L6",
+          "L_puts_1": {
+            "name": "L_puts_1",
             "bank": 0,
-            "offset": 164,
-            "absolute_address": 164
+            "offset": 108,
+            "absolute_address": 108
+          },
+          "L_puts_7": {
+            "name": "L_puts_7",
+            "bank": 0,
+            "offset": 256,
+            "absolute_address": 256
+          },
+          "L_puts_4": {
+            "name": "L_puts_4",
+            "bank": 0,
+            "offset": 128,
+            "absolute_address": 128
           }
         },
         "data_labels": {},
         "unresolved_references": {
-          "64": {
+          "51": {
             "label": "putchar",
             "ref_type": "absolute"
           },
-          "45": {
+          "73": {
             "label": "putchar",
             "ref_type": "absolute"
           }
@@ -665,6 +978,13 @@
         "version": 1,
         "instructions": [
           {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 28,
+            "word2": 1,
+            "word3": 0
+          },
+          {
             "opcode": 18,
             "word0": 18,
             "word1": 3,
@@ -693,6 +1013,62 @@
             "word3": 1
           },
           {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 23,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
             "opcode": 1,
             "word0": 1,
             "word1": 30,
@@ -704,42 +1080,35 @@
             "word0": 10,
             "word1": 29,
             "word2": 29,
-            "word3": 21
+            "word3": 9
           },
           {
             "opcode": 10,
             "word0": 10,
-            "word1": 9,
-            "word2": 30,
-            "word3": 1
+            "word1": 29,
+            "word2": 29,
+            "word3": 65535
           },
           {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 10,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 11,
-            "word2": 1,
+            "opcode": 1,
+            "word0": 1,
+            "word1": 26,
+            "word2": 29,
             "word3": 0
           },
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 12,
+            "word1": 25,
             "word2": 0,
             "word3": 0
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 12,
-            "word2": 11,
-            "word3": 10
+            "word1": 25,
+            "word2": 28,
+            "word3": 26
           },
           {
             "opcode": 21,
@@ -747,90 +1116,97 @@
             "word1": 0,
             "word2": 0,
             "word3": 1
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 9,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 10,
-            "word2": 1,
-            "word3": 0
           },
           {
             "opcode": 17,
             "word0": 17,
-            "word1": 11,
-            "word2": 10,
-            "word3": 9
+            "word1": 24,
+            "word2": 28,
+            "word3": 26
           },
           {
-            "opcode": 9,
-            "word0": 9,
-            "word1": 11,
-            "word2": 11,
-            "word3": 8
-          },
-          {
-            "opcode": 22,
-            "word0": 22,
-            "word1": 11,
-            "word2": 0,
-            "word3": 2
+            "opcode": 8,
+            "word0": 8,
+            "word1": 24,
+            "word2": 24,
+            "word3": 23
           },
           {
             "opcode": 21,
             "word0": 21,
-            "word1": 0,
+            "word1": 24,
             "word2": 0,
             "word3": 17
           },
           {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 9,
-            "word2": 30,
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
             "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 10,
-            "word2": 1,
-            "word3": 0
           },
           {
             "opcode": 17,
             "word0": 17,
-            "word1": 11,
-            "word2": 10,
-            "word3": 9
+            "word1": 22,
+            "word2": 28,
+            "word3": 26
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 12,
-            "word2": 5,
-            "word3": 11
+            "word1": 19,
+            "word2": 22,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 20,
+            "word2": 21,
+            "word3": 19
           },
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 13,
-            "word2": 1,
+            "word1": 17,
+            "word2": 4096,
+            "word3": 0
+          },
+          {
+            "opcode": 27,
+            "word0": 27,
+            "word1": 18,
+            "word2": 20,
+            "word3": 17
+          },
+          {
+            "opcode": 28,
+            "word0": 28,
+            "word1": 16,
+            "word2": 20,
+            "word3": 17
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 15,
+            "word2": 28,
+            "word3": 18
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 20,
+            "word2": 16,
             "word3": 0
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 7,
-            "word2": 13,
-            "word3": 12
+            "word1": 25,
+            "word2": 28,
+            "word3": 20
           },
           {
             "opcode": 21,
@@ -840,67 +1216,46 @@
             "word3": 1
           },
           {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 9,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 10,
-            "word2": 1,
-            "word3": 0
-          },
-          {
             "opcode": 17,
             "word0": 17,
-            "word1": 11,
-            "word2": 10,
-            "word3": 9
+            "word1": 23,
+            "word2": 28,
+            "word3": 26
           },
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 12,
+            "word1": 24,
             "word2": 1,
             "word3": 0
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 11,
-            "word2": 11,
-            "word3": 12
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 12,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 13,
-            "word2": 1,
-            "word3": 0
+            "word1": 23,
+            "word2": 23,
+            "word3": 24
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 11,
-            "word2": 13,
-            "word3": 12
+            "word1": 23,
+            "word2": 28,
+            "word3": 26
           },
           {
             "opcode": 21,
             "word0": 21,
             "word1": 0,
             "word2": 0,
-            "word3": 65515
+            "word3": 65518
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
           },
           {
             "opcode": 1,
@@ -908,13 +1263,69 @@
             "word1": 29,
             "word2": 30,
             "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65534
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 25,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65533
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 24,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65532
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 27
           },
           {
             "opcode": 10,
             "word0": 10,
             "word1": 29,
             "word2": 29,
-            "word3": 65535
+            "word3": 65531
           },
           {
             "opcode": 17,
@@ -936,6 +1347,13 @@
             "word1": 3,
             "word2": 28,
             "word3": 29
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 2,
+            "word2": 4,
+            "word3": 0
           },
           {
             "opcode": 20,
@@ -947,8 +1365,26 @@
         ],
         "data": [],
         "labels": {
-          "memset_L4": {
-            "name": "memset_L4",
+          "L_memset_4": {
+            "name": "L_memset_4",
+            "bank": 0,
+            "offset": 156,
+            "absolute_address": 156
+          },
+          "L_memset_1": {
+            "name": "L_memset_1",
+            "bank": 0,
+            "offset": 80,
+            "absolute_address": 80
+          },
+          "L_memset_99999": {
+            "name": "L_memset_99999",
+            "bank": 0,
+            "offset": 160,
+            "absolute_address": 160
+          },
+          "L_memset_3": {
+            "name": "L_memset_3",
             "bank": 0,
             "offset": 136,
             "absolute_address": 136
@@ -959,23 +1395,11 @@
             "offset": 0,
             "absolute_address": 0
           },
-          "memset_L2": {
-            "name": "memset_L2",
+          "L_memset_2": {
+            "name": "L_memset_2",
             "bank": 0,
-            "offset": 72,
-            "absolute_address": 72
-          },
-          "memset_L3": {
-            "name": "memset_L3",
-            "bank": 0,
-            "offset": 100,
-            "absolute_address": 100
-          },
-          "memset_L1": {
-            "name": "memset_L1",
-            "bank": 0,
-            "offset": 48,
-            "absolute_address": 48
+            "offset": 96,
+            "absolute_address": 96
           }
         },
         "data_labels": {},
@@ -989,6 +1413,13 @@
         "version": 1,
         "instructions": [
           {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 28,
+            "word2": 1,
+            "word3": 0
+          },
+          {
             "opcode": 18,
             "word0": 18,
             "word1": 3,
@@ -1017,6 +1448,62 @@
             "word3": 1
           },
           {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 23,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
             "opcode": 1,
             "word0": 1,
             "word1": 30,
@@ -1028,371 +1515,35 @@
             "word0": 10,
             "word1": 29,
             "word2": 29,
-            "word3": 21
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 11,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 12,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 13,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 2
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 5,
-            "word2": 0,
-            "word3": 0
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 13,
-            "word3": 12
-          },
-          {
-            "opcode": 21,
-            "word0": 21,
-            "word1": 0,
-            "word2": 0,
-            "word3": 1
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 11,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 12,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 13,
-            "word2": 12,
-            "word3": 11
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 3
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 9,
-            "word0": 9,
-            "word1": 13,
-            "word2": 13,
-            "word3": 5
-          },
-          {
-            "opcode": 22,
-            "word0": 22,
-            "word1": 13,
-            "word2": 0,
-            "word3": 2
-          },
-          {
-            "opcode": 21,
-            "word0": 21,
-            "word1": 0,
-            "word2": 0,
-            "word3": 53
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 11,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 12,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 13,
-            "word2": 12,
-            "word3": 11
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 4
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 5,
-            "word2": 8,
-            "word3": 13
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 5
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 6,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 6,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 6
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 7,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 7,
-            "word2": 6,
-            "word3": 5
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 7
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 5,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 8
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 6,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 6,
-            "word2": 1,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
             "word3": 9
           },
           {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 7,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 7,
-            "word2": 6,
-            "word3": 5
-          },
-          {
             "opcode": 10,
             "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 10
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 2
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 11
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 6,
-            "word2": 28,
-            "word3": 27
+            "word1": 29,
+            "word2": 29,
+            "word3": 65535
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 6,
-            "word2": 5,
-            "word3": 7
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 12
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
+            "word1": 26,
+            "word2": 29,
+            "word3": 0
           },
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 5,
-            "word2": 1,
+            "word1": 25,
+            "word2": 0,
             "word3": 0
           },
           {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 13
-          },
-          {
             "opcode": 18,
             "word0": 18,
-            "word1": 7,
+            "word1": 25,
             "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 9
-          },
-          {
-            "opcode": 17,
-            "word0": 17,
-            "word1": 7,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 7,
-            "word2": 5,
-            "word3": 6
+            "word3": 26
           },
           {
             "opcode": 21,
@@ -1402,109 +1553,235 @@
             "word3": 1
           },
           {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 11,
-            "word2": 30,
+            "opcode": 17,
+            "word0": 17,
+            "word1": 24,
+            "word2": 28,
+            "word3": 26
+          },
+          {
+            "opcode": 8,
+            "word0": 8,
+            "word1": 24,
+            "word2": 24,
+            "word3": 23
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 24,
+            "word2": 0,
+            "word3": 30
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
             "word3": 1
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 22,
+            "word2": 28,
+            "word3": 26
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 19,
+            "word2": 22,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 20,
+            "word2": 21,
+            "word3": 19
           },
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 12,
-            "word2": 1,
+            "word1": 17,
+            "word2": 4096,
+            "word3": 0
+          },
+          {
+            "opcode": 27,
+            "word0": 27,
+            "word1": 18,
+            "word2": 20,
+            "word3": 17
+          },
+          {
+            "opcode": 28,
+            "word0": 28,
+            "word1": 16,
+            "word2": 20,
+            "word3": 17
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 15,
+            "word2": 28,
+            "word3": 18
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 20,
+            "word2": 16,
             "word3": 0
           },
           {
             "opcode": 17,
             "word0": 17,
-            "word1": 13,
-            "word2": 12,
-            "word3": 11
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
-            "word3": 14
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
+            "word1": 25,
             "word2": 28,
-            "word3": 27
+            "word3": 20
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 26
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 18,
+            "word2": 23,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 19,
+            "word2": 24,
+            "word3": 18
           },
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 5,
+            "word1": 16,
+            "word2": 4096,
+            "word3": 0
+          },
+          {
+            "opcode": 27,
+            "word0": 27,
+            "word1": 17,
+            "word2": 19,
+            "word3": 16
+          },
+          {
+            "opcode": 28,
+            "word0": 28,
+            "word1": 21,
+            "word2": 19,
+            "word3": 16
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 28,
             "word2": 1,
             "word3": 0
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 13,
-            "word2": 13,
-            "word3": 5
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
           },
           {
             "opcode": 10,
             "word0": 10,
             "word1": 27,
-            "word2": 30,
-            "word3": 15
-          },
-          {
-            "opcode": 18,
-            "word0": 18,
-            "word1": 5,
-            "word2": 28,
-            "word3": 27
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 5,
-            "word2": 30,
-            "word3": 1
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 27,
-            "word2": 30,
+            "word2": 27,
             "word3": 16
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 6,
+            "word1": 22,
             "word2": 28,
             "word3": 27
           },
           {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 6,
-            "word2": 1,
+            "opcode": 1,
+            "word0": 1,
+            "word1": 22,
+            "word2": 28,
+            "word3": 17
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 19,
+            "word2": 21,
             "word3": 0
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 13,
-            "word2": 6,
-            "word3": 5
+            "word1": 25,
+            "word2": 28,
+            "word3": 19
           },
           {
             "opcode": 21,
             "word0": 21,
             "word1": 0,
             "word2": 0,
-            "word3": 65477
+            "word3": 1
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 18,
+            "word2": 28,
+            "word3": 26
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 17,
+            "word2": 1,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 18,
+            "word2": 18,
+            "word3": 17
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 18,
+            "word2": 28,
+            "word3": 26
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 65505
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
           },
           {
             "opcode": 1,
@@ -1516,9 +1793,65 @@
           {
             "opcode": 10,
             "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65534
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 25,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65533
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 24,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65532
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
             "word1": 29,
             "word2": 29,
-            "word3": 65535
+            "word3": 65531
           },
           {
             "opcode": 17,
@@ -1540,6 +1873,13 @@
             "word1": 3,
             "word2": 28,
             "word3": 29
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 2,
+            "word2": 4,
+            "word3": 0
           },
           {
             "opcode": 20,
@@ -1551,23 +1891,11 @@
         ],
         "data": [],
         "labels": {
-          "memcpy_L2": {
-            "name": "memcpy_L2",
+          "L_memcpy_99999": {
+            "name": "L_memcpy_99999",
             "bank": 0,
-            "offset": 88,
-            "absolute_address": 88
-          },
-          "memcpy_L4": {
-            "name": "memcpy_L4",
-            "bank": 0,
-            "offset": 296,
-            "absolute_address": 296
-          },
-          "memcpy_L1": {
-            "name": "memcpy_L1",
-            "bank": 0,
-            "offset": 56,
-            "absolute_address": 56
+            "offset": 212,
+            "absolute_address": 212
           },
           "memcpy": {
             "name": "memcpy",
@@ -1575,11 +1903,29 @@
             "offset": 0,
             "absolute_address": 0
           },
-          "memcpy_L3": {
-            "name": "memcpy_L3",
+          "L_memcpy_1": {
+            "name": "L_memcpy_1",
             "bank": 0,
-            "offset": 236,
-            "absolute_address": 236
+            "offset": 80,
+            "absolute_address": 80
+          },
+          "L_memcpy_2": {
+            "name": "L_memcpy_2",
+            "bank": 0,
+            "offset": 96,
+            "absolute_address": 96
+          },
+          "L_memcpy_3": {
+            "name": "L_memcpy_3",
+            "bank": 0,
+            "offset": 188,
+            "absolute_address": 188
+          },
+          "L_memcpy_4": {
+            "name": "L_memcpy_4",
+            "bank": 0,
+            "offset": 208,
+            "absolute_address": 208
           }
         },
         "data_labels": {},

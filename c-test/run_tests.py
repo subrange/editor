@@ -512,9 +512,9 @@ def main():
     
     # Skip known failures section if running single test
     if single_test:
-        if not no_cleanup:
-            num_cleaned = cleanup_files()
-            print(f"\nCleaned up {num_cleaned} generated files")
+        # if not no_cleanup:
+        #     num_cleaned = cleanup_files()
+        #     print(f"\nCleaned up {num_cleaned} generated files")
         
         return 0 if passed == 1 else 1
     
@@ -582,12 +582,12 @@ def main():
         exit_code = 1
     
     # Clean up generated files unless --no-cleanup was specified
-    if not no_cleanup:
-        print("\nCleaning up generated files...")
-        num_cleaned = cleanup_files()
-        print(f"Removed {num_cleaned} files\n")
-    else:
-        print("\nSkipping cleanup (--no-cleanup specified)")
+    # if not no_cleanup:
+    #     print("\nCleaning up generated files...")
+    #     num_cleaned = cleanup_files()
+    #     print(f"Removed {num_cleaned} files\n")
+    # else:
+    #     print("\nSkipping cleanup (--no-cleanup specified)")
     
     return exit_code
 

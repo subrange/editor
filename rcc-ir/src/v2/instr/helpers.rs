@@ -6,7 +6,7 @@
 use crate::ir::Value;
 use crate::v2::regmgmt::RegisterPressureManager;
 use crate::v2::naming::NameGenerator;
-use rcc_codegen::Reg;
+use rcc_codegen::{Reg, AsmInst};
 
 /// Get register for a value
 /// 
@@ -35,11 +35,9 @@ pub fn get_value_register(
             mgr.get_register(name)
         }
         Value::Constant(val) => {
-            // Create a unique name for this constant load
-            let name = naming.const_value(*val);
-            let reg = mgr.get_register(name);
-            // The RegisterPressureManager will emit LI instruction if needed
-            reg
+            // Use the RegisterPressureManager's get_value_register which handles constants properly
+            // This will emit the LI instruction internally
+            mgr.get_value_register(value)
         }
         Value::Global(name) => {
             let global_name = naming.load_global_addr(name);

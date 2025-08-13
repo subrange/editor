@@ -236,28 +236,11 @@ impl Debugger {
         }
     }
     
-    fn register_name(reg: u8) -> &'static str {
-        match reg {
-            0 => "R0",
-            1 => "PC",
-            2 => "PCB",
-            3 => "RA",
-            4 => "RAB",
-            5 => "R3",
-            6 => "R4",
-            7 => "R5",
-            8 => "R6",
-            9 => "R7",
-            10 => "R8",
-            11 => "R9",
-            12 => "R10",
-            13 => "R11",
-            14 => "R12",
-            15 => "R13",
-            16 => "R14",
-            17 => "R15",
-            _ => "??",
-        }
+    fn register_name(reg: u8) -> String {
+        let name = Register::from_u8(reg)
+            .map(|r| r.to_string());
+
+        name.unwrap_or("??".to_string())
     }
     
     fn format_operand(value: u16) -> String {

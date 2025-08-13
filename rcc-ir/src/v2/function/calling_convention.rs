@@ -185,7 +185,7 @@ impl CallingConvention {
             trace!("  Generated {} spill instructions", spill_insts.len());
         }
         insts.extend(spill_insts);
-        
+
         // Add comment about stack adjustment
         if stack_offset > 0 {
             insts.push(AsmInst::Comment(format!("Pushed {stack_offset} words to stack")));
@@ -295,10 +295,20 @@ impl CallingConvention {
         let mut insts = Vec::new();
         
         // Calculate stack words needed for cleanup
-        let stack_words = args.iter().map(|arg| match arg {
-            CallArg::Scalar(_) => 1,
-            CallArg::FatPointer { .. } => 2,
-        }).sum::<i16>();
+        // Only count arguments that will be pushed to stack, not register arguments
+        let (register_arg_slots, _) = self.analyze_arg_placement(&args);
+        let mut stack_words = 0i16;
+        for (idx, arg) in args.iter().enumerate() {
+            // Skip arguments that go in registers
+            if register_arg_slots.iter().any(|(i, _)| *i == idx) {
+                continue;
+            }
+            // Count stack words for this argument
+            stack_words += match arg {
+                CallArg::Scalar(_) => 1,
+                CallArg::FatPointer { .. } => 2,
+            };
+        }
         debug!("  Call will use {} stack words", stack_words);
         
         // 1. Setup arguments
@@ -344,10 +354,20 @@ impl CallingConvention {
         let mut insts = Vec::new();
         
         // Calculate stack words needed for cleanup
-        let stack_words = args.iter().map(|arg| match arg {
-            CallArg::Scalar(_) => 1,
-            CallArg::FatPointer { .. } => 2,
-        }).sum::<i16>();
+        // Only count arguments that will be pushed to stack, not register arguments
+        let (register_arg_slots, _) = self.analyze_arg_placement(&args);
+        let mut stack_words = 0i16;
+        for (idx, arg) in args.iter().enumerate() {
+            // Skip arguments that go in registers
+            if register_arg_slots.iter().any(|(i, _)| *i == idx) {
+                continue;
+            }
+            // Count stack words for this argument
+            stack_words += match arg {
+                CallArg::Scalar(_) => 1,
+                CallArg::FatPointer { .. } => 2,
+            };
+        }
         debug!("  Call will use {} stack words", stack_words);
         
         // 1. Setup arguments
@@ -398,7 +418,10 @@ impl CallingConvention {
             trace!("  Generated {} spill/reload instructions", spill_insts.len());
         }
         insts.extend(spill_insts);
-        
+        if let Some(k) = pressure_manager.max_spill_fp_offset() {
+            insts.push(AsmInst::Comment(format!("Raise SP to cover FP+{k} spills")));
+            insts.push(AsmInst::AddI(Reg::Sp, Reg::Fp, k + 1));
+        }
         // Use common logic to determine placement
         let (register_params, first_stack_param) = self.analyze_param_placement(param_types);
         

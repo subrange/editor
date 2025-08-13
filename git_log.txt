@@ -1,3 +1,29 @@
+4802e08 2025-08-12 23:30:33 +0200 CONNECTED! BACKEND V2 IS ALIVE
+52fa375 2025-08-12 21:11:25 +0200 Connecting...
+4e95ea0 2025-08-12 20:30:42 +0200 Branches
+52972f1 2025-08-12 19:56:12 +0200 Pointer arithmetic docs
+310363f 2025-08-12 19:41:24 +0200 Unary
+e6491dc 2025-08-12 19:10:33 +0200 Binary
+5436897 2025-08-12 18:23:38 +0200 GEP
+0f09301 2025-08-12 17:41:30 +0200 Calling convention may be stable, may be not
+480de52 2025-08-12 16:27:50 +0200 The Great Monkeys Migration Finished Successfully — All Hail the Code Monk
+985bf8b 2025-08-12 15:18:10 +0200 The Great Migration To 32 Registers
+723e8ed 2025-08-12 13:40:19 +0200 Things + Stuff + Hehehe
+b23765a 2025-08-12 12:07:03 +0200 Savepoint
+2ba45ce 2025-08-12 11:13:32 +0200 Docs
+89d29d6 2025-08-12 10:44:40 +0200 Encapsulate register manager
+0fd469e 2025-08-12 09:43:58 +0200 Clippy fix
+b8a0062 2025-08-12 09:40:28 +0200 Error fixes
+4f63544 2025-08-12 09:38:05 +0200 Backend v2
+750e9c8 2025-08-12 08:24:02 +0200 Unfuck frontend
+d1cb38e 2025-08-12 07:43:11 +0200 Docs
+1974422 2025-08-12 05:58:04 +0200 Fixes
+ab9b37a 2025-08-12 05:50:12 +0200 One more step. A steppie if you will
+11fcb83 2025-08-12 05:05:10 +0200 More tests
+4245ba8 2025-08-12 04:32:53 +0200 Fixed everything
+44ef229 2025-08-12 03:39:00 +0200 One more, one more step
+4312fd9 2025-08-12 03:20:31 +0200 One tiiiiny step forward
+e8db74d 2025-08-12 02:56:52 +0200 POINTERS GOT FUCKED
 9fd112a 2025-08-12 02:39:17 +0200 Progress progress, where are you, progress progress, I love you
 13eb34d 2025-08-12 02:19:39 +0200 One step forward, two steps back
 689210f 2025-08-12 01:53:10 +0200 More logging is good, more logging is transparency

@@ -101,6 +101,22 @@ impl RegisterPressureManager {
         self.instructions.extend(self.allocator.take_instructions());
         trace!("  R13 initialized, spill base set to FP+{}", self.local_count);
     }
+
+    /// Highest FP-relative cell index touched by any spill: FP + local_count + (next_spill_slot-1).
+    /// None when nothing has been spilled yet.
+    pub fn max_spill_fp_offset(&self) -> Option<i16> {
+        if self.next_spill_slot > 0 {
+            Some(self.local_count + self.next_spill_slot - 1)
+        } else {
+            None
+        }
+    }
+
+    /// Top of caller-owned frame (locals + all spill slots).
+    /// Use FP + this value + 1 as the minimum SP before any CALL.
+    pub fn frame_high_water(&self) -> i16 {
+        self.local_count + self.next_spill_slot
+    }
     
     /// Initialize SB for stack operations (called automatically when needed)
     fn ensure_sb_initialized(&mut self) {
@@ -216,6 +232,38 @@ impl RegisterPressureManager {
             return reg;
         }
         
+        // Check if this value was previously spilled and needs reloading
+        if let Some(&slot) = self.value_to_slot.get(&for_value) {
+            debug!("  '{}' was spilled to slot {}, reloading", for_value, slot);
+            
+            // Get a register for the reload (might trigger another spill)
+            let reg = if let Some(free_reg) = self.free_list.pop_front() {
+                free_reg
+            } else {
+                // Need to spill to make room
+                let victim = self.lru_queue.pop_front().expect("No registers to spill!");
+                debug!("  Spilling {:?} to make room for reload", victim);
+                self.spill_register(victim);
+                victim
+            };
+            
+            // Ensure R13 is initialized before any stack operation
+            self.ensure_sb_initialized();
+            
+            // Generate reload instructions
+            self.instructions.push(AsmInst::Comment(format!("Reload {} from slot {}", for_value, slot)));
+            self.instructions.push(AsmInst::Add(Reg::Sc, Reg::Fp, Reg::R0));
+            self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Sc, self.local_count + slot));
+            self.instructions.push(AsmInst::Load(reg, Reg::Sb, Reg::Sc));
+            
+            // Update tracking
+            self.reg_contents.insert(reg, for_value.clone());
+            self.lru_queue.push_back(reg);
+            
+            debug!("  Reloaded '{}' into {:?} from slot {}", for_value, reg, slot);
+            return reg;
+        }
+        
         // Try to get a free register
         if let Some(reg) = self.free_list.pop_front() {
             self.reg_contents.insert(reg, for_value.clone());
@@ -245,11 +293,11 @@ impl RegisterPressureManager {
         if let Some(value) = self.reg_contents.get(&reg).cloned() {
             trace!("spill_register({:?}) containing '{}'", reg, value);
             
-            // Ensure R13 is initialized before any stack operation
             self.ensure_sb_initialized();
             
             // Get or allocate spill slot
-            let slot = self.reg_to_slot.get(&reg).copied()
+            // IMPORTANT: Check if the VALUE already has a slot, not the register
+            let slot = self.value_to_slot.get(&value).copied()
                 .unwrap_or_else(|| {
                     let s = self.next_spill_slot;
                     self.next_spill_slot += 1;
@@ -259,7 +307,7 @@ impl RegisterPressureManager {
                     s
                 });
             
-            // Generate spill instructions using R12 as scratch
+            // Generate spill instructions using Sc scratch
             self.instructions.push(AsmInst::Comment(format!("Spill {value} to slot {slot}")));
             self.instructions.push(AsmInst::Add(Reg::Sc, Reg::Fp, Reg::R0));
             self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Sc, self.local_count + slot));

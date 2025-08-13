@@ -186,22 +186,22 @@ impl FunctionLowering {
         insts.push(AsmInst::Add(Reg::Sp, Reg::Fp, Reg::R0));
         
         // Restore callee-saved registers (S3-S0 in reverse order)
-        // We saved S0, S1, S2, S3 in that order
-        // So FP-6 = S0, FP-5 = S1, FP-4 = S2, FP-3 = S3
+        // We saved RA, FP, S0, S1, S2, S3 in that order
+        // So FP-1 = S3, FP-2 = S2, FP-3 = S1, FP-4 = S0, FP-5 = old FP, FP-6 = RA
         insts.push(AsmInst::Comment("Restore callee-saved registers S3-S0".to_string()));
-        for (offset, reg) in [(-3, Reg::S3), (-4, Reg::S2), (-5, Reg::S1), (-6, Reg::S0)] {
+        for (offset, reg) in [(-1, Reg::S3), (-2, Reg::S2), (-3, Reg::S1), (-4, Reg::S0)] {
             trace!("  Restoring {:?} from FP{}", reg, offset);
             insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, offset));
             insts.push(AsmInst::Load(reg, Reg::Sb, Reg::Sc));
         }
         
-        // Restore old FP (at FP-2)
+        // Restore old FP (at FP-5, which is now SP-5)
         trace!("  Restoring old FP");
         insts.push(AsmInst::Comment("Restore old FP".to_string()));
-        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -1));
+        insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -5));
         insts.push(AsmInst::Load(Reg::Fp, Reg::Sb, Reg::Sp));
         
-        // Restore RA (at FP-1)
+        // Restore RA (at FP-6, which is now SP-1) 
         trace!("  Restoring RA");
         insts.push(AsmInst::Comment("Restore RA".to_string()));
         insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -1));

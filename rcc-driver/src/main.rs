@@ -220,9 +220,8 @@ fn compile_c99_file(
             // Check if main function exists
             let has_main = ir_module.functions.iter().any(|f| f.name == "main");
             
-            // Lower Module to assembly  
-            // TODO: When V2 is connected, pass bank_size parameter
-            match rcc_ir::lower_module_to_assembly(ir_module) {
+            // Lower Module to assembly with bank_size parameter
+            match rcc_ir::lower_module_to_assembly_with_options(ir_module, bank_size) {
                 Ok(asm_instructions) => {
                     println!("💕 Successfully lowered to assembly");
                     

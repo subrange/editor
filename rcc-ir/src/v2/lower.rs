@@ -13,7 +13,7 @@ use crate::v2::function::CallArg;
 use crate::v2::instr::{
     lower_load, lower_store, lower_gep,
     lower_binary_op, lower_unary_op,
-    lower_branch, lower_branch_cond, lower_compare_and_branch,
+    lower_compare_and_branch,
     ComparisonType
 };
 
@@ -21,12 +21,25 @@ use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, info, warn};
 
 /// Lower an entire module using the V2 backend
-pub fn lower_module_v2(module: &Module) -> Result<Vec<AsmInst>, String> {
-    info!("V2: Lowering module '{}'", module.name);
+pub fn lower_module_v2(module: &Module, bank_size: u16) -> Result<Vec<AsmInst>, String> {
+    info!("V2: Lowering module '{}' with bank_size {}", module.name, bank_size);
     let mut all_instructions = Vec::new();
     
-    // TODO: Handle global variables properly
-    if !module.globals.is_empty() {
+    // Check if this module has a main function (indicating it's the main module)
+    let has_main = module.functions.iter().any(|f| f.name == "main");
+    
+    // Only generate _init_globals for the main module
+    // This avoids duplicate labels when linking multiple object files
+    if has_main {
+        all_instructions.push(AsmInst::Label("_init_globals".to_string()));
+        
+        // TODO: Handle global variables properly
+        if !module.globals.is_empty() {
+            warn!("V2: Global variables not yet fully implemented, skipping {} globals", module.globals.len());
+        }
+        
+        all_instructions.push(AsmInst::Ret);
+    } else if !module.globals.is_empty() {
         warn!("V2: Global variables not yet fully implemented, skipping {} globals", module.globals.len());
     }
     
@@ -87,8 +100,13 @@ pub fn lower_function_v2(
         block_labels.insert(block.id, naming.block_label(&function.name, block.id));
     }
     
+    // Generate a common epilogue label
+    let epilogue_label = naming.block_label(&function.name, 99999); // Use a high ID for epilogue
+    let mut has_any_return = false;
+    let mut return_values: Vec<(Option<(Reg, Option<Reg>)>, usize)> = Vec::new();
+    
     // Lower each basic block
-    for block in &function.blocks {
+    for (block_idx, block) in function.blocks.iter().enumerate() {
         debug!("V2: Lowering block {}", block.id);
         
         // Add label for the block (except for entry block which is implicit)
@@ -103,7 +121,9 @@ pub fn lower_function_v2(
             
             match instruction {
                 Instruction::Return(value) => {
-                    // Handle return specially using the builder
+                    has_any_return = true;
+                    
+                    // Prepare return value if any
                     let return_regs = if let Some(val) = value {
                         match val {
                             Value::Temp(t) => {
@@ -125,19 +145,30 @@ pub fn lower_function_v2(
                                     
                                     let temp_reg = mgr.get_register(temp_name);
                                     builder.add_instructions(mgr.take_instructions());
-                                    Some((temp_reg, Some(bank_reg)))
+                                    
+                                    // Move to return registers if needed
+                                    if temp_reg != Reg::Rv0 {
+                                        builder.add_instruction(AsmInst::Move(Reg::Rv0, temp_reg));
+                                    }
+                                    if bank_reg != Reg::Rv1 {
+                                        builder.add_instruction(AsmInst::Move(Reg::Rv1, bank_reg));
+                                    }
+                                    Some((Reg::Rv0, Some(Reg::Rv1)))
                                 } else {
                                     let temp_reg = mgr.get_register(temp_name);
                                     builder.add_instructions(mgr.take_instructions());
-                                    Some((temp_reg, None))
+                                    
+                                    // Move to return register if needed
+                                    if temp_reg != Reg::Rv0 {
+                                        builder.add_instruction(AsmInst::Move(Reg::Rv0, temp_reg));
+                                    }
+                                    Some((Reg::Rv0, None))
                                 }
                             }
                             Value::Constant(c) => {
-                                // Load constant into a temp register
-                                let temp_reg = mgr.get_register(naming.const_value(*c));
-                                builder.add_instructions(mgr.take_instructions());
-                                builder.add_instruction(AsmInst::Li(temp_reg, *c as i16));
-                                Some((temp_reg, None))
+                                // Load constant directly into return register
+                                builder.add_instruction(AsmInst::Li(Reg::Rv0, *c as i16));
+                                Some((Reg::Rv0, None))
                             }
                             _ => None
                         }
@@ -145,26 +176,35 @@ pub fn lower_function_v2(
                         None
                     };
                     
-                    builder.end_function(return_regs);
+                    return_values.push((return_regs, block_idx));
+                    
+                    // Jump to common epilogue
+                    builder.add_instruction(AsmInst::Comment("Jump to epilogue".to_string()));
+                    builder.add_instruction(AsmInst::Beq(Reg::R0, Reg::R0, epilogue_label.clone()));
                 }
                 
                 _ => {
                     // Use the existing lower_instruction for other instructions
-                    let insts = lower_instruction(mgr, naming, instruction)?;
+                    let insts = lower_instruction(mgr, naming, instruction, &function.name)?;
                     builder.add_instructions(insts);
                 }
             }
         }
     }
     
-    // If we haven't returned yet, add a default return
-    if !function.blocks.is_empty() {
-        let last_block = &function.blocks[function.blocks.len() - 1];
-        let has_return = last_block.instructions.iter().any(|i| matches!(i, Instruction::Return(_)));
-        
-        if !has_return {
-            builder.end_function(None);
-        }
+    // Add the common epilogue
+    if has_any_return {
+        builder.add_instruction(AsmInst::Label(epilogue_label));
+        // Use the first return value format (they should all be consistent)
+        let return_regs = if !return_values.is_empty() {
+            return_values[0].0
+        } else {
+            None
+        };
+        builder.end_function(return_regs);
+    } else {
+        // No explicit returns, add default return at the end
+        builder.end_function(None);
     }
     
     // Build and return the final instruction list
@@ -201,6 +241,7 @@ fn lower_instruction(
     mgr: &mut RegisterPressureManager,
     naming: &mut NameGenerator,
     instruction: &Instruction,
+    function_name: &str,
 ) -> Result<Vec<AsmInst>, String> {
     let mut insts = Vec::new();
     
@@ -380,14 +421,34 @@ fn lower_instruction(
         
         Instruction::Branch(label) => {
             debug!("V2: Branch to label {}", label);
-            let branch_insts = lower_branch(mgr, naming, *label);
-            insts.extend(branch_insts);
+            // Get the proper label name with function context
+            let label_name = naming.block_label(function_name, *label);
+            // Create a simple unconditional branch
+            insts.push(AsmInst::Beq(Reg::R0, Reg::R0, label_name.clone()));
+            insts.push(AsmInst::Comment(format!("Unconditional branch to {}", label_name)));
         }
         
         Instruction::BranchCond { condition, true_label, false_label } => {
             debug!("V2: Conditional branch: {} ? {} : {}", condition, true_label, false_label);
-            let branch_insts = lower_branch_cond(mgr, naming, condition, *true_label, *false_label);
-            insts.extend(branch_insts);
+            // Get the proper label names with function context
+            let true_label_name = naming.block_label(function_name, *true_label);
+            let false_label_name = naming.block_label(function_name, *false_label);
+            
+            // Get register for condition value
+            use crate::v2::instr::helpers::get_value_register;
+            let cond_reg = get_value_register(mgr, naming, condition);
+            insts.extend(mgr.take_instructions());
+            
+            // Branch if condition is zero (false) to false_label
+            insts.push(AsmInst::Beq(cond_reg, Reg::R0, false_label_name.clone()));
+            insts.push(AsmInst::Comment(format!("Branch to {} if condition is false", false_label_name)));
+            
+            // If condition was non-zero (true), branch to true_label
+            insts.push(AsmInst::Beq(Reg::R0, Reg::R0, true_label_name.clone()));
+            insts.push(AsmInst::Comment(format!("Unconditional branch to {} (condition was true)", true_label_name)));
+            
+            // Free the condition register
+            mgr.free_register(cond_reg);
         }
         
         Instruction::Phi { result, incoming, .. } => {
@@ -554,7 +615,7 @@ mod tests {
         let function = builder.finish_function().unwrap();
         module.add_function(function);
         
-        let result = lower_module_v2(&module);
+        let result = lower_module_v2(&module, 4096);
         assert!(result.is_ok());
         
         let insts = result.unwrap();
@@ -588,7 +649,7 @@ mod tests {
         let function = builder.finish_function().unwrap();
         module.add_function(function);
         
-        let result = lower_module_v2(&module);
+        let result = lower_module_v2(&module, 4096);
         assert!(result.is_ok());
         
         let insts = result.unwrap();

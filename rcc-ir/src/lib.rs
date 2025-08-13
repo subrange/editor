@@ -23,4 +23,4 @@ pub use ir::{
     IrBinaryOp, IrUnaryOp, GlobalVariable, Linkage, IrBuilder
 };
 pub use rcc_common::LabelId;
-pub use module_lowering::lower_module_to_assembly;
+pub use module_lowering::{lower_module_to_assembly, lower_module_to_assembly_with_options};

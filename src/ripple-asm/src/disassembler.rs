@@ -224,14 +224,14 @@ impl Disassembler {
         match opcode {
             Opcode::Load => {
                 let rd = self.register_name(inst.word1 as u8)?;
-                let bank = self.format_operand(inst.word2);
-                let addr = self.format_operand(inst.word3);
+                let bank = self.register_name(inst.word2 as u8)?;
+                let addr = self.register_name(inst.word3 as u8)?;
                 Ok(format!("{} {}, {}, {}", opcode.to_str(), rd, bank, addr))
             }
             Opcode::Store => {
                 let rs = self.register_name(inst.word1 as u8)?;
-                let bank = self.format_operand(inst.word2);
-                let addr = self.format_operand(inst.word3);
+                let bank = self.register_name(inst.word2 as u8)?;
+                let addr = self.register_name(inst.word3 as u8)?;
                 Ok(format!("{} {}, {}, {}", opcode.to_str(), rs, bank, addr))
             }
             Opcode::Jal => {
@@ -281,8 +281,8 @@ impl Disassembler {
     }
 
     fn format_operand(&self, value: u16) -> String {
-        // Check if it's a register value
-        if value < 18 {
+        // Check if it's a register value (0-31 are valid registers)
+        if value < 32 {
             if let Ok(reg) = self.register_name(value as u8) {
                 return reg;
             }

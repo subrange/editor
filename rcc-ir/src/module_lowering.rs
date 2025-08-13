@@ -280,6 +280,21 @@ impl ModuleLowerer {
 
 /// Lower a Module to assembly instructions
 pub fn lower_module_to_assembly(module: Module) -> Result<Vec<AsmInst>, CompilerError> {
-    let mut lowerer = ModuleLowerer::new();
-    lowerer.lower(module)
+    lower_module_to_assembly_with_options(module, 4096)
+}
+
+/// Lower a Module to assembly instructions with configuration options
+pub fn lower_module_to_assembly_with_options(module: Module, bank_size: u16) -> Result<Vec<AsmInst>, CompilerError> {
+    // Check if V2 backend should be used (can be controlled by env var or feature flag)
+    let use_v2 = std::env::var("USE_V2_BACKEND").unwrap_or_else(|_| "true".to_string()) == "true";
+    
+    if use_v2 {
+        // Use the new V2 backend
+        crate::v2::lower_module_v2(&module, bank_size)
+            .map_err(|e| CompilerError::codegen_error(e, rcc_common::SourceLocation::dummy()))
+    } else {
+        // Use the old backend (ignores bank_size for now)
+        let mut lowerer = ModuleLowerer::new();
+        lowerer.lower(module)
+    }
 }
