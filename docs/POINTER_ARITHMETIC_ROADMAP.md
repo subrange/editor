@@ -322,13 +322,13 @@ int main() {
 - [x] Calculate element sizes for pointer types - Using `size_in_words()` for Ripple VM memory model
 
 ### Phase 2: IR Generation  
-- [ ] Route pointer+integer to `build_pointer_offset()`
-- [ ] Convert array indexing to GEP
+- [x] Route pointer+integer to `build_pointer_offset()`
+- [x] Convert array indexing to GEP
 - [ ] Convert struct field access to GEP - Not yet implemented
 
 ### Phase 3: Operations
-- [ ] Implement pointer subtraction (returns element count) - Implemented `TypedBinaryOp::PointerDifference` 
-- [ ] Implement pointer comparisons (bank-aware) - Implemented `TypedBinaryOp::Comparison` with `is_pointer_compare` flag
+- [x] Implement pointer subtraction (returns element count) - Implemented `TypedBinaryOp::PointerDifference` 
+- [x] Implement pointer comparisons (bank-aware) - Implemented `TypedBinaryOp::Comparison` with `is_pointer_compare` flag
 - [ ] Handle NULL pointer checks - Not yet implemented
 - [ ] Support pointer casts - Not yet implemented
 

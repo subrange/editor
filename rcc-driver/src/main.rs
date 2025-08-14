@@ -195,6 +195,42 @@ fn compile_c99_file(
             
             // Format IR output
             let mut ir_output = String::new();
+            
+            // Add global declarations at the top for better debugging
+            if !ir_module.globals.is_empty() {
+                ir_output.push_str("; Global variables:\n");
+                for global in &ir_module.globals {
+                    ir_output.push_str(&format!("; @{} : {:?}", global.name, global.var_type));
+                    if let Some(init) = &global.initializer {
+                        // Show initializer in a readable format
+                        match init {
+                            rcc_frontend::ir::Value::Constant(val) => {
+                                ir_output.push_str(&format!(" = {}", val));
+                            }
+                            rcc_frontend::ir::Value::ConstantArray(values) => {
+                                // If it looks like a string, show it as a string
+                                if values.last() == Some(&0) && 
+                                   values[..values.len().saturating_sub(1)].iter()
+                                       .all(|&v| v >= 32 && v <= 126) {
+                                    let s: String = values[..values.len().saturating_sub(1)].iter()
+                                        .map(|&c| c as u8 as char).collect();
+                                    ir_output.push_str(&format!(" = \"{}\"", s));
+                                } else {
+                                    ir_output.push_str(&format!(" = {:?}", values));
+                                }
+                            }
+                            _ => {
+                                ir_output.push_str(&format!(" = {:?}", init));
+                            }
+                        }
+                    }
+                    ir_output.push_str("\n");
+                }
+                ir_output.push_str("\n");
+            }
+            
+            // String literals are included in globals now, so we don't need a separate section
+            
             for func in &ir_module.functions {
                 ir_output.push_str(&format!("define {} {{\n", func.name));
                 for (param_id, param_type) in &func.parameters {

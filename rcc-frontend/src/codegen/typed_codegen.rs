@@ -83,6 +83,14 @@ impl TypedCodeGenerator {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         
+        // Save global array names
+        let global_arrays: Vec<_> = self.array_variables.iter()
+            .filter(|name| self.variables.get(*name)
+                .map(|v| matches!(v.value, Value::Global(_)))
+                .unwrap_or(false))
+            .cloned()
+            .collect();
+        
         // Clear local state
         self.variables.clear();
         self.array_variables.clear();
@@ -91,6 +99,11 @@ impl TypedCodeGenerator {
         // Restore globals
         for (k, v) in globals {
             self.variables.insert(k, v);
+        }
+        
+        // Restore global arrays
+        for name in global_arrays {
+            self.array_variables.insert(name);
         }
         
         // Convert return type
@@ -177,9 +190,7 @@ impl TypedCodeGenerator {
         var_type: &Type,
         initializer: Option<&TypedExpr>,
     ) -> Result<(), CompilerError> {
-        let ir_type = convert_type_default(var_type)?;
-        
-        // Handle initializer if present
+        // Handle initializer first to determine array size if needed
         let init_value = if let Some(init_expr) = initializer {
             // We need to generate the initializer value
             // For global variables, only constant initializers are allowed
@@ -202,6 +213,24 @@ impl TypedCodeGenerator {
             }
         } else {
             None
+        };
+        
+        // Convert type, but handle incomplete arrays specially
+        let ir_type = if let Type::Array { element_type, size: None } = var_type {
+            // Incomplete array type - if we have an initializer, use its size
+            if let Some(Value::ConstantArray(ref values)) = init_value {
+                // We have the actual array size from the initializer
+                let elem_type = convert_type_default(element_type)?;
+                IrType::Array { 
+                    size: values.len() as u64, 
+                    element_type: Box::new(elem_type) 
+                }
+            } else {
+                // No initializer or non-array initializer, fall back to default conversion
+                convert_type_default(var_type)?
+            }
+        } else {
+            convert_type_default(var_type)?
         };
         
         let global = GlobalVariable {

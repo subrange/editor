@@ -48,6 +48,7 @@ import sys
 import os
 import glob
 import json
+import difflib
 from pathlib import Path
 
 # Colors for output
@@ -212,10 +213,57 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
         # No expected output specified, just return the actual output
         return True, stdout, has_provenance_warning
     elif stdout != expected_output:
+        # Create a detailed diff
+        diff_lines = []
+        diff_lines.append("Output mismatch!")
+        diff_lines.append("-" * 60)
+        
+        # Show a side-by-side or line-by-line diff
+        expected_lines = expected_output.splitlines()
+        actual_lines = stdout.splitlines()
+        
+        # Find the first difference
+        for i, (exp, act) in enumerate(zip(expected_lines, actual_lines)):
+            if exp != act:
+                diff_lines.append(f"First difference at line {i+1}:")
+                diff_lines.append(f"  Expected: {repr(exp)}")
+                diff_lines.append(f"  Got:      {repr(act)}")
+                break
+        
+        # Check for length differences
+        if len(expected_lines) != len(actual_lines):
+            diff_lines.append(f"Different number of lines: expected {len(expected_lines)}, got {len(actual_lines)}")
+        
+        # Show a context diff which is more readable
+        diff_lines.append("-" * 60)
+        diff_lines.append("Context diff:")
+        
+        differ = difflib.Differ()
+        diff_result = list(differ.compare(expected_lines, actual_lines))
+        
+        # Show only lines with differences and some context
+        for i, line in enumerate(diff_result):
+            if line.startswith('- ') or line.startswith('+ ') or line.startswith('? '):
+                # Show this line and a bit of context
+                start = max(0, i - 1)
+                end = min(len(diff_result), i + 2)
+                for j in range(start, end):
+                    if j == i or diff_result[j].startswith('- ') or diff_result[j].startswith('+ '):
+                        diff_lines.append(diff_result[j])
+                break  # Just show the first difference with context
+        
+        # Also show full repr for debugging non-printable characters
+        diff_lines.append("-" * 60)
+        diff_lines.append("Full output comparison (with repr for special chars):")
+        diff_lines.append(f"Expected: {repr(expected_output)}")
+        diff_lines.append(f"Got:      {repr(stdout)}")
+        
+        error_msg = '\n'.join(diff_lines)
+        
         if has_provenance_warning:
-            return False, f"Output mismatch (likely due to pointer provenance issue). Expected: {repr(expected_output)}, Got: {repr(stdout)}", has_provenance_warning
+            return False, f"{error_msg}\n(Note: likely due to pointer provenance issue)", has_provenance_warning
         else:
-            return False, f"Output mismatch. Expected: {repr(expected_output)}, Got: {repr(stdout)}", has_provenance_warning
+            return False, error_msg, has_provenance_warning
     
     return True, "OK", has_provenance_warning
 
