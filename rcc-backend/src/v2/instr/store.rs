@@ -128,7 +128,7 @@ pub fn lower_store(
                         }
                     }
                 }
-                other => panic!("Unsupported bank type for fat pointer: {:?}", other),
+                other => panic!("Store: Unsupported bank type for fat pointer: {:?}", other),
             };
             (addr_reg, true, Some((bank_reg, bank_owned)))
         }

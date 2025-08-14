@@ -211,6 +211,36 @@ pub fn generate_lvalue_address(
             // For *ptr, the address is just ptr
             gen.generate(operand)
         }
+        TypedExpr::MemberAccess {
+            object,
+            offset,
+            is_pointer,
+            expr_type,
+            ..
+        } => {
+            // For struct member lvalue, calculate the field address using GEP
+            
+            // Get pointer to the struct
+            let struct_ptr = if *is_pointer {
+                // Object is already a pointer (-> operator)
+                gen.generate(object)?
+            } else {
+                // Object is a struct value (. operator)
+                // Need to get its address recursively
+                generate_lvalue_address(gen, object)?
+            };
+            
+            // Field offset is a compile-time constant (in words)
+            let offset_val = Value::Constant(*offset as i64);
+            
+            // Generate GEP for field address
+            let field_type_ir = convert_type_default(expr_type)?;
+            Ok(gen.builder.build_pointer_offset(
+                struct_ptr,
+                offset_val,
+                field_type_ir
+            )?)
+        }
         _ => Err(CodegenError::UnsupportedConstruct {
             construct: format!("lvalue: {:?}", expr),
             location: rcc_common::SourceLocation::new_simple(0, 0),

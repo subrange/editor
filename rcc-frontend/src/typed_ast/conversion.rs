@@ -350,11 +350,67 @@ pub fn type_expression(
             })
         }
         
-        ExpressionKind::Member { .. } => {
-            // TODO: Implement struct/union member access
-            Err(TypeError::UnsupportedConstruct(
-                "Struct/union member access not yet implemented".to_string()
-            ))
+        ExpressionKind::Member { object, member, is_pointer } => {
+            // Get the typed object expression
+            let object_typed = type_expression(object, type_env)?;
+            
+            // Determine the struct type from the object
+            let struct_type = if *is_pointer {
+                // For -> operator, object should be a pointer to struct
+                match object_typed.get_type() {
+                    Type::Pointer { target, .. } => target.as_ref(),
+                    _ => return Err(TypeError::TypeMismatch(
+                        format!("-> operator requires pointer to struct, got {:?}", object_typed.get_type())
+                    ))
+                }
+            } else {
+                // For . operator, object should be a struct
+                object_typed.get_type()
+            };
+            
+            // Extract struct fields
+            let fields = match struct_type {
+                Type::Struct { fields, name, .. } => {
+                    if fields.is_empty() && name.is_some() {
+                        // This is a reference to a named struct, look it up
+                        if let Some(Type::Struct { fields, .. }) = type_env.type_definitions.get(name.as_ref().unwrap()) {
+                            fields
+                        } else {
+                            return Err(TypeError::UndefinedType(
+                                format!("Struct type '{}' not found", name.as_ref().unwrap())
+                            ));
+                        }
+                    } else {
+                        fields
+                    }
+                }
+                _ => return Err(TypeError::TypeMismatch(
+                    format!("Member access requires struct type, got {:?}", struct_type)
+                ))
+            };
+            
+            // Calculate struct layout to get field offset
+            // Pass type_definitions to resolve nested struct sizes
+            let layout = crate::semantic::struct_layout::calculate_struct_layout_with_defs(
+                fields,
+                rcc_common::SourceLocation::new_simple(0, 0), // TODO: Use actual location
+                Some(&type_env.type_definitions)
+            ).map_err(|e| TypeError::TypeMismatch(format!("Failed to calculate struct layout: {}", e)))?;
+            
+            // Find the field and get its offset
+            let field_layout = crate::semantic::struct_layout::find_field(&layout, member)
+                .ok_or_else(|| TypeError::UndefinedMember {
+                    struct_name: format!("{:?}", struct_type),
+                    member_name: member.clone(),
+                })?;
+            
+            Ok(TypedExpr::MemberAccess {
+                object: Box::new(object_typed),
+                member: member.clone(),
+                offset: field_layout.offset,
+                is_pointer: *is_pointer,
+                expr_type: field_layout.field_type.clone(),
+            })
         }
         
         ExpressionKind::Conditional { condition, then_expr, else_expr } => {
@@ -589,12 +645,10 @@ pub fn type_translation_unit(
             }
             
             crate::ast::TopLevelItem::TypeDefinition { .. } => {
-                // TODO: Add struct/union/enum/typedef support
-                // For now, skip type definitions as they don't directly generate code
-                // but should be tracked in the type environment
-                return Err(TypeError::UnsupportedConstruct(
-                    "Type definitions not yet supported".to_string()
-                ));
+                // Type definitions (struct/union/enum) don't directly generate code
+                // They're already stored in the type environment during semantic analysis
+                // so we can safely skip them here
+                continue;
             }
         }
     }

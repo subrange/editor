@@ -198,12 +198,48 @@ impl<'a> TypedExpressionGenerator<'a> {
             
             TypedExpr::ArrayInitializer { elements, .. } => misc_ops::generate_array_initializer(self, elements),
             
-            TypedExpr::MemberAccess { .. } => {
-                return Err(CodegenError::UnsupportedConstruct {
-                    construct: "struct/union member access".to_string(),
-                    location: rcc_common::SourceLocation::new_simple(0, 0),
-                }
-                .into())
+            TypedExpr::MemberAccess { 
+                object, 
+                member: _,
+                offset, 
+                is_pointer, 
+                expr_type 
+            } => {
+                // Following POINTER_ARITHMETIC_ROADMAP.md Task 2.3:
+                // Struct field access MUST be converted to GEP
+                
+                // Get pointer to the struct
+                let struct_ptr = if *is_pointer {
+                    // Object is already a pointer (-> operator)
+                    // Generate code for the object to get the pointer value
+                    self.generate(object)?
+                } else {
+                    // Object is a struct value (. operator)
+                    // Need to get its address
+                    // IMPORTANT: For nested member access, this will recursively
+                    // compute the address without loading intermediate values
+                    unary_ops::generate_lvalue_address(self, object)?
+                };
+                
+                // Field offset is a compile-time constant (in words)
+                let offset_val = Value::Constant(*offset as i64);
+                
+                // Generate GEP for field access
+                // This handles bank overflow correctly
+                let field_type_ir = convert_type_default(expr_type)?;
+                let field_ptr = self.builder.build_pointer_offset(
+                    struct_ptr,
+                    offset_val,
+                    field_type_ir.clone()
+                )?;
+                
+                // Load the value from the field address
+                let temp_id = self.builder.build_load(field_ptr, field_type_ir)
+                    .map_err(|e| CodegenError::InternalError {
+                        message: e,
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                Ok(Value::Temp(temp_id))
             }
             
             TypedExpr::Conditional { .. } => {

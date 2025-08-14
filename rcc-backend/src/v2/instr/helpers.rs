@@ -158,7 +158,7 @@ pub fn resolve_bank_tag_to_info(
         BankTag::Global => BankInfo::Global,
         BankTag::Stack => BankInfo::Stack,
         BankTag::Mixed => resolve_mixed_bank(fp, mgr, naming),
-        other => panic!("Unsupported bank type for fat pointer: {:?}", other),
+        other => panic!("Helpers: Unsupported bank type for fat pointer: {:?}", other),
     }
 }
 

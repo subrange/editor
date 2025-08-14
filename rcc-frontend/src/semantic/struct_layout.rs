@@ -39,12 +39,21 @@ pub fn calculate_struct_layout(
     fields: &[StructField],
     location: SourceLocation,
 ) -> Result<StructLayout, CompilerError> {
+    calculate_struct_layout_with_defs(fields, location, None)
+}
+
+/// Calculate struct layout with access to type definitions for resolving named structs
+pub fn calculate_struct_layout_with_defs(
+    fields: &[StructField],
+    location: SourceLocation,
+    type_definitions: Option<&HashMap<String, Type>>,
+) -> Result<StructLayout, CompilerError> {
     let mut layout_fields = Vec::new();
     let mut current_offset = 0u64;
     
     for field in fields {
         // Get the size of this field
-        let field_size = match field.field_type.size_in_words() {
+        let field_size = match get_type_size(&field.field_type, type_definitions) {
             Some(size) => size,
             None => {
                 return Err(crate::semantic::SemanticError::IncompleteType {
@@ -77,6 +86,29 @@ pub fn calculate_struct_layout(
         fields: layout_fields,
         total_size: current_offset,
     })
+}
+
+/// Get the size of a type, resolving named struct references if needed
+fn get_type_size(ty: &Type, type_definitions: Option<&HashMap<String, Type>>) -> Option<u64> {
+    match ty {
+        // For named struct references, look up the actual definition
+        Type::Struct { name: Some(name), fields } if fields.is_empty() => {
+            if let Some(defs) = type_definitions {
+                if let Some(Type::Struct { fields: actual_fields, .. }) = defs.get(name) {
+                    // Calculate size of the resolved struct
+                    let mut total = 0u64;
+                    for field in actual_fields {
+                        total += get_type_size(&field.field_type, type_definitions)?;
+                    }
+                    return Some(total);
+                }
+            }
+            // If we can't resolve it, fall back to normal size calculation
+            ty.size_in_words()
+        }
+        // For all other types, use the normal size calculation
+        _ => ty.size_in_words()
+    }
 }
 
 /// Find a field in a struct layout by name

@@ -9,6 +9,8 @@ use std::fmt;
 pub enum TypeError {
     TypeMismatch(String),
     UndefinedVariable(String),
+    UndefinedType(String),
+    UndefinedMember { struct_name: String, member_name: String },
     UnsupportedConstruct(String),
 }
 
@@ -17,6 +19,9 @@ impl fmt::Display for TypeError {
         match self {
             TypeError::TypeMismatch(msg) => write!(f, "Type mismatch: {}", msg),
             TypeError::UndefinedVariable(name) => write!(f, "Undefined variable: {}", name),
+            TypeError::UndefinedType(name) => write!(f, "Undefined type: {}", name),
+            TypeError::UndefinedMember { struct_name, member_name } => 
+                write!(f, "Undefined member '{}' in struct '{}'", member_name, struct_name),
             TypeError::UnsupportedConstruct(construct) => write!(f, "Unsupported construct: {}", construct),
         }
     }
