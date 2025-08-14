@@ -8,7 +8,7 @@ int main() {
     int size_ptr = sizeof(int*);
     
     // Test sizeof on array
-    int arr[5];
+    int arr[3];
     int size_arr = sizeof(arr);
     
     // Print sizes as digits (for simple testing)
@@ -18,8 +18,8 @@ int main() {
     putchar(' ');
     putchar('0' + size_ptr);   // Should be 4
     putchar(' ');
-    putchar('0' + size_arr);   // Should be 10 (5 * 2)
-    putchar(10);
+    putchar('0' + size_arr);   // Should be 6 (3 * 2)
+    putchar('\n');
     
     return 0;
 }

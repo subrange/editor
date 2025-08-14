@@ -23,14 +23,34 @@ main:
     ADDI SP, SP, 1
 ; Set FP = SP
     ADD FP, SP, R0
-; Allocate 8 slots for locals
-    ADDI SP, SP, 8
+; Allocate 22 slots for locals
+    ADDI SP, SP, 22
 ; Reserve 20 spill slots above locals
     ADDI SP, SP, 20
+    ADD S3, FP, R0
+    ADD S2, FP, R0
+    ADDI S2, S2, 10
+    ADD S1, SB, R0
+    STORE S3, SB, S2
+    ADDI S0, S2, 1
+    STORE S1, SB, S0
+    ADD T7, FP, R0
+    ADDI T7, T7, 12
+    LOAD T6, SB, S2
+    ADDI T5, S2, 1
+    LOAD T4, SB, T5
+    ADDI T3, T6, 5
+    STORE T3, SB, T7
+    ADDI T2, T7, 1
+    STORE T4, SB, T2
+    LI T1, 10
+; Setting up 1 register arguments
+; Arg 0 (scalar) to A0
+    ADD A0, T1, R0
+; Call function putchar
+    CALL putchar
+; Scalar return value for t5
     LI RV0, 0
-; Jump to epilogue
-    BEQ R0, R0, L_main_99999
-L_main_1:
 ; Jump to epilogue
     BEQ R0, R0, L_main_99999
 L_main_99999:

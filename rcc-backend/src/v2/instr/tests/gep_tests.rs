@@ -206,22 +206,21 @@ fn test_gep_global_pointer() {
     mgr.init();
     let mut naming = new_function_naming();
     
-    // GEP on a global array
-    let base_ptr = Value::Global("global_array".to_string());
+    // GEP on a global array - simulate how lower.rs would resolve it
+    let base_ptr = Value::FatPtr(FatPointer {
+        addr: Box::new(Value::Constant(1000)), // Simulated global address
+        bank: BankTag::Global,
+    });
     
     let indices = vec![Value::Constant(5)];
     let element_size = 2;
     
     let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 90);
     
-    // Should load global address
+    // Should load the constant global address
     assert!(insts.iter().any(|inst| {
-        if let AsmInst::Comment(s) = inst {
-            s.contains("global_array")
-        } else {
-            false
-        }
-    }));
+        matches!(inst, AsmInst::Li(_, 1000))
+    }), "Should load global address 1000");
     
     // Should calculate offset
     assert!(insts.iter().any(|inst| {

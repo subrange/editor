@@ -274,9 +274,17 @@ impl<'a> TypedExpressionGenerator<'a> {
                     .builder
                     .build_load(var_info.value.clone(), var_info.ir_type.clone())?;
                 
-                // Don't wrap loaded pointers in FatPtr here
-                // The backend tracks pointer bank information separately
-                Ok(Value::Temp(result))
+                // If it's a pointer type, wrap it in FatPtr to preserve bank information
+                if var_info.ir_type.is_pointer() {
+                    // For local pointer variables, they point to stack-allocated data
+                    // unless they've been assigned a value with a different bank
+                    Ok(Value::FatPtr(FatPointer {
+                        addr: Box::new(Value::Temp(result)),
+                        bank: BankTag::Mixed,  // Runtime-determined bank
+                    }))
+                } else {
+                    Ok(Value::Temp(result))
+                }
             }
         } else {
             // Check if it's a function

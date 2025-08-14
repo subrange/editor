@@ -5,7 +5,7 @@
 ; Entry point - this is where execution begins
 _start:
     ; Initialize stack pointer
-    LI SB, 2        ; Stack bank = 1 (SB/R28 - stack bank id)
+    LI SB, 2        ; Stack bank = 2 (SB/R28 - stack bank id)
     LI SP, 4096     ; Stack pointer starts at the end of the bank (SP/R29)
     LI FP, 4096     ; Frame pointer starts at the end of the bank (FP/R30)
     ; Initialize global pointer

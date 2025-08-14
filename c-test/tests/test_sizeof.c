@@ -13,7 +13,7 @@ int main() {
     int arr[10];
     int size_var = sizeof(x);
     int size_arr = sizeof(arr);
-    
+
     // Verify sizes are correct
     if (size_char == 1) {
         putchar('1');

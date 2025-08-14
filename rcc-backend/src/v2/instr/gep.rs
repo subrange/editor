@@ -11,6 +11,7 @@ use crate::v2::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;
+use super::helpers::{resolve_bank_tag_to_info};
 // Use the bank size constant from V2 module
 // TODO: This should eventually be passed as a parameter from rcc-driver
 use crate::v2::BANK_SIZE_INSTRUCTIONS;
@@ -61,8 +62,7 @@ pub fn lower_gep(
             let addr_reg = mgr.get_register(name.clone());
             let bank_info = mgr.get_pointer_bank(&name)
                 .unwrap_or_else(|| {
-                    warn!("  No bank info for pointer {}, defaulting to Stack", name);
-                    BankInfo::Stack
+                    panic!("GEP: COMPILER BUG: No bank info for pointer '{}'. All pointers must have tracked bank information!", name);
                 });
             (addr_reg, name, bank_info)
         }
@@ -90,51 +90,17 @@ pub fn lower_gep(
             };
 
             // Get bank info
-            let bank_info = match fp.bank {
-                BankTag::Global => BankInfo::Global,
-                BankTag::Stack  => BankInfo::Stack,
-                BankTag::Mixed => {
-                    // For Mixed, the bank is determined at runtime. We expect the
-                    // address component to be a temp whose bank has been tracked
-                    // by the calling convention (load_param). Reuse that info.
-                    match fp.addr.as_ref() {
-                        Value::Temp(t) => {
-                            let temp_name = naming.temp_name(*t);
-                            if let Some(info) = mgr.get_pointer_bank(&temp_name) {
-                                info
-                            } else {
-                                warn!("GEP: No bank info for {}, defaulting to Stack for Mixed fat ptr", temp_name);
-                                BankInfo::Stack
-                            }
-                        }
-                        Value::Constant(_) => {
-                            // A Mixed bank with a constant address cannot carry a runtime bank.
-                            panic!("GEP: FatPtr with BankTag::Mixed cannot have a constant address");
-                        }
-                        other => {
-                            warn!("GEP: Unexpected address type for Mixed fat ptr: {:?}", other);
-                            BankInfo::Stack
-                        }
-                    }
-                }
-                other => panic!("Unsupported bank type for fat pointer: {:?}", other),
-            };
+            let bank_info = resolve_bank_tag_to_info(&fp.bank, fp, mgr, naming);
 
             let ptr_name = naming.pointer_bank_key(&result_name);
             (addr_reg, ptr_name, bank_info)
         }
         Value::Global(name) => {
-            // Global pointers use GP (Global Pointer) register for bank
-            trace!("  Base pointer is global: {}", name);
-            let addr_reg_name = naming.gep_global(name);
-            let addr_reg = mgr.get_register(addr_reg_name);
-            
-            // Load global address (to be resolved by linker)
-            insts.push(AsmInst::Comment(format!("Load address of global {}", name)));
-            insts.push(AsmInst::Li(addr_reg, 0)); // Placeholder for linker
-            
-            // Globals use BankInfo::Global which maps to GP register
-            (addr_reg, name.clone(), BankInfo::Global)
+            // This should never happen — lower.rs must resolve globals to FatPtr(Constant(addr), Global)
+            panic!(
+                "Unexpected Value::Global('{}') as base pointer for GEP - should have been resolved to FatPtr(Constant(addr), Global) in lower.rs",
+                name
+            );
         }
         _ => {
             warn!("  Invalid base pointer for GEP: {:?}", base_ptr);

@@ -326,6 +326,22 @@ impl NameGenerator {
         format!("uge_temp_f{}_op{}_t{}", self.function_id, op_id, result_temp)
     }
     
+    // ===== Helper method naming for consolidated operations =====
+    
+    /// Get name for a constant associated with a temp
+    /// Used when loading constants for specific operations
+    pub fn const_for_temp(&mut self, temp_id: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("const_for_t{}_f{}_op{}", temp_id, self.function_id, op_id)
+    }
+    
+    /// Get name for a temporary with context
+    /// Used for generating contextual temporary names
+    pub fn temp_with_context(&mut self, context: &str, suffix: &str) -> String {
+        let op_id = self.next_operation_id();
+        format!("{}_{}_{}_f{}_op{}", context, suffix, self.function_id, self.function_id, op_id)
+    }
+    
     // ===== Binary operation naming =====
     
     /// Get name for immediate value register

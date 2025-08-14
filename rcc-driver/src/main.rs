@@ -52,6 +52,10 @@ enum Commands {
         #[arg(short, long)]
         output: Option<PathBuf>,
         
+        /// Emit IR to stdout and exit (do not lower to assembly)
+        #[arg(long)]
+        emit_ir: bool,
+        
         /// Print IR to stdout before lowering
         #[arg(long)]
         print_ir: bool,
@@ -90,7 +94,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Compile { input, output, print_ir, save_ir, ir_output, debug, bank_size } => {
+        Commands::Compile { input, output, emit_ir, print_ir, save_ir, ir_output, debug, bank_size } => {
             // Initialize logger based on debug level
             let log_level = match debug {
                 0 => "error",
@@ -106,7 +110,7 @@ fn main() {
                 .format_target(false)
                 .init();
             
-            if let Err(e) = compile_c99_file(&input, output.as_deref(), print_ir, save_ir, ir_output.as_deref(), bank_size) {
+            if let Err(e) = compile_c99_file(&input, output.as_deref(), emit_ir, print_ir, save_ir, ir_output.as_deref(), bank_size) {
                 eprintln!("Error compiling C99 file: {}", e);
                 std::process::exit(1);
             }
@@ -135,12 +139,16 @@ fn generate_asm_command(
 fn compile_c99_file(
     input_path: &std::path::Path,
     output_path: Option<&std::path::Path>,
+    emit_ir: bool,
     print_ir: bool,
     save_ir: bool,
     ir_output_path: Option<&std::path::Path>,
     bank_size: u16,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Compiling C99 file: {} (bank_size: {})", input_path.display(), bank_size);
+    // Don't print compilation message if we're just emitting IR
+    if !emit_ir {
+        println!("Compiling C99 file: {} (bank_size: {})", input_path.display(), bank_size);
+    }
     
     // Read source file
     let source = fs::read_to_string(input_path)?;
@@ -148,19 +156,21 @@ fn compile_c99_file(
     // Parse the source
     let ast = match Frontend::parse_source(&source) {
         Ok(ast) => {
-            println!("Successfully parsed C99 source...");
-            println!("Found {} top-level items", ast.items.len());
-            
-            for item in &ast.items {
-                match item {
-                    rcc_frontend::TopLevelItem::Function(func) => {
-                        println!("  Function: {} -> {}", func.name, func.return_type);
-                    }
-                    rcc_frontend::TopLevelItem::Declaration(decl) => {
-                        println!("  Global variable: {} : {}", decl.name, decl.decl_type);
-                    }
-                    rcc_frontend::TopLevelItem::TypeDefinition { name, .. } => {
-                        println!("  Type definition: {}", name);
+            if !emit_ir {
+                println!("Successfully parsed C99 source...");
+                println!("Found {} top-level items", ast.items.len());
+                
+                for item in &ast.items {
+                    match item {
+                        rcc_frontend::TopLevelItem::Function(func) => {
+                            println!("  Function: {} -> {}", func.name, func.return_type);
+                        }
+                        rcc_frontend::TopLevelItem::Declaration(decl) => {
+                            println!("  Global variable: {} : {}", decl.name, decl.decl_type);
+                        }
+                        rcc_frontend::TopLevelItem::TypeDefinition { name, .. } => {
+                            println!("  Type definition: {}", name);
+                        }
                     }
                 }
             }
@@ -173,11 +183,15 @@ fn compile_c99_file(
     };
     
     // Try to compile to IR - if it fails, return an error
-    println!("\n💀 Attempting full compilation pipeline");
+    if !emit_ir {
+        println!("\n💀 Attempting full compilation pipeline");
+    }
     match Frontend::compile_to_ir(&source, input_path.file_stem().unwrap().to_str().unwrap()) {
         Ok(ir_module) => {
-            println!("💫 Successfully generated IR");
-            println!("🦄 Module contains {} functions", ir_module.functions.len());
+            if !emit_ir {
+                println!("💫 Successfully generated IR");
+                println!("🦄 Module contains {} functions", ir_module.functions.len());
+            }
             
             // Format IR output
             let mut ir_output = String::new();
@@ -195,7 +209,13 @@ fn compile_c99_file(
                 ir_output.push_str("}\n");
             }
             
-            // Print IR if requested
+            // If --emit-ir is set, just print IR and exit
+            if emit_ir {
+                print!("{}", ir_output);
+                return Ok(());
+            }
+            
+            // Print IR if requested (when not using --emit-ir)
             if print_ir {
                 println!("\n=== IR Output ===");
                 print!("{}", ir_output);

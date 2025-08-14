@@ -68,24 +68,24 @@ L_memset_2:
     LI SB, 1
 ; Spill t0 to slot 0
     ADD SC, FP, R0
-    ADDI SC, SC, 16
+    ADDI SC, SC, 13
     STORE S3, SB, SC
 ; Spill t1 to slot 1
     ADD SC, FP, R0
-    ADDI SC, SC, 17
+    ADDI SC, SC, 14
     STORE S2, SB, SC
     LI S2, 4096
     DIV S3, T2, S2
 ; Spill t4 to slot 2
     ADD SC, FP, R0
-    ADDI SC, SC, 18
+    ADDI SC, SC, 15
     STORE T6, SB, SC
     MOD T6, T2, S2
     ADD T3, T3, S3
     ADD T2, T6, R0
 ; Reload t4 from slot 2
     ADD SC, FP, R0
-    ADDI SC, SC, 18
+    ADDI SC, SC, 15
     LOAD T7, SB, SC
     LOAD S3, SB, T7
     STORE S3, T3, T2

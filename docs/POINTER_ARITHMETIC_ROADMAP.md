@@ -323,7 +323,7 @@ int main() {
 
 ### Phase 2: IR Generation  
 - [ ] Route pointer+integer to `build_pointer_offset()` - Implemented in `codegen/expressions.rs` using `TypedBinaryOp::PointerOffset`
-- [ ] Convert array indexing to GEP - Implemented for `TypedBinaryOp::ArrayIndex`
+- [ ] Convert array indexing to GEP
 - [ ] Convert struct field access to GEP - Not yet implemented
 - [ ] Never emit Binary::Add for pointer operands - Type checker ensures this
 

@@ -10,6 +10,7 @@ use crate::v2::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;
+use super::helpers::{resolve_mixed_bank, resolve_bank_tag_to_info, get_bank_register};
 
 /// Lower a Load instruction to assembly
 /// 
@@ -65,57 +66,21 @@ pub fn lower_load(
             };
 
             // Determine how to source the bank for this fat pointer
-            // - Global/Stack: known at compile-time, record a unique key
-            // - Mixed: bank is runtime-determined and should already be tracked
-            //          against the *underlying temp* that holds the address
-            let ptr_name = match fp.bank {
-                BankTag::Global => {
-                    let key = naming.load_src_ptr_bank(result_temp);
-                    mgr.set_pointer_bank(key.clone(), BankInfo::Global);
-                    key
+            let bank_info = resolve_bank_tag_to_info(&fp.bank, fp, mgr, naming);
+            
+            // Determine the key to use for tracking this pointer's bank
+            let ptr_name = if matches!(fp.bank, BankTag::Mixed) {
+                // For Mixed, use the temp name if available
+                match fp.addr.as_ref() {
+                    Value::Temp(t) => naming.temp_name(*t),
+                    _ => naming.load_src_ptr_bank(result_temp),
                 }
-                BankTag::Stack => {
-                    let key = naming.load_src_ptr_bank(result_temp);
-                    mgr.set_pointer_bank(key.clone(), BankInfo::Stack);
-                    key
-                }
-                BankTag::Mixed => {
-                    // For Mixed, the bank lives in a register associated with the
-                    // underlying temp for the address. Reuse that temp's name so the
-                    // manager can provide the correct BankInfo::Register(..).
-                    match fp.addr.as_ref() {
-                        Value::Temp(t) => {
-                            let name = naming.temp_name(*t);
-                            if mgr.get_pointer_bank(&name).is_none() {
-                                // This should have been set up by the parameter loader.
-                                // Default to Stack to avoid crashing, but warn loudly.
-                                warn!(
-                                    "lower_load: FatPtr(Mixed) for '{}' but no bank recorded; defaulting to Stack",
-                                    name
-                                );
-                                mgr.set_pointer_bank(name.clone(), BankInfo::Stack);
-                            }
-                            name
-                        }
-                        other => {
-                            panic!(
-                                "BE: LOAD: FatPtr(Mixed) must carry a Temp address so bank can be tracked, got: {:?}",
-                                other
-                            );
-                        }
-                    }
-                }
-                other => {
-                    // Future-proofing: if new BankTag variants appear, don't crash the backend.
-                    warn!(
-                        "BE: LOAD: Unsupported bank type {:?} for fat pointer; defaulting to Stack",
-                        other
-                    );
-                    let key = naming.load_src_ptr_bank(result_temp);
-                    mgr.set_pointer_bank(key.clone(), BankInfo::Stack);
-                    key
-                }
+            } else {
+                // For Global/Stack, use a unique key
+                naming.load_src_ptr_bank(result_temp)
             };
+            
+            mgr.set_pointer_bank(ptr_name.clone(), bank_info);
 
             (addr_reg, ptr_name)
         }
@@ -132,26 +97,13 @@ pub fn lower_load(
     // Step 2: Get the bank register based on pointer's bank info
     let bank_info = mgr.get_pointer_bank(&ptr_name)
         .unwrap_or_else(|| {
-            warn!("  No bank info for pointer {}, defaulting to Stack", ptr_name);
-            BankInfo::Stack
+            panic!("LOAD: COMPILER BUG: No bank info for pointer '{}'. All pointers must have tracked bank information!", ptr_name);
         });
     
     debug!("  Pointer {} has bank info: {:?}", ptr_name, bank_info);
     
-    let bank_reg = match bank_info {
-        BankInfo::Global => {
-            trace!("  Using GP for global bank");
-            Reg::Gp  // Global pointer register for globals
-        }
-        BankInfo::Stack => {
-            trace!("  Using SB for stack bank");
-            Reg::Sb  // SB - Stack Bank register
-        }
-        BankInfo::Register(r) => {
-            trace!("  Using {:?} for dynamic bank", r);
-            r
-        }
-    };
+    let bank_reg = get_bank_register(&bank_info);
+    trace!("  Using {:?} for bank", bank_reg);
     
     // Step 3: Allocate destination register and generate LOAD instruction
     let dest_reg = mgr.get_register(result_name.clone());

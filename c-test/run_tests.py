@@ -346,7 +346,7 @@ def main():
         # Tests moved from tests/ directory (all use putchar)
         (f"{BASE_DIR}/tests/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", True),
         (f"{BASE_DIR}/tests/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", True),
-        (f"{BASE_DIR}/tests/test_sizeof_simple.c", "1 2 4 :\n", True),
+        (f"{BASE_DIR}/tests/test_sizeof_simple.c", "1 2 4 6\n", True),
         (f"{BASE_DIR}/tests/test_globals.c", "*A\n", True),
         (f"{BASE_DIR}/tests/test_strings.c", "Plea", True),
         (f"{BASE_DIR}/tests/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!\n", True),

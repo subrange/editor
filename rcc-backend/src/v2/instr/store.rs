@@ -9,6 +9,7 @@ use crate::v2::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;
+use super::helpers::{resolve_mixed_bank, resolve_bank_tag_to_info, get_bank_register, materialize_bank_to_register};
 
 /// Lower a Store instruction to assembly
 /// 
@@ -38,18 +39,12 @@ pub fn lower_store(
             trace!("  Storing temp value: {}", name);
             let reg = mgr.get_register(name.clone());
 
-            // Check if this temp is a pointer and get its bank
-            let bank_reg = if let Some(bank_info) = mgr.get_pointer_bank(&name) {
-                debug!("  Value {} is a pointer with bank {:?}", name, bank_info);
-                match bank_info {
-                    BankInfo::Register(r) => Some(r),
-                    _ => None,
-                }
-            } else {
-                None
-            };
+            let bank_src: Option<(Reg, bool)> = mgr.get_pointer_bank(&name)
+                .map(|info| (get_bank_register(&info), false));
 
-            (reg, bank_reg.is_some(), bank_reg.map(|r| (r, false)))
+            (reg, bank_src.is_some(), bank_src)
+
+            // (reg, bank_reg.is_some(), bank_reg.map(|r| (r, false)))
         }
         Value::Constant(c) => {
             // Load constant into a register
@@ -92,66 +87,38 @@ pub fn lower_store(
             // Return (bank_reg, owned) — owned = true if we allocated a temp that must be freed here
             let (bank_reg, bank_owned) = match fp.bank {
                 BankTag::Global => {
-                    // Store constant bank 0
                     let name = naming.store_fatptr_bank();
                     let r = mgr.get_register(name);
                     insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::Li(r, 0));
+                    insts.push(AsmInst::Add(r, Reg::Gp, Reg::R0));
                     (r, true)
                 }
                 BankTag::Stack => {
-                    // Store constant bank 1
                     let name = naming.store_fatptr_bank();
                     let r = mgr.get_register(name);
                     insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::Li(r, 1));
+                    insts.push(AsmInst::Add(r, Reg::Sb, Reg::R0));
                     (r, true)
                 }
                 BankTag::Mixed => {
-                    // Mixed means the bank is determined at runtime.
-                    // We must source it from the tracked bank of the addr temp (set by calling convention),
-                    // or synthesize it from GP/SB if the manager tracked it that way.
-                    match fp.addr.as_ref() {
-                        Value::Temp(t) => {
-                            let temp_name = naming.temp_name(*t);
-                            match mgr.get_pointer_bank(&temp_name) {
-                                Some(BankInfo::Register(r)) => {
-                                    // Use the dynamic bank register directly; we don't own it
-                                    (r, false)
-                                }
-                                Some(BankInfo::Global) => {
-                                    // Copy GP into a temp so we can store it
-                                    let name = naming.store_fatptr_bank();
-                                    let rtemp = mgr.get_register(name);
-                                    insts.extend(mgr.take_instructions());
-                                    insts.push(AsmInst::Add(rtemp, Reg::Gp, Reg::R0));
-                                    (rtemp, true)
-                                }
-                                Some(BankInfo::Stack) => {
-                                    // Copy SB into a temp so we can store it
-                                    let name = naming.store_fatptr_bank();
-                                    let rtemp = mgr.get_register(name);
-                                    insts.extend(mgr.take_instructions());
-                                    insts.push(AsmInst::Add(rtemp, Reg::Sb, Reg::R0));
-                                    (rtemp, true)
-                                }
-                                None => {
-                                    panic!("STORE: FatPtr with BankTag::Mixed but no tracked bank for {}", temp_name);
-                                }
-                            }
+                    // Mixed means the bank is determined at runtime
+                    let bank_info = resolve_mixed_bank(fp, mgr, naming);
+                    match bank_info {
+                        BankInfo::Register(r) => {
+                            // Use the dynamic bank register directly; we don't own it
+                            (r, false)
                         }
-                        Value::Constant(_) => {
-                            // A Mixed bank cannot accompany a constant address — we lack a runtime bank source
-                            panic!("STORE: FatPtr with BankTag::Mixed cannot have a constant address");
-                        }
-                        other => {
-                            warn!("STORE: Unexpected address type for Mixed fat ptr: {:?}", other);
-                            // Fall back to SB copy to avoid crashing; allocate a temp and copy SB
-                            let name = naming.store_fatptr_bank();
-                            let rtemp = mgr.get_register(name);
-                            insts.extend(mgr.take_instructions());
-                            insts.push(AsmInst::Add(rtemp, Reg::Sb, Reg::R0));
-                            (rtemp, true)
+                        BankInfo::Global | BankInfo::Stack => {
+                            // Need to materialize the bank register value
+                            let bank_tag = if matches!(bank_info, BankInfo::Global) {
+                                BankTag::Global
+                            } else {
+                                BankTag::Stack
+                            };
+                            let (r, mut materialized_insts, owned) = 
+                                materialize_bank_to_register(&bank_tag, mgr, naming, "store_fatptr");
+                            insts.append(&mut materialized_insts);
+                            (r, owned)
                         }
                     }
                 }
@@ -199,35 +166,7 @@ pub fn lower_store(
             };
             
             // Set bank info for the pointer
-            let bank_info = match fp.bank {
-                BankTag::Global => BankInfo::Global,
-                BankTag::Stack  => BankInfo::Stack,
-                BankTag::Mixed => {
-                    // For Mixed, the bank is determined at runtime. We expect the
-                    // address component to be a temp whose bank has been tracked
-                    // by the calling convention (load_param). Reuse that info.
-                    match fp.addr.as_ref() {
-                        Value::Temp(t) => {
-                            let temp_name = naming.temp_name(*t);
-                            if let Some(info) = mgr.get_pointer_bank(&temp_name) {
-                                info
-                            } else {
-                                warn!("STORE: No bank info for {}, defaulting to Stack for Mixed fat ptr", temp_name);
-                                BankInfo::Stack
-                            }
-                        }
-                        Value::Constant(_) => {
-                            // A Mixed bank with a constant address cannot carry a runtime bank.
-                            panic!("STORE: FatPtr with BankTag::Mixed cannot have a constant address");
-                        }
-                        other => {
-                            warn!("STORE: Unexpected address type for Mixed fat ptr: {:?}", other);
-                            BankInfo::Stack
-                        }
-                    }
-                }
-                other => panic!("Unsupported bank type for fat pointer: {:?}", other),
-            };
+            let bank_info = resolve_bank_tag_to_info(&fp.bank, fp, mgr, naming);
 
             let dest_ptr_key = naming.pointer_bank_key("dest_ptr");
             mgr.set_pointer_bank(dest_ptr_key.clone(), bank_info);
@@ -249,26 +188,12 @@ pub fn lower_store(
     // Step 3: Get the bank register for the destination
     let dest_bank_info = mgr.get_pointer_bank(&dest_ptr_name)
         .unwrap_or_else(|| {
-            warn!("  No bank info for pointer {}, defaulting to Stack", dest_ptr_name);
-            BankInfo::Stack
+            panic!("STORE: COMPILER BUG: No bank info for pointer '{}'. All pointers must have tracked bank information!", dest_ptr_name);
         });
     
     debug!("  Destination pointer {} has bank info: {:?}", dest_ptr_name, dest_bank_info);
     
-    let dest_bank_reg = match dest_bank_info {
-        BankInfo::Global => {
-            trace!("  Using GP for global bank");
-            Reg::Gp  // Global pointer register for globals
-        }
-        BankInfo::Stack => {
-            trace!("  Using R13 (SB) for stack bank");
-            Reg::Sb  // SB - Stack Bank register
-        }
-        BankInfo::Register(r) => {
-            trace!("  Using {:?} for dynamic bank", r);
-            r
-        }
-    };
+    let dest_bank_reg = dest_bank_info.to_register();
     
     // Step 4: Generate STORE instruction(s)
     
@@ -303,7 +228,25 @@ pub fn lower_store(
     match value {
         Value::Constant(_) => mgr.free_register(src_reg),
         Value::FatPtr(_) => mgr.free_register(src_reg), // addr_reg
-        _ => {}
+        _ => {
+            // For temps, we don't free src_reg because it's still holding the value
+            // and might be needed again. The register allocator will handle it.
+        }
+    }
+    
+    // Free the destination address register if it was a constant or FatPtr
+    // For temps, we keep it because it's the actual pointer value
+    match ptr_value {
+        Value::FatPtr(fp) => {
+            // If the address was a constant, we allocated a temp register
+            if matches!(fp.addr.as_ref(), Value::Constant(_)) {
+                mgr.free_register(dest_addr_reg);
+            }
+            // For temp addresses, don't free - it's still the pointer value
+        }
+        _ => {
+            // For Value::Temp pointers, don't free - they're still valid pointers
+        }
     }
     
     debug!("lower_store complete: generated {} instructions", insts.len());

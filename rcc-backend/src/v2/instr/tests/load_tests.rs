@@ -123,13 +123,23 @@ fn test_load_from_global_variable() {
     mgr.init();
     let mut naming = new_function_naming();
     
-    // Load from a global variable
-    let ptr = Value::Global("global_var".to_string());
+    // Load from a global variable - simulate how lower.rs would resolve it
+    let ptr = Value::FatPtr(FatPointer {
+        addr: Box::new(Value::Constant(2000)), // Simulated global address
+        bank: BankTag::Global,
+    });
     let insts = lower_load(&mut mgr, &mut naming, &ptr, &Type::I32, 60);
     
-    // Should generate label and placeholder for linker
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Label(_))));
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 0)))); // Placeholder
+    // Should load the constant address
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 2000))));
+    // Should use GP for global bank
+    assert!(insts.iter().any(|i| {
+        if let AsmInst::Load(_, bank, _) = i {
+            *bank == Reg::Gp
+        } else {
+            false
+        }
+    }));
     
     // Should have LOAD instruction with GP (global bank)
     let load_found = insts.iter().any(|i| {

@@ -87,9 +87,10 @@ fn test_store_fat_pointer() {
     
     let insts = lower_store(&mut mgr, &mut naming, &value, &ptr);
     
-    // Should load pointer address and bank values
+    // Should load pointer address
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 100))));
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 0)))); // Global bank = 0
+    // Should copy GP register for the bank component (not load 0)
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::Gp, Reg::R0))));
     
     // Should have two STORE instructions (address and bank)
     let store_count = insts.iter().filter(|i| matches!(i, AsmInst::Store(_, _, _))).count();
@@ -161,15 +162,17 @@ fn test_store_to_global_variable() {
     mgr.init();
     let mut naming = new_function_naming();
     
-    // Store to a global variable
+    // Store to a global variable - simulate how lower.rs would resolve it
     let value = Value::Constant(777);
-    let ptr = Value::Global("global_array".to_string());
+    let ptr = Value::FatPtr(FatPointer {
+        addr: Box::new(Value::Constant(3000)), // Simulated global address
+        bank: BankTag::Global,
+    });
     
     let insts = lower_store(&mut mgr, &mut naming, &value, &ptr);
     
-    // Should generate label and placeholder for linker
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Label(_))));
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 0)))); // Placeholder for address
+    // Should load the address and value
+    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 3000)))); // Address
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(_, 777)))); // Value to store
     
     // Should have STORE instruction with GP (global bank)
