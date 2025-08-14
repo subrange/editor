@@ -388,6 +388,26 @@ impl NameGenerator {
         format!("gep_new_bank_f{}_op{}_t{}", self.function_id, op_id, result_temp)
     }
     
+    pub fn gep_stack_check_label(&mut self, result_temp: TempId) -> String {
+        let label_id = self.next_label_id();
+        format!("L_gep_stack_f{}_t{}_{}", self.function_id, result_temp, label_id)
+    }
+    
+    pub fn gep_stack_end_label(&mut self, result_temp: TempId) -> String {
+        // Use same counter as check label to keep them paired
+        format!("L_gep_end_f{}_t{}_{}", self.function_id, result_temp, self.next_label_id - 1)
+    }
+    
+    pub fn gep_reg_stack_check_label(&mut self, result_temp: TempId) -> String {
+        let label_id = self.next_label_id();
+        format!("L_gep_reg_stack_f{}_t{}_{}", self.function_id, result_temp, label_id)
+    }
+    
+    pub fn gep_reg_stack_end_label(&mut self, result_temp: TempId) -> String {
+        // Use same counter as check label to keep them paired
+        format!("L_gep_reg_end_f{}_t{}_{}", self.function_id, result_temp, self.next_label_id - 1)
+    }
+    
     /// Get name for GEP global address
     pub fn gep_global(&mut self, global_name: &str) -> String {
         let op_id = self.next_operation_id();

@@ -257,7 +257,7 @@ pub fn lower_gep(
                 // The computed offset is used directly
                 debug!("  Stack pointer - no bank overflow needed");
                 result_bank_info = BankInfo::Stack;
-                
+
                 // Clean up just the offset register
                 mgr.free_register(offset_reg);
             }
@@ -266,22 +266,22 @@ pub fn lower_gep(
                 insts.push(AsmInst::Comment(
                     "Runtime bank overflow calculation for dynamic GEP".to_string()
                 ));
-                
+
                 // Calculate how many banks we've crossed: bank_delta = result_addr / BANK_SIZE
                 let bank_delta_reg = mgr.get_register(naming.gep_bank_delta(result_temp));
                 let bank_size_reg = mgr.get_register(naming.gep_bank_size(result_temp));
                 insts.extend(mgr.take_instructions());
-                
+
                 insts.push(AsmInst::Li(bank_size_reg, BANK_SIZE_INSTRUCTIONS as i16));
                 insts.push(AsmInst::Div(bank_delta_reg, result_addr_reg, bank_size_reg));
                 trace!("  Calculated bank delta (banks crossed)");
-                
+
                 // Calculate address within new bank: new_addr = result_addr % BANK_SIZE
                 let new_addr_reg = mgr.get_register(naming.gep_new_addr(result_temp));
                 insts.extend(mgr.take_instructions());
                 insts.push(AsmInst::Mod(new_addr_reg, result_addr_reg, bank_size_reg));
                 trace!("  Calculated address within new bank");
-                
+
                 // Now update the bank based on the original bank info
                 match base_bank_info {
                     BankInfo::NamedValue(name) => {
@@ -312,10 +312,10 @@ pub fn lower_gep(
                         unreachable!("Stack case should be handled earlier");
                     }
                 }
-                
+
                 // Move the corrected address to the result register
                 insts.push(AsmInst::Add(result_addr_reg, new_addr_reg, Reg::R0));
-                
+
                 // Clean up temporary registers used for bank overflow
                 mgr.free_register(offset_reg);
                 mgr.free_register(bank_delta_reg);
