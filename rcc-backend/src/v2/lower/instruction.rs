@@ -109,6 +109,9 @@ pub fn lower_instruction(
             // Mark as stack pointer
             mgr.set_pointer_bank(result_name.clone(), crate::v2::BankInfo::Stack);
             
+            // Register this alloca so it can be recomputed if needed later
+            mgr.register_alloca(result_name.clone(), offset);
+            
             mgr.bind_value_to_register(result_name, result_reg);
 
             debug!("V2: Alloca FP+{}", offset);

@@ -125,10 +125,9 @@ L_memcpy_2:
     STORE T6, SB, SC
     ADD T6, S2, T2
     ADD T3, T0, R0
-; Reload t7 from slot 5
-    ADD SC, FP, R0
-    ADDI SC, SC, 21
-    LOAD S1, SB, SC
+; Recompute alloca t7 at FP+3
+    ADD S1, FP, R0
+    ADDI S1, S1, 3
     LOAD T2, SB, S1
     ADDI T7, S1, 1
     LOAD T0, SB, T7

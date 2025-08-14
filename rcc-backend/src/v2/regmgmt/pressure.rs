@@ -68,6 +68,10 @@ pub struct RegisterPressureManager {
     
     /// Number of local variables (for calculating spill addresses)
     local_count: i16,
+    
+    /// Map from alloca temp names to their FP offsets
+    /// This allows recomputing alloca addresses when they're not in registers
+    alloca_offsets: BTreeMap<String, i16>,
 }
 
 impl RegisterPressureManager {
@@ -89,6 +93,7 @@ impl RegisterPressureManager {
             lifetimes: BTreeMap::new(),
             instructions: Vec::new(),
             local_count,
+            alloca_offsets: BTreeMap::new(),
         }
     }
     
@@ -229,6 +234,36 @@ impl RegisterPressureManager {
                 self.lru_queue.push_back(reg);
                 trace!("  '{}' already in {:?}, moved to MRU position", for_value, reg);
             }
+            return reg;
+        }
+        
+        // Check if this is an alloca that needs to be recomputed
+        if let Some(&fp_offset) = self.alloca_offsets.get(&for_value) {
+            debug!("  '{}' is an alloca at FP+{}, recomputing address", for_value, fp_offset);
+            
+            // Get a register for the recomputed address
+            let reg = if let Some(free_reg) = self.free_list.pop_front() {
+                free_reg
+            } else {
+                // Need to spill to make room
+                let victim = self.lru_queue.pop_front().expect("No registers to spill!");
+                debug!("  Spilling {:?} to make room for alloca recomputation", victim);
+                self.spill_register(victim);
+                victim
+            };
+            
+            // Generate instructions to recompute FP + offset
+            self.instructions.push(AsmInst::Comment(format!("Recompute alloca {} at FP+{}", for_value, fp_offset)));
+            self.instructions.push(AsmInst::Add(reg, Reg::Fp, Reg::R0));
+            if fp_offset != 0 {
+                self.instructions.push(AsmInst::AddI(reg, reg, fp_offset));
+            }
+            
+            // Update tracking
+            self.reg_contents.insert(reg, for_value.clone());
+            self.lru_queue.push_back(reg);
+            
+            debug!("  Recomputed alloca '{}' into {:?}", for_value, reg);
             return reg;
         }
         
@@ -411,6 +446,12 @@ impl RegisterPressureManager {
             self.free_register(reg);
         }
         debug!("All registers spilled, {} slots used", self.next_spill_slot);
+    }
+    
+    /// Register an alloca temp with its FP offset
+    pub fn register_alloca(&mut self, temp_name: String, fp_offset: i16) {
+        debug!("Registering alloca '{}' at FP+{}", temp_name, fp_offset);
+        self.alloca_offsets.insert(temp_name, fp_offset);
     }
     
     /// Get register for a Value

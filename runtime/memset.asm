@@ -87,10 +87,9 @@ L_memset_2:
     STORE S1, SB, SC
     ADD S1, T3, S3
     ADD T2, T6, R0
-; Reload t4 from slot 2
-    ADD SC, FP, R0
-    ADDI SC, SC, 15
-    LOAD T7, SB, SC
+; Recompute alloca t4 at FP+2
+    ADD T7, FP, R0
+    ADDI T7, T7, 2
     LOAD S3, SB, T7
     STORE S3, S1, T2
     BEQ R0, R0, L_memset_3
