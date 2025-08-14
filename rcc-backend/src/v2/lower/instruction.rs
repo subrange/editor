@@ -12,7 +12,7 @@ use log::{debug, warn};
 use crate::v2::RegisterPressureManager;
 use crate::v2::naming::NameGenerator;
 use crate::v2::globals::GlobalManager;
-use crate::v2::function::{CallArg, CallingConvention};
+use crate::v2::function::{FunctionBuilder, CallArg, CallTarget};
 
 // Import all the existing lowering functions
 use crate::v2::instr::{
@@ -208,18 +208,15 @@ pub fn lower_instruction(
                 _ => return Err(format!("V2: Invalid function value for call: {:?}", func)),
             };
             
-            // Use the calling convention to handle the complete call sequence
-            let cc = CallingConvention::new();
-            
             // Prepare the result name if there's a return value
             let result_name = result.map(|id| naming.temp_name(id));
             
-            // Use the label-based call method
+            // Use FunctionBuilder's standalone call method
             // This handles everything: argument setup, call, return value binding, and stack cleanup
-            let (call_insts, _return_regs) = cc.make_complete_call_by_label(
+            let call_insts = FunctionBuilder::make_standalone_call(
                 mgr,
                 naming,
-                &func_name,
+                CallTarget::Label(func_name.clone()),
                 call_args,
                 result_type.is_pointer(),
                 result_name,

@@ -1,4 +1,4 @@
-use crate::v2::function::lowering::FunctionLowering;
+use crate::v2::function::internal::FunctionLowering;
 use rcc_codegen::{AsmInst, Reg};
 
 #[test]
@@ -7,7 +7,7 @@ fn test_prologue_initializes_r13() {
     let insts = func.emit_prologue(5);
     
     // Should have LI R13, 1 near the beginning
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
+    // Stack bank is initialized in crt0.asm, not in function prologue
     
     // Should save RA and FP
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(Reg::Ra, _, _))));
@@ -81,7 +81,7 @@ fn test_prologue_with_no_locals() {
     let insts = func.emit_prologue(0);
     
     // Should still initialize R13
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
+    // Stack bank is initialized in crt0.asm, not in function prologue
     
     // Should save RA and FP
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Store(Reg::Ra, _, _))));

@@ -16,12 +16,12 @@
 //! exposing internals. The goal is an API that is impossible to misuse.
 
 use rcc_codegen::{AsmInst, Reg};
-use super::lowering::FunctionLowering;
+use super::internal::FunctionLowering;
 use super::calling_convention::CallingConvention;
 use log::{debug, trace, info};
 
-// Re-export CallArg since it's needed for the public API
-pub use super::calling_convention::CallArg;
+// Re-export types needed for the public API
+pub use super::calling_convention::{CallArg, CallTarget};
 
 /// High-level function builder that encapsulates all the complexity
 /// 
@@ -54,6 +54,29 @@ pub struct FunctionBuilder {
 }
 
 impl FunctionBuilder {
+    /// Make a standalone function call without a FunctionBuilder context
+    /// 
+    /// This is used when lowering individual Call instructions outside of function building
+    pub fn make_standalone_call(
+        mgr: &mut crate::v2::RegisterPressureManager,
+        naming: &mut crate::v2::naming::NameGenerator,
+        target: super::calling_convention::CallTarget,
+        args: Vec<CallArg>,
+        returns_pointer: bool,
+        result_name: Option<String>,
+    ) -> Vec<AsmInst> {
+        let cc = CallingConvention::new();
+        let (call_insts, _return_regs) = cc.make_complete_call(
+            mgr,
+            naming,
+            target,
+            args,
+            returns_pointer,
+            result_name,
+        );
+        call_insts
+    }
+    
     /// Create a new function builder
     pub fn new() -> Self {
         info!("Creating new FunctionBuilder");
@@ -97,11 +120,44 @@ impl FunctionBuilder {
         self
     }
     
-    /// Load a parameter into a register
+    /// Load a parameter into a register with full register management
+    /// 
+    /// This version takes the register manager and naming context to properly bind the parameter
+    /// Returns (address_register, optional_bank_register)
+    pub fn load_parameter_with_binding(
+        &mut self, 
+        index: usize,
+        param_id: rcc_common::TempId,
+        mgr: &mut crate::v2::RegisterPressureManager,
+        naming: &mut crate::v2::naming::NameGenerator
+    ) -> (Reg, Option<Reg>) {
+        debug!("Loading and binding parameter {} (t{})", index, param_id);
+        assert!(self.prologue_emitted, "Must emit prologue before loading parameters");
+        assert!(!self.epilogue_emitted, "Cannot load parameters after epilogue");
+        
+        // Use the calling convention to load the parameter
+        let (param_insts, addr_reg, bank_reg) = self.cc.load_param(index, &self.param_types, mgr, naming);
+        self.instructions.extend(param_insts);
+        
+        // Bind the parameter to the register manager
+        let param_name = naming.temp_name(param_id);
+        mgr.bind_value_to_register(param_name.clone(), addr_reg);
+        
+        // If this is a fat pointer, track the bank
+        if let Some(bank) = bank_reg {
+            debug!("  Parameter {} is a fat pointer with bank in {:?}", index, bank);
+            mgr.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank));
+        }
+        
+        trace!("  Parameter {} bound to {:?} (bank: {:?})", index, addr_reg, bank_reg);
+        (addr_reg, bank_reg)
+    }
+    
+    /// Load a parameter into a register (simple version without binding)
     /// 
     /// Returns the register containing the parameter
     pub fn load_parameter(&mut self, index: usize) -> Reg {
-        debug!("Loading parameter {}", index);
+        debug!("Loading parameter {} (simple)", index);
         assert!(self.prologue_emitted, "Must emit prologue before loading parameters");
         assert!(!self.epilogue_emitted, "Cannot load parameters after epilogue");
         
@@ -148,6 +204,43 @@ impl FunctionBuilder {
     
     /// Make a function call with automatic stack management
     /// 
+    /// This version requires register manager and naming for proper call handling
+    /// Uses the unified make_complete_call interface
+    pub fn call_function_complete(
+        &mut self,
+        func_addr: u16,
+        func_bank: u16,
+        args: Vec<CallArg>,
+        returns_pointer: bool,
+        result_name: Option<String>,
+        mgr: &mut crate::v2::RegisterPressureManager,
+        naming: &mut crate::v2::naming::NameGenerator
+    ) -> (Reg, Option<Reg>) {
+        info!("Calling function at bank:{}, addr:{} with {} args", 
+              func_bank, func_addr, args.len());
+        assert!(self.prologue_emitted, "Must emit prologue before making calls");
+        assert!(!self.epilogue_emitted, "Cannot make calls after epilogue");
+        
+        // Use the unified calling convention interface
+        let (call_insts, return_regs) = self.cc.make_complete_call(
+            mgr,
+            naming,
+            super::calling_convention::CallTarget::Address { addr: func_addr, bank: func_bank },
+            args,
+            returns_pointer,
+            result_name
+        );
+        
+        self.instructions.extend(call_insts);
+        
+        // Extract the return registers
+        let (ret_addr, ret_bank) = return_regs.unwrap_or((Reg::Rv0, None));
+        debug!("Call complete: return in {:?}, bank: {:?}", ret_addr, ret_bank);
+        (ret_addr, ret_bank)
+    }
+    
+    /// Make a function call (simple version for tests)
+    /// 
     /// This method:
     /// - Sets up arguments on the stack
     /// - Emits the call instruction
@@ -160,7 +253,7 @@ impl FunctionBuilder {
         args: Vec<CallArg>,
         returns_pointer: bool
     ) -> (Reg, Option<Reg>) {
-        info!("Calling function at bank:{}, addr:{} with {} args", 
+        info!("Calling function at bank:{}, addr:{} with {} args (simple)", 
               func_bank, func_addr, args.len());
         assert!(self.prologue_emitted, "Must emit prologue before making calls");
         assert!(!self.epilogue_emitted, "Cannot make calls after epilogue");
@@ -313,7 +406,7 @@ mod tests {
         
         assert!(!instructions.is_empty());
         // Should have R13 initialization
-        assert!(instructions.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
+        // Stack bank is initialized in crt0.asm, not in function prologue
     }
     
     #[test]

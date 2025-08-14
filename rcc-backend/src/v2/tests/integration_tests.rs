@@ -40,8 +40,10 @@ fn test_complete_function_with_calls() {
     
     // Verify key invariants
     assert!(!instructions.is_empty());
-    assert!(instructions.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
-    assert!(instructions.iter().any(|i| matches!(i, AsmInst::Jalr(_, _, Reg::Ra))));
+    // Stack bank is initialized in crt0.asm, not in function prologue
+    // So we don't check for Li(Reg::Sb, 1) anymore
+    assert!(instructions.iter().any(|i| matches!(i, AsmInst::Jalr(_, _, Reg::Ra))),
+            "Missing Jalr instruction");
 }
 
 #[test]

@@ -32,7 +32,7 @@ memcpy:
     ADDI SC, FP, -7
     LOAD S1, SB, SC
 ; Load param 2 bank from FP-8
-    ADDI SC, FP, -6
+    ADDI SC, FP, -8
     LOAD S0, SB, SC
 ; Load param 3 from FP-9
     ADDI SC, FP, -9

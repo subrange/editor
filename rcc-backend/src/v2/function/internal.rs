@@ -1,23 +1,18 @@
-//! Function Lowering with Correct Prologue/Epilogue
+//! Internal Implementation for FunctionBuilder
 //! 
-//! Key fixes:
-//! - R13 initialized to 1 at function start
-//! - Proper stack frame management
-//! - Correct RA/FP save/restore
+//! THIS MODULE IS INTERNAL TO THE FUNCTION MODULE AND SHOULD NOT BE USED DIRECTLY!
+//! All function building should go through FunctionBuilder.
 //! 
-//! ## Architecture
+//! This module contains the internal `FunctionLowering` struct that handles:
+//! - Prologue/epilogue generation
+//! - Local variable management
+//! - Stack frame setup
+//! - Register pressure management
 //! 
-//! `FunctionLowering` is the main orchestrator for compiling a function. It owns:
-//! - `RegisterPressureManager`: Manages register allocation for the function
-//! - `NameGenerator`: Ensures unique naming within the function
-//! 
-//! `CallingConvention` is a stateless utility that generates instruction sequences
-//! for calls, but uses the naming context from the function that's using it.
-//! 
-//! This separation allows:
-//! - Unit testing of calling convention logic in isolation
-//! - Consistent naming within a function's scope
-//! - Clear ownership of resources
+//! The separation between this and FunctionBuilder allows:
+//! - Clean public API in FunctionBuilder
+//! - Internal complexity hidden here
+//! - Easy testing of individual components
 
 use rcc_codegen::{AsmInst, Reg};
 use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};

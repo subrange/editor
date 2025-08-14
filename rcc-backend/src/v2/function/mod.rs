@@ -12,16 +12,15 @@
 //! Only the builder API is exposed to prevent misuse of internal components.
 
 // Internal modules - implementation details
-mod lowering;
-mod calling_convention;
-mod builder;
+mod internal;  // Internal implementation for FunctionBuilder (was lowering.rs)
+mod calling_convention;  // Calling convention logic (private to this module)
+mod builder;  // Public API for building functions
 
 // Public exports - ONLY the safe API
-pub use builder::FunctionBuilder;
-pub use calling_convention::{CallArg, CallingConvention};  // Re-export CallArg and CallingConvention
+pub use builder::{FunctionBuilder, CallArg, CallTarget};  // All function-related operations go through FunctionBuilder
 
-// Note: setup_call_with_context was removed as it was unnecessary indirection.
-// Callers should directly use CallingConvention::new().setup_call_args() instead.
+// Note: CallingConvention is now completely encapsulated within FunctionBuilder.
+// All function-related operations (building functions, making calls) must go through FunctionBuilder.
 
 // Tests
 #[cfg(test)]

@@ -3,7 +3,7 @@
 //! These tests have access to internal modules for thorough testing
 
 use super::super::calling_convention::{CallingConvention, CallArg};
-use super::super::lowering::FunctionLowering;
+use super::super::internal::FunctionLowering;
 use crate::v2::regmgmt::RegisterPressureManager;
 use crate::v2::naming::new_function_naming;
 use rcc_codegen::{AsmInst, Reg};
@@ -120,8 +120,7 @@ fn stress_test_huge_stack_frame() {
     let mut func = FunctionLowering::new();
     let insts = func.emit_prologue(1000);
     
-    // Should initialize R13
-    assert!(insts.iter().any(|i| matches!(i, AsmInst::Li(Reg::Sb, 1))));
+    // Stack bank is initialized in crt0.asm, not in function prologue
     
     // Should allocate 1000 slots
     assert!(insts.iter().any(|i| matches!(i, AsmInst::AddI(Reg::Sp, Reg::Sp, 1000))));

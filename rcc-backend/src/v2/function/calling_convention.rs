@@ -11,7 +11,16 @@ use crate::v2::regmgmt::RegisterPressureManager;
 use crate::v2::naming::NameGenerator;
 use log::{debug, trace, info};
 
-pub struct CallingConvention {}
+/// Target for function calls - either by address or by label
+#[derive(Debug, Clone)]
+pub enum CallTarget {
+    /// Direct call to a known address with bank
+    Address { addr: u16, bank: u16 },
+    /// Call to a function by label (will be resolved by assembler)
+    Label(String),
+}
+
+pub(super) struct CallingConvention {}
 
 impl Default for CallingConvention {
     fn default() -> Self {
@@ -20,7 +29,7 @@ impl Default for CallingConvention {
 }
 
 impl CallingConvention {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {}
     }
     
@@ -73,11 +82,51 @@ impl CallingConvention {
         self.analyze_placement(param_types.len(), |i| param_types[i].1.is_pointer())
     }
     
+    /// Calculate the stack offset for a parameter that's passed on the stack
+    /// This centralizes the offset calculation logic to avoid duplication
+    /// 
+    /// # Arguments
+    /// * `param_index` - The index of the parameter we're calculating the offset for
+    /// * `param_types` - All parameter types to properly account for fat pointers
+    /// * `first_stack_param` - The index of the first parameter that goes on the stack
+    /// 
+    /// # Returns
+    /// The offset from FP to access this parameter (will be negative)
+    fn calculate_stack_param_offset(
+        &self,
+        param_index: usize,
+        param_types: &[(rcc_common::TempId, rcc_frontend::ir::IrType)],
+        first_stack_param: usize,
+    ) -> i16 {
+        // Stack layout: ... param6, param5, param4, RA, FP, S0, S1, S2, S3, locals...
+        // Start at -6 for FP, RA, and S0-S3
+        let mut offset = -6i16;
+        
+        // Count stack words before our parameter
+        for i in first_stack_param..param_index {
+            if i >= param_types.len() {
+                break;
+            }
+            if param_types[i].1.is_pointer() {
+                offset -= 2; // Fat pointer takes 2 words
+            } else {
+                offset -= 1; // Scalar takes 1 word
+            }
+        }
+        
+        // Account for this parameter itself
+        offset -= 1;
+        
+        offset
+    }
+    
     /// Setup parameters for a function call
     /// First 4 scalar arguments or 2 fat pointers go in A0-A3
     /// Remaining arguments are passed on the stack
-    /// Returns (instructions, stack_words_used)
-    pub fn setup_call_args(&self, 
+    /// 
+    /// IMPORTANT: This function now handles spilling automatically
+    /// It will spill all live registers before setting up arguments to prevent clobbering
+    pub(super) fn setup_call_args(&self, 
                            pressure_manager: &mut RegisterPressureManager,
                            _naming: &mut NameGenerator,
                            args: Vec<CallArg>) -> Vec<AsmInst> {
@@ -85,6 +134,17 @@ impl CallingConvention {
         let mut insts = Vec::new();
         let mut stack_offset = 0i16;
         let arg_regs = [Reg::A0, Reg::A1, Reg::A2, Reg::A3];
+        
+        // CRITICAL: Spill all live registers before setting up arguments
+        // This prevents source registers from being clobbered during argument setup
+        debug!("  Spilling all live registers before call");
+        insts.push(AsmInst::Comment("Spill live registers before call".to_string()));
+        pressure_manager.spill_all();
+        let spill_insts = pressure_manager.take_instructions();
+        if !spill_insts.is_empty() {
+            trace!("  Generated {} spill instructions", spill_insts.len());
+            insts.extend(spill_insts);
+        }
         
         // Use common logic to determine placement
         let (register_arg_slots, first_stack_arg) = self.analyze_arg_placement(&args);
@@ -177,11 +237,6 @@ impl CallingConvention {
             }
         }
 
-        // Note: We intentionally do not call spill_all() here.
-        // Spilling can clobber source registers for arguments (both stack and A0–A3).
-        // The caller is responsible for ensuring live temps are saved before invoking this helper.
-
-        // (No global spill here; caller should manage liveness before call.)
         if stack_offset > 0 {
             insts.push(AsmInst::Comment(format!("Pushed {stack_offset} words to stack")));
         }
@@ -193,7 +248,7 @@ impl CallingConvention {
     
     /// Generate call instruction
     /// For cross-bank calls, sets PCB first then uses JAL
-    pub fn emit_call(&self, func_addr: u16, func_bank: u16) -> Vec<AsmInst> {
+    pub(super) fn emit_call(&self, func_addr: u16, func_bank: u16) -> Vec<AsmInst> {
         info!("Emitting call to function at bank:{}, addr:{}", func_bank, func_addr);
         let mut insts = Vec::new();
         
@@ -222,7 +277,7 @@ impl CallingConvention {
     
     /// Handle return value after call
     /// Binds the return value to the specified result name in the register manager
-    pub fn handle_return_value(&self, 
+    pub(super) fn handle_return_value(&self, 
                               pressure_manager: &mut RegisterPressureManager,
                               _naming: &mut NameGenerator,
                               is_pointer: bool,
@@ -260,7 +315,7 @@ impl CallingConvention {
     }
     
     /// Clean up stack after call
-    pub fn cleanup_stack(&self, num_args_words: i16) -> Vec<AsmInst> {
+    pub(super) fn cleanup_stack(&self, num_args_words: i16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         if num_args_words > 0 {
             debug!("Cleaning up {} words from stack after call", num_args_words);
@@ -275,18 +330,31 @@ impl CallingConvention {
     
     /// Complete function call sequence including setup, call, return handling, and cleanup
     /// This is the main entry point for making function calls in the lowering code
-    pub fn make_complete_call(
+    /// 
+    /// # Arguments
+    /// * `target` - Either a direct address or a label for the function to call
+    /// * `args` - Arguments to pass to the function
+    /// * `returns_pointer` - Whether the function returns a fat pointer
+    /// * `result_name` - Optional name for the return value binding
+    pub(super) fn make_complete_call(
         &self,
         pressure_manager: &mut RegisterPressureManager,
         naming: &mut NameGenerator,
-        func_addr: u16,
-        func_bank: u16,
+        target: CallTarget,
         args: Vec<CallArg>,
         returns_pointer: bool,
         result_name: Option<String>,
     ) -> (Vec<AsmInst>, Option<(Reg, Option<Reg>)>) {
-        info!("Making complete call to function at bank:{}, addr:{} with {} args", 
-              func_bank, func_addr, args.len());
+        match &target {
+            CallTarget::Address { addr, bank } => {
+                info!("Making complete call to function at bank:{}, addr:{} with {} args", 
+                      bank, addr, args.len());
+            }
+            CallTarget::Label(label) => {
+                info!("Making complete call to function '{}' with {} args", label, args.len());
+            }
+        }
+        
         let mut insts = Vec::new();
         
         // Calculate stack words needed for cleanup
@@ -313,67 +381,16 @@ impl CallingConvention {
         
         // 2. Emit call instruction
         trace!("  Emitting call instruction");
-        let call = self.emit_call(func_addr, func_bank);
-        insts.extend(call);
-        
-        // 3. Handle return value (if any)
-        let (ret_insts, return_regs) = self.handle_return_value(
-            pressure_manager, 
-            naming, 
-            returns_pointer,
-            result_name
-        );
-        insts.extend(ret_insts);
-        
-        // 4. Clean up stack
-        trace!("  Cleaning up {} stack words", stack_words);
-        let cleanup = self.cleanup_stack(stack_words);
-        insts.extend(cleanup);
-        
-        debug!("Complete call sequence finished: {} total instructions", insts.len());
-        (insts, return_regs)
-    }
-    
-    /// Complete function call sequence with label-based addressing
-    /// Use this when calling functions by name rather than numeric address
-    pub fn make_complete_call_by_label(
-        &self,
-        pressure_manager: &mut RegisterPressureManager,
-        naming: &mut NameGenerator,
-        func_label: &str,
-        args: Vec<CallArg>,
-        returns_pointer: bool,
-        result_name: Option<String>,
-    ) -> (Vec<AsmInst>, Option<(Reg, Option<Reg>)>) {
-        info!("Making complete call to function '{}' with {} args", func_label, args.len());
-        let mut insts = Vec::new();
-        
-        // Calculate stack words needed for cleanup
-        // Only count arguments that will be pushed to stack, not register arguments
-        let (register_arg_slots, _) = self.analyze_arg_placement(&args);
-        let mut stack_words = 0i16;
-        for (idx, arg) in args.iter().enumerate() {
-            // Skip arguments that go in registers
-            if register_arg_slots.iter().any(|(i, _)| *i == idx) {
-                continue;
+        match target {
+            CallTarget::Address { addr, bank } => {
+                let call = self.emit_call(addr, bank);
+                insts.extend(call);
             }
-            // Count stack words for this argument
-            stack_words += match arg {
-                CallArg::Scalar(_) => 1,
-                CallArg::FatPointer { .. } => 2,
-            };
+            CallTarget::Label(label) => {
+                insts.push(AsmInst::Comment(format!("Call function {}", label)));
+                insts.push(AsmInst::Call(label));
+            }
         }
-        debug!("  Call will use {} stack words", stack_words);
-        
-        // 1. Setup arguments
-        trace!("  Setting up call arguments");
-        let setup = self.setup_call_args(pressure_manager, naming, args);
-        insts.extend(setup);
-        
-        // 2. Emit call instruction using label
-        trace!("  Emitting call instruction to label '{}'", func_label);
-        insts.push(AsmInst::Comment(format!("Call function {}", func_label)));
-        insts.push(AsmInst::Call(func_label.to_string()));
         
         // 3. Handle return value (if any)
         let (ret_insts, return_regs) = self.handle_return_value(
@@ -398,7 +415,7 @@ impl CallingConvention {
     /// Additional parameters are on the stack at negative offsets from FP
     /// param_types: The types of all parameters to calculate correct stack offsets
     /// Returns (instructions, address_reg, optional_bank_reg for fat pointers)
-    pub fn load_param(&self, index: usize, 
+    pub(super) fn load_param(&self, index: usize, 
                      param_types: &[(rcc_common::TempId, rcc_frontend::ir::IrType)],
                      pressure_manager: &mut RegisterPressureManager,
                      naming: &mut NameGenerator) -> (Vec<AsmInst>, Reg, Option<Reg>) {
@@ -463,29 +480,8 @@ impl CallingConvention {
             return (insts, dest, bank_reg);
         } else {
             // Parameter is on the stack
-            // Stack parameters start after the 4 register parameters
-            // They are before the frame (negative offsets from FP)
-            // Stack layout: ... param6, param5, param4, RA, FP, S0, S1, S2, S3, locals...
-
-            // Calculate the actual offset based on parameter types
-            // We need to account for fat pointers taking 2 cells
-            let mut param_offset = -6i16; // Start at -6 for FP, RA, and S0-S3
-
-            // Count stack words before our parameter
-            for i in first_stack_param..index {
-                if i >= param_types.len() {
-                    break;
-                }
-                if param_types[i].1.is_pointer() {
-                    param_offset -= 2; // Fat pointer takes 2 words
-                } else {
-                    param_offset -= 1; // Scalar takes 1 word
-                }
-            }
-
-            // Account for this parameter itself
-            param_offset -= 1;
-
+            // Use the centralized helper to calculate the offset
+            let param_offset = self.calculate_stack_param_offset(index, param_types, first_stack_param);
             debug!("  Parameter {} (stack param) is at FP{}", index, param_offset);
 
             insts.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));

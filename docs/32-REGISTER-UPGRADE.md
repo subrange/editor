@@ -263,7 +263,7 @@ VADD4 X0, A0, A1        ; Add 4x16-bit values in parallel
 
 ### Function Prologue
 ```asm
-; First 4 arguments are in A0-A3
+; First 4 arguments (or two fat pointers, or mixed) are in A0-A3
 ; Additional arguments (5+) are on stack at FP+2, FP+3, etc.
 ; Save callee-saved registers (if used)
 

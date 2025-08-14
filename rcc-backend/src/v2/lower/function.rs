@@ -1,7 +1,9 @@
-//! Function Lowering - Handles lowering of functions
+//! IR Function Lowering - Converts IR functions to assembly
 //! 
-//! This module is responsible for lowering IR functions to assembly,
-//! including parameter binding, basic block generation, and epilogue handling.
+//! This is the main entry point for lowering complete IR functions to assembly.
+//! It uses FunctionBuilder to handle all the complexity of function generation.
+//! 
+//! DO NOT CONFUSE WITH /v2/function/internal.rs which is an internal implementation detail.
 
 use rcc_frontend::ir::{Function, Instruction, Value, IrType};
 use rcc_codegen::{AsmInst, Reg};
@@ -10,7 +12,7 @@ use log::{debug, info, trace};
 use crate::v2::RegisterPressureManager;
 use crate::v2::naming::NameGenerator;
 use crate::v2::globals::GlobalManager;
-use crate::v2::function::{FunctionBuilder, CallingConvention};
+use crate::v2::function::FunctionBuilder;
 use crate::v2::instr::helpers::get_bank_register_with_mgr;
 use super::instruction::lower_instruction;
 
@@ -79,8 +81,6 @@ pub fn lower_function_v2(
         .map(|(id, ty)| (*id, ty.clone()))
         .collect();
     
-    let pt = param_types.clone();
-    
     let mut builder = FunctionBuilder::with_params(param_types);
     
     // Calculate local slots needed
@@ -92,24 +92,10 @@ pub fn lower_function_v2(
     builder.begin_function(local_slots);
 
     // === Bind function parameters at entry ===
-    // Load parameters using the calling convention and bind them to their SSA temps
-    {
-        let cc = CallingConvention::new();
-        for (idx, (param_id, _ty)) in function.parameters.iter().enumerate() {
-            // Generate load instructions for this parameter
-            let (param_insts, preg, bank_reg) = cc.load_param(idx, &pt, mgr, naming);
-            // Emit them at the top of the function
-            builder.add_instructions(param_insts);
-            // Bind the temp name to the register so later uses resolve correctly
-            let pname = naming.temp_name(*param_id);
-            mgr.bind_value_to_register(pname.clone(), preg);
-            
-            // If this is a fat pointer parameter, track the bank register
-            if let Some(bank_reg) = bank_reg {
-                debug!("Parameter {} is a fat pointer with bank in {:?}", idx, bank_reg);
-                mgr.set_pointer_bank(pname, crate::v2::BankInfo::Register(bank_reg));
-            }
-        }
+    // Load parameters using the builder which handles all the complexity
+    for (idx, (param_id, _ty)) in function.parameters.iter().enumerate() {
+        // Use the builder to load and bind the parameter properly
+        let (_addr_reg, _bank_reg) = builder.load_parameter_with_binding(idx, *param_id, mgr, naming);
     }
     
     // Track basic block labels for branching
