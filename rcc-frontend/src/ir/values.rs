@@ -26,6 +26,9 @@ pub enum Value {
     /// Fat pointer (address + bank)
     FatPtr(FatPointer),
     
+    /// Array of constant values (for initializers)
+    ConstantArray(Vec<i64>),
+    
     /// Undefined value (for uninitialized variables)
     Undef,
 }
@@ -38,6 +41,14 @@ impl fmt::Display for Value {
             Value::Global(name) => write!(f, "@{name}"),
             Value::Function(name) => write!(f, "@{name}"),
             Value::FatPtr(ptr) => write!(f, "{{addr: {}, bank: {:?}}}", ptr.addr, ptr.bank),
+            Value::ConstantArray(values) => {
+                write!(f, "[")?;
+                for (i, val) in values.iter().enumerate() {
+                    if i > 0 { write!(f, ", ")?; }
+                    write!(f, "{}", val)?;
+                }
+                write!(f, "]")
+            }
             Value::Undef => write!(f, "undef"),
         }
     }

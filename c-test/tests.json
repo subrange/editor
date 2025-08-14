@@ -28,7 +28,7 @@
     },
     {
       "file": "tests/test_minimal_insert.c",
-      "expected": "AXCD\n",
+      "expected": "Pass: 1\nPass: 2\nPass: 3\nPass: 4\n0W\n",
       "use_runtime": true
     },
     {

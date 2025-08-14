@@ -36,24 +36,8 @@ impl GlobalManager {
     
     /// Allocate space for a global variable
     pub fn allocate_global(&mut self, global: &GlobalVariable) -> GlobalInfo {
-        let is_string = global.name.starts_with("__str_"); // TODO: Extend Ir properly for string literals
-        
         // Calculate size in words (16-bit)
-        let size = match &global.var_type {
-            IrType::I8 | IrType::I16 => 1,
-            IrType::I32 => 2, // 32-bit takes 2 words
-            IrType::FatPtr(_) => 2, // Fat pointers are 2 words (address + bank)
-            IrType::Array { size, .. } if is_string => {
-                // For strings, allocate one word per character (including null terminator)
-                *size as u16
-            }
-            IrType::Array { size, element_type } => {
-                // For arrays, calculate total size
-                let elem_size = element_type.size_in_words().unwrap_or(1) as u16;
-                (*size as u16) * elem_size
-            }
-            _ => 1, // Default to 1 word
-        };
+        let size = global.var_type.size_in_words().unwrap_or(1) as u16;
         
         let info = GlobalInfo {
             address: self.next_address,
@@ -83,40 +67,38 @@ impl GlobalManager {
     pub fn lower_global_init(global: &GlobalVariable, info: &GlobalInfo) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
-        // Check if this is a string literal (name starts with __str_)
-        let is_string = global.name.starts_with("__str_");
-        
-        if is_string {
-            insts.extend(Self::lower_string_literal(global, info.address));
-        } else {
-            insts.extend(Self::lower_regular_global(global, info.address));
+        // Generate initialization based on the initializer
+        match &global.initializer {
+            Some(Value::ConstantArray(values)) => {
+                // Initialize array with provided values
+                insts.extend(Self::lower_array_init(global, values, info.address));
+            }
+            Some(init_value) => {
+                // Initialize with single value
+                insts.extend(Self::lower_single_value_init(global, init_value, info.address));
+            }
+            None => {
+                // No initializer - leave uninitialized
+                insts.push(AsmInst::Comment(format!("Uninitialized global {}", global.name)));
+            }
         }
         
         insts
     }
     
-    /// Lower a string literal global
-    fn lower_string_literal(global: &GlobalVariable, address: u16) -> Vec<AsmInst> {
+    /// Lower array initialization
+    fn lower_array_init(global: &GlobalVariable, values: &[i64], address: u16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
-        // For string literals, decode the string from the name
-        // Format: __str_ID_HEXDATA
-        if let Some(hex_part) = global.name.split('_').last() {
-            let mut addr = address;
-            let mut chars = Vec::new();
-            
-            // Decode hex string
-            for i in (0..hex_part.len()).step_by(2) {
-                let end = (i + 2).min(hex_part.len());
-                if let Ok(byte) = u8::from_str_radix(&hex_part[i..end], 16) {
-                    chars.push(byte);
-                }
-            }
-            chars.push(0); // Add null terminator
-            
+        // Add comment - if it looks like string data, format it nicely
+        let is_likely_string = values.last() == Some(&0) && 
+            values[..values.len().saturating_sub(1)].iter()
+                .all(|&v| v >= 0 && v <= 127);
+        
+        if is_likely_string {
             // Create a safe string representation for the comment
-            let safe_str: String = chars[..chars.len().saturating_sub(1)].iter()
-                .map(|&c| match c {
+            let safe_str: String = values[..values.len().saturating_sub(1)].iter()
+                .map(|&c| match c as u8 {
                     b'\n' => "\\n".to_string(),
                     b'\t' => "\\t".to_string(),
                     b'\r' => "\\r".to_string(),
@@ -125,65 +107,61 @@ impl GlobalManager {
                     c => format!("\\x{:02x}", c),
                 })
                 .collect();
-            
-            insts.push(AsmInst::Comment(format!("String literal \"{}\" at address {}", safe_str, address)));
-            
-            // Store each character
-            for byte in chars {
-                insts.push(AsmInst::Li(Reg::T0, byte as i16));
-                insts.push(AsmInst::Li(Reg::T1, addr as i16));
-                insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1)); // Store to global memory (bank GP = R0)
-                addr += 1;
-            }
+            insts.push(AsmInst::Comment(format!("String data \"{}\" at address {}", safe_str, address)));
+        } else {
+            insts.push(AsmInst::Comment(format!("Array {} at address {}", global.name, address)));
+        }
+        
+        // Store each value
+        let mut addr = address;
+        for &value in values {
+            insts.push(AsmInst::Li(Reg::T0, value as i16));
+            insts.push(AsmInst::Li(Reg::T1, addr as i16));
+            insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1)); // Store to global memory (bank GP = R0)
+            addr += 1;
         }
         
         insts
     }
     
-    /// Lower a regular (non-string) global variable
-    fn lower_regular_global(global: &GlobalVariable, address: u16) -> Vec<AsmInst> {
+    /// Lower single value initialization
+    fn lower_single_value_init(global: &GlobalVariable, init_value: &Value, address: u16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
         insts.push(AsmInst::Comment(format!("Global variable: {} at address {}", 
                                             global.name, address)));
         
-        // Generate initialization code if there's an initializer
-        if let Some(init_value) = &global.initializer {
-            match init_value {
-                Value::Constant(val) => {
-                    // Handle different sizes
-                    match &global.var_type {
-                        IrType::I32 => {
-                            // 32-bit values need two stores
-                            let low = (*val & 0xFFFF) as i16;
-                            let high = ((*val >> 16) & 0xFFFF) as i16;
-                            
-                            // Store low word
-                            insts.push(AsmInst::Li(Reg::T0, low));
-                            insts.push(AsmInst::Li(Reg::T1, address as i16));
-                            insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
-                            
-                            // Store high word
-                            insts.push(AsmInst::Li(Reg::T0, high));
-                            insts.push(AsmInst::Li(Reg::T1, (address + 1) as i16));
-                            insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
-                        }
-                        _ => {
-                            // Default: single word store
-                            insts.push(AsmInst::Li(Reg::T0, *val as i16));
-                            insts.push(AsmInst::Li(Reg::T1, address as i16));
-                            insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
-                        }
+        match init_value {
+            Value::Constant(val) => {
+                // Handle different sizes
+                match &global.var_type {
+                    IrType::I32 => {
+                        // 32-bit values need two stores
+                        let low = (*val & 0xFFFF) as i16;
+                        let high = ((*val >> 16) & 0xFFFF) as i16;
+                        
+                        // Store low word
+                        insts.push(AsmInst::Li(Reg::T0, low));
+                        insts.push(AsmInst::Li(Reg::T1, address as i16));
+                        insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
+                        
+                        // Store high word
+                        insts.push(AsmInst::Li(Reg::T0, high));
+                        insts.push(AsmInst::Li(Reg::T1, (address + 1) as i16));
+                        insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
+                    }
+                    _ => {
+                        // Default: single word store
+                        insts.push(AsmInst::Li(Reg::T0, *val as i16));
+                        insts.push(AsmInst::Li(Reg::T1, address as i16));
+                        insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
                     }
                 }
-                _ => {
-                    // Other initializer types not yet supported
-                    insts.push(AsmInst::Comment(format!("Unsupported initializer for {}", global.name)));
-                }
             }
-        } else {
-            // No initializer - leave uninitialized (could zero-initialize if needed)
-            insts.push(AsmInst::Comment(format!("Uninitialized global {}", global.name)));
+            _ => {
+                // Other initializer types not yet supported
+                insts.push(AsmInst::Comment(format!("Unsupported initializer for {}", global.name)));
+            }
         }
         
         insts

@@ -191,6 +191,10 @@ impl RegisterPressureManager {
                 // Fat pointers need 2 registers
                 RegisterNeed { count: 2, is_leaf: false }
             }
+            Value::ConstantArray(_) => {
+                // Constant arrays are initialized separately, not loaded into registers
+                RegisterNeed { count: 0, is_leaf: true }
+            }
             Value::Undef => {
                 RegisterNeed { count: 0, is_leaf: true }
             }

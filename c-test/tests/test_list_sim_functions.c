@@ -1,4 +1,5 @@
 void putchar(int c);
+int puts(char* c);
 
 void insert_char(char *arr, int *len, int pos, char ch) {
     int i = *len;
@@ -39,7 +40,8 @@ int main() {
     print_chars(list, len);
 
     insert_char(list, &len, 1, 'X');
-    print_chars(list, len);
+
+    puts(list);
 
     delete_char(list, &len, 1);
     print_chars(list, len);

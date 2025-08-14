@@ -58,6 +58,9 @@ pub fn get_value_register(
             // The bank component is handled separately when needed
             get_value_register(mgr, naming, &fp.addr)
         }
+        Value::ConstantArray(_) => {
+            panic!("Cannot load constant array into register - arrays should be initialized separately");
+        }
         Value::Undef => {
             panic!("Cannot use undefined value in instruction");
         }
@@ -77,6 +80,7 @@ pub fn get_value_register(
 pub fn calculate_value_need(value: &Value) -> usize {
     match value {
         Value::Constant(_) => 1,    // Need to load into register
+        Value::ConstantArray(_) => 0, // Arrays don't go in registers
         Value::Temp(_) => 1,         // Temps need a register
         Value::Global(_) => panic!("Value::Global should be resolved in lower.rs"),
         Value::FatPtr(_) => 2,       // Fat pointers need 2 registers (addr + bank)

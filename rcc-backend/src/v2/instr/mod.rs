@@ -22,9 +22,3 @@ pub use branch::{lower_branch, lower_branch_cond, lower_compare_and_branch, Comp
 // Test modules
 #[cfg(test)]
 mod tests;
-
-// TODO: Add these modules as they are implemented
-// pub mod icmp;
-// pub mod alloca;
-// pub mod call;
-// pub mod ret;

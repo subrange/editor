@@ -217,32 +217,32 @@ impl<'a> TypedExpressionGenerator<'a> {
         let string_id = *self.next_string_id;
         *self.next_string_id += 1;
 
-        // Encode the string bytes in the variable name
-        let encoded_name = format!(
-            "__str_{}_{}",
-            string_id,
-            s.bytes().map(|b| format!("{:02x}", b)).collect::<String>()
-        );
+        // Create a simple, readable name for the string literal
+        let name = format!("__str_{}", string_id);
+
+        // Convert string bytes to array of constants (including null terminator)
+        let mut char_values: Vec<i64> = s.bytes().map(|b| b as i64).collect();
+        char_values.push(0); // Add null terminator
 
         let global = GlobalVariable {
-            name: encoded_name.clone(),
+            name: name.clone(),
             var_type: IrType::Array {
                 element_type: Box::new(IrType::I8),
-                size: (s.len() + 1) as u64, // +1 for null terminator
+                size: char_values.len() as u64,
             },
             is_constant: true, // String literals are constant
-            initializer: None,
+            initializer: Some(Value::ConstantArray(char_values)),
             linkage: Linkage::Internal,
             symbol_id: None,
         };
 
         self.module.add_global(global);
         self.string_literals
-            .insert(encoded_name.clone(), s.to_string());
+            .insert(name.clone(), s.to_string());
 
         // Return a fat pointer to the string
         Ok(Value::FatPtr(FatPointer {
-            addr: Box::new(Value::Global(encoded_name)),
+            addr: Box::new(Value::Global(name)),
             bank: BankTag::Global,
         }))
     }
