@@ -17,6 +17,7 @@ pub mod type_checker;
 pub mod typed_ast;
 mod codegen_tests;
 mod type_environment_tests;
+mod cast_tests;
 
 pub use lexer::{Lexer, Token, TokenType};
 pub use parser::{Parser, ParseError};

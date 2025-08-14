@@ -8,6 +8,7 @@ pub mod types;
 pub mod expressions;
 pub mod statements;
 pub mod symbols;
+pub mod struct_layout;
 
 use crate::ast::*;
 use rcc_common::{CompilerError, SymbolTable, SymbolId, SourceLocation};

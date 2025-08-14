@@ -47,6 +47,23 @@ pub enum SemanticError {
     RedefinedType {
         name: String,
     },
+    IncompleteType {
+        type_name: String,
+        location: SourceLocation,
+    },
+    StructTooLarge {
+        struct_name: String,
+        location: SourceLocation,
+    },
+    UndefinedMember {
+        struct_name: String,
+        member_name: String,
+        location: SourceLocation,
+    },
+    MemberAccessOnNonStruct {
+        type_name: Type,
+        location: SourceLocation,
+    },
 }
 
 impl From<SemanticError> for CompilerError {
@@ -104,6 +121,30 @@ impl From<SemanticError> for CompilerError {
                 CompilerError::semantic_error(
                     format!("Redefinition of type: {}", name),
                     SourceLocation::new_simple(0, 0), // TODO: Track location
+                )
+            }
+            SemanticError::IncompleteType { type_name, location } => {
+                CompilerError::semantic_error(
+                    format!("Incomplete type: {}", type_name),
+                    location,
+                )
+            }
+            SemanticError::StructTooLarge { struct_name, location } => {
+                CompilerError::semantic_error(
+                    format!("Struct '{}' is too large (overflow)", struct_name),
+                    location,
+                )
+            }
+            SemanticError::UndefinedMember { struct_name, member_name, location } => {
+                CompilerError::semantic_error(
+                    format!("Struct '{}' has no member '{}'", struct_name, member_name),
+                    location,
+                )
+            }
+            SemanticError::MemberAccessOnNonStruct { type_name, location } => {
+                CompilerError::semantic_error(
+                    format!("Member access on non-struct type: {}", type_name),
+                    location,
                 )
             }
         }

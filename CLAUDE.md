@@ -105,17 +105,12 @@ python3 run_tests.py
 # Run single test file
 python3 run_tests.py tests/test_example.c
 
-# Run tests with verbose flag to see what build program outputs
-python3 run_tests.py tests/test_example.c --verbose
+# Run multiple test files, omitting the extension is allowed
+python3 run_tests.py test_example test_example2
 
 # Run tests with custom timeout. Default is 2 seconds.
 python3 run_tests.py tests/test_example.c --timeout 5
 
-# Run tests without cleanup (keep generated files for debugging)
-python3 run_tests.py --no-cleanup
-
-# Clean build directory only
-python3 run_tests.py --clean
 ```
 
 ## Adding a New Test
@@ -180,10 +175,10 @@ python3 run_tests.py
 
 ## Debugging Failed Tests
 
-Use `--no-cleanup` to keep intermediate files:
+run_tests.py keeps all generated files in `build/` directory for debugging purposes by default.
 
 ```bash
-python3 run_tests.py --no-cleanup
+python3 run_tests.py 
 ```
 
 This preserves in `build/`:
@@ -215,3 +210,12 @@ VERY IMPORTANT: Just read the full file. JUST. READ. THE. FULL. FILE.
 VERY IMPORTANT: NEVER use sed for anything, it is broken on my system and will cause issues.
 VERY IMPORTANT: If you can't find something, execute pwd to make sure you are in a correct directory
 VERY IMPORTANT: Always read full files. Never read parts of files. When you read the full file, you understand the context. When you read part of the file, you are blind. Remember — ALWAYS read full files. Do not search in file. Do not grep. Do not use sed. Do not use any other tool that reads only part of the file. ALWAYS read the full file.
+VERY IMPORTANT RULES:
+1. No silent failures - Always throw
+   explicit errors instead of generating
+   incorrect code
+2. Comprehensive unit tests - Test
+   all edge cases and scenarios
+3. Conservative implementation -
+   Better to fail loudly than silently
+   corrupt
