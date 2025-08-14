@@ -357,6 +357,12 @@
       "expected": "YYYY\n",
       "use_runtime": true,
       "description": "Test increment and decrement operators with value checking"
+    },
+    {
+      "file": "tests/test_cast_pointer.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
     }
   ],
   "known_failures": [

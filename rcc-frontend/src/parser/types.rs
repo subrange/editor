@@ -343,4 +343,84 @@ impl Parser {
             TokenType::Struct | TokenType::Union | TokenType::Enum
         ))
     }
+    
+    /// Check if the current position starts a type
+    pub fn is_type_start(&self) -> bool {
+        matches!(self.peek().map(|t| &t.token_type), Some(
+            TokenType::Void | TokenType::Char | TokenType::Short | TokenType::Int | 
+            TokenType::Long | TokenType::Signed | TokenType::Unsigned |
+            TokenType::Struct | TokenType::Union | TokenType::Enum
+        ))
+        // Note: We don't include Identifier here because it could be a typedef name or a variable
+        // The caller needs to handle typedef names specially
+    }
+    
+    /// Parse a type name (used in cast expressions)
+    /// This is like parse_type_specifier + abstract declarator (no identifier required)
+    pub fn parse_type_name(&mut self) -> Result<Type, CompilerError> {
+        let base_type = self.parse_type_specifier()?;
+        self.parse_abstract_declarator(base_type)
+    }
+    
+    /// Parse an abstract declarator (pointer/array/function types without identifier)
+    pub fn parse_abstract_declarator(&mut self, base_type: Type) -> Result<Type, CompilerError> {
+        // Parse pointer prefix
+        let mut current_type = base_type;
+        while self.match_token(&TokenType::Star) {
+            current_type = Type::Pointer { target: Box::new(current_type), bank: None };
+        }
+        
+        // Parse direct abstract declarator (arrays, function types)
+        self.parse_direct_abstract_declarator(current_type)
+    }
+    
+    /// Parse direct abstract declarator
+    pub fn parse_direct_abstract_declarator(&mut self, base_type: Type) -> Result<Type, CompilerError> {
+        let mut current_type = base_type;
+        
+        // Handle parenthesized abstract declarator
+        if self.peek().map(|t| &t.token_type) == Some(&TokenType::LeftParen) {
+            // Look ahead to see if this is a function declarator or parenthesized declarator
+            // For now, we'll skip complex abstract declarators and just handle simple cases
+        }
+        
+        // Parse suffix (arrays, function parameters)
+        loop {
+            if self.match_token(&TokenType::LeftBracket) {
+                // Array declarator
+                let size = if self.check(&TokenType::RightBracket) {
+                    None // Incomplete array type
+                } else {
+                    let size_expr = self.parse_assignment_expression()?;
+                    if let ExpressionKind::IntLiteral(size) = size_expr.kind {
+                        if size >= 0 {
+                            Some(size as u64)
+                        } else {
+                            return Err(ParseError::InvalidExpression {
+                                message: "Array size must be non-negative".to_string(),
+                                location: size_expr.span.start,
+                            }.into());
+                        }
+                    } else {
+                        return Err(ParseError::InvalidExpression {
+                            message: "Array size must be a constant expression".to_string(),
+                            location: size_expr.span.start,
+                        }.into());
+                    }
+                };
+                
+                self.expect(TokenType::RightBracket, "array declarator")?;
+                
+                current_type = Type::Array {
+                    element_type: Box::new(current_type),
+                    size,
+                };
+            } else {
+                // No more suffixes
+                break;
+            }
+        }
+        
+        Ok(current_type)
+    }
 }

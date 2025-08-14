@@ -23,6 +23,7 @@ use super::types::convert_type;
 use super::VarInfo;
 use crate::ir::{IrBuilder, Module, Value};
 use crate::typed_ast::TypedExpr;
+use crate::Type;
 use crate::CompilerError;
 use std::collections::HashMap;
 
@@ -96,14 +97,78 @@ impl<'a> TypedExpressionGenerator<'a> {
             } => function_calls::generate_function_call(self, function, arguments),
             
             TypedExpr::Cast {
+                operand,
                 target_type,
                 ..
             } => {
-                return Err(CodegenError::UnsupportedConstruct {
-                    construct: format!("type cast to {:?}", target_type),
-                    location: rcc_common::SourceLocation::new_simple(0, 0),
+                // Generate code for the operand
+                let operand_val = self.generate(operand)?;
+                let source_type = operand.get_type();
+                
+                // Handle different cast scenarios
+                match (&source_type, target_type) {
+                    // Pointer to pointer cast (including void*)
+                    (Type::Pointer { .. }, Type::Pointer { .. }) => {
+                        // Pointer-to-pointer casts preserve the value
+                        // Fat pointer bank tags are preserved during cast
+                        Ok(operand_val)
+                    }
+                    
+                    // Integer to pointer cast
+                    (source, Type::Pointer { .. }) if source.is_integer() => {
+                        // Integer to pointer cast is not fully implemented for fat pointers
+                        // This requires encoding the integer as a fat pointer with appropriate bank tag
+                        return Err(CodegenError::UnsupportedConstruct {
+                            construct: format!("cast from integer to pointer (fat pointer encoding not implemented)"),
+                            location: rcc_common::SourceLocation::new_simple(0, 0),
+                        }
+                        .into())
+                    }
+                    
+                    // Pointer to integer cast  
+                    (Type::Pointer { .. }, target) if target.is_integer() => {
+                        // Pointer to integer cast is not fully implemented for fat pointers
+                        // This requires extracting just the address component from the fat pointer
+                        return Err(CodegenError::UnsupportedConstruct {
+                            construct: format!("cast from pointer to integer (fat pointer decoding not implemented)"),
+                            location: rcc_common::SourceLocation::new_simple(0, 0),
+                        }
+                        .into())
+                    }
+                    
+                    // Integer to integer cast
+                    (source, target) if source.is_integer() && target.is_integer() => {
+                        // Integer casts require proper sign extension/truncation
+                        // This is not yet implemented
+                        return Err(CodegenError::UnsupportedConstruct {
+                            construct: format!("integer to integer cast (sign extension/truncation not implemented)"),
+                            location: rcc_common::SourceLocation::new_simple(0, 0),
+                        }
+                        .into())
+                    }
+                    
+                    // Void cast (discarding value)
+                    (_, Type::Void) => {
+                        // Cast to void means discard the value
+                        // Return a dummy value since void has no representation
+                        Ok(Value::Constant(0))
+                    }
+                    
+                    // Array to pointer decay (implicit cast)
+                    (Type::Array { element_type, .. }, Type::Pointer { target, .. })
+                        if **element_type == **target => {
+                        // Array decays to pointer to first element
+                        Ok(operand_val)
+                    }
+                    
+                    _ => {
+                        Err(CodegenError::UnsupportedConstruct {
+                            construct: format!("cast from {:?} to {:?}", source_type, target_type),
+                            location: rcc_common::SourceLocation::new_simple(0, 0),
+                        }
+                        .into())
+                    }
                 }
-                .into())
             }
             
             TypedExpr::Assignment { lhs, rhs, .. } => assignments::generate_assignment(self, lhs, rhs),

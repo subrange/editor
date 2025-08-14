@@ -122,7 +122,7 @@ The parser sees `myint` as an identifier (potential variable/function name), not
 
 **Actual Time**: ~2 hours (even faster than estimated!)
 
-### Phase 2: Cast Expression Support
+### Phase 2: Cast Expression Support ✅ PARTIALLY COMPLETED
 
 #### Why This Is Critical
 - Required for void pointer usage (`(int*)void_ptr`)
@@ -130,12 +130,27 @@ The parser sees `myint` as an identifier (potential variable/function name), not
 - Essential for type conversions
 - Blocks test_pointers_evil.c at line 23
 
+#### Implementation Status (Dec 2024)
+✅ **Completed:**
+- Parser support for cast expressions (`(type)expression` syntax)
+- Type name parsing for abstract declarators
+- Codegen for pointer-to-pointer casts (including void*)
+- Codegen for array-to-pointer decay
+- Test case for pointer casts works correctly
+
+🔴 **Not Yet Implemented (returns error):**
+- Integer to pointer cast (requires fat pointer encoding)
+- Pointer to integer cast (requires fat pointer decoding)  
+- Integer to integer cast (requires sign extension/truncation)
+
+The implementation is conservative - it returns explicit errors for unimplemented cases rather than generating incorrect code. This ensures correctness while allowing incremental development.
+
 #### Implementation Tasks
 
-##### Task 2.1: Parser Support for Cast Expressions
-**File**: `rcc-frontend/src/parser/expressions.rs`
+##### Task 2.1: Parser Support for Cast Expressions ✅ COMPLETED
+**File**: `rcc-frontend/src/parser/expressions/primary.rs`
 
-Modify `parse_primary_expression()` to detect cast vs parenthesized expression:
+✅ Modified `parse_primary_expression()` to detect cast vs parenthesized expression:
 
 ```rust
 Some(Token { token_type: TokenType::LeftParen, .. }) => {
@@ -158,10 +173,10 @@ Some(Token { token_type: TokenType::LeftParen, .. }) => {
 }
 ```
 
-##### Task 2.2: Type Name Parsing
+##### Task 2.2: Type Name Parsing ✅ COMPLETED
 **File**: `rcc-frontend/src/parser/types.rs`
 
-Add method to parse type names in cast expressions:
+✅ Added methods to parse type names in cast expressions:
 ```rust
 pub fn parse_type_name(&mut self) -> Result<Type, CompilerError> {
     let base_type = self.parse_type_specifier()?;
@@ -179,10 +194,10 @@ pub fn is_type_start(&self) -> bool {
 }
 ```
 
-##### Task 2.3: Codegen for Cast Expressions
+##### Task 2.3: Codegen for Cast Expressions ✅ PARTIALLY COMPLETED
 **File**: `rcc-frontend/src/codegen/expressions/mod.rs`
 
-Replace the error with actual implementation:
+✅ Implemented conservative codegen that returns errors for unimplemented cases:
 ```rust
 TypedExpr::Cast { operand, target_type, .. } => {
     let operand_val = self.generate(operand)?;
