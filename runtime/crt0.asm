@@ -6,8 +6,8 @@
 _start:
     ; Initialize stack pointer
     LI SB, 2        ; Stack bank = 2 (SB/R28 - stack bank id)
-    LI SP, 4096     ; Stack pointer starts at the end of the bank (SP/R29)
-    LI FP, 4096     ; Frame pointer starts at the end of the bank (FP/R30)
+    LI SP, 1     ; Stack pointer starts at the start of the bank (SP/R29) and grows upwards
+    LI FP, 1     ; Frame pointer starts at the start of the bank (FP/R30) and grows upwards
     ; Initialize global pointer
     LI GP, 1        ; Global pointer starts at 0 (GP/R31)
     

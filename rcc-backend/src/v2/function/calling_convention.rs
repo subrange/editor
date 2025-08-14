@@ -404,11 +404,11 @@ impl CallingConvention {
                      naming: &mut NameGenerator) -> (Vec<AsmInst>, Reg, Option<Reg>) {
         info!("Loading parameter {}", index);
         let mut insts = Vec::new();
-        
+
         let param_name = naming.param_name(index);
         trace!("  Allocating register for parameter '{}'", param_name);
         let dest = pressure_manager.get_register(param_name);
-        
+
         let spill_insts = pressure_manager.take_instructions();
         if !spill_insts.is_empty() {
             trace!("  Generated {} spill/reload instructions", spill_insts.len());
@@ -416,7 +416,7 @@ impl CallingConvention {
         insts.extend(spill_insts);
         // Use common logic to determine placement
         let (register_params, first_stack_param) = self.analyze_param_placement(param_types);
-        
+
         // Check if this parameter is in a register
         let param_reg = if let Some((_, reg_slot)) = register_params.iter().find(|(i, _)| *i == index) {
             Some(match *reg_slot {
@@ -429,7 +429,7 @@ impl CallingConvention {
         } else {
             None
         };
-        
+
         if let Some(arg_reg) = param_reg {
             // Parameter is in a register
             debug!("  Parameter {} is in register {:?}", index, arg_reg);
@@ -437,7 +437,7 @@ impl CallingConvention {
             if dest != arg_reg {
                 insts.push(AsmInst::Add(dest, arg_reg, Reg::R0));
             }
-            
+
             // If this is a fat pointer, also load the bank from the next register
             let bank_reg = if index < param_types.len() && param_types[index].1.is_pointer() {
                 let bank_reg = match arg_reg {
@@ -448,17 +448,17 @@ impl CallingConvention {
                 };
                 debug!("  Loading fat pointer bank from {:?}", bank_reg);
                 insts.push(AsmInst::Comment(format!("Load param {index} bank from {:?}", bank_reg)));
-                
+
                 // Track the bank in the register manager
                 let param_name = naming.param_name(index);
                 pressure_manager.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank_reg));
-                
+
                 Some(bank_reg)
             } else {
                 None
             };
-            
-            debug!("Parameter load complete: generated {} instructions, result in {:?}, bank in {:?}", 
+
+            debug!("Parameter load complete: generated {} instructions, result in {:?}, bank in {:?}",
                    insts.len(), dest, bank_reg);
             return (insts, dest, bank_reg);
         } else {
@@ -466,11 +466,11 @@ impl CallingConvention {
             // Stack parameters start after the 4 register parameters
             // They are before the frame (negative offsets from FP)
             // Stack layout: ... param6, param5, param4, RA, FP, S0, S1, S2, S3, locals...
-            
+
             // Calculate the actual offset based on parameter types
             // We need to account for fat pointers taking 2 cells
             let mut param_offset = -6i16; // Start at -6 for FP, RA, and S0-S3
-            
+
             // Count stack words before our parameter
             for i in first_stack_param..index {
                 if i >= param_types.len() {
@@ -482,46 +482,46 @@ impl CallingConvention {
                     param_offset -= 1; // Scalar takes 1 word
                 }
             }
-            
+
             // Account for this parameter itself
             param_offset -= 1;
-            
+
             debug!("  Parameter {} (stack param) is at FP{}", index, param_offset);
-            
+
             insts.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));
             trace!("  Computing address: FP + {}", param_offset);
             insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, param_offset));
             trace!("  Loading from stack (bank SB) at computed address into {:?}", dest);
             insts.push(AsmInst::Load(dest, Reg::Sb, Reg::Sc));
-            
+
             // If this is a fat pointer, also load the bank from the next stack slot
             let bank_reg = if index < param_types.len() && param_types[index].1.is_pointer() {
                 debug!("  Loading fat pointer bank from FP{}", param_offset - 1);
                 insts.push(AsmInst::Comment(format!("Load param {index} bank from FP{}", param_offset - 1)));
-                
+
                 // Allocate a register for the bank
                 let bank_reg_name = naming.param_bank_name(index);
                 let bank_reg = pressure_manager.get_register(bank_reg_name);
                 insts.extend(pressure_manager.take_instructions());
-                
+
                 // Load the bank from the next stack slot
                 insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, param_offset - 1));
                 insts.push(AsmInst::Load(bank_reg, Reg::Sb, Reg::Sc));
-                
+
                 // Track the bank in the register manager
                 let param_name = naming.param_name(index);
                 pressure_manager.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank_reg));
-                
+
                 Some(bank_reg)
             } else {
                 None
             };
-            
-            debug!("Parameter load complete: generated {} instructions, result in {:?}, bank in {:?}", 
+
+            debug!("Parameter load complete: generated {} instructions, result in {:?}, bank in {:?}",
                    insts.len(), dest, bank_reg);
             return (insts, dest, bank_reg);
         }
-        
+
         unreachable!("Parameter must be either in register or on stack")
     }
 }

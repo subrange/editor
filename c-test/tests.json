@@ -1,0 +1,292 @@
+{
+  "tests": [
+    {
+      "file": "tests/test_inline_asm.c",
+      "expected": "Y\n",
+      "use_runtime": false,
+      "description": "Test inline assembly support"
+    },
+    {
+      "file": "tests/test_runtime_simple.c",
+      "expected": "RT\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_runtime_full.c",
+      "expected": "Hi!\nOK\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_external_putchar.c",
+      "expected": "Hi\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_puts_simple.c",
+      "expected": "ABC\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_minimal_insert.c",
+      "expected": "AXCD\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_if_else_simple.c",
+      "expected": "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_loops.c",
+      "expected": "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_sizeof_simple.c",
+      "expected": "1 2 4 6\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_globals.c",
+      "expected": "*A\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_strings.c",
+      "expected": "Plea",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_m3_comprehensive.c",
+      "expected": "M3: OK!\nABC\nGood!\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_add.c",
+      "expected": "Y\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_array_decl.c",
+      "expected": "123\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_array_index_gep.c",
+      "expected": "YYY\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_array_bank_crossing.c",
+      "expected": "YYYYY\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_while_simple.c",
+      "expected": "YY\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_hello.c",
+      "expected": "Hello\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_simple_putchar.c",
+      "expected": "AB\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_address_of.c",
+      "expected": "OK\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_struct_basic.c",
+      "expected": "Y\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_array_init.c",
+      "expected": "1234\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_sizeof_verify.c",
+      "expected": "1:Y\n2:Y\n3:Y\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_pointers_comprehensive.c",
+      "expected": "12345\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_while_debug.c",
+      "expected": "ABL0L1L2C\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_sizeof.c",
+      "expected": "123456\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_sizeof_final.c",
+      "expected": "YYYYYYYYY\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_strings_addr.c",
+      "expected": "A",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_pointer_arithmetic_basic.c",
+      "expected": "12345\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_pointer_bank_crossing.c",
+      "expected": "12345\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_if_else.c",
+      "expected": "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_list_sim.c",
+      "expected": "ABC\nAXBC\nABC\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_list_sim_functions.c",
+      "expected": "ABC\nAXBC\nABC\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_puts.c",
+      "expected": "Hello\nWorld\nTest!\n\nX\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_pointer_provenance.c",
+      "expected": "GSSS\n",
+      "use_runtime": true,
+      "description": "Test pointer provenance with fat pointers"
+    },
+    {
+      "file": "tests/test_pointer_phi.c",
+      "expected": "1234\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_pointer_swap_simple.c",
+      "expected": "21\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_inline_swap_debug.c",
+      "expected": "12 21\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_struct_inline.c",
+      "expected": "YY\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_struct_simple.c",
+      "expected": "12345\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_puts_debug.c",
+      "expected": "ABC\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_puts_string_literal.c",
+      "expected": "XYZ\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test-cond.c",
+      "expected": "T",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_pointer_gritty.c",
+      "expected": "7",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_bool.c",
+      "expected": "12\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_bool_or.c",
+      "expected": "Y\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_complex_bool.c",
+      "expected": "12345\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_complex_simple.c",
+      "expected": "123\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_mul.c",
+      "expected": "Y",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_puts_string.c",
+      "expected": "ABC\nHello\n!\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_pointer_swap.c",
+      "expected": "AB\n",
+      "use_runtime": true
+    },
+    {
+      "file": "tests/test_strings_simple.c",
+      "expected": "Hello!\n",
+      "use_runtime": true
+    }
+  ],
+  "known_failures": [
+    {
+      "file": "tests-known-failures/test_typedef.c",
+      "description": "Typedef support not implemented"
+    },
+    {
+      "file": "tests-known-failures/test_typedef_simple.c",
+      "description": "Typedef support not implemented"
+    },
+    {
+      "file": "tests-known-failures/test_struct_simple2.c",
+      "description": "Uses typedef struct"
+    },
+    {
+      "file": "tests-known-failures/test_struct_inline_simple.c",
+      "description": "Inline struct definitions not supported"
+    },
+    {
+      "file": "tests-known-failures/test_puts_global.c",
+      "description": "Inline assembly not fully implemented yet"
+    },
+    {
+      "file": "tests-known-failures/test_pointers_evil.c",
+      "description": "Test EVERYTHING that can go wrong with pointers. And it does."
+    }
+  ]
+}

@@ -147,14 +147,12 @@ int main() {
 
 ### 3. Add Test to run_tests.py
 
-Edit `run_tests.py` and add your test to the `tests` list:
+# Add a regular test with expected output
+```python3 c-test/run_tests.py --add test_new.c "Hello\n"```
 
-```python
-tests = [
-    # ... existing tests ...
-    ("tests/test_example.c", "Y\n", False),  # (file, expected_output, use_runtime)
-]
-```
+# Add a known failure test (no expected output)
+```python3 c-test/run_tests.py --add test_unsupported.c```
+
 
 Parameters:
 - **file**: Path to test C file

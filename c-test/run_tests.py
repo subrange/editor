@@ -13,6 +13,8 @@ Options:
   --timeout N   Set timeout in seconds for test execution (default: 2)
   --verbose     Show output from test programs as they run
   --backend B   Execution backend: 'bf' (default) or 'rvm' for Ripple VM
+  --run         Use -t flag when running with RVM (trace mode)
+  --add         Add a test to tests.json (usage: --add test.c "expected output")
   test_name     Optional: Names of tests to run (without path or .c extension)
                 Can specify multiple tests
 
@@ -25,6 +27,8 @@ Examples:
   python3 c-test/run_tests.py --timeout 10       # Run with 10 second timeout
   python3 c-test/run_tests.py --verbose          # Show test program output
   python3 c-test/run_tests.py --backend rvm      # Run tests on Ripple VM instead of BF
+  python3 c-test/run_tests.py test_minimal_insert --run  # Compile and run with TUI debugger
+  python3 c-test/run_tests.py --add test_new.c "Hello\\n"  # Add a new test to tests.json
 
 Prerequisites:
 - Build the compiler: cargo build --release (in project root)
@@ -43,6 +47,7 @@ import subprocess
 import sys
 import os
 import glob
+import json
 from pathlib import Path
 
 # Colors for output
@@ -110,7 +115,7 @@ def run_command(cmd, timeout=2):
             timeout_msg = f"{timeout_msg}\nStderr: {stderr}"
         return -1, stdout, timeout_msg
 
-def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False, backend='bf'):
+def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False, backend='bf', run_mode=False):
     """Compile a C file and run it, checking output
     
     Args:
@@ -121,6 +126,7 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
         timeout: Timeout in seconds for execution
         verbose: If True, show program output
         backend: Execution backend - 'bf' for Brainfuck or 'rvm' for Ripple VM
+        run_mode: If True, use -t flag when running with RVM
     
     Returns:
         tuple: (success, message, has_provenance_warning)
@@ -168,7 +174,8 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
             return False, f"Linking failed: {stderr}", has_provenance_warning
         
         # Run on RVM
-        ret, stdout, stderr = run_command(f"{RVM} {bin_file} --memory 4294967296", timeout=timeout)
+        rvm_flags = "-t" if run_mode else ""
+        ret, stdout, stderr = run_command(f"{RVM} {bin_file} --memory 4294967296 {rvm_flags}".strip(), timeout=timeout)
         if ret == -1:
             if verbose and stdout:
                 print(f"    Partial output before timeout: {repr(stdout)}")
@@ -274,6 +281,8 @@ def main():
     no_cleanup = "--no-cleanup" in sys.argv
     clean_only = "--clean" in sys.argv
     verbose = "--verbose" in sys.argv
+    run_mode = "--run" in sys.argv
+    add_mode = "--add" in sys.argv
     test_files = []  # Changed from single_test to support multiple tests
     timeout = 2  # Default timeout in seconds
     backend = 'rvm'  # Default backend
@@ -310,6 +319,71 @@ def main():
             test_files.append(arg)
         i += 1
     
+    # Handle --add mode to add a new test
+    if add_mode:
+        if len(test_files) < 1:
+            print("Error: --add requires a test file path")
+            print("Usage: python3 run_tests.py --add test.c \"expected output\"")
+            return 1
+        
+        test_file = test_files[0]
+        expected_output = test_files[1] if len(test_files) > 1 else None
+        
+        # Determine if it's a regular test or known failure
+        is_known_failure = "known-failures" in test_file or expected_output is None
+        
+        # Normalize the path
+        if not test_file.startswith("tests"):
+            if is_known_failure:
+                test_file = f"tests-known-failures/{os.path.basename(test_file)}"
+            else:
+                test_file = f"tests/{os.path.basename(test_file)}"
+        
+        # Load existing tests
+        tests_json_path = f"{BASE_DIR}/tests.json"
+        test_data = {"tests": [], "known_failures": []}
+        
+        if os.path.exists(tests_json_path):
+            try:
+                with open(tests_json_path, 'r') as f:
+                    test_data = json.load(f)
+            except:
+                pass
+        
+        # Add the new test
+        if is_known_failure:
+            # Check if already exists
+            existing = [t for t in test_data.get('known_failures', []) if t['file'] == test_file]
+            if existing:
+                print(f"Test {test_file} already exists in known failures")
+            else:
+                test_data.setdefault('known_failures', []).append({
+                    "file": test_file,
+                    "description": "Added via command line"
+                })
+                print(f"Added {test_file} to known failures")
+        else:
+            # Check if already exists
+            existing = [t for t in test_data.get('tests', []) if t['file'] == test_file]
+            if existing:
+                print(f"Test {test_file} already exists, updating expected output")
+                existing[0]['expected'] = expected_output
+            else:
+                test_data.setdefault('tests', []).append({
+                    "file": test_file,
+                    "expected": expected_output,
+                    "use_runtime": True,
+                    "description": "Added via command line"
+                })
+                print(f"Added {test_file} with expected output: {repr(expected_output)}")
+        
+        # Save the updated tests
+        with open(tests_json_path, 'w') as f:
+            json.dump(test_data, f, indent=2)
+        
+        print(f"Updated {tests_json_path}")
+        return 0
+    
     # If --clean flag is provided, just clean and exit
     if clean_only:
         print("Cleaning build directory...")
@@ -335,69 +409,118 @@ def main():
     # Ensure build directory exists
     os.makedirs(BUILD_DIR, exist_ok=True)
     
-    tests = [
-        # Tests with crt0 only (stack setup but no runtime library functions)
-        (f"{BASE_DIR}/tests/test_inline_asm.c", "Y\n", False),
+    # Load tests from JSON file
+    tests_json_path = f"{BASE_DIR}/tests.json"
+    tests = []
+    known_failures = []
+    
+    if os.path.exists(tests_json_path):
+        try:
+            with open(tests_json_path, 'r') as f:
+                test_data = json.load(f)
+                
+            # Load regular tests
+            for test in test_data.get('tests', []):
+                test_file = f"{BASE_DIR}/{test['file']}"
+                expected = test.get('expected', None)
+                use_runtime = test.get('use_runtime', True)
+                tests.append((test_file, expected, use_runtime))
+            
+            # Load known failures
+            for failure in test_data.get('known_failures', []):
+                test_file = f"{BASE_DIR}/{failure['file']}"
+                known_failures.append(test_file)
+                
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"Warning: Failed to load tests from {tests_json_path}: {e}")
+            print("Using empty test list")
+    else:
+        print(f"Warning: Test configuration file {tests_json_path} not found")
+        print("Using empty test list")
+    
+    # Handle --run mode for interactive debugging
+    if run_mode and test_files:
+        # In run mode, we just compile and then run interactively
+        print("Interactive run mode enabled (TUI debugger)")
+        print("-" * 60)
         
-        # Tests with full runtime (crt0 + libruntime.par)
-        (f"{BASE_DIR}/tests/test_runtime_simple.c", "RT\n", True),
-        (f"{BASE_DIR}/tests/test_runtime_full.c", "Hi!\nOK\n", True),
-        (f"{BASE_DIR}/tests/test_external_putchar.c", "Hi\n", True),
-        (f"{BASE_DIR}/tests/test_puts_simple.c", "ABC\n", True),  # Simple puts test without runtime
-
-        # Tests moved from tests/ directory (all use putchar)
-        (f"{BASE_DIR}/tests/test_if_else_simple.c", "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n", True),
-        (f"{BASE_DIR}/tests/test_loops.c", "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n", True),
-        (f"{BASE_DIR}/tests/test_sizeof_simple.c", "1 2 4 6\n", True),
-        (f"{BASE_DIR}/tests/test_globals.c", "*A\n", True),
-        (f"{BASE_DIR}/tests/test_strings.c", "Plea", True),
-        (f"{BASE_DIR}/tests/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!\n", True),
-        (f"{BASE_DIR}/tests/test_add.c", "Y\n", True),
-        (f"{BASE_DIR}/tests/test_array_decl.c", "123\n", True),
-        (f"{BASE_DIR}/tests/test_array_index_gep.c", "YYY\n", True),
-        (f"{BASE_DIR}/tests/test_array_bank_crossing.c", "YYYYY\n", True),
-        (f"{BASE_DIR}/tests/test_while_simple.c", "YY\n", True),
-        (f"{BASE_DIR}/tests/test_hello.c", "Hello\n", True),
-        (f"{BASE_DIR}/tests/test_simple_putchar.c", "AB\n", True),
-        (f"{BASE_DIR}/tests/test_address_of.c", "OK\n", True),
-        (f"{BASE_DIR}/tests/test_struct_basic.c", "Y\n", True),
-        (f"{BASE_DIR}/tests/test_array_init.c", "1234\n", True),
-        (f"{BASE_DIR}/tests/test_sizeof_verify.c", "1:Y\n2:Y\n3:Y\n", True),
-        (f"{BASE_DIR}/tests/test_pointers_comprehensive.c", "12345\n", True),
-        (f"{BASE_DIR}/tests/test_while_debug.c", "ABL0L1L2C\n", True),
-        (f"{BASE_DIR}/tests/test_sizeof.c", "123456\n", True),
-        (f"{BASE_DIR}/tests/test_sizeof_final.c", "YYYYYYYYY\n", True),
-        (f"{BASE_DIR}/tests/test_strings_addr.c", "A", True),
-        (f"{BASE_DIR}/tests/test_pointer_arithmetic_basic.c", "12345\n", True),
-        (f"{BASE_DIR}/tests/test_pointer_bank_crossing.c", "12345\n", True),
-        (f"{BASE_DIR}/tests/test_if_else.c", "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n", True),
-        (f"{BASE_DIR}/tests/test_list_sim.c", "ABC\nAXBC\nABC\n", True),
-        (f"{BASE_DIR}/tests/test_list_sim_functions.c", "ABC\nAXBC\nABC\n", True),
-
-        (f"{BASE_DIR}/tests/test_puts.c", "Hello\nWorld\nTest!\n\nX\n", True),
-
-
-        # Pointer provenance tests with fat pointers
-        (f"{BASE_DIR}/tests/test_pointer_provenance.c", "GSSS\n", True),
-        (f"{BASE_DIR}/tests/test_pointer_phi.c", "1234\n", True),
-        (f"{BASE_DIR}/tests/test_pointer_swap_simple.c", "21\n", True),
-        (f"{BASE_DIR}/tests/test_inline_swap_debug.c", "12 21\n", True),
-        (f"{BASE_DIR}/tests/test_struct_inline.c", "YY\n", True),
-        (f"{BASE_DIR}/tests/test_struct_simple.c", "12345\n", True),
-        (f"{BASE_DIR}/tests/test_puts_debug.c", "ABC\n", True),
-        (f"{BASE_DIR}/tests/test_puts_string_literal.c", "XYZ\n", True),
-        (f"{BASE_DIR}/tests/test-cond.c", "T", True),
-        (f"{BASE_DIR}/tests/test_pointer_gritty.c", "7", True),
-
-        (f"{BASE_DIR}/tests/test_bool.c", "12\n", True),
-        (f"{BASE_DIR}/tests/test_bool_or.c", "Y\n", True),
-        (f"{BASE_DIR}/tests/test_complex_bool.c", "12345\n", True),
-        (f"{BASE_DIR}/tests/test_complex_simple.c", "123\n", True),
-        (f"{BASE_DIR}/tests/test_mul.c", "Y", True),
-        (f"{BASE_DIR}/tests/test_puts_string.c", "ABC\nHello\n!\n", True),
-        (f"{BASE_DIR}/tests/test_pointer_swap.c", "AB\n", True),
-        (f"{BASE_DIR}/tests/test_strings_simple.c", "Hello!\n", True),
-    ]
+        for test_file in test_files:
+            # Normalize the test name
+            test_name = os.path.basename(test_file)
+            if test_name.endswith('.c'):
+                test_name = test_name[:-2]
+            
+            # Find the test or construct the path
+            test_path = None
+            use_runtime = True
+            
+            # Check if it's in the known test list
+            for test in tests:
+                test_file_basename = os.path.basename(test[0])
+                if test_file_basename.endswith('.c'):
+                    test_file_basename = test_file_basename[:-2]
+                if test_file_basename == test_name:
+                    test_path = test[0]
+                    use_runtime = test[2]
+                    break
+            
+            # If not found, search for the file
+            if not test_path:
+                possible_paths = [
+                    f"{BASE_DIR}/tests/{test_name}.c",
+                    f"{BASE_DIR}/tests-known-failures/{test_name}.c",
+                ]
+                
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        test_path = path
+                        break
+            
+            if not test_path:
+                print(f"Error: Test '{test_name}' not found")
+                continue
+            
+            print(f"\nCompiling: {test_path}")
+            
+            # Compile the test
+            basename = Path(test_path).stem
+            asm_file = f"{BUILD_DIR}/{basename}.asm"
+            ir_file = f"{BUILD_DIR}/{basename}.ir"
+            pobj_file = f"{BUILD_DIR}/{basename}.pobj"
+            bin_file = f"{BUILD_DIR}/{basename}.bin"
+            
+            # Compile C to assembly
+            ret, stdout, stderr = run_command(f"{RCC} compile {test_path} -o {asm_file} --save-ir --ir-output {ir_file}")
+            if ret != 0:
+                print(f"{RED}✗ Compilation failed{NC}: {stderr}")
+                continue
+            
+            # Assemble to object
+            ret, stdout, stderr = run_command(f"{RASM} assemble {asm_file} -o {pobj_file} --bank-size {BANK_SIZE} --max-immediate {MAX_IMMEDIATE}")
+            if ret != 0:
+                print(f"{RED}✗ Assembly failed{NC}: {stderr}")
+                continue
+            
+            # Link to binary
+            if use_runtime:
+                link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f binary -o {bin_file}"
+            else:
+                link_cmd = f"{RLINK} {CRT0} {pobj_file} -f binary -o {bin_file}"
+            
+            ret, stdout, stderr = run_command(link_cmd)
+            if ret != 0:
+                print(f"{RED}✗ Linking failed{NC}: {stderr}")
+                continue
+            
+            print(f"{GREEN}✓ Successfully built {bin_file}{NC}")
+            print(f"Running: {RVM} {bin_file} -t")
+            print("-" * 60)
+            
+            # Run interactively with TUI debugger
+            import subprocess
+            subprocess.run([RVM, bin_file, "-t"])
+        
+        return 0
     
     # If specific tests specified, filter the test list
     if test_files:
@@ -463,7 +586,7 @@ def main():
                 print(f"Note: Expected output not defined in test list, will show actual output")
                 print("-" * 60)
                 
-                success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose, backend)
+                success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose, backend, False)
                 
                 if success:
                     if has_provenance_warning:
@@ -499,7 +622,7 @@ def main():
                 print(f"SKIP {test_file}: File not found")
                 continue
                 
-            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend)
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, run_mode)
             
             if success:
                 if has_provenance_warning:
@@ -521,7 +644,7 @@ def main():
                 print(f"SKIP {test_file}: File not found")
                 continue
                 
-            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend)
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, run_mode)
             
             if success:
                 if has_provenance_warning:
@@ -540,16 +663,6 @@ def main():
         #     print(f"\nCleaned up {num_cleaned} generated files")
         
         return 0 if failed == 0 else 1
-    
-    # Known failures section (tests that are expected to fail)
-    known_failures = [
-        f"{BASE_DIR}/tests-known-failures/test_typedef.c",  # Typedef support not implemented
-        f"{BASE_DIR}/tests-known-failures/test_typedef_simple.c",  # Typedef support not implemented
-        f"{BASE_DIR}/tests-known-failures/test_struct_simple2.c",  # Uses typedef struct
-        f"{BASE_DIR}/tests-known-failures/test_struct_inline_simple.c",  # Inline struct definitions not supported
-        f"{BASE_DIR}/tests-known-failures/test_puts_global.c", # Inline assembly not fully implemented yet
-        f"{BASE_DIR}/tests-known-failures/test_pointers_evil.c", # Test EVERYTHING that can go wrong with pointers. And it does.
-    ]
     
     # Sort known failures alphabetically
     known_failures.sort()
