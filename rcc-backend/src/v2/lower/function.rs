@@ -191,6 +191,12 @@ fn lower_basic_block(
 ) -> Result<Vec<(Option<(Reg, Option<Reg>)>, usize)>, String> {
     debug!("Lowering block {} (index {})", block.id, block_idx);
     
+    // Invalidate alloca-register bindings at block boundaries
+    // This ensures allocas are always recomputed fresh in loop headers,
+    // preventing issues where a register containing an alloca address
+    // gets overwritten in the loop body and isn't restored.
+    mgr.invalidate_alloca_bindings();
+    
     // Add label for the block (except for entry block which is implicit)
     if block.id != 0 {
         let label_name = block_labels.get(&block.id).unwrap().clone();

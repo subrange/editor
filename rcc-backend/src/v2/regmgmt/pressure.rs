@@ -337,6 +337,14 @@ impl RegisterPressureManager {
         if let Some(value) = self.reg_contents.get(&reg).cloned() {
             trace!("spill_register({:?}) containing '{}'", reg, value);
             
+            // Check if this is an alloca - allocas are addresses, don't spill them
+            if self.alloca_offsets.contains_key(&value) {
+                debug!("  '{}' is an alloca address, not spilling (will recompute when needed)", value);
+                // Just remove from register, it will be recomputed when needed
+                self.reg_contents.remove(&reg);
+                return;
+            }
+            
             self.ensure_sb_initialized();
             
             // Get or allocate spill slot
@@ -645,5 +653,39 @@ impl RegisterPressureManager {
     /// Get spill count for metrics
     pub fn get_spill_count(&self) -> usize {
         self.value_to_slot.len()
+    }
+    
+    /// Invalidate alloca-register bindings
+    /// This is called at basic block boundaries to ensure allocas are
+    /// always recomputed fresh in loop headers, preventing stale register issues.
+    pub fn invalidate_alloca_bindings(&mut self) {
+        debug!("Invalidating alloca-register bindings at block boundary");
+        
+        // Find all registers that contain allocas
+        let mut allocas_to_remove = Vec::new();
+        for (reg, value) in self.reg_contents.iter() {
+            if self.alloca_offsets.contains_key(value) {
+                trace!("  Invalidating alloca '{}' in {:?}", value, reg);
+                allocas_to_remove.push((*reg, value.clone()));
+            }
+        }
+        
+        // Count how many we're removing before consuming the vector
+        let count = allocas_to_remove.len();
+        
+        // Remove allocas from registers and mark registers as free
+        for (reg, _value) in allocas_to_remove {
+            self.reg_contents.remove(&reg);
+            // Remove from LRU queue
+            if let Some(pos) = self.lru_queue.iter().position(|&r| r == reg) {
+                self.lru_queue.remove(pos);
+            }
+            // Add back to free list if not already there
+            if !self.free_list.contains(&reg) {
+                self.free_list.push_back(reg);
+            }
+        }
+        
+        debug!("  Invalidated {} alloca bindings", count);
     }
 }

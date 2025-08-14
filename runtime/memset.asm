@@ -47,54 +47,60 @@ memset:
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
 L_memset_1:
-    LOAD T2, SB, T4
-    LOAD T1, SB, T5
-    SLT T2, T2, T1
-    BEQ T2, R0, L_memset_4
+; Recompute alloca t6 at FP+4
+    ADD T2, FP, R0
+    ADDI T2, T2, 4
+    LOAD T1, SB, T2
+; Recompute alloca t5 at FP+3
+    ADD T0, FP, R0
+    ADDI T0, T0, 3
+    LOAD T7, SB, T0
+    SLT T1, T1, T7
+    BEQ T1, R0, L_memset_4
 ; Branch to L_memset_4 if condition is false
     BEQ R0, R0, L_memset_2
 ; Unconditional branch to L_memset_2 (condition was true)
 L_memset_2:
-    LOAD T0, SB, S0
-    ADDI T7, S0, 1
-    LOAD T3, SB, T7
-    LOAD T1, SB, T4
-    ADD T7, T1, R0
-    ADD T2, T0, T7
+; Recompute alloca t3 at FP+0
+    ADD T3, FP, R0
+    LOAD T4, SB, T3
+    ADDI T5, T3, 1
+    LOAD T6, SB, T5
+; Recompute alloca t6 at FP+4
+    ADD S0, FP, R0
+    ADDI S0, S0, 4
+    LOAD T7, SB, S0
+    ADD T0, T7, R0
+    ADD T1, T4, T0
 ; Runtime bank overflow calculation for dynamic GEP
+    LI T5, 4096
+    DIV T2, T1, T5
 ; Spill t0 to slot 0
     ADD SC, FP, R0
     ADDI SC, SC, 13
     STORE S3, SB, SC
+    MOD S3, T1, T5
 ; Spill t1 to slot 1
     ADD SC, FP, R0
     ADDI SC, SC, 14
     STORE S2, SB, SC
-    LI S2, 4096
-    DIV S3, T2, S2
-; Spill t4 to slot 2
-    ADD SC, FP, R0
-    ADDI SC, SC, 15
-    STORE T6, SB, SC
-    MOD T6, T2, S2
-; Spill t2 to slot 3
-    ADD SC, FP, R0
-    ADDI SC, SC, 16
-    STORE S1, SB, SC
-    ADD S1, T3, S3
-    ADD T2, T6, R0
+    ADD S2, T6, T2
+    ADD T1, S3, R0
 ; Recompute alloca t4 at FP+2
-    ADD T7, FP, R0
-    ADDI T7, T7, 2
-    LOAD S3, SB, T7
-    STORE S3, S1, T2
+    ADD T0, FP, R0
+    ADDI T0, T0, 2
+    LOAD T2, SB, T0
+    STORE T2, S2, T1
     BEQ R0, R0, L_memset_3
 ; Unconditional branch to L_memset_3
 L_memset_3:
-    LOAD S2, SB, T4
-    LI T6, 1
-    ADD S2, S2, T6
-    STORE S2, SB, T4
+; Recompute alloca t6 at FP+4
+    ADD T5, FP, R0
+    ADDI T5, T5, 4
+    LOAD S3, SB, T5
+    LI T4, 1
+    ADD S3, S3, T4
+    STORE S3, SB, T5
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
 L_memset_4:

@@ -33,19 +33,23 @@ puts:
     BEQ R0, R0, L_puts_1
 ; Unconditional branch to L_puts_1
 L_puts_1:
-    LOAD S0, SB, S2
-    ADDI T7, S2, 1
-    LOAD T6, SB, T7
-    LOAD T5, T6, S0
-    BEQ T5, R0, L_puts_3
+; Recompute alloca t1 at FP+0
+    ADD S0, FP, R0
+    LOAD T7, SB, S0
+    ADDI T6, S0, 1
+    LOAD T5, SB, T6
+    LOAD T4, T5, T7
+    BEQ T4, R0, L_puts_3
 ; Branch to L_puts_3 if condition is false
     BEQ R0, R0, L_puts_2
 ; Unconditional branch to L_puts_2 (condition was true)
 L_puts_2:
-    LOAD T4, SB, S2
-    ADDI T3, S2, 1
+; Recompute alloca t1 at FP+0
+    ADD T3, FP, R0
     LOAD T2, SB, T3
-    LOAD T1, T2, T4
+    ADDI T1, T3, 1
+    LOAD T0, SB, T1
+    LOAD S1, T0, T2
 ; Spill live registers before call
 ; Spill t0 to slot 0
     ADD SC, FP, R0
@@ -54,66 +58,58 @@ L_puts_2:
 ; Spill t2 to slot 1
     ADD SC, FP, R0
     ADDI SC, SC, 11
-    STORE S0, SB, SC
+    STORE T7, SB, SC
 ; Spill load_f0_op5_t2_bank_val to slot 2
     ADD SC, FP, R0
     ADDI SC, SC, 12
-    STORE T6, SB, SC
-; Spill t1 to slot 3
+    STORE T5, SB, SC
+; Spill t4 to slot 3
     ADD SC, FP, R0
     ADDI SC, SC, 13
-    STORE S2, SB, SC
-; Spill t4 to slot 4
+    STORE T2, SB, SC
+; Spill load_f0_op8_t4_bank_val to slot 4
     ADD SC, FP, R0
     ADDI SC, SC, 14
-    STORE T4, SB, SC
-; Spill load_f0_op8_t4_bank_val to slot 5
+    STORE T0, SB, SC
+; Spill t5 to slot 5
     ADD SC, FP, R0
     ADDI SC, SC, 15
-    STORE T2, SB, SC
-; Spill t5 to slot 6
-    ADD SC, FP, R0
-    ADDI SC, SC, 16
-    STORE T1, SB, SC
+    STORE S1, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0
-    ADD A0, T1, R0
+    ADD A0, S1, R0
 ; Call function putchar
     CALL putchar
 ; Scalar return value for t6
 ; Recompute alloca t1 at FP+0
-    ADD T0, FP, R0
-    LOAD S1, SB, T0
-    ADDI T7, T0, 1
-    LOAD T5, SB, T7
-    ADDI T3, S1, 1
-    STORE T3, SB, T0
-    ADDI S3, T0, 1
-    STORE T5, SB, S3
+    ADD S2, FP, R0
+    LOAD T6, SB, S2
+    ADDI T4, S2, 1
+    LOAD S0, SB, T4
+    ADDI T1, T6, 1
+    STORE T1, SB, S2
+    ADDI S3, S2, 1
+    STORE S0, SB, S3
     BEQ R0, R0, L_puts_1
 ; Unconditional branch to L_puts_1
 L_puts_3:
-    LI S0, 10
+    LI T7, 10
 ; Spill live registers before call
-; Spill t6 to slot 7
+; Spill t6 to slot 6
+    ADD SC, FP, R0
+    ADDI SC, SC, 16
+    STORE RV0, SB, SC
+; Spill load_f0_op11_t7_bank_val to slot 7
     ADD SC, FP, R0
     ADDI SC, SC, 17
-    STORE RV0, SB, SC
-; Spill load_f0_op11_t7_bank_val to slot 8
+    STORE S0, SB, SC
+; Spill const_f0_op13_10 to slot 8
     ADD SC, FP, R0
     ADDI SC, SC, 18
-    STORE T5, SB, SC
-; Spill t1 to slot 3
-    ADD SC, FP, R0
-    ADDI SC, SC, 13
-    STORE T0, SB, SC
-; Spill const_f0_op13_10 to slot 9
-    ADD SC, FP, R0
-    ADDI SC, SC, 19
-    STORE S0, SB, SC
+    STORE T7, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0
-    ADD A0, S0, R0
+    ADD A0, T7, R0
 ; Call function putchar
     CALL putchar
 ; Scalar return value for t9

@@ -261,6 +261,72 @@
       "file": "tests/test_strings_simple.c",
       "expected": "Hello!\n",
       "use_runtime": true
+    },
+    {
+      "file": "tests/test_real_while_loop.c",
+      "expected": "I3\nI2\nAXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_minimal_bug.c",
+      "expected": "ABC\nAXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_ultra_minimal.c",
+      "expected": "AXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_pointer_param.c",
+      "expected": "C\nC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_loop_issue.c",
+      "expected": "AXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_loop_debug.c",
+      "expected": "S3\nB3:C>3\nA3=C\nB2:B>2\nA2=B\nF:AXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_array_write_loop.c",
+      "expected": "C\nB\nC\nL3:B>3\nL2:B>2\nF:ABBB\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_loop_condition.c",
+      "expected": "Y\nY\nN\nL:\n3\n2\nE\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_simple_param_loop.c",
+      "expected": "B\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_minimal_shift.c",
+      "expected": "AXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_shift_with_loop.c",
+      "expected": "S\n1:3\n2:2\nE\nAXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
     }
   ],
   "known_failures": [

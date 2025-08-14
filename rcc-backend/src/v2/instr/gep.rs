@@ -344,6 +344,10 @@ pub fn lower_gep(
         "  Result pointer '{}' has bank info: {:?}",
         result_name, result_bank_info
     );
+    
+    // CRITICAL: Bind the result register to the result temp
+    // This ensures the register manager knows what's in the register after GEP
+    mgr.bind_value_to_register(result_name.clone(), result_addr_reg);
 
     // Free base address register if it's not the result
     if base_addr_reg != result_addr_reg {

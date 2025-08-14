@@ -40,8 +40,9 @@ int main() {
     print_chars(list, len);
 
     insert_char(list, &len, 1, 'X');
-
-    puts(list);
+    
+    // Use print_chars instead of puts since list is not null-terminated
+    print_chars(list, len);
 
     delete_char(list, &len, 1);
     print_chars(list, len);
