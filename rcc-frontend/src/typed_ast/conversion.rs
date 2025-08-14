@@ -8,12 +8,91 @@ use super::translation_unit::{TypedFunction, TypedTopLevelItem, TypedTranslation
 use super::errors::TypeError;
 use crate::types::{Type, BankTag};
 use crate::type_checker::{TypeChecker, TypedBinaryOp};
+use crate::ast::{Initializer, InitializerKind};
 
 /// Type environment for looking up variable types
 pub struct TypeEnvironment {
     // For now, this is a placeholder
     // In a real implementation, this would track variable types in scope
     // TODO: Implement proper type environment
+}
+
+/// Convert an initializer to a typed expression
+fn type_initializer(
+    init: &Initializer,
+    expected_type: &Type,
+    type_env: &TypeEnvironment,
+) -> Result<TypedExpr, TypeError> {
+    match &init.kind {
+        InitializerKind::Expression(expr) => {
+            // Single expression initializer
+            // Special case: string literal initializing a char array
+            if let crate::ast::ExpressionKind::StringLiteral(s) = &expr.kind {
+                if let Type::Array { element_type, .. } = expected_type {
+                    if matches!(**element_type, Type::Char) {
+                        // Convert string to array of character literals
+                        let mut chars = Vec::new();
+                        for ch in s.bytes() {
+                            chars.push(TypedExpr::CharLiteral {
+                                value: ch,
+                                expr_type: Type::Char,
+                            });
+                        }
+                        // Add null terminator
+                        chars.push(TypedExpr::CharLiteral {
+                            value: 0,
+                            expr_type: Type::Char,
+                        });
+                        
+                        return Ok(TypedExpr::ArrayInitializer {
+                            elements: chars,
+                            expr_type: expected_type.clone(),
+                        });
+                    }
+                }
+            }
+            
+            // Otherwise, process as normal expression
+            type_expression(expr, type_env)
+        }
+        InitializerKind::List(initializers) => {
+            // List initializer - for arrays
+            match expected_type {
+                Type::Array { element_type, size } => {
+                    // Check we don't have too many initializers if size is known
+                    if let Some(array_size) = size {
+                        if initializers.len() as u64 > *array_size {
+                            return Err(TypeError::TypeMismatch(format!(
+                                "Too many initializers for array of size {}", array_size
+                            )));
+                        }
+                    }
+                    
+                    // Type each element
+                    let mut typed_elements = Vec::new();
+                    for init in initializers {
+                        let typed_elem = type_initializer(init, element_type, type_env)?;
+                        typed_elements.push(typed_elem);
+                    }
+                    
+                    Ok(TypedExpr::ArrayInitializer {
+                        elements: typed_elements,
+                        expr_type: expected_type.clone(),
+                    })
+                }
+                _ => {
+                    Err(TypeError::TypeMismatch(format!(
+                        "List initializer not supported for type {:?}", expected_type
+                    )))
+                }
+            }
+        }
+        InitializerKind::Designated { .. } => {
+            Err(TypeError::UnsupportedConstruct(
+                "Designated initializers not yet supported".to_string()
+            ))
+        }
+    }
 }
 
 /// Convert an untyped AST expression to a typed expression
@@ -281,16 +360,8 @@ pub fn type_statement(
             // TODO: Handle multiple declarations properly
             if let Some(decl) = declarations.first() {
                 let init = match decl.initializer.as_ref() {
-                    Some(init) => match &init.kind {
-                        crate::ast::InitializerKind::Expression(expr) => {
-                            Some(type_expression(expr, type_env)?)
-                        }
-                        _ => {
-                            // TODO: Handle list initializers for arrays/structs
-                            return Err(TypeError::UnsupportedConstruct(
-                                "List initializers not yet supported".to_string()
-                            ));
-                        }
+                    Some(init) => {
+                        Some(type_initializer(init, &decl.decl_type, type_env)?)
                     },
                     None => None,
                 };
@@ -462,16 +533,8 @@ pub fn type_translation_unit(
                 }
                 
                 let init = match decl.initializer.as_ref() {
-                    Some(init) => match &init.kind {
-                        crate::ast::InitializerKind::Expression(expr) => {
-                            Some(type_expression(expr, &type_env)?)
-                        }
-                        _ => {
-                            // TODO: Handle list initializers for arrays/structs
-                            return Err(TypeError::UnsupportedConstruct(
-                                "List initializers not yet supported".to_string()
-                            ));
-                        }
+                    Some(init) => {
+                        Some(type_initializer(init, &decl.decl_type, &type_env)?)
                     },
                     None => None,
                 };

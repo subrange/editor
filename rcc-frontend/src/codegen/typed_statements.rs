@@ -142,9 +142,32 @@ impl<'a> TypedStatementGenerator<'a> {
         
         // Initialize if needed
         if let Some(init_expr) = initializer {
-            let mut expr_gen = self.create_expression_generator();
-            let init_val = expr_gen.generate(init_expr)?;
-            self.builder.build_store(init_val, var_addr)?;
+            match init_expr {
+                TypedExpr::ArrayInitializer { elements, .. } => {
+                    // For array initializers, store each element individually
+                    for (i, elem_expr) in elements.iter().enumerate() {
+                        let mut expr_gen = self.create_expression_generator();
+                        let elem_val = expr_gen.generate(elem_expr)?;
+                        
+                        // Calculate element address using GEP
+                        let index_val = crate::ir::Value::Constant(i as i64);
+                        let elem_addr = self.builder.build_pointer_offset(
+                            var_addr.clone(),
+                            index_val,
+                            ir_type.clone(),
+                        )?;
+                        
+                        // Store the element
+                        self.builder.build_store(elem_val, elem_addr)?;
+                    }
+                }
+                _ => {
+                    // For non-array initializers, generate and store normally
+                    let mut expr_gen = self.create_expression_generator();
+                    let init_val = expr_gen.generate(init_expr)?;
+                    self.builder.build_store(init_val, var_addr)?;
+                }
+            }
         }
         
         Ok(())

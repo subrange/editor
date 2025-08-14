@@ -132,6 +132,12 @@ pub enum TypedExpr {
         target_type: Type,
         expr_type: Type,  // Always size_t/int
     },
+    
+    /// Array initializer list
+    ArrayInitializer {
+        elements: Vec<TypedExpr>,
+        expr_type: Type,  // Array type
+    },
 }
 
 impl TypedExpr {
@@ -154,7 +160,8 @@ impl TypedExpr {
             TypedExpr::Assignment { expr_type, .. } |
             TypedExpr::CompoundAssignment { expr_type, .. } |
             TypedExpr::SizeofExpr { expr_type, .. } |
-            TypedExpr::SizeofType { expr_type, .. } => expr_type,
+            TypedExpr::SizeofType { expr_type, .. } |
+            TypedExpr::ArrayInitializer { expr_type, .. } => expr_type,
         }
     }
     

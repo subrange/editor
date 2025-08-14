@@ -123,6 +123,7 @@ pub fn lower_gep(
     // TODO: Support multi-dimensional arrays and struct field access
     if indices.len() != 1 {
         warn!("  Multi-index GEP not yet fully supported, using first index only");
+        panic!("Multi-index GEP not yet implemented");
     }
 
     let index = &indices[0];

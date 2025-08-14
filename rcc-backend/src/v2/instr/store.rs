@@ -134,7 +134,7 @@ pub fn lower_store(
         }
         _ => {
             warn!("  Invalid value for store: {:?}", value);
-            panic!("Invalid value for store")
+            panic!("Invalid value for store: {:?}", value);
         }
     };
     

@@ -194,6 +194,26 @@ impl<'a> TypedExpressionGenerator<'a> {
                 Ok(Value::Constant(size as i64))
             }
 
+            TypedExpr::ArrayInitializer { elements, .. } => {
+                // For array initializers, we need to evaluate each element
+                // and collect them into a ConstantArray value
+                // This only works for constant expressions
+                let mut values = Vec::new();
+                for elem in elements {
+                    match self.generate(elem)? {
+                        Value::Constant(val) => values.push(val),
+                        _ => {
+                            return Err(CodegenError::UnsupportedConstruct {
+                                construct: "non-constant array initializer".to_string(),
+                                location: rcc_common::SourceLocation::new_simple(0, 0),
+                            }
+                            .into())
+                        }
+                    }
+                }
+                Ok(Value::ConstantArray(values))
+            }
+
             TypedExpr::MemberAccess { .. } => {
                 return Err(CodegenError::UnsupportedConstruct {
                     construct: "struct/union member access".to_string(),

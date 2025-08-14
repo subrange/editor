@@ -181,14 +181,24 @@ impl TypedCodeGenerator {
         
         // Handle initializer if present
         let init_value = if let Some(init_expr) = initializer {
-            match init_expr {
-                TypedExpr::IntLiteral { value, .. } => Some(Value::Constant(*value)),
-                TypedExpr::CharLiteral { value, .. } => Some(Value::Constant(*value as i64)),
-                _ => {
-                    // For now, only support constant initializers
-                    // TODO: Support more complex initializers
-                    None
+            // We need to generate the initializer value
+            // For global variables, only constant initializers are allowed
+            let mut expr_gen = TypedExpressionGenerator {
+                builder: &mut self.builder,
+                module: &mut self.module,
+                variables: &self.variables,
+                array_variables: &self.array_variables,
+                parameter_variables: &self.parameter_variables,
+                string_literals: &mut self.string_literals,
+                next_string_id: &mut self.next_string_id,
+            };
+            
+            match expr_gen.generate(init_expr) {
+                Ok(value) => match value {
+                    Value::Constant(_) | Value::ConstantArray(_) => Some(value),
+                    _ => None, // Non-constant initializers not supported for globals
                 }
+                Err(_) => None,
             }
         } else {
             None
