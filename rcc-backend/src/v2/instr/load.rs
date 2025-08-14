@@ -10,7 +10,7 @@ use crate::v2::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;
-use super::helpers::{resolve_mixed_bank, resolve_bank_tag_to_info, get_bank_register};
+use super::helpers::{resolve_mixed_bank, resolve_bank_tag_to_info, get_bank_register_with_mgr};
 
 /// Lower a Load instruction to assembly
 /// 
@@ -102,7 +102,8 @@ pub fn lower_load(
     
     debug!("  Pointer {} has bank info: {:?}", ptr_name, bank_info);
     
-    let bank_reg = get_bank_register(&bank_info);
+    // Use the new function that can handle NamedValue and reload if necessary
+    let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
     trace!("  Using {:?} for bank", bank_reg);
     
     // Step 3: Allocate destination register and generate LOAD instruction
@@ -129,9 +130,9 @@ pub fn lower_load(
         insts.push(AsmInst::AddI(bank_addr_reg, addr_reg, 1));
         trace!("  Bank component at address {:?} + 1", addr_reg);
         
-        // Load the bank value
+        // Load the bank value with a trackable name
         let bank_value_name = naming.load_bank_value(result_temp);
-        let bank_dest_reg = mgr.get_register(bank_value_name);
+        let bank_dest_reg = mgr.get_register(bank_value_name.clone());
         insts.extend(mgr.take_instructions());
         
         let bank_load = AsmInst::Load(bank_dest_reg, bank_reg, bank_addr_reg);
@@ -139,10 +140,16 @@ pub fn lower_load(
         insts.push(bank_load);
         
         // Store bank info for the loaded pointer
+        // IMPORTANT: We track the bank value by NAME so it can be reloaded if spilled
         if result_type.is_pointer() {
-            mgr.set_pointer_bank(result_name.clone(), BankInfo::Register(bank_dest_reg));
+            // Bind the bank value so it's tracked in the register manager
+            mgr.bind_value_to_register(bank_value_name.clone(), bank_dest_reg);
+            // Track that this pointer's bank is in a named value (not just a register)
+            // This allows the bank to be reloaded if the register gets spilled
+            mgr.set_pointer_bank(result_name.clone(), BankInfo::NamedValue(bank_value_name.clone()));
         }
-        debug!("  Fat pointer loaded: addr in {:?}, bank in {:?}", dest_reg, bank_dest_reg);
+        debug!("  Fat pointer loaded: addr in {:?}, bank in {:?} (tracked as '{}')", 
+               dest_reg, bank_dest_reg, bank_value_name);
         
         // Free the temporary bank address register
         mgr.free_register(bank_addr_reg);

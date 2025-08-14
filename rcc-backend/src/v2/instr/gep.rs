@@ -181,6 +181,10 @@ pub fn lower_gep(
                               bank_crossing);
                     }
                 }
+                BankInfo::NamedValue(_) => {
+                    // Named values track their bank dynamically
+                    trace!("  Bank is tracked via named value");
+                }
                 BankInfo::Register(bank_reg) => {
                     // Dynamic bank - need to add bank offset
                     if bank_crossing != 0 {
@@ -267,6 +271,16 @@ pub fn lower_gep(
         
         // Now update the bank based on the original bank info
         match base_bank_info {
+            BankInfo::NamedValue(name) => {
+                // Get the current bank register for the named value
+                let current_bank = mgr.get_register(name.clone());
+                insts.extend(mgr.take_instructions());
+                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
+                insts.extend(mgr.take_instructions());
+                insts.push(AsmInst::Add(new_bank_reg, current_bank, bank_delta_reg));
+                result_bank_info = BankInfo::Register(new_bank_reg);
+                debug!("  Updated named value pointer bank to dynamic register");
+            }
             BankInfo::Stack => {
                 // Stack bank: new_bank = SB + bank_delta
                 let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));

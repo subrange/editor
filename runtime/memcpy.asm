@@ -119,7 +119,11 @@ L_memcpy_2:
     ADDI SC, SC, 23
     STORE T0, SB, SC
     MOD T0, T3, T7
-    ADD S2, S2, T2
+; Spill t4 to slot 8
+    ADD SC, FP, R0
+    ADDI SC, SC, 24
+    STORE T6, SB, SC
+    ADD T6, S2, T2
     ADD T3, T0, R0
 ; Reload t7 from slot 5
     ADD SC, FP, R0
@@ -129,39 +133,47 @@ L_memcpy_2:
     ADDI T7, S1, 1
     LOAD T0, SB, T7
     LOAD S3, SB, T1
-; Spill t4 to slot 8
-    ADD SC, FP, R0
-    ADDI SC, SC, 24
-    STORE T6, SB, SC
-    ADD T6, S3, R0
-    ADD T7, T2, T6
-; Runtime bank overflow calculation for dynamic GEP
 ; Spill t9 to slot 9
     ADD SC, FP, R0
     ADDI SC, SC, 25
     STORE T4, SB, SC
+    ADD T4, S3, R0
+    ADD T7, T2, T4
+; Runtime bank overflow calculation for dynamic GEP
 ; Spill t5 to slot 10
     ADD SC, FP, R0
     ADDI SC, SC, 26
     STORE T5, SB, SC
-    LI T5, 4096
-    DIV T4, T7, T5
-; Spill load_f0_op15_t14_bank_val to slot 11
+; Spill t16 to slot 11
     ADD SC, FP, R0
     ADDI SC, SC, 27
+    STORE T3, SB, SC
+    LI T3, 4096
+    DIV T5, T7, T3
+; Spill t15 to slot 12
+    ADD SC, FP, R0
+    ADDI SC, SC, 28
+    STORE S0, SB, SC
+    MOD S0, T7, T3
+; Spill load_f0_op15_t14_bank_val to slot 13
+    ADD SC, FP, R0
+    ADDI SC, SC, 29
     STORE S2, SB, SC
-    MOD S2, T7, T5
-    ADD T0, T0, T4
-    ADD T7, S2, R0
-    LOAD T6, T0, T7
-    STORE T6, S2, T3
+    ADD S2, T0, T5
+    ADD T7, S0, R0
+    LOAD T4, S2, T7
+; Reload t16 from slot 11
+    ADD SC, FP, R0
+    ADDI SC, SC, 27
+    LOAD T5, SB, SC
+    STORE T4, T6, T5
     BEQ R0, R0, L_memcpy_3
 ; Unconditional branch to L_memcpy_3
 L_memcpy_3:
-    LOAD T4, SB, T1
-    LI T5, 1
-    ADD T4, T4, T5
-    STORE T4, SB, T1
+    LOAD T3, SB, T1
+    LI S0, 1
+    ADD T3, T3, S0
+    STORE T3, SB, T1
     BEQ R0, R0, L_memcpy_1
 ; Unconditional branch to L_memcpy_1
 L_memcpy_4:

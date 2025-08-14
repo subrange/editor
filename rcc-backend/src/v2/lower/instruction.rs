@@ -18,7 +18,7 @@ use crate::v2::function::{CallArg, CallingConvention};
 use crate::v2::instr::{
     lower_load, lower_store, lower_gep,
     lower_binary_op, lower_unary_op,
-    helpers::{get_bank_register, resolve_global_to_fatptr, canonicalize_value, get_value_register}
+    helpers::{get_bank_register_with_mgr, resolve_global_to_fatptr, canonicalize_value, get_value_register}
 };
 
 /// Lower a single instruction using the existing infrastructure
@@ -128,7 +128,7 @@ pub fn lower_instruction(
                             let addr_reg = mgr.get_register(name.clone());
                             insts.extend(mgr.take_instructions());
                             
-                            let bank_reg = get_bank_register(&bank_info);
+                            let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
                             
                             call_args.push(CallArg::FatPointer { addr: addr_reg, bank: bank_reg });
                         } else {

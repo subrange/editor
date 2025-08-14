@@ -11,7 +11,7 @@ use crate::v2::RegisterPressureManager;
 use crate::v2::naming::NameGenerator;
 use crate::v2::globals::GlobalManager;
 use crate::v2::function::{FunctionBuilder, CallingConvention};
-use crate::v2::instr::helpers::get_bank_register;
+use crate::v2::instr::helpers::get_bank_register_with_mgr;
 use super::instruction::lower_instruction;
 
 /// Compute stack offsets (relative to FP) for each alloca result
@@ -155,7 +155,7 @@ pub fn lower_function_v2(
                                             // This is a compiler bug - all pointers must have bank info
                                             panic!("V2: COMPILER BUG: No bank info for pointer return value t{}. All pointers must have tracked bank information!", t);
                                         });
-                                    let bank_reg = get_bank_register(&bank_info);
+                                    let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
                                     
                                     let temp_reg = mgr.get_register(temp_name);
                                     builder.add_instructions(mgr.take_instructions());

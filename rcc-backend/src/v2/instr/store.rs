@@ -9,7 +9,7 @@ use crate::v2::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;
-use super::helpers::{resolve_mixed_bank, resolve_bank_tag_to_info, get_bank_register, materialize_bank_to_register};
+use super::helpers::{resolve_mixed_bank, resolve_bank_tag_to_info, get_bank_register_with_mgr, materialize_bank_to_register};
 
 /// Lower a Store instruction to assembly
 /// 
@@ -40,7 +40,7 @@ pub fn lower_store(
             let reg = mgr.get_register(name.clone());
 
             let bank_src: Option<(Reg, bool)> = mgr.get_pointer_bank(&name)
-                .map(|info| (get_bank_register(&info), false));
+                .map(|info| (get_bank_register_with_mgr(&info, mgr), false));
 
             (reg, bank_src.is_some(), bank_src)
 
@@ -106,6 +106,12 @@ pub fn lower_store(
                     match bank_info {
                         BankInfo::Register(r) => {
                             // Use the dynamic bank register directly; we don't own it
+                            (r, false)
+                        }
+                        BankInfo::NamedValue(name) => {
+                            // Get the register for this named value (may reload if spilled)
+                            let r = mgr.get_register(name);
+                            insts.extend(mgr.take_instructions());
                             (r, false)
                         }
                         BankInfo::Global | BankInfo::Stack => {
@@ -193,7 +199,8 @@ pub fn lower_store(
     
     debug!("  Destination pointer {} has bank info: {:?}", dest_ptr_name, dest_bank_info);
     
-    let dest_bank_reg = dest_bank_info.to_register();
+    let dest_bank_reg = get_bank_register_with_mgr(&dest_bank_info, mgr);
+    insts.extend(mgr.take_instructions());
     
     // Step 4: Generate STORE instruction(s)
     

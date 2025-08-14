@@ -111,6 +111,9 @@ impl RegAllocV2 {
                 trace!("Using {reg:?} for dynamic bank");
                 *reg
             }
+            Some(BankInfo::NamedValue(name)) => {
+                panic!("Cannot get bank register for NamedValue('{}') in allocator - should use RegisterPressureManager", name);
+            }
             None => {
                 // Default to stack if unknown
                 debug!("No bank info for '{ptr_value}', defaulting to stack");

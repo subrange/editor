@@ -87,12 +87,39 @@ pub fn calculate_value_need(value: &Value) -> usize {
 
 /// Convert BankInfo to the actual bank register
 /// 
+/// DEPRECATED: This function will panic on NamedValue bank info.
+/// Use get_bank_register_with_mgr instead which properly handles reloading.
+/// 
 /// This helper converts abstract bank information to concrete register:
 /// - Global -> GP register
 /// - Stack -> SB register  
 /// - Register(r) -> the dynamic register r
+/// 
+/// WARNING: For Register(r), this assumes r is still valid. If the register
+/// might have been spilled, the value needs to be reloaded first!
+/// For NamedValue, this will panic - use get_bank_register_with_mgr instead.
+#[deprecated(note = "Use get_bank_register_with_mgr instead to handle NamedValue properly")]
 pub fn get_bank_register(bank_info: &BankInfo) -> Reg {
     bank_info.to_register()
+}
+
+/// Get bank register with proper reloading support
+/// 
+/// This version handles NamedValue bank info by using the register manager
+/// to get/reload the bank value as needed.
+pub fn get_bank_register_with_mgr(
+    bank_info: &BankInfo,
+    mgr: &mut RegisterPressureManager
+) -> Reg {
+    match bank_info {
+        BankInfo::Global => Reg::Gp,
+        BankInfo::Stack => Reg::Sb,
+        BankInfo::Register(reg) => *reg,
+        BankInfo::NamedValue(name) => {
+            // Get the register for this named value, which will reload if spilled
+            mgr.get_register(name.clone())
+        }
+    }
 }
 
 /// Resolve a global variable name to a FatPointer with its address

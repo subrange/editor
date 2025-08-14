@@ -81,14 +81,18 @@ L_memset_2:
     ADDI SC, SC, 15
     STORE T6, SB, SC
     MOD T6, T2, S2
-    ADD T3, T3, S3
+; Spill t2 to slot 3
+    ADD SC, FP, R0
+    ADDI SC, SC, 16
+    STORE S1, SB, SC
+    ADD S1, T3, S3
     ADD T2, T6, R0
 ; Reload t4 from slot 2
     ADD SC, FP, R0
     ADDI SC, SC, 15
     LOAD T7, SB, SC
     LOAD S3, SB, T7
-    STORE S3, T3, T2
+    STORE S3, S1, T2
     BEQ R0, R0, L_memset_3
 ; Unconditional branch to L_memset_3
 L_memset_3:
