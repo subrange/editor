@@ -2,8 +2,6 @@
 
 memset:
 ; === Function Prologue ===
-; Initialize SB as stack bank (1)
-    LI SB, 1
 ; Save RA at SP
     STORE RA, SB, SP
     ADDI SP, SP, 1
@@ -64,8 +62,6 @@ L_memset_2:
     ADD T7, T1, R0
     ADD T2, T0, T7
 ; Runtime bank overflow calculation for dynamic GEP
-; Initialize SB as stack bank (1)
-    LI SB, 1
 ; Spill t0 to slot 0
     ADD SC, FP, R0
     ADDI SC, SC, 13

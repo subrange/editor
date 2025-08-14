@@ -53,7 +53,7 @@ pub enum IrType {
 
 impl IrType {
     /// Get the size of this type in bytes
-    pub fn size_in_bytes(&self) -> Option<u64> {
+    pub fn size_in_words(&self) -> Option<u64> {
         match self {
             IrType::Void => None,
             IrType::I1 => Some(1), // Stored in full byte
@@ -63,13 +63,13 @@ impl IrType {
             IrType::I64 => Some(4),
             IrType::FatPtr(_) => Some(2), // Fat pointers: 2 words (address + bank tag)
             IrType::Array { size, element_type } => {
-                element_type.size_in_bytes().map(|elem_size| elem_size * size)
+                element_type.size_in_words().map(|elem_size| elem_size * size)
             }
             IrType::Function { .. } => None, // Functions don't have size
             IrType::Struct { fields, .. } => {
                 let mut total = 0;
                 for field in fields {
-                    total += field.size_in_bytes()?;
+                    total += field.size_in_words()?;
                 }
                 Some(total)
             }

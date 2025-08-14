@@ -79,8 +79,14 @@ pub fn lower_instruction(
             debug!("V2: GEP: t{} = gep {:?} + {:?}", result, ptr, indices);
             
             // Calculate element size from result type
+            // IMPORTANT: The VM uses 16-bit cells, so we need to convert bytes to cells
             let element_size = if let Some(elem_type) = result_type.element_type() {
-                elem_type.size_in_bytes().unwrap_or(1) as i16
+                // size_in_bytes returns the size in bytes
+                // We need to convert to cells (16-bit words)
+                let size_words = elem_type.size_in_words().unwrap_or(1) as i16;
+                let size_cells = size_words;
+                // Minimum size is 1 cell
+                if size_cells == 0 { 1 } else { size_cells }
             } else {
                 1
             };

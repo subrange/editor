@@ -96,7 +96,7 @@ pub fn get_ast_type_size(ast_type: &Type) -> u64 {
         Type::Function { .. } => 0, // Functions don't have size
         Type::Struct { .. } | Type::Union { .. } => {
             // Use the size_in_bytes method from Type
-            ast_type.size_in_bytes().unwrap_or(0)
+            ast_type.size_in_words().unwrap_or(0)
         }
         _ => 0, // TODO: Handle other types
     }

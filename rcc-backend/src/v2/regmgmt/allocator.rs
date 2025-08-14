@@ -83,13 +83,14 @@ impl RegAllocV2 {
         }
     }
     
-    /// Initialize SB as stack bank register (MUST be called at function start!)
+    /// Mark SB as initialized (it's already set by function prologue or crt0)
     pub(super) fn init_stack_bank(&mut self) {
         if !self.sb_initialized {
-            self.instructions.push(AsmInst::Comment("Initialize SB as stack bank (1)".to_string()));
-            self.instructions.push(AsmInst::Li(Reg::Sb, 1));
+            // SB is already initialized by the function prologue (for functions)
+            // or by crt0.asm (at program start). We just mark it as initialized
+            // so the allocator knows it can use it for spilling.
             self.sb_initialized = true;
-            debug!("Initialized SB to 1 for stack bank");
+            debug!("SB already initialized by prologue/crt0, marking as ready");
         }
     }
 

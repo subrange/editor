@@ -2,8 +2,6 @@
 
 puts:
 ; === Function Prologue ===
-; Initialize SB as stack bank (1)
-    LI SB, 1
 ; Save RA at SP
     STORE RA, SB, SP
     ADDI SP, SP, 1

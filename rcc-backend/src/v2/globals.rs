@@ -49,7 +49,7 @@ impl GlobalManager {
             }
             IrType::Array { size, element_type } => {
                 // For arrays, calculate total size
-                let elem_size = element_type.size_in_bytes().unwrap_or(1) as u16;
+                let elem_size = element_type.size_in_words().unwrap_or(1) as u16;
                 (*size as u16) * elem_size
             }
             _ => 1, // Default to 1 word

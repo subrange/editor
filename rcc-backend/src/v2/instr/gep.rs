@@ -249,69 +249,80 @@ pub fn lower_gep(
         insts.push(AsmInst::Add(result_addr_reg, base_addr_reg, offset_reg));
         debug!("  Added dynamic offset to base address");
         
-        // Runtime bank overflow handling
-        insts.push(AsmInst::Comment(
-            "Runtime bank overflow calculation for dynamic GEP".to_string()
-        ));
-        
-        // Calculate how many banks we've crossed: bank_delta = result_addr / BANK_SIZE
-        let bank_delta_reg = mgr.get_register(naming.gep_bank_delta(result_temp));
-        let bank_size_reg = mgr.get_register(naming.gep_bank_size(result_temp));
-        insts.extend(mgr.take_instructions());
-        
-        insts.push(AsmInst::Li(bank_size_reg, BANK_SIZE_INSTRUCTIONS as i16));
-        insts.push(AsmInst::Div(bank_delta_reg, result_addr_reg, bank_size_reg));
-        trace!("  Calculated bank delta (banks crossed)");
-        
-        // Calculate address within new bank: new_addr = result_addr % BANK_SIZE
-        let new_addr_reg = mgr.get_register(naming.gep_new_addr(result_temp));
-        insts.extend(mgr.take_instructions());
-        insts.push(AsmInst::Mod(new_addr_reg, result_addr_reg, bank_size_reg));
-        trace!("  Calculated address within new bank");
-        
-        // Now update the bank based on the original bank info
+        // Check if we need bank overflow handling
+        // Stack pointers don't need overflow handling - they stay within the stack bank
         match base_bank_info {
-            BankInfo::NamedValue(name) => {
-                // Get the current bank register for the named value
-                let current_bank = mgr.get_register(name.clone());
-                insts.extend(mgr.take_instructions());
-                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
-                insts.extend(mgr.take_instructions());
-                insts.push(AsmInst::Add(new_bank_reg, current_bank, bank_delta_reg));
-                result_bank_info = BankInfo::Register(new_bank_reg);
-                debug!("  Updated named value pointer bank to dynamic register");
-            }
             BankInfo::Stack => {
-                // Stack bank: new_bank = SB + bank_delta
-                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
-                insts.extend(mgr.take_instructions());
-                insts.push(AsmInst::Add(new_bank_reg, Reg::Sb, bank_delta_reg));
-                result_bank_info = BankInfo::Register(new_bank_reg);
-                debug!("  Updated stack-based pointer bank to dynamic register");
+                // Stack pointers stay within the stack bank
+                // The computed offset is used directly
+                debug!("  Stack pointer - no bank overflow needed");
+                result_bank_info = BankInfo::Stack;
+                
+                // Clean up just the offset register
+                mgr.free_register(offset_reg);
             }
-            BankInfo::Global => {
-                // Global bank: new_bank = GP + bank_delta
-                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
+            _ => {
+                // Other pointer types may cross banks, need overflow handling
+                insts.push(AsmInst::Comment(
+                    "Runtime bank overflow calculation for dynamic GEP".to_string()
+                ));
+                
+                // Calculate how many banks we've crossed: bank_delta = result_addr / BANK_SIZE
+                let bank_delta_reg = mgr.get_register(naming.gep_bank_delta(result_temp));
+                let bank_size_reg = mgr.get_register(naming.gep_bank_size(result_temp));
                 insts.extend(mgr.take_instructions());
-                insts.push(AsmInst::Add(new_bank_reg, Reg::Gp, bank_delta_reg));
-                result_bank_info = BankInfo::Register(new_bank_reg);
-                debug!("  Updated global-based pointer bank to dynamic register");
-            }
-            BankInfo::Register(existing_bank_reg) => {
-                // Already dynamic: update in place
-                insts.push(AsmInst::Add(existing_bank_reg, existing_bank_reg, bank_delta_reg));
-                debug!("  Updated existing dynamic bank register");
+                
+                insts.push(AsmInst::Li(bank_size_reg, BANK_SIZE_INSTRUCTIONS as i16));
+                insts.push(AsmInst::Div(bank_delta_reg, result_addr_reg, bank_size_reg));
+                trace!("  Calculated bank delta (banks crossed)");
+                
+                // Calculate address within new bank: new_addr = result_addr % BANK_SIZE
+                let new_addr_reg = mgr.get_register(naming.gep_new_addr(result_temp));
+                insts.extend(mgr.take_instructions());
+                insts.push(AsmInst::Mod(new_addr_reg, result_addr_reg, bank_size_reg));
+                trace!("  Calculated address within new bank");
+                
+                // Now update the bank based on the original bank info
+                match base_bank_info {
+                    BankInfo::NamedValue(name) => {
+                        // Get the current bank register for the named value
+                        let current_bank = mgr.get_register(name.clone());
+                        insts.extend(mgr.take_instructions());
+                        let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
+                        insts.extend(mgr.take_instructions());
+                        insts.push(AsmInst::Add(new_bank_reg, current_bank, bank_delta_reg));
+                        result_bank_info = BankInfo::Register(new_bank_reg);
+                        debug!("  Updated named value pointer bank to dynamic register");
+                    }
+                    BankInfo::Global => {
+                        // Global bank: new_bank = GP + bank_delta
+                        let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
+                        insts.extend(mgr.take_instructions());
+                        insts.push(AsmInst::Add(new_bank_reg, Reg::Gp, bank_delta_reg));
+                        result_bank_info = BankInfo::Register(new_bank_reg);
+                        debug!("  Updated global-based pointer bank to dynamic register");
+                    }
+                    BankInfo::Register(existing_bank_reg) => {
+                        // Already dynamic: update in place
+                        insts.push(AsmInst::Add(existing_bank_reg, existing_bank_reg, bank_delta_reg));
+                        debug!("  Updated existing dynamic bank register");
+                    }
+                    BankInfo::Stack => {
+                        // This case is handled above, shouldn't reach here
+                        unreachable!("Stack case should be handled earlier");
+                    }
+                }
+                
+                // Move the corrected address to the result register
+                insts.push(AsmInst::Add(result_addr_reg, new_addr_reg, Reg::R0));
+                
+                // Clean up temporary registers used for bank overflow
+                mgr.free_register(offset_reg);
+                mgr.free_register(bank_delta_reg);
+                mgr.free_register(bank_size_reg);
+                mgr.free_register(new_addr_reg);
             }
         }
-        
-        // Move the corrected address to the result register
-        insts.push(AsmInst::Add(result_addr_reg, new_addr_reg, Reg::R0));
-        
-        // Clean up temporary registers
-        mgr.free_register(offset_reg);
-        mgr.free_register(bank_delta_reg);
-        mgr.free_register(bank_size_reg);
-        mgr.free_register(new_addr_reg);
     }
     
     // Step 5: Store bank info for the result pointer

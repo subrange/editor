@@ -123,8 +123,7 @@ impl TypeChecker {
         if left_type.is_pointer() && right_type.is_integer() {
             let elem_type = left_type.pointer_target()
                 .ok_or_else(|| format!("Invalid pointer type at {:?}", location))?;
-            // AST Type's size_in_bytes() returns actual bytes
-            // We need size in words for Ripple VM (16-bit cells)
+            
             let elem_size = elem_type.size_in_words()
                 .ok_or_else(|| format!("Cannot determine size of type {} at {:?}", elem_type, location))?;
             

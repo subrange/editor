@@ -48,15 +48,6 @@ impl IntType {
         }
     }
     
-    /// Get the size in bytes
-    pub fn size_in_bytes(&self) -> u32 {
-        match self {
-            IntType::I8 | IntType::U8 => 1,
-            IntType::I16 | IntType::U16 | IntType::Int | IntType::UInt => 2,
-            IntType::I32 | IntType::U32 => 4,
-        }
-    }
-    
     /// Check if this type is signed
     pub fn is_signed(&self) -> bool {
         matches!(self, IntType::I8 | IntType::I16 | IntType::Int | IntType::I32)
@@ -306,10 +297,6 @@ mod tests {
         assert_eq!(IntType::I16.size_in_words(), 1);
         assert_eq!(IntType::Int.size_in_words(), 1);
         assert_eq!(IntType::I32.size_in_words(), 2);
-        
-        assert_eq!(IntType::I8.size_in_bytes(), 1);
-        assert_eq!(IntType::I16.size_in_bytes(), 2);
-        assert_eq!(IntType::I32.size_in_bytes(), 4);
     }
 
     #[test]

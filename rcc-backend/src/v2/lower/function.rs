@@ -21,7 +21,7 @@ pub fn compute_alloca_offsets(function: &Function) -> HashMap<rcc_common::TempId
     for block in &function.blocks {
         for inst in &block.instructions {
             if let Instruction::Alloca { result, alloc_type, count, .. } = inst {
-                let type_size = alloc_type.size_in_bytes().unwrap_or(1) as i16;
+                let type_size = alloc_type.size_in_words().unwrap_or(1) as i16;
                 let total_size = if let Some(Value::Constant(n)) = count {
                     type_size * (*n as i16)
                 } else {
@@ -44,7 +44,7 @@ pub fn calculate_local_slots(function: &Function) -> i16 {
     for block in &function.blocks {
         for instruction in &block.instructions {
             if let Instruction::Alloca { alloc_type, count, .. } = instruction {
-                let type_size = alloc_type.size_in_bytes().unwrap_or(1) as i16;
+                let type_size = alloc_type.size_in_words().unwrap_or(1) as i16;
                 let total_size = if let Some(Value::Constant(n)) = count {
                     type_size * (*n as i16)
                 } else {

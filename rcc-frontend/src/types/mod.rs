@@ -95,41 +95,36 @@ pub enum Type {
 }
 
 impl Type {
-    /// Get the size of this type in bytes
-    pub fn size_in_bytes(&self) -> Option<u64> {
+    /// Get the size of this type in Ripple VM words (16-bit cells)
+    pub fn size_in_words(&self) -> Option<u64> {
         match self {
             Type::Void => None,
             Type::Bool | Type::Char | Type::SignedChar | Type::UnsignedChar => Some(1),
-            Type::Short | Type::UnsignedShort => Some(2),
-            Type::Int | Type::UnsignedInt => Some(2), // 16-bit int on Ripple
-            Type::Long | Type::UnsignedLong => Some(4),
-            Type::Pointer { .. } => Some(4), // Fat pointers: 2 bytes address + 2 bytes bank
+            Type::Short | Type::UnsignedShort => Some(1),
+            Type::Int | Type::UnsignedInt => Some(1), // 16-bit int on Ripple
+            Type::Long | Type::UnsignedLong => Some(2),
+            Type::Pointer { .. } => Some(2), // Fat pointers: 1 word address + 1 word bank
             Type::Array { element_type, size: Some(count) } => {
-                element_type.size_in_bytes().map(|elem_size| elem_size * count)
+                element_type.size_in_words().map(|elem_size| elem_size * count)
             }
             Type::Array { size: None, .. } => None, // Incomplete type
             Type::Function { .. } => None, // Functions don't have size
             Type::Struct { fields, .. } => {
                 let mut total = 0;
                 for field in fields {
-                    total += field.field_type.size_in_bytes()?;
+                    total += field.field_type.size_in_words()?;
                 }
                 Some(total)
             }
             Type::Union { fields, .. } => {
                 fields.iter()
-                    .map(|f| f.field_type.size_in_bytes())
+                    .map(|f| f.field_type.size_in_words())
                     .flatten()
                     .max()
             }
             Type::Enum { .. } => Some(2), // Enum is like int
             Type::Typedef(_) | Type::Error => None,
         }
-    }
-    
-    /// Get the size in 16-bit words (Ripple VM cells)
-    pub fn size_in_words(&self) -> Option<u64> {
-        self.size_in_bytes().map(|bytes| (bytes + 1) / 2)
     }
     
     /// Check if type is integer
@@ -283,16 +278,16 @@ mod tests {
 
     #[test]
     fn test_type_sizes() {
-        assert_eq!(Type::Char.size_in_bytes(), Some(1));
-        assert_eq!(Type::Int.size_in_bytes(), Some(2)); // 16-bit int
-        assert_eq!(Type::Long.size_in_bytes(), Some(4)); // 32-bit long
-        assert_eq!(Type::Pointer { target: Box::new(Type::Int), bank: None }.size_in_bytes(), Some(4)); // Fat pointer
+        assert_eq!(Type::Char.size_in_words(), Some(1));
+        assert_eq!(Type::Int.size_in_words(), Some(1)); // 16-bit int = 1 word
+        assert_eq!(Type::Long.size_in_words(), Some(2)); // 32-bit long = 2 words
+        assert_eq!(Type::Pointer { target: Box::new(Type::Int), bank: None }.size_in_words(), Some(2)); // Fat pointer = 2 words
         
         let array_type = Type::Array { 
             element_type: Box::new(Type::Int), 
             size: Some(10) 
         };
-        assert_eq!(array_type.size_in_bytes(), Some(20)); // 10 * 2 bytes
+        assert_eq!(array_type.size_in_words(), Some(10)); // 10 * 1 word
     }
 
     #[test]

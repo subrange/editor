@@ -2,8 +2,6 @@
 
 memcpy:
 ; === Function Prologue ===
-; Initialize SB as stack bank (1)
-    LI SB, 1
 ; Save RA at SP
     STORE RA, SB, SP
     ADDI SP, SP, 1
@@ -62,8 +60,6 @@ memcpy:
     STORE T6, SB, T4
     ADD T1, FP, R0
     ADDI T1, T1, 7
-; Initialize SB as stack bank (1)
-    LI SB, 1
 ; Spill param_bank_f0_op4_2 to slot 0
     ADD SC, FP, R0
     ADDI SC, SC, 16
