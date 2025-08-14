@@ -61,6 +61,196 @@ pub fn calculate_local_slots(function: &Function) -> i16 {
     slots + 8
 }
 
+/// Setup function builder with proper parameter types
+fn setup_function_builder(function: &Function) -> FunctionBuilder {
+    debug!("Setting up function builder for '{}'" , function.name);
+    let param_types: Vec<(rcc_common::TempId, IrType)> = function.parameters
+        .iter()
+        .map(|(id, ty)| (*id, ty.clone()))
+        .collect();
+    
+    FunctionBuilder::with_params(param_types)
+}
+
+/// Bind function parameters to registers or stack locations
+fn bind_function_parameters(
+    function: &Function,
+    builder: &mut FunctionBuilder,
+    mgr: &mut RegisterPressureManager,
+    naming: &mut NameGenerator,
+) {
+    debug!("Binding {} function parameters", function.parameters.len());
+    for (idx, (param_id, _ty)) in function.parameters.iter().enumerate() {
+        // Use the builder to load and bind the parameter properly
+        let (_addr_reg, _bank_reg) = builder.load_parameter_with_binding(idx, *param_id, mgr, naming);
+        trace!("  Bound parameter {} (t{})", idx, param_id);
+    }
+}
+
+/// Generate labels for all basic blocks in the function
+fn generate_block_labels(
+    function: &Function,
+    naming: &mut NameGenerator,
+) -> HashMap<u32, String> {
+    debug!("Generating labels for {} blocks", function.blocks.len());
+    let mut block_labels = HashMap::new();
+    for block in function.blocks.iter() {
+        let label = naming.block_label(&function.name, block.id);
+        trace!("  Block {} -> {}", block.id, label);
+        block_labels.insert(block.id, label);
+    }
+    block_labels
+}
+
+/// Handle a return instruction, preparing return values and jumping to epilogue
+fn handle_return_instruction(
+    value: &Option<Value>,
+    function: &Function,
+    builder: &mut FunctionBuilder,
+    mgr: &mut RegisterPressureManager,
+    naming: &mut NameGenerator,
+    epilogue_label: &str,
+) -> Option<(Reg, Option<Reg>)> {
+    debug!("Handling return instruction");
+    
+    // Prepare return value if any
+    let return_regs = if let Some(val) = value {
+        match val {
+            Value::Temp(t) => {
+                let temp_name = naming.temp_name(*t);
+                
+                // Check if returning a pointer (would need bank too)
+                if function.return_type.is_pointer() {
+                    // Get the bank register for this pointer first, before moving temp_name
+                    let bank_info = mgr.get_pointer_bank(&temp_name)
+                        .unwrap_or_else(|| {
+                            // This is a compiler bug - all pointers must have bank info
+                            panic!("V2: COMPILER BUG: No bank info for pointer return value t{}. All pointers must have tracked bank information!", t);
+                        });
+                    let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
+                    
+                    let temp_reg = mgr.get_register(temp_name);
+                    builder.add_instructions(mgr.take_instructions());
+                    
+                    // Move to return registers if needed
+                    if temp_reg != Reg::Rv0 {
+                        builder.add_instruction(AsmInst::Move(Reg::Rv0, temp_reg));
+                    }
+                    if bank_reg != Reg::Rv1 {
+                        builder.add_instruction(AsmInst::Move(Reg::Rv1, bank_reg));
+                    }
+                    trace!("  Returning fat pointer in Rv0/Rv1");
+                    Some((Reg::Rv0, Some(Reg::Rv1)))
+                } else {
+                    let temp_reg = mgr.get_register(temp_name);
+                    builder.add_instructions(mgr.take_instructions());
+                    
+                    // Move to return register if needed
+                    if temp_reg != Reg::Rv0 {
+                        builder.add_instruction(AsmInst::Move(Reg::Rv0, temp_reg));
+                    }
+                    trace!("  Returning scalar in Rv0");
+                    Some((Reg::Rv0, None))
+                }
+            }
+            Value::Constant(c) => {
+                // Load constant directly into return register
+                builder.add_instruction(AsmInst::Li(Reg::Rv0, *c as i16));
+                trace!("  Returning constant {} in Rv0", c);
+                Some((Reg::Rv0, None))
+            }
+            _ => {
+                trace!("  Void return");
+                None
+            }
+        }
+    } else {
+        trace!("  Void return");
+        None
+    };
+    
+    // Jump to common epilogue
+    builder.add_instruction(AsmInst::Comment("Jump to epilogue".to_string()));
+    builder.add_instruction(AsmInst::Beq(Reg::R0, Reg::R0, epilogue_label.to_string()));
+    
+    return_regs
+}
+
+/// Lower a single basic block's instructions
+fn lower_basic_block(
+    block: &rcc_frontend::ir::BasicBlock,
+    block_idx: usize,
+    function: &Function,
+    builder: &mut FunctionBuilder,
+    mgr: &mut RegisterPressureManager,
+    naming: &mut NameGenerator,
+    block_labels: &HashMap<u32, String>,
+    alloca_offsets: &HashMap<rcc_common::TempId, i16>,
+    global_manager: &GlobalManager,
+    epilogue_label: &str,
+) -> Result<Vec<(Option<(Reg, Option<Reg>)>, usize)>, String> {
+    debug!("Lowering block {} (index {})", block.id, block_idx);
+    
+    // Add label for the block (except for entry block which is implicit)
+    if block.id != 0 {
+        let label_name = block_labels.get(&block.id).unwrap().clone();
+        builder.add_instruction(AsmInst::Label(label_name));
+    }
+    
+    let mut return_values = Vec::new();
+    
+    // Lower each instruction in the block
+    for instruction in &block.instructions {
+        trace!("  Lowering instruction: {:?}", instruction);
+        
+        match instruction {
+            Instruction::Return(value) => {
+                let return_regs = handle_return_instruction(
+                    value,
+                    function,
+                    builder,
+                    mgr,
+                    naming,
+                    epilogue_label,
+                );
+                return_values.push((return_regs, block_idx));
+            }
+            
+            _ => {
+                // Use the existing lower_instruction for other instructions
+                let insts = lower_instruction(mgr, naming, instruction, &function.name, alloca_offsets, global_manager)?;
+                builder.add_instructions(insts);
+            }
+        }
+    }
+    
+    Ok(return_values)
+}
+
+/// Generate the function epilogue based on return values
+fn generate_epilogue(
+    builder: &mut FunctionBuilder,
+    has_any_return: bool,
+    return_values: &[(Option<(Reg, Option<Reg>)>, usize)],
+    epilogue_label: String,
+) {
+    debug!("Generating epilogue (has_return: {})", has_any_return);
+    
+    if has_any_return {
+        builder.add_instruction(AsmInst::Label(epilogue_label));
+        // Use the first return value format (they should all be consistent)
+        let return_regs = if !return_values.is_empty() {
+            return_values[0].0
+        } else {
+            None
+        };
+        builder.end_function(return_regs);
+    } else {
+        // No explicit returns, add default return at the end
+        builder.end_function(None);
+    }
+}
+
 /// Lower a complete function using the V2 backend
 pub fn lower_function_v2(
     function: &Function, 
@@ -75,137 +265,52 @@ pub fn lower_function_v2(
     // Add function label first
     instructions.push(AsmInst::Label(function.name.clone()));
     
-    // Create the function builder with parameter types
-    let param_types: Vec<(rcc_common::TempId, IrType)> = function.parameters
-        .iter()
-        .map(|(id, ty)| (*id, ty.clone()))
-        .collect();
+    // Setup function builder
+    let mut builder = setup_function_builder(function);
     
-    let mut builder = FunctionBuilder::with_params(param_types);
-    
-    // Calculate local slots needed
-    let local_slots = calculate_local_slots(function);
-
+    // Get local slots from the manager (already calculated in module.rs)
+    let local_slots = mgr.local_count();
     let alloca_offsets = compute_alloca_offsets(function);
     
     // Begin the function (this will emit the prologue)
     builder.begin_function(local_slots);
 
-    // === Bind function parameters at entry ===
-    // Load parameters using the builder which handles all the complexity
-    for (idx, (param_id, _ty)) in function.parameters.iter().enumerate() {
-        // Use the builder to load and bind the parameter properly
-        let (_addr_reg, _bank_reg) = builder.load_parameter_with_binding(idx, *param_id, mgr, naming);
-    }
+    // Bind function parameters
+    bind_function_parameters(function, &mut builder, mgr, naming);
     
-    // Track basic block labels for branching
-    let mut block_labels = HashMap::new();
-    for block in function.blocks.iter() {
-        block_labels.insert(block.id, naming.block_label(&function.name, block.id));
-    }
+    // Generate block labels
+    let block_labels = generate_block_labels(function, naming);
     
     // Generate a common epilogue label
     let epilogue_label = naming.block_label(&function.name, 99999); // Use a high ID for epilogue
+    
+    // Track return instructions
     let mut has_any_return = false;
-    let mut return_values: Vec<(Option<(Reg, Option<Reg>)>, usize)> = Vec::new();
+    let mut all_return_values = Vec::new();
     
     // Lower each basic block
     for (block_idx, block) in function.blocks.iter().enumerate() {
-        debug!("V2: Lowering block {}", block.id);
+        let return_values = lower_basic_block(
+            block,
+            block_idx,
+            function,
+            &mut builder,
+            mgr,
+            naming,
+            &block_labels,
+            &alloca_offsets,
+            global_manager,
+            &epilogue_label,
+        )?;
         
-        // Add label for the block (except for entry block which is implicit)
-        if block.id != 0 {
-            let label_name = block_labels.get(&block.id).unwrap().clone();
-            builder.add_instruction(AsmInst::Label(label_name));
-        }
-        
-        // Lower each instruction in the block
-        for instruction in &block.instructions {
-            trace!("V2: Lowering instruction: {:?}", instruction);
-            
-            match instruction {
-                Instruction::Return(value) => {
-                    has_any_return = true;
-                    
-                    // Prepare return value if any
-                    let return_regs = if let Some(val) = value {
-                        match val {
-                            Value::Temp(t) => {
-                                let temp_name = naming.temp_name(*t);
-                                
-                                // Check if returning a pointer (would need bank too)
-                                if function.return_type.is_pointer() {
-                                    // Get the bank register for this pointer first, before moving temp_name
-                                    let bank_info = mgr.get_pointer_bank(&temp_name)
-                                        .unwrap_or_else(|| {
-                                            // This is a compiler bug - all pointers must have bank info
-                                            panic!("V2: COMPILER BUG: No bank info for pointer return value t{}. All pointers must have tracked bank information!", t);
-                                        });
-                                    let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
-                                    
-                                    let temp_reg = mgr.get_register(temp_name);
-                                    builder.add_instructions(mgr.take_instructions());
-                                    
-                                    // Move to return registers if needed
-                                    if temp_reg != Reg::Rv0 {
-                                        builder.add_instruction(AsmInst::Move(Reg::Rv0, temp_reg));
-                                    }
-                                    if bank_reg != Reg::Rv1 {
-                                        builder.add_instruction(AsmInst::Move(Reg::Rv1, bank_reg));
-                                    }
-                                    Some((Reg::Rv0, Some(Reg::Rv1)))
-                                } else {
-                                    let temp_reg = mgr.get_register(temp_name);
-                                    builder.add_instructions(mgr.take_instructions());
-                                    
-                                    // Move to return register if needed
-                                    if temp_reg != Reg::Rv0 {
-                                        builder.add_instruction(AsmInst::Move(Reg::Rv0, temp_reg));
-                                    }
-                                    Some((Reg::Rv0, None))
-                                }
-                            }
-                            Value::Constant(c) => {
-                                // Load constant directly into return register
-                                builder.add_instruction(AsmInst::Li(Reg::Rv0, *c as i16));
-                                Some((Reg::Rv0, None))
-                            }
-                            _ => None
-                        }
-                    } else {
-                        None
-                    };
-                    
-                    return_values.push((return_regs, block_idx));
-                    
-                    // Jump to common epilogue
-                    builder.add_instruction(AsmInst::Comment("Jump to epilogue".to_string()));
-                    builder.add_instruction(AsmInst::Beq(Reg::R0, Reg::R0, epilogue_label.clone()));
-                }
-                
-                _ => {
-                    // Use the existing lower_instruction for other instructions
-                    let insts = lower_instruction(mgr, naming, instruction, &function.name, &alloca_offsets, global_manager)?;
-                    builder.add_instructions(insts);
-                }
-            }
+        if !return_values.is_empty() {
+            has_any_return = true;
+            all_return_values.extend(return_values);
         }
     }
     
-    // Add the common epilogue
-    if has_any_return {
-        builder.add_instruction(AsmInst::Label(epilogue_label));
-        // Use the first return value format (they should all be consistent)
-        let return_regs = if !return_values.is_empty() {
-            return_values[0].0
-        } else {
-            None
-        };
-        builder.end_function(return_regs);
-    } else {
-        // No explicit returns, add default return at the end
-        builder.end_function(None);
-    }
+    // Generate the epilogue
+    generate_epilogue(&mut builder, has_any_return, &all_return_values, epilogue_label);
     
     // Build and return the final instruction list
     let mut builder_instructions = builder.build();

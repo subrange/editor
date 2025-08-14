@@ -268,10 +268,7 @@ pub fn lower_gep(
         insts.push(AsmInst::Add(result_addr_reg, base_addr_reg, offset_reg));
         debug!("  Added dynamic offset to base address");
 
-        // Check if we need bank overflow handling
-        // Stack pointers don't need overflow handling - they stay within the stack bank
-
-        // Other pointer types may cross banks, need overflow handling
+        // All pointer types may cross banks, need overflow handling
         insts.push(AsmInst::Comment(
             "Runtime bank overflow calculation for dynamic GEP".to_string(),
         ));
@@ -321,7 +318,12 @@ pub fn lower_gep(
                 debug!("  Updated existing dynamic bank register");
             }
             BankInfo::Stack => {
-                insts.push(AsmInst::Add(result_addr_reg, base_addr_reg, offset_reg));
+                // Stack bank: new_bank = SB + bank_delta  
+                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
+                insts.extend(mgr.take_instructions());
+                insts.push(AsmInst::Add(new_bank_reg, Reg::Sb, bank_delta_reg));
+                result_bank_info = BankInfo::Register(new_bank_reg);
+                debug!("  Updated stack-based pointer bank to dynamic register");
             }
         }
 

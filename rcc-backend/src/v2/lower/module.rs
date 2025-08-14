@@ -69,12 +69,13 @@ pub fn lower_module_v2(module: &Module, bank_size: u16) -> Result<Vec<AsmInst>, 
         debug!("V2: Lowering function '{}'", function.name);
         
         // Calculate the number of local slots needed for this function
-        // This is critical for proper spill slot allocation
+        // This is critical for proper spill slot allocation - the RegisterPressureManager
+        // needs to know where locals end so it can place spill slots after them (FP + local_slots + spill_index)
         let local_slots = super::function::calculate_local_slots(function);
         debug!("V2: Function '{}' needs {} local slots", function.name, local_slots);
         
         // Create a fresh register manager and naming context for this function
-        // Pass the local_slots count so spill slots don't overlap with locals
+        // The manager stores local_slots internally and lower_function_v2 will retrieve it
         let mut mgr = RegisterPressureManager::new(local_slots);
         let mut naming = new_function_naming();
         

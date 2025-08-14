@@ -106,6 +106,11 @@ impl RegisterPressureManager {
         self.instructions.extend(self.allocator.take_instructions());
         trace!("  R13 initialized, spill base set to FP+{}", self.local_count);
     }
+    
+    /// Get the number of local slots this manager was initialized with
+    pub fn local_count(&self) -> i16 {
+        self.local_count
+    }
 
     /// Highest FP-relative cell index touched by any spill: FP + local_count + (next_spill_slot-1).
     /// None when nothing has been spilled yet.
