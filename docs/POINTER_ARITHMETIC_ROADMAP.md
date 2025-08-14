@@ -322,10 +322,9 @@ int main() {
 - [x] Calculate element sizes for pointer types - Using `size_in_words()` for Ripple VM memory model
 
 ### Phase 2: IR Generation  
-- [ ] Route pointer+integer to `build_pointer_offset()` - Implemented in `codegen/expressions.rs` using `TypedBinaryOp::PointerOffset`
+- [ ] Route pointer+integer to `build_pointer_offset()`
 - [ ] Convert array indexing to GEP
 - [ ] Convert struct field access to GEP - Not yet implemented
-- [ ] Never emit Binary::Add for pointer operands - Type checker ensures this
 
 ### Phase 3: Operations
 - [ ] Implement pointer subtraction (returns element count) - Implemented `TypedBinaryOp::PointerDifference` 

@@ -182,14 +182,11 @@ pub fn lower_instruction(
                         };
                         insts.extend(mgr.take_instructions());
                         
-                        let bank_reg = match fp.bank {
-                            BankTag::Stack => Reg::Sb,
-                            BankTag::Global => Reg::Gp,
-                            _ => {
-                                warn!("V2: Unsupported bank type for fat pointer: {:?}", fp.bank);
-                                panic!("Unsupported bank type for fat pointer");
-                            }
-                        };
+                        // Use the helper function to resolve bank tag to bank info
+                        // This handles all bank types including Mixed properly
+                        use crate::v2::instr::helpers::resolve_bank_tag_to_info;
+                        let bank_info = resolve_bank_tag_to_info(&fp.bank, fp, mgr, naming);
+                        let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
                         
                         call_args.push(CallArg::FatPointer { addr: addr_reg, bank: bank_reg });
                     }

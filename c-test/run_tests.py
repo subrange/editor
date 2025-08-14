@@ -4,8 +4,8 @@ Test runner for the Ripple C compiler
 
 Can be run from either the project root or the c-test directory.
 
-Usage: python3 c-test/run_tests.py [options] [test_name]
-   or: python3 run_tests.py [options] [test_name] (from c-test dir)
+Usage: python3 c-test/run_tests.py [options] [test_name ...]
+   or: python3 run_tests.py [options] [test_name ...] (from c-test dir)
 
 Options:
   --no-cleanup  Don't clean up generated files after tests
@@ -13,12 +13,14 @@ Options:
   --timeout N   Set timeout in seconds for test execution (default: 2)
   --verbose     Show output from test programs as they run
   --backend B   Execution backend: 'bf' (default) or 'rvm' for Ripple VM
-  test_name     Optional: Name of a single test to run (without path or .c extension)
+  test_name     Optional: Names of tests to run (without path or .c extension)
+                Can specify multiple tests
 
 Examples:
   python3 c-test/run_tests.py                    # Run all tests (from root)
   python3 c-test/run_tests.py test_hello         # Run single test by name
   python3 c-test/run_tests.py test_add.c         # Also accepts with .c extension
+  python3 c-test/run_tests.py test_add test_hello test_array_index_gep  # Run multiple tests
   python3 c-test/run_tests.py --no-cleanup test_add  # Run single test, keep artifacts
   python3 c-test/run_tests.py --timeout 10       # Run with 10 second timeout
   python3 c-test/run_tests.py --verbose          # Show test program output
@@ -272,7 +274,7 @@ def main():
     no_cleanup = "--no-cleanup" in sys.argv
     clean_only = "--clean" in sys.argv
     verbose = "--verbose" in sys.argv
-    single_test = None
+    test_files = []  # Changed from single_test to support multiple tests
     timeout = 2  # Default timeout in seconds
     backend = 'rvm'  # Default backend
     
@@ -305,7 +307,7 @@ def main():
                 return 1
         elif not arg.startswith("--"):
             # Accept test names with or without .c extension
-            single_test = arg
+            test_files.append(arg)
         i += 1
     
     # If --clean flag is provided, just clean and exit
@@ -352,6 +354,8 @@ def main():
         (f"{BASE_DIR}/tests/test_m3_comprehensive.c", "M3: OK!\nABC\nGood!\n", True),
         (f"{BASE_DIR}/tests/test_add.c", "Y\n", True),
         (f"{BASE_DIR}/tests/test_array_decl.c", "123\n", True),
+        (f"{BASE_DIR}/tests/test_array_index_gep.c", "YYY\n", True),
+        (f"{BASE_DIR}/tests/test_array_bank_crossing.c", "YYYYY\n", True),
         (f"{BASE_DIR}/tests/test_while_simple.c", "YY\n", True),
         (f"{BASE_DIR}/tests/test_hello.c", "Hello\n", True),
         (f"{BASE_DIR}/tests/test_simple_putchar.c", "AB\n", True),
@@ -395,68 +399,85 @@ def main():
         (f"{BASE_DIR}/tests/test_strings_simple.c", "Hello!\n", True),
     ]
     
-    # If single test specified, filter the test list
-    if single_test:
-        # Normalize the test name - remove .c extension if present, remove path if present
-        test_name = os.path.basename(single_test)
-        if test_name.endswith('.c'):
-            test_name = test_name[:-2]
+    # If specific tests specified, filter the test list
+    if test_files:
+        tests_to_run = []
+        unknown_tests = []
         
-        # Find the test in the list by matching the basename without extension
-        matching_test = None
-        for test in tests:
-            test_file_basename = os.path.basename(test[0])
-            if test_file_basename.endswith('.c'):
-                test_file_basename = test_file_basename[:-2]
-            if test_file_basename == test_name:
-                matching_test = test
-                break
-        
-        if not matching_test:
-            # If not found in tests list, search for the file in test directories
-            possible_paths = [
-                f"{BASE_DIR}/tests/{test_name}.c",
-                f"{BASE_DIR}/tests/{test_name}.c",
-                f"{BASE_DIR}/tests-known-failures/{test_name}.c",
-            ]
+        for test_file in test_files:
+            # Normalize the test name - remove .c extension if present, remove path if present
+            test_name = os.path.basename(test_file)
+            if test_name.endswith('.c'):
+                test_name = test_name[:-2]
             
-            found_path = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    found_path = path
+            # Find the test in the list by matching the basename without extension
+            matching_test = None
+            for test in tests:
+                test_file_basename = os.path.basename(test[0])
+                if test_file_basename.endswith('.c'):
+                    test_file_basename = test_file_basename[:-2]
+                if test_file_basename == test_name:
+                    matching_test = test
                     break
             
-            if not found_path:
-                print(f"Error: Test '{test_name}' not found in any test directory")
-                print(f"Searched in: tests/, tests/, tests-known-failures/")
-                return 1
-            
-            # Determine if it should use runtime based on directory
-            use_runtime = "tests" in found_path or "tests-known-failures" in found_path
-            
-            print(f"Running single test: {found_path}")
-            print(f"Note: Expected output not defined in test list, will show actual output")
-            print("-" * 60)
-            
-            success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose, backend)
-            
-            if success:
-                if has_provenance_warning:
-                    print(f"{YELLOW}✓ {found_path}: COMPILED WITH WARNINGS{NC} (pointer provenance unknown)")
-                else:
-                    print(f"{GREEN}✓ {found_path}: COMPILED AND RAN{NC}")
-                print(f"Output: {repr(message)}")
+            if matching_test:
+                tests_to_run.append(matching_test)
             else:
-                print(f"{RED}✗ {found_path}{NC}: {message}")
-            
-            if not no_cleanup:
-                cleanup_files()
-            
-            return 0 if success else 1
+                # If not found in tests list, search for the file in test directories
+                possible_paths = [
+                    f"{BASE_DIR}/tests/{test_name}.c",
+                    f"{BASE_DIR}/tests-known-failures/{test_name}.c",
+                ]
+                
+                found_path = None
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        found_path = path
+                        break
+                
+                if not found_path:
+                    print(f"Error: Test '{test_name}' not found in any test directory")
+                    continue
+                
+                # Determine if it should use runtime based on directory
+                use_runtime = "tests" in found_path or "tests-known-failures" in found_path
+                unknown_tests.append((found_path, None, use_runtime))
         
-        # Found in test list, run with expected output
-        tests = [matching_test]
-        print(f"Running single test: {matching_test[0]}")
+        # Run known tests first
+        if tests_to_run:
+            tests = tests_to_run
+            if len(tests_to_run) == 1:
+                print(f"Running single test: {tests_to_run[0][0]}")
+            else:
+                print(f"Running {len(tests_to_run)} tests from test list")
+        else:
+            tests = []
+        
+        # Handle unknown tests separately
+        if unknown_tests:
+            if not tests_to_run:
+                print(f"Running {len(unknown_tests)} test(s) not in test list")
+            
+            for found_path, _, use_runtime in unknown_tests:
+                print(f"\nRunning test: {found_path}")
+                print(f"Note: Expected output not defined in test list, will show actual output")
+                print("-" * 60)
+                
+                success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose, backend)
+                
+                if success:
+                    if has_provenance_warning:
+                        print(f"{YELLOW}✓ {found_path}: COMPILED WITH WARNINGS{NC} (pointer provenance unknown)")
+                    else:
+                        print(f"{GREEN}✓ {found_path}: COMPILED AND RAN{NC}")
+                    print(f"Output: {repr(message)}")
+                else:
+                    print(f"{RED}✗ {found_path}{NC}: {message}")
+            
+            if not tests_to_run:  # Only return early if we had no known tests
+                if not no_cleanup:
+                    cleanup_files()
+                return 0
     
     # Sort tests alphabetically by filename
     tests.sort(key=lambda x: x[0])
@@ -512,13 +533,13 @@ def main():
                 print(f"{RED}✗ {test_file}{NC}: {message}")
                 failed += 1
     
-    # Skip known failures section if running single test
-    if single_test:
+    # Skip known failures section if running specific tests
+    if test_files:
         # if not no_cleanup:
         #     num_cleaned = cleanup_files()
         #     print(f"\nCleaned up {num_cleaned} generated files")
         
-        return 0 if passed == 1 else 1
+        return 0 if failed == 0 else 1
     
     # Known failures section (tests that are expected to fail)
     known_failures = [
