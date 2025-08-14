@@ -162,7 +162,7 @@ impl<'a> StatementAnalyzer<'a> {
             
             // TODO: Handle other statement types
             _ => {
-                // For now, skip unimplemented statement types
+                panic!("Unhandled statement kind: {:?}", stmt.kind);
             }
         }
         

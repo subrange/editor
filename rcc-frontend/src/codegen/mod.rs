@@ -5,12 +5,12 @@
 
 mod errors;
 mod types;
-pub mod typed_expressions;
-pub mod typed_statements;
-pub mod typed_codegen;
+pub mod expressions;
+pub mod statements;
+pub mod codegen;
 
 pub use errors::CodegenError;
-pub use typed_codegen::TypedCodeGenerator;
+pub use codegen::TypedCodeGenerator;
 pub use types::{convert_type, get_ast_type_size};
 
 use crate::ir::FatPointer;
@@ -59,8 +59,11 @@ int main() {
 }
 "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         let codegen = TypedCodeGenerator::new("test".to_string());
         
         let result = codegen.generate(&typed_ast);
@@ -82,8 +85,11 @@ int main() {
 }
 "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         let codegen = TypedCodeGenerator::new("test".to_string());
         
         let result = codegen.generate(&typed_ast);
@@ -107,8 +113,11 @@ int main() {
 }
 "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         let codegen = TypedCodeGenerator::new("test".to_string());
         
         let result = codegen.generate(&typed_ast);
@@ -134,8 +143,11 @@ int abs(int x) {
 }
 "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         let codegen = TypedCodeGenerator::new("test".to_string());
         
         let result = codegen.generate(&typed_ast);

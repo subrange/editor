@@ -117,6 +117,21 @@ impl SemanticAnalyzer {
         
         Ok(())
     }
+    
+    /// Get the symbol types map (for typed AST conversion)
+    pub fn into_symbol_types(self) -> HashMap<SymbolId, Type> {
+        self.symbol_types
+    }
+    
+    /// Get the type definitions map (for typed AST conversion)
+    pub fn into_type_definitions(self) -> HashMap<String, Type> {
+        self.type_definitions
+    }
+    
+    /// Get both symbol types and type definitions (consumes the analyzer)
+    pub fn into_type_info(self) -> (HashMap<SymbolId, Type>, HashMap<String, Type>) {
+        (self.symbol_types, self.type_definitions)
+    }
 }
 
 #[cfg(test)]

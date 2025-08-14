@@ -275,10 +275,17 @@ impl Parser {
                 
                 if !self.check(&TokenType::RightParen) {
                     loop {
-                        // Check for void parameter list
+                        // Check for void parameter list (func(void) means no parameters)
+                        // But void* is a valid parameter type, so we need to look ahead
                         if parameter_types.is_empty() && self.check(&TokenType::Void) {
-                            self.advance();
-                            break;
+                            // Peek at the next token after void
+                            if let Some(next_token) = self.tokens.get(1) {
+                                // Only treat bare "void)" as empty parameter list
+                                if matches!(next_token.token_type, TokenType::RightParen) {
+                                    self.advance(); // consume void
+                                    break;
+                                }
+                            }
                         }
                         
                         let param_start = self.current_location();

@@ -16,6 +16,7 @@ pub mod ir;
 pub mod type_checker;
 pub mod typed_ast;
 mod codegen_tests;
+mod type_environment_tests;
 
 pub use lexer::{Lexer, Token, TokenType};
 pub use parser::{Parser, ParseError};
@@ -63,11 +64,16 @@ impl Frontend {
     
     /// Compile C99 source code to IR using typed AST (with GEP for pointer arithmetic)
     pub fn compile_to_ir(source: &str, module_name: &str) -> Result<Module, CompilerError> {
-        // Parse and analyze
-        let ast = Self::analyze_source(source)?;
+        // Parse first
+        let mut ast = Self::parse_source(source)?;
         
-        // Convert to typed AST
-        let typed_ast = type_translation_unit(&ast)
+        // Perform semantic analysis and extract type information
+        let mut analyzer = SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast)?;
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        
+        // Convert to typed AST with symbol type information
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions)
             .map_err(|e| CompilerError::semantic_error(e.to_string(), rcc_common::SourceLocation::new_simple(0, 0)))?;
         
         // Generate IR from typed AST

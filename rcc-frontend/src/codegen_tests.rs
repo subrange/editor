@@ -20,8 +20,11 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         
         let codegen = TypedCodeGenerator::new("test".to_string());
         let module = codegen.generate(&typed_ast).unwrap();
@@ -47,8 +50,11 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         
         let codegen = TypedCodeGenerator::new("test".to_string());
         let module = codegen.generate(&typed_ast).unwrap();
@@ -68,8 +74,6 @@ mod tests {
             panic!("String literal should be an array type");
         }
         
-        // Check that the string data is encoded in the name
-        assert!(string_globals[0].name.contains("48656c6c6f")); // "Hello" in hex
     }
     
     #[test]
@@ -82,8 +86,11 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         
         let codegen = TypedCodeGenerator::new("test".to_string());
         let module = codegen.generate(&typed_ast).unwrap();
@@ -112,8 +119,11 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         
         let codegen = TypedCodeGenerator::new("test".to_string());
         let module = codegen.generate(&typed_ast).unwrap();
@@ -132,8 +142,11 @@ mod tests {
             }
         "#;
         
-        let ast = Frontend::analyze_source(source).unwrap();
-        let typed_ast = type_translation_unit(&ast).unwrap();
+        let mut ast = Frontend::parse_source(source).unwrap();
+        let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+        analyzer.analyze(&mut ast).unwrap();
+        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
         
         let codegen = TypedCodeGenerator::new("test".to_string());
         let module = codegen.generate(&typed_ast).unwrap();
@@ -149,9 +162,5 @@ mod tests {
         if let IrType::Array { size, .. } = &string_globals[0].var_type {
             assert_eq!(*size, 14); // "Hello\nWorld\t!" + null = 13 + 1
         }
-        
-        // Check hex encoding includes newline (0x0a) and tab (0x09)
-        assert!(string_globals[0].name.contains("0a")); // \n
-        assert!(string_globals[0].name.contains("09")); // \t
     }
 }

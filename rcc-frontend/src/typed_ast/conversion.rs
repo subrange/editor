@@ -9,12 +9,43 @@ use super::errors::TypeError;
 use crate::types::{Type, BankTag};
 use crate::type_checker::{TypeChecker, TypedBinaryOp};
 use crate::ast::{Initializer, InitializerKind};
+use rcc_common::SymbolId;
+use std::collections::HashMap;
 
 /// Type environment for looking up variable types
 pub struct TypeEnvironment {
-    // For now, this is a placeholder
-    // In a real implementation, this would track variable types in scope
-    // TODO: Implement proper type environment
+    /// Maps symbol IDs to their types (from semantic analysis)
+    pub symbol_types: HashMap<SymbolId, Type>,
+    /// Maps typedef names to their underlying types
+    pub type_definitions: HashMap<String, Type>,
+}
+
+impl TypeEnvironment {
+    /// Create a new type environment with symbol and type information
+    pub fn new(
+        symbol_types: HashMap<SymbolId, Type>,
+        type_definitions: HashMap<String, Type>,
+    ) -> Self {
+        Self {
+            symbol_types,
+            type_definitions,
+        }
+    }
+    
+    /// Look up the type of a symbol by its ID
+    pub fn lookup_type(&self, symbol_id: SymbolId) -> Option<&Type> {
+        self.symbol_types.get(&symbol_id)
+    }
+    
+    /// Resolve a typedef name to its underlying type
+    pub fn resolve_typedef(&self, name: &str) -> Option<&Type> {
+        self.type_definitions.get(name)
+    }
+    
+    /// Check if a name is a typedef
+    pub fn is_typedef(&self, name: &str) -> bool {
+        self.type_definitions.contains_key(name)
+    }
 }
 
 /// Convert an initializer to a typed expression
@@ -129,8 +160,17 @@ pub fn type_expression(
         }
         
         ExpressionKind::Identifier { name, symbol_id } => {
-            let var_type = expr.expr_type.clone()
-                .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?;
+            // First try to look up the type using the symbol_id from semantic analysis
+            let var_type = if let Some(id) = symbol_id {
+                type_env.lookup_type(*id)
+                    .cloned()
+                    .or_else(|| expr.expr_type.clone())
+                    .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?
+            } else {
+                // Fallback to expr_type if no symbol_id (shouldn't happen after semantic analysis)
+                expr.expr_type.clone()
+                    .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?
+            };
             
             Ok(TypedExpr::Variable {
                 name: name.clone(),
@@ -502,8 +542,10 @@ pub fn type_statement(
 /// Convert an untyped translation unit to a typed one
 pub fn type_translation_unit(
     ast: &crate::ast::TranslationUnit,
+    symbol_types: HashMap<SymbolId, Type>,
+    type_definitions: HashMap<String, Type>,
 ) -> Result<TypedTranslationUnit, TypeError> {
-    let type_env = TypeEnvironment {};
+    let type_env = TypeEnvironment::new(symbol_types, type_definitions);
     let mut typed_items = Vec::new();
     
     for item in &ast.items {

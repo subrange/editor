@@ -344,7 +344,19 @@
       "file": "tests/test_pointers_evil.c",
       "expected": "Y\n",
       "use_runtime": true,
-        "description": "Test EVERYTHING that can go wrong with pointers. And it does."
+      "description": "Test EVERYTHING that can go wrong with pointers. And it does."
+    },
+    {
+      "file": "tests/test_increment_simple.c",
+      "expected": "1234\n",
+      "use_runtime": true,
+      "description": "Simple test for increment operators"
+    },
+    {
+      "file": "tests/test_increment_values.c",
+      "expected": "YYYY\n",
+      "use_runtime": true,
+      "description": "Test increment and decrement operators with value checking"
     }
   ],
   "known_failures": [
