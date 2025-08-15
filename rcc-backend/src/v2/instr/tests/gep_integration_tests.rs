@@ -11,6 +11,7 @@ use crate::v2::function::FunctionBuilder;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
 use rcc_frontend::BankTag;
+use crate::v2::BANK_SIZE_INSTRUCTIONS;
 
 #[test]
 fn test_gep_then_store() {
@@ -343,7 +344,7 @@ fn test_gep_chain_with_stores_and_loads() {
         let row_gep_temp = 510 + (j * 10) as TempId;
         
         let row_gep_insts = lower_gep(&mut mgr, &mut naming, &matrix_base, 
-                                      &[row_index], row_size, row_gep_temp);
+                                      &[row_index], row_size, row_gep_temp, BANK_SIZE_INSTRUCTIONS);
         all_insts.extend(row_gep_insts);
         
         // Second GEP: calculate &matrix[2][j]
@@ -353,7 +354,7 @@ fn test_gep_chain_with_stores_and_loads() {
         
         let row_ptr = Value::Temp(row_gep_temp);
         let elem_gep_insts = lower_gep(&mut mgr, &mut naming, &row_ptr, 
-                                       &[col_index], element_size, elem_gep_temp);
+                                       &[col_index], element_size, elem_gep_temp, BANK_SIZE_INSTRUCTIONS);
         all_insts.extend(elem_gep_insts);
         
         // Store value to matrix[2][j]
@@ -371,7 +372,7 @@ fn test_gep_chain_with_stores_and_loads() {
         let row_gep_temp = 600 + (j * 10) as TempId;
         
         let row_gep_insts = lower_gep(&mut mgr, &mut naming, &matrix_base, 
-                                      &[row_index], row_size, row_gep_temp);
+                                      &[row_index], row_size, row_gep_temp, BANK_SIZE_INSTRUCTIONS);
         all_insts.extend(row_gep_insts);
         
         // Second GEP: calculate &matrix[2][j]
@@ -381,7 +382,7 @@ fn test_gep_chain_with_stores_and_loads() {
         
         let row_ptr = Value::Temp(row_gep_temp);
         let elem_gep_insts = lower_gep(&mut mgr, &mut naming, &row_ptr, 
-                                       &[col_index], element_size, elem_gep_temp);
+                                       &[col_index], element_size, elem_gep_temp, BANK_SIZE_INSTRUCTIONS);
         all_insts.extend(elem_gep_insts);
         
         // Load from matrix[2][j]
@@ -442,7 +443,7 @@ fn test_gep_with_dynamic_2d_access() {
     let row_gep_temp: TempId = 710;
     
     let mut insts = lower_gep(&mut mgr, &mut naming, &matrix_base, 
-                              &[i_index], row_size, row_gep_temp);
+                              &[i_index], row_size, row_gep_temp, BANK_SIZE_INSTRUCTIONS);
     
     // Should have runtime bank calculation for large row size
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Mul(_, _, _))),
@@ -458,7 +459,7 @@ fn test_gep_with_dynamic_2d_access() {
     
     let row_ptr = Value::Temp(row_gep_temp);
     let elem_gep_insts = lower_gep(&mut mgr, &mut naming, &row_ptr, 
-                                   &[j_index], element_size, elem_gep_temp);
+                                   &[j_index], element_size, elem_gep_temp, BANK_SIZE_INSTRUCTIONS);
     insts.extend(elem_gep_insts);
     
     // The second GEP might also need bank calculations if the first resulted in dynamic bank
@@ -506,7 +507,7 @@ fn test_gep_struct_field_simulation() {
     let y_offset = Value::Constant(1);
     let y_gep_temp: TempId = 810;
     let y_gep_insts = lower_gep(&mut mgr, &mut naming, &struct_base, 
-                                &[y_offset], 1, y_gep_temp);
+                                &[y_offset], 1, y_gep_temp, BANK_SIZE_INSTRUCTIONS);
     all_insts.extend(y_gep_insts);
     
     // Store to y field
@@ -519,7 +520,7 @@ fn test_gep_struct_field_simulation() {
     let next_offset = Value::Constant(2);
     let next_gep_temp: TempId = 820;
     let next_gep_insts = lower_gep(&mut mgr, &mut naming, &struct_base, 
-                                   &[next_offset], 1, next_gep_temp);
+                                   &[next_offset], 1, next_gep_temp, BANK_SIZE_INSTRUCTIONS);
     all_insts.extend(next_gep_insts);
     
     // Store a fat pointer to next field

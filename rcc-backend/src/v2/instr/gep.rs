@@ -351,6 +351,7 @@ pub fn lower_gep(
 
 #[cfg(test)]
 mod tests {
+    use rcc_frontend::BankTag;
     use super::*;
     use crate::v2::naming::new_function_naming;
     use crate::v2::BANK_SIZE_INSTRUCTIONS;

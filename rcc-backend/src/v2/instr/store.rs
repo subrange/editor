@@ -345,7 +345,7 @@ mod tests {
     }
     
     #[test]
-    #[should_panic(expected = "NULL pointer dereference: attempted to store through NULL pointer")]
+    #[should_panic(expected = "NULL pointer dereference: attempted to access NULL pointer")]
     fn test_store_through_null_pointer() {
         let mut mgr = RegisterPressureManager::new(10);
         let mut naming = NameGenerator::new(0);
@@ -362,7 +362,7 @@ mod tests {
     }
     
     #[test]
-    #[should_panic(expected = "NULL pointer dereference: attempted to store through NULL pointer")]
+    #[should_panic(expected = "NULL pointer dereference: attempted to access NULL pointer")]
     fn test_store_null_pointer_value() {
         let mut mgr = RegisterPressureManager::new(10);
         let mut naming = NameGenerator::new(0);

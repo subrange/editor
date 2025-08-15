@@ -6,6 +6,7 @@ use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
 use crate::v2::naming::new_function_naming;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_frontend::BankTag;
+use crate::v2::BANK_SIZE_INSTRUCTIONS;
 
 #[test]
 fn test_gep_simple_array_access() {

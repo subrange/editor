@@ -177,24 +177,24 @@ mod tests {
         });
         
         // Attempt to load from NULL pointer - should panic
-        let result_type = Type::Int;
+        let result_type = Type::I8;
         let result_temp = 1;
         lower_load(&mut mgr, &mut naming, &null_ptr, &result_type, result_temp);
     }
-    
+
     #[test]
     fn test_load_from_valid_pointer() {
         let mut mgr = RegisterPressureManager::new(10);
         let mut naming = NameGenerator::new(0);
-        
+
         // Create a valid global pointer
         let valid_ptr = Value::FatPtr(FatPointer {
             addr: Box::new(Value::Constant(100)),
             bank: BankTag::Global,
         });
-        
+
         // Load from valid pointer - should succeed
-        let result_type = Type::Int;
+        let result_type = Type::I8;
         let result_temp = 1;
         let insts = lower_load(&mut mgr, &mut naming, &valid_ptr, &result_type, result_temp);
         
