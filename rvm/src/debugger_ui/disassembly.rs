@@ -20,6 +20,20 @@ impl TuiDebugger {
         let end_idx = (start_idx + visible_lines).min(vm.instructions.len());
 
         for idx in start_idx..end_idx {
+            // Check if this address is a function entry point (only if debug symbols are enabled)
+            if self.show_debug_symbols {
+                if let Some(func_name) = vm.debug_symbols.get(&idx) {
+                    // Add a function label line
+                    let mut label_spans = vec![];
+                    label_spans.push(Span::raw("  "));
+                    label_spans.push(Span::styled(
+                        format!("{}:", func_name),
+                        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)
+                    ));
+                    items.push(ListItem::new(Line::from(label_spans)));
+                }
+            }
+            
             let instr = &vm.instructions[idx];
             let is_current = idx == current_idx;
             let breakpoint_state = self.breakpoints.get(&idx).copied();
@@ -113,7 +127,7 @@ impl TuiDebugger {
             }
 
             // Add instruction spans with syntax highlighting
-            let instr_spans = self.format_instruction_spans(instr);
+            let instr_spans = self.format_instruction_spans(instr, vm);
             spans.extend(instr_spans);
 
             items.push(ListItem::new(Line::from(spans)));
@@ -133,7 +147,7 @@ impl TuiDebugger {
         frame.render_widget(list, area);
     }
 
-    fn format_instruction_spans(&self, instr: &Instr) -> Vec<Span<'static>> {
+    fn format_instruction_spans(&self, instr: &Instr, vm: &VM) -> Vec<Span<'static>> {
         let mut spans = vec![];
         
         // Get opcode name and style
@@ -205,7 +219,23 @@ impl TuiDebugger {
                 spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
                 spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 spans.push(Span::raw(", "));
-                spans.push(Span::styled(format!("0x{:04X}", instr.word3), Style::default().fg(Color::Rgb(255, 140, 0))));
+                
+                // Check if we have a function name for this address (only if debug symbols are enabled)
+                let target_addr = instr.word3 as usize;
+                if self.show_debug_symbols {
+                    if let Some(func_name) = vm.debug_symbols.get(&target_addr) {
+                        // Show function name in bright cyan
+                        spans.push(Span::styled(func_name.clone(), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+                        // Also show the address in parentheses
+                        spans.push(Span::styled(format!(" (0x{:04X})", target_addr), Style::default().fg(Color::DarkGray)));
+                    } else {
+                        // No debug info, just show address
+                        spans.push(Span::styled(format!("0x{:04X}", target_addr), Style::default().fg(Color::Rgb(255, 140, 0))));
+                    }
+                } else {
+                    // Debug symbols disabled, just show address
+                    spans.push(Span::styled(format!("0x{:04X}", target_addr), Style::default().fg(Color::Rgb(255, 140, 0))));
+                }
             },
             Some(Opcode::Jalr) => {
                 // JALR: jalr rd, rs

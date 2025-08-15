@@ -261,6 +261,32 @@ impl LinkedProgram {
         // Write data
         binary.extend_from_slice(&self.data);
         
+        // Write debug info section
+        // Filter labels to only include function-like labels (no dots or underscores at start)
+        let function_labels: Vec<(&String, &Label)> = self.labels.iter()
+            .filter(|(name, _)| {
+                // Include labels that look like functions (no dots, no leading underscores)
+                !name.starts_with('_') && !name.starts_with('.') && !name.contains('.')
+            })
+            .collect();
+        
+        // Write debug section marker
+        binary.extend_from_slice(b"DEBUG");
+        
+        // Write number of debug entries
+        binary.extend_from_slice(&(function_labels.len() as u32).to_le_bytes());
+        
+        // Write each debug entry
+        for (name, label) in function_labels {
+            // Write name length
+            binary.extend_from_slice(&(name.len() as u32).to_le_bytes());
+            // Write name
+            binary.extend_from_slice(name.as_bytes());
+            // Write instruction index (not byte address)
+            let instruction_idx = label.absolute_address / 4;
+            binary.extend_from_slice(&instruction_idx.to_le_bytes());
+        }
+        
         binary
     }
 

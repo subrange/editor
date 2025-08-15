@@ -168,6 +168,11 @@ impl TuiDebugger {
                 }
             }
             
+            // Toggle debug symbols in disassembly
+            KeyCode::Char('D') if modifiers == KeyModifiers::SHIFT => {
+                self.show_debug_symbols = !self.show_debug_symbols;
+            }
+            
             // Alternative toggle shortcuts using 'T' for toggle mode
             KeyCode::Char('T') if modifiers == KeyModifiers::SHIFT => {
                 // Enter panel toggle mode - next key will toggle a panel

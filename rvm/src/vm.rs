@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashMap};
 use ripple_asm::Register;
 use crate::constants::*;
 
@@ -74,6 +74,9 @@ pub struct VM {
     // Output buffer for I/O
     pub output_buffer: VecDeque<u8>,
     output_ready: bool,
+    
+    // Debug information: maps instruction indices to function names
+    pub debug_symbols: std::collections::HashMap<usize, String>,
 }
 
 
@@ -95,6 +98,7 @@ impl VM {
             skip_pc_increment: false,
             output_buffer: VecDeque::new(),
             output_ready: true,
+            debug_symbols: HashMap::new(),
         }
     }
     
@@ -165,6 +169,54 @@ impl VM {
         for (i, &byte) in binary[pos..pos + data_size].iter().enumerate() {
             if i < self.memory.len() - DATA_SECTION_OFFSET {
                 self.memory[i + DATA_SECTION_OFFSET] = byte as u16;
+            }
+        }
+        pos += data_size;
+        
+        // Try to read debug section if present
+        if pos + 5 <= binary.len() && &binary[pos..pos + 5] == b"DEBUG" {
+            pos += 5;
+            
+            // Read number of debug entries
+            if pos + 4 <= binary.len() {
+                let debug_count = u32::from_le_bytes([
+                    binary[pos], binary[pos+1], binary[pos+2], binary[pos+3]
+                ]) as usize;
+                pos += 4;
+                
+                // Read each debug entry
+                for _ in 0..debug_count {
+                    if pos + 4 > binary.len() {
+                        break; // Incomplete debug info, just skip
+                    }
+                    
+                    // Read name length
+                    let name_len = u32::from_le_bytes([
+                        binary[pos], binary[pos+1], binary[pos+2], binary[pos+3]
+                    ]) as usize;
+                    pos += 4;
+                    
+                    if pos + name_len > binary.len() {
+                        break; // Incomplete debug info
+                    }
+                    
+                    // Read name
+                    let name = String::from_utf8_lossy(&binary[pos..pos + name_len]).to_string();
+                    pos += name_len;
+                    
+                    if pos + 4 > binary.len() {
+                        break; // Incomplete debug info
+                    }
+                    
+                    // Read instruction index
+                    let instr_idx = u32::from_le_bytes([
+                        binary[pos], binary[pos+1], binary[pos+2], binary[pos+3]
+                    ]) as usize;
+                    pos += 4;
+                    
+                    // Store in debug symbols map
+                    self.debug_symbols.insert(instr_idx, name);
+                }
             }
         }
         
@@ -718,7 +770,7 @@ impl VM {
         self.memory[0] = 0;
         self.memory[1] = 1;
         
-        // Note: We keep the loaded instructions and data intact
+        // Note: We keep the loaded instructions, data, and debug symbols intact
     }
     
     fn print_instruction(&self, instr: &Instr) {

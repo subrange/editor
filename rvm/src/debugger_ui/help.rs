@@ -24,6 +24,7 @@ impl TuiDebugger {
             Line::from(""),
             Line::from(Span::styled("── Disassembly ──", Style::default().fg(Color::Yellow))),
             Line::from("Shift+H  Hex view | 0-9,a-f  Edit"),
+            Line::from("Shift+D  Toggle debug symbols"),
             Line::from(""),
             Line::from(Span::styled("── Memory ──", Style::default().fg(Color::Yellow))),
             Line::from("g  Go addr | Shift+G  Stack"),

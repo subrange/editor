@@ -91,6 +91,7 @@ pub struct TuiDebugger {
     pub(crate) help_scroll: usize,
     pub(crate) show_ascii: bool,
     pub(crate) show_instruction_hex: bool,
+    pub(crate) show_debug_symbols: bool,
     
     // Panel visibility toggles
     pub(crate) show_registers: bool,
@@ -153,6 +154,7 @@ impl TuiDebugger {
             help_scroll: 0,
             show_ascii: settings.show_ascii,
             show_instruction_hex: settings.show_instruction_hex,
+            show_debug_symbols: true,  // Enable by default
             
             show_registers: settings.show_registers,
             show_memory: settings.show_memory,
