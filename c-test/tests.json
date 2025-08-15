@@ -525,6 +525,12 @@
       "expected": "Y\n",
       "use_runtime": true,
       "description": "Struct assignment bug - copies incorrectly"
+    },
+    {
+      "file": "tests/test_simple_ptr",
+      "expected": "BA",
+      "use_runtime": true,
+      "description": "Added via command line"
     }
   ],
   "known_failures": [

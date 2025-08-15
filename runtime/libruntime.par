@@ -896,11 +896,11 @@
         ],
         "data": [],
         "labels": {
-          "puts": {
-            "name": "puts",
+          "L_puts_1": {
+            "name": "L_puts_1",
             "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
+            "offset": 84,
+            "absolute_address": 84
           },
           "L_puts_3": {
             "name": "L_puts_3",
@@ -908,11 +908,11 @@
             "offset": 248,
             "absolute_address": 248
           },
-          "L_puts_1": {
-            "name": "L_puts_1",
+          "puts": {
+            "name": "puts",
             "bank": 0,
-            "offset": 84,
-            "absolute_address": 84
+            "offset": 0,
+            "absolute_address": 0
           },
           "L_puts_2": {
             "name": "L_puts_2",
@@ -1579,30 +1579,6 @@
         ],
         "data": [],
         "labels": {
-          "L_memset_4": {
-            "name": "L_memset_4",
-            "bank": 0,
-            "offset": 296,
-            "absolute_address": 296
-          },
-          "L_memset_3": {
-            "name": "L_memset_3",
-            "bank": 0,
-            "offset": 268,
-            "absolute_address": 268
-          },
-          "L_memset_2": {
-            "name": "L_memset_2",
-            "bank": 0,
-            "offset": 168,
-            "absolute_address": 168
-          },
-          "memset": {
-            "name": "memset",
-            "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
           "L_memset_1": {
             "name": "L_memset_1",
             "bank": 0,
@@ -1614,6 +1590,30 @@
             "bank": 0,
             "offset": 300,
             "absolute_address": 300
+          },
+          "L_memset_2": {
+            "name": "L_memset_2",
+            "bank": 0,
+            "offset": 168,
+            "absolute_address": 168
+          },
+          "L_memset_4": {
+            "name": "L_memset_4",
+            "bank": 0,
+            "offset": 296,
+            "absolute_address": 296
+          },
+          "memset": {
+            "name": "memset",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
+          "L_memset_3": {
+            "name": "L_memset_3",
+            "bank": 0,
+            "offset": 268,
+            "absolute_address": 268
           }
         },
         "data_labels": {},
@@ -2594,11 +2594,11 @@
             "offset": 484,
             "absolute_address": 484
           },
-          "memcpy": {
-            "name": "memcpy",
+          "L_memcpy_1": {
+            "name": "L_memcpy_1",
             "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
+            "offset": 204,
+            "absolute_address": 204
           },
           "L_memcpy_99999": {
             "name": "L_memcpy_99999",
@@ -2606,23 +2606,23 @@
             "offset": 488,
             "absolute_address": 488
           },
-          "L_memcpy_1": {
-            "name": "L_memcpy_1",
+          "L_memcpy_2": {
+            "name": "L_memcpy_2",
             "bank": 0,
-            "offset": 204,
-            "absolute_address": 204
+            "offset": 240,
+            "absolute_address": 240
+          },
+          "memcpy": {
+            "name": "memcpy",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
           },
           "L_memcpy_3": {
             "name": "L_memcpy_3",
             "bank": 0,
             "offset": 456,
             "absolute_address": 456
-          },
-          "L_memcpy_2": {
-            "name": "L_memcpy_2",
-            "bank": 0,
-            "offset": 240,
-            "absolute_address": 240
           }
         },
         "data_labels": {},

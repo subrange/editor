@@ -37,8 +37,8 @@ pub fn generate_identifier(
             
             // If it's a pointer type, wrap it in FatPtr to preserve bank information
             if var_info.ir_type.is_pointer() {
-                // For local pointer variables, they point to stack-allocated data
-                // unless they've been assigned a value with a different bank
+                // For local pointer variables that have been loaded, use Mixed bank
+                // The backend will track the actual bank from the load instruction
                 Ok(Value::FatPtr(FatPointer {
                     addr: Box::new(Value::Temp(result)),
                     bank: BankTag::Mixed,  // Runtime-determined bank
