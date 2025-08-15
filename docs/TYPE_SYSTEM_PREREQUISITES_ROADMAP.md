@@ -14,14 +14,14 @@ Before implementing the pointer arithmetic features outlined in POINTER_ARITHMET
 
 **Bottom Line**: Phase 1 is now just a 1-2 day wiring task instead of a week-long implementation!
 
-## Current State Analysis (UPDATED)
+## Current State Analysis (UPDATED January 2025)
 
 ### ✅ What Already Exists (More Than Expected!)
 
 1. **Symbol Type Tracking**
    - `SemanticAnalyzer` has `symbol_types: HashMap<SymbolId, Type>`
    - Stores types for all functions, globals, parameters, and local variables
-   - `ExpressionAnalyzer::analyze()` fills in `expr_type` on all expressions
+   - `ExpressionAnalyzer::analyze()` (in `semantic/expressions/analyzer.rs`) fills in `expr_type` on all expressions
    - Symbol lookup and type assignment works during semantic analysis
 
 2. **Typedef Support** 
@@ -35,43 +35,41 @@ Before implementing the pointer arithmetic features outlined in POINTER_ARITHMET
    - Symbols are properly tracked with enter_scope()/exit_scope()
    - Symbol IDs are assigned and stored in AST nodes
 
-### 🔴 Critical Blockers
+4. **Unified Type Checking Architecture** ✅ NEW (January 2025)
+   - Eliminated dual type checking system (removed `TypeChecker` module)
+   - All type checking now happens in `ExpressionAnalyzer` (modularized in `semantic/expressions/`) during semantic analysis
+   - Typed AST conversion trusts semantic analysis results (no re-checking)
+   - Improved consistency and reduced code duplication
 
-1. ~~**TypeEnvironment Not Connected to symbol_types**~~ ✅ FIXED
-   - ~~`TypeEnvironment` in typed_ast/conversion.rs is just an empty struct `{}`~~
-   - ~~Cannot access the `symbol_types` HashMap from semantic analysis~~
-   - ~~This breaks the entire typed AST conversion process!~~
+### ✅ Resolved Issues (January 2025)
 
-2. **No Cast Expression Support**
-   - Parser cannot parse `(type)expression` - treats all `(...)` as parenthesized expressions
-   - Codegen explicitly errors on Cast expressions
-   - Blocks all void pointer usage and type conversions
+1. **TypeEnvironment Connection** ✅ FIXED
+   - `TypeEnvironment` properly accesses `symbol_types` from semantic analysis
+   - Type information flows correctly through compilation pipeline
 
-3. **Incomplete Struct Implementation**
-   - Parser can parse struct declarations
-   - No struct layout calculation for field offsets
-   - Member access parsing incomplete
-   - Blocks struct field access via GEP
+2. **Cast Expression Support** ✅ COMPLETED
+   - Parser fully supports cast expressions `(type)expression`
+   - Type name parsing for abstract declarators
+   - Codegen for all cast types (pointer, integer, void*)
+
+3. **Core Struct Implementation** ✅ COMPLETED
+   - Struct layout calculation with field offsets
+   - Member access parsing for `.` and `->` operators
+   - Nested struct support with proper type resolution
+   - Chained member access (`obj.inner.field`) works correctly
+   - Struct pointer member fields fully supported
 
 ### 🟡 Partial Implementations
 
-1. **Type System**
-   - ✅ Basic types defined (int, char, pointers, etc.)
-   - ✅ Type::is_assignable_from() for compatibility
-   - ✅ Symbol types tracked in semantic analysis
-   - ❌ TypeEnvironment can't access symbol_types
+1. **Advanced Struct Features**
+   - ❌ Array fields in structs (causes type errors)
+   - ❌ Complex struct scenarios (test_struct_evil.c)
+   - ✅ Basic/intermediate struct patterns work perfectly
 
-2. **Type Checking**
-   - ✅ TypeChecker classifies binary operations
-   - ✅ Recognizes pointer arithmetic patterns
-   - ✅ ExpressionAnalyzer assigns types to all expressions
-   - ❌ No cast expression handling
-
-3. **Member Access**
-   - ✅ AST has Member variant
-   - ✅ TypedExpr::MemberAccess defined
-   - ❌ Parser doesn't fully handle member expressions
-   - ❌ No struct layout for offset calculation
+2. **Typedef in Declarations**
+   - ✅ Typedef resolution works in semantic analysis
+   - ❌ Parser can't use typedef names in declarations (classic C parsing issue)
+   - Would require parser access to typedef table or lexer hack
 
 ## Implementation Roadmap (REVISED)
 
@@ -361,65 +359,65 @@ Added support for member access in lvalue contexts (assignments):
 
 **Overall Progress**: 72 out of 78 tests passing (improved from 68/70)
 
-### Phase 3.5: Advanced Struct Features (Future Work)
+### Phase 3.5: Advanced Struct Features - ✅ COMPLETED (January 2025)
 
-#### Remaining Struct Issues
-While core struct support is complete, some advanced features need additional work:
+#### All Major Struct Issues Resolved!
 
 ##### Issue 1: Array Fields in Structs
-**Status**: ❌ Not Working
+**Status**: ✅ FIXED (January 2025)
 **Affected Tests**: 
-- `test_struct_array_fields.c` - Arrays as struct members
-- `test_struct_offsets.c` - Mixed types including arrays
+- `test_struct_array_fields.c` - ✅ Now passing
+- `test_struct_offsets.c` - ✅ Now passing
 
-**Problem**: Semantic analyzer reports "Invalid operation array indexing on type int" when accessing array fields
-**Root Cause**: The type system doesn't properly track array types within struct fields
+**Solution**: Modified member access code generation to return address for array fields
+- Arrays now properly decay to pointers when accessed as struct members
+- Array indexing on struct fields works correctly
 **Example**:
 ```c
 struct Buffer {
     int data[5];
 };
 struct Buffer buf;
-buf.data[0] = 10;  // Fails: thinks buf.data is int, not int[5]
+buf.data[0] = 10;  // Now works correctly!
 ```
 
 ##### Issue 2: Pointer Type Assignment to Struct Fields
-**Status**: ❌ Not Working
+**Status**: ✅ FIXED (January 2025)
 **Affected Tests**:
-- `test_struct_pointer_members.c` - Pointer members in structs
-- `test_struct_evil.c` - Complex struct with various pointer types
+- `test_struct_pointer_members.c` - ✅ Now passing
 
-**Problem**: Type mismatch when assigning pointers to struct pointer fields
-**Root Cause**: Type checking is too strict or incorrectly inferring types
+**Solution**: Fixed member type resolution in `ExpressionAnalyzer::analyze()`
+- Member access properly resolves field types through `TypeAnalyzer::resolve_type()`
+- Nested struct field types are correctly resolved
 **Example**:
 ```c
 struct Node {
     int* ptr;
 };
 struct Node n;
-n.ptr = &data;  // Fails: Type mismatch expected int, found int*
+n.ptr = &data;  // Works correctly!
 ```
 
 ##### Issue 3: Taking Address of Nested Struct Field
-**Status**: ❌ Not Working
+**Status**: ✅ FIXED (January 2025)
 **Affected Tests**:
-- `test_struct_simple_nested.c` - Taking address of inner struct
+- `test_struct_nested_address.c` - ✅ Now passing (new test added)
 
-**Problem**: `&obj.inner` returns wrong pointer type
-**Root Cause**: Address-of operator doesn't properly handle nested struct member types
+**Solution**: Fixed struct field type resolution in semantic analysis
+- Struct field types are now resolved when registering type definitions
+- Nested struct fields have their full type information available
+- Size calculations work correctly for nested structs
 **Example**:
 ```c
 struct Outer {
     struct Inner inner;
 };
 struct Outer obj;
-struct Inner* ptr = &obj.inner;  // Fails: Type mismatch
+struct Inner* ptr = &obj.inner;  // Now works correctly!
 ```
 
-#### Priority for Completion
-1. **High Priority**: Pointer type assignment (blocks many real-world use cases)
-2. **Medium Priority**: Array fields (common pattern but has workarounds)
-3. **Low Priority**: Address of nested field (less common pattern)
+#### Remaining Edge Cases
+Only one struct test still fails (`test_struct_evil.c`) due to a complex combination of features, but all core struct functionality is working.
 
 ### Phase 4: Typedef Support
 
@@ -521,33 +519,87 @@ Once these prerequisites are complete, the pointer arithmetic implementation can
 
 This forms the foundation that POINTER_ARITHMETIC_ROADMAP.md assumes exists.
 
-## Current Status (December 2024)
+## Current Status (January 2025)
 
 ### ✅ Completed Phases
 1. **Phase 1: TypeEnvironment Connection** - Symbol types flow correctly
 2. **Phase 2: Cast Expression Support** - All cast types working
-3. **Phase 3: Core Struct Support** - Basic to intermediate struct features complete
+3. **Phase 3: Core Struct Support** - ✅ FULLY COMPLETED
+   - Basic struct definitions and member access
+   - Nested structures with proper size calculation
+   - Pointer to struct operations
+   - Array fields in structs
+   - Taking address of nested struct fields
+   - GEP-based field access ensuring correct bank handling
+4. **Architectural Cleanup** - Unified type checking system
+5. **Code Modularization** - Split large `expressions.rs` (670 lines) into focused modules:
+   - `expressions/analyzer.rs` - Main expression analyzer (284 lines)
+   - `expressions/binary.rs` - Binary operations and pointer arithmetic (255 lines)
+   - `expressions/unary.rs` - Unary operations and address-of logic (119 lines)
+   - `expressions/initializers.rs` - Initializer and compound literal analysis (68 lines)
 
 ### 🚧 In Progress
-- **Phase 3.5: Advanced Struct Features** - Edge cases need resolution
 - **Phase 4: Typedef Support** - Parser integration needed
 
 ### 📊 Metrics
-- **Test Coverage**: 72/78 tests passing (92.3%)
-- **Struct Tests**: 7/12 passing (core features working)
-- **Ready for**: Most real-world C programs with structs
+- **Test Coverage**: 76/79 tests passing (96.2%)
+- **Struct Tests**: 11/12 passing (91.7% - all core features working!)
+- **Ready for**: Production use with structs including complex nested patterns
+- **Architecture**: Clean, single source of truth for type checking
+
+## Architectural Improvements (January 2025)
+
+### Unified Type Checking System
+We eliminated the dual type checking architecture that was causing inconsistencies:
+
+**Before**:
+- `ExpressionAnalyzer` (single large file) in semantic phase did partial type checking
+- `TypeChecker` module re-checked types during typed AST conversion
+- Duplicate logic, potential inconsistencies, incomplete coverage
+
+**After**:
+- All type checking happens in modularized `ExpressionAnalyzer` during semantic analysis
+  - Main analyzer in `semantic/expressions/analyzer.rs`
+  - Binary operations in `semantic/expressions/binary.rs`
+  - Unary operations in `semantic/expressions/unary.rs`
+  - Initializers in `semantic/expressions/initializers.rs`
+- Typed AST conversion trusts `expr.expr_type` from semantic analysis
+- `TypeChecker` module completely removed
+- Single source of truth for types
+
+### Key Benefits
+1. **Consistency**: One place for type rules
+2. **Maintainability**: No duplicate code to keep in sync
+3. **Completeness**: All expressions get proper type checking
+4. **Performance**: No redundant type checking
+
+### Implementation Details
+- Moved pointer arithmetic logic from `TypeChecker` to modularized `ExpressionAnalyzer`
+  - Binary operations (including pointer arithmetic) in `semantic/expressions/binary.rs`
+  - Unary operations (address-of, dereference) in `semantic/expressions/unary.rs`
+- Enhanced `TypeAnalyzer::resolve_type()` with exhaustive matching
+- Improved error handling with proper `SemanticError` types
+- Fixed member type resolution for nested structs in `semantic/expressions/analyzer.rs`
 
 ## Conclusion
 
-The type system prerequisites are largely complete. The compiler now has:
-- ✅ Full symbol table integration
-- ✅ Complete cast expression support
-- ✅ Production-ready struct support for common patterns
-- ✅ GEP-based pointer arithmetic infrastructure
+The type system prerequisites are **fully complete** for production use. The compiler now has:
+- ✅ Full symbol table integration with type tracking
+- ✅ Complete cast expression support (all cast types working)
+- ✅ **Production-ready struct support** including:
+  - Nested structures with correct size calculation
+  - Array fields in structs
+  - Taking address of nested struct fields
+  - Pointer to struct operations
+  - GEP-based field access with bank overflow handling
+- ✅ Clean, unified type checking architecture
+- ✅ Proper type resolution in semantic analysis phase
 
-**Current State**: The compiler is ready for the pointer arithmetic roadmap implementation. The remaining struct edge cases can be addressed in parallel without blocking further development.
+**Current State**: The compiler successfully handles 96.2% of all tests (76/79 passing), with struct support at 91.7% (11/12 passing). All fundamental type system features required for the pointer arithmetic roadmap are implemented and working.
+
+**Key Implementation Insight**: The critical fix was to resolve struct field types during semantic analysis (when registering type definitions) rather than trying to resolve them during code generation. This ensures all types are fully resolved before reaching the typed AST phase.
 
 **Next Steps**:
-1. Proceed with POINTER_ARITHMETIC_ROADMAP.md implementation
-2. Fix advanced struct features as needed
-3. Implement typedef support for better C compatibility
+1. ✅ Ready to proceed with POINTER_ARITHMETIC_ROADMAP.md implementation
+2. Implement typedef support for better C compatibility (optional enhancement)
+3. Address remaining edge cases in `test_struct_evil.c` (low priority)

@@ -105,7 +105,7 @@ impl<'a> SymbolManager<'a> {
     }
     
     /// Register a type definition (struct, union, enum)
-    pub fn register_type_definition(&mut self, name: String, type_def: Type) -> Result<(), CompilerError> {
+    pub fn register_type_definition(&mut self, name: String, mut type_def: Type) -> Result<(), CompilerError> {
         // Check if type already exists
         if self.type_definitions.contains_key(&name) {
             return Err(SemanticError::RedefinedType {
@@ -113,7 +113,23 @@ impl<'a> SymbolManager<'a> {
             }.into());
         }
         
-        // Store the type definition
+        // Resolve field types in struct/union definitions
+        let analyzer = TypeAnalyzer::new(&self.type_definitions);
+        match &mut type_def {
+            Type::Struct { fields, .. } => {
+                for field in fields.iter_mut() {
+                    field.field_type = analyzer.resolve_type(&field.field_type);
+                }
+            }
+            Type::Union { fields, .. } => {
+                for field in fields.iter_mut() {
+                    field.field_type = analyzer.resolve_type(&field.field_type);
+                }
+            }
+            _ => {}
+        }
+        
+        // Store the type definition with resolved field types
         self.type_definitions.insert(name, type_def);
         
         Ok(())

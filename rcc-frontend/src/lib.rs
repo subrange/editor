@@ -13,7 +13,6 @@ pub mod types;  // Type system definitions
 pub mod semantic;
 pub mod codegen;
 pub mod ir;
-pub mod type_checker;
 pub mod typed_ast;
 mod codegen_tests;
 mod type_environment_tests;

@@ -110,6 +110,8 @@ impl Type {
             Type::Array { size: None, .. } => None, // Incomplete type
             Type::Function { .. } => None, // Functions don't have size
             Type::Struct { fields, .. } => {
+                // By the time we call size_in_words, all struct fields should be fully resolved
+                // by the semantic analyzer
                 let mut total = 0;
                 for field in fields {
                     total += field.field_type.size_in_words()?;

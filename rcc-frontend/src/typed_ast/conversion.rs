@@ -7,8 +7,7 @@ use super::statements::TypedStmt;
 use super::translation_unit::{TypedFunction, TypedTopLevelItem, TypedTranslationUnit};
 use super::errors::TypeError;
 use crate::types::{Type, BankTag};
-use crate::type_checker::{TypeChecker, TypedBinaryOp};
-use crate::ast::{Initializer, InitializerKind};
+use crate::ast::{Initializer, InitializerKind, BinaryOp};
 use rcc_common::SymbolId;
 use std::collections::HashMap;
 
@@ -180,117 +179,127 @@ pub fn type_expression(
         }
         
         ExpressionKind::Binary { op, left, right } => {
-            // Use the type checker to classify the operation
-            let typed_op = TypeChecker::check_binary_op(
-                *op,
-                left,
-                right,
-                expr.span.start.clone(),
-            ).map_err(|msg| TypeError::TypeMismatch(msg))?;
+            // Trust the type that semantic analysis computed
+            let result_type = expr.expr_type.clone()
+                .ok_or_else(|| TypeError::TypeMismatch("Binary expression has no type".to_string()))?;
             
-            match typed_op {
-                TypedBinaryOp::IntegerArithmetic { op, result_type } => {
-                    let left_typed = type_expression(left, type_env)?;
-                    let right_typed = type_expression(right, type_env)?;
+            let left_typed = type_expression(left, type_env)?;
+            let right_typed = type_expression(right, type_env)?;
+            let left_type = left.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch("Left operand has no type".to_string()))?;
+            let right_type = right.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch("Right operand has no type".to_string()))?;
+            
+            // Classify the operation based on types
+            match op {
+                // Special handling for pointer arithmetic operations
+                BinaryOp::Add | BinaryOp::Sub if left_type.is_pointer() || right_type.is_pointer() => {
+                    // Pointer - Pointer = integer (ptrdiff_t)
+                    if left_type.is_pointer() && right_type.is_pointer() && matches!(op, BinaryOp::Sub) {
+                        let elem_type = left_type.pointer_target()
+                            .ok_or_else(|| TypeError::TypeMismatch("Invalid pointer type".to_string()))?;
+                        
+                        Ok(TypedExpr::PointerDifference {
+                            left: Box::new(left_typed),
+                            right: Box::new(right_typed),
+                            elem_type: elem_type.clone(),
+                            expr_type: result_type,
+                        })
+                    }
+                    // Pointer +/- Integer
+                    else if left_type.is_pointer() && right_type.is_integer() {
+                        let elem_type = left_type.pointer_target()
+                            .ok_or_else(|| TypeError::TypeMismatch("Invalid pointer type".to_string()))?;
+                        
+                        Ok(TypedExpr::PointerArithmetic {
+                            ptr: Box::new(left_typed),
+                            offset: Box::new(right_typed),
+                            elem_type: elem_type.clone(),
+                            is_add: matches!(op, BinaryOp::Add),
+                            expr_type: result_type,
+                        })
+                    }
+                    // Integer + Pointer (commutative)
+                    else if left_type.is_integer() && right_type.is_pointer() && matches!(op, BinaryOp::Add) {
+                        let elem_type = right_type.pointer_target()
+                            .ok_or_else(|| TypeError::TypeMismatch("Invalid pointer type".to_string()))?;
+                        
+                        Ok(TypedExpr::PointerArithmetic {
+                            ptr: Box::new(right_typed),
+                            offset: Box::new(left_typed),
+                            elem_type: elem_type.clone(),
+                            is_add: true,
+                            expr_type: result_type,
+                        })
+                    }
+                    else {
+                        // Shouldn't happen if semantic analysis is correct
+                        Ok(TypedExpr::Binary {
+                            op: *op,
+                            left: Box::new(left_typed),
+                            right: Box::new(right_typed),
+                            expr_type: result_type,
+                        })
+                    }
+                }
+                
+                // Array indexing is special
+                BinaryOp::Index => {
+                    // Arrays decay to pointers
+                    let array_type = if let Type::Array { element_type, .. } = left_type {
+                        element_type.as_ref()
+                    } else if let Some(elem) = left_type.pointer_target() {
+                        elem
+                    } else {
+                        return Err(TypeError::TypeMismatch("Cannot index non-array/pointer type".to_string()));
+                    };
                     
-                    Ok(TypedExpr::Binary {
-                        op,
-                        left: Box::new(left_typed),
-                        right: Box::new(right_typed),
+                    Ok(TypedExpr::ArrayIndex {
+                        array: Box::new(left_typed),
+                        index: Box::new(right_typed),
+                        elem_type: array_type.clone(),
                         expr_type: result_type,
                     })
                 }
                 
-                TypedBinaryOp::PointerOffset { ptr_type, elem_type, elem_size: _, is_add } => {
-                    // Determine which operand is the pointer
-                    let (ptr_expr, offset_expr) = if left.expr_type.as_ref()
-                        .map_or(false, |t| t.is_pointer()) {
-                        (left, right)
-                    } else {
-                        (right, left)
-                    };
-                    
-                    let ptr_typed = type_expression(ptr_expr, type_env)?;
-                    let offset_typed = type_expression(offset_expr, type_env)?;
-                    
-                    Ok(TypedExpr::PointerArithmetic {
-                        ptr: Box::new(ptr_typed),
-                        offset: Box::new(offset_typed),
-                        elem_type,
-                        is_add,
-                        expr_type: ptr_type,
-                    })
-                }
-                
-                TypedBinaryOp::PointerDifference { elem_type, elem_size: _ } => {
-                    let left_typed = type_expression(left, type_env)?;
-                    let right_typed = type_expression(right, type_env)?;
-                    
-                    Ok(TypedExpr::PointerDifference {
-                        left: Box::new(left_typed),
-                        right: Box::new(right_typed),
-                        elem_type,
-                        expr_type: Type::Int,  // Pointer difference returns integer
-                    })
-                }
-                
-                TypedBinaryOp::ArrayIndex { elem_type, elem_size: _ } => {
-                    let array_typed = type_expression(left, type_env)?;
-                    let index_typed = type_expression(right, type_env)?;
-                    
-                    Ok(TypedExpr::ArrayIndex {
-                        array: Box::new(array_typed),
-                        index: Box::new(index_typed),
-                        elem_type: elem_type.clone(),
-                        expr_type: elem_type,
-                    })
-                }
-                
-                TypedBinaryOp::Comparison { op, is_pointer_compare: _ } => {
-                    let left_typed = type_expression(left, type_env)?;
-                    let right_typed = type_expression(right, type_env)?;
-                    
-                    Ok(TypedExpr::Binary {
-                        op,
-                        left: Box::new(left_typed),
-                        right: Box::new(right_typed),
-                        expr_type: Type::Bool,  // Comparisons return bool
-                    })
-                }
-                
-                TypedBinaryOp::Logical { op } => {
-                    let left_typed = type_expression(left, type_env)?;
-                    let right_typed = type_expression(right, type_env)?;
-                    
-                    Ok(TypedExpr::Binary {
-                        op,
-                        left: Box::new(left_typed),
-                        right: Box::new(right_typed),
-                        expr_type: Type::Bool,
-                    })
-                }
-                
-                TypedBinaryOp::Assignment { lhs_type } => {
-                    let lhs_typed = type_expression(left, type_env)?;
-                    let rhs_typed = type_expression(right, type_env)?;
-                    
+                // Assignment is special
+                BinaryOp::Assign => {
                     Ok(TypedExpr::Assignment {
-                        lhs: Box::new(lhs_typed),
-                        rhs: Box::new(rhs_typed),
-                        expr_type: lhs_type,
+                        lhs: Box::new(left_typed),
+                        rhs: Box::new(right_typed),
+                        expr_type: result_type,
                     })
                 }
                 
-                TypedBinaryOp::CompoundAssignment { op, lhs_type, is_pointer } => {
-                    let lhs_typed = type_expression(left, type_env)?;
-                    let rhs_typed = type_expression(right, type_env)?;
-                    
+                // Compound assignments
+                BinaryOp::AddAssign | BinaryOp::SubAssign if left_type.is_pointer() => {
                     Ok(TypedExpr::CompoundAssignment {
-                        op,
-                        lhs: Box::new(lhs_typed),
-                        rhs: Box::new(rhs_typed),
-                        is_pointer,
-                        expr_type: lhs_type,
+                        op: *op,
+                        lhs: Box::new(left_typed),
+                        rhs: Box::new(right_typed),
+                        is_pointer: true,
+                        expr_type: result_type,
+                    })
+                }
+                
+                BinaryOp::AddAssign | BinaryOp::SubAssign | BinaryOp::MulAssign | 
+                BinaryOp::DivAssign | BinaryOp::ModAssign | BinaryOp::BitAndAssign |
+                BinaryOp::BitOrAssign | BinaryOp::BitXorAssign | 
+                BinaryOp::LeftShiftAssign | BinaryOp::RightShiftAssign => {
+                    Ok(TypedExpr::CompoundAssignment {
+                        op: *op,
+                        lhs: Box::new(left_typed),
+                        rhs: Box::new(right_typed),
+                        is_pointer: false,
+                        expr_type: result_type,
+                    })
+                }
+                
+                // All other binary operations (arithmetic, logical, comparison)
+                _ => {
+                    Ok(TypedExpr::Binary {
+                        op: *op,
+                        left: Box::new(left_typed),
+                        right: Box::new(right_typed),
+                        expr_type: result_type,
                     })
                 }
             }

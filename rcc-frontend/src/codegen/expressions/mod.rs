@@ -233,13 +233,21 @@ impl<'a> TypedExpressionGenerator<'a> {
                     field_type_ir.clone()
                 )?;
                 
-                // Load the value from the field address
-                let temp_id = self.builder.build_load(field_ptr, field_type_ir)
-                    .map_err(|e| CodegenError::InternalError {
-                        message: e,
-                        location: rcc_common::SourceLocation::new_simple(0, 0),
-                    })?;
-                Ok(Value::Temp(temp_id))
+                // Check if the field is an array type
+                // Arrays should decay to pointers when accessed (not loaded)
+                if let Type::Array { .. } = expr_type {
+                    // For array fields, return the pointer to the first element
+                    // This allows array indexing to work: buf.data[i]
+                    Ok(field_ptr)
+                } else {
+                    // For non-array fields, load the value from the field address
+                    let temp_id = self.builder.build_load(field_ptr, field_type_ir)
+                        .map_err(|e| CodegenError::InternalError {
+                            message: e,
+                            location: rcc_common::SourceLocation::new_simple(0, 0),
+                        })?;
+                    Ok(Value::Temp(temp_id))
+                }
             }
             
             TypedExpr::Conditional { .. } => {

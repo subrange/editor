@@ -32,6 +32,7 @@ pub fn convert_type(ast_type: &Type, location: SourceLocation) -> Result<IrType,
         Type::Struct { fields, .. } => {
             // For structs, allocate as array of words
             // Calculate total size in words
+            // By this point, all field types should be fully resolved by semantic analysis
             let mut total_words = 0u64;
             for field in fields {
                 if let Some(size) = field.field_type.size_in_words() {

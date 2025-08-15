@@ -64,6 +64,10 @@ pub enum SemanticError {
         type_name: Type,
         location: SourceLocation,
     },
+    UndefinedType {
+        name: String,
+        location: SourceLocation,
+    },
 }
 
 impl From<SemanticError> for CompilerError {
@@ -144,6 +148,12 @@ impl From<SemanticError> for CompilerError {
             SemanticError::MemberAccessOnNonStruct { type_name, location } => {
                 CompilerError::semantic_error(
                     format!("Member access on non-struct type: {}", type_name),
+                    location,
+                )
+            }
+            SemanticError::UndefinedType { name, location } => {
+                CompilerError::semantic_error(
+                    format!("Undefined type: '{}'", name),
                     location,
                 )
             }
