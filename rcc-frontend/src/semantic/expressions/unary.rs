@@ -24,7 +24,7 @@ impl UnaryOperationAnalyzer {
                     Ok(operand_type.clone())
                 } else {
                     Err(SemanticError::InvalidOperation {
-                        operation: format!("{}", op),
+                        operation: format!("{op}"),
                         operand_type: operand_type.clone(),
                         location: operand.span.start.clone(),
                     }
@@ -95,7 +95,7 @@ impl UnaryOperationAnalyzer {
                     Ok(operand_type.clone())
                 } else {
                     Err(SemanticError::InvalidOperation {
-                        operation: format!("{}", op),
+                        operation: format!("{op}"),
                         operand_type: operand_type.clone(),
                         location: operand.span.start.clone(),
                     }

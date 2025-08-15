@@ -258,7 +258,7 @@ impl<'a> ExpressionAnalyzer<'a> {
                     // Use the actual struct name if available, otherwise use a generic description
                     let struct_name = name
                         .clone()
-                        .unwrap_or_else(|| format!("{}", struct_type));
+                        .unwrap_or_else(|| format!("{struct_type}"));
                     Err(SemanticError::UndefinedMember {
                         struct_name,
                         member_name: member.to_string(),

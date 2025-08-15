@@ -18,15 +18,15 @@ impl TuiDebugger {
         // Show stack info at top
         let mut stack_info = vec![
             Span::raw("SP: "),
-            Span::styled(format!("{:04X}", sp), Style::default().fg(Color::Yellow)),
+            Span::styled(format!("{sp:04X}"), Style::default().fg(Color::Yellow)),
         ];
         if sp > 0 {
             stack_info.push(Span::styled(format!(" (TOS@{:04X})", sp - 1), Style::default().fg(Color::DarkGray)));
         }
         stack_info.push(Span::raw(" FP: "));
-        stack_info.push(Span::styled(format!("{:04X}", fp), Style::default().fg(Color::Cyan)));
+        stack_info.push(Span::styled(format!("{fp:04X}"), Style::default().fg(Color::Cyan)));
         stack_info.push(Span::raw(" SB: "));
-        stack_info.push(Span::styled(format!("{:04X}", sb), Style::default().fg(Color::Green)));
+        stack_info.push(Span::styled(format!("{sb:04X}"), Style::default().fg(Color::Green)));
         text.push(Line::from(stack_info));
         
         // Show return address
@@ -85,17 +85,13 @@ impl TuiDebugger {
                 for offset in start_offset..end_offset {
                     // Show stack from top (SP+lookahead) down to bottom
                     // We want to display most recent pushes at the top
-                    let display_idx = (extended_size - 1 - offset);
+                    let display_idx = extended_size - 1 - offset;
                     
                     // The actual memory address is stack_base_addr + display_idx
                     // But display_idx is the absolute stack position (e.g., 1002)
                     // We want to show the offset from the initial stack base
                     let stack_position = display_idx as u16; // This will be values like 1000, 1001, 1002...
-                    let stack_offset = if stack_position >= stack_base_value {
-                        stack_position - stack_base_value  // Offset from initial stack position
-                    } else {
-                        0  // Shouldn't happen in normal operation
-                    };
+                    let stack_offset = stack_position.saturating_sub(stack_base_value);
                     
                     let mem_addr = stack_base_addr + display_idx;
                     
@@ -135,13 +131,13 @@ impl TuiDebugger {
                         Color::Blue  // Active stack
                     };
                     spans.push(Span::styled(
-                        format!("[+{:03X}]", stack_offset),
+                        format!("[+{stack_offset:03X}]"),
                         Style::default().fg(offset_color)
                     ));
                     
                     // Also show the actual stack position for debugging
                     spans.push(Span::styled(
-                        format!(" {:04X} ", stack_position),
+                        format!(" {stack_position:04X} "),
                         Style::default().fg(Color::Gray)
                     ));
                     
@@ -154,12 +150,12 @@ impl TuiDebugger {
                             Color::White  // Active stack value
                         };
                         spans.push(Span::styled(
-                            format!("{:04X}", value),
+                            format!("{value:04X}"),
                             Style::default().fg(value_color)
                         ));
                         
                         // Show ASCII representation if printable
-                        if value >= 0x20 && value <= 0x7E {
+                        if (0x20..=0x7E).contains(&value) {
                             spans.push(Span::styled(
                                 format!(" '{}'", value as u8 as char),
                                 Style::default().fg(Color::Green)

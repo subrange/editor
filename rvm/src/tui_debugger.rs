@@ -2,20 +2,17 @@ use std::collections::HashMap;
 use std::io;
 use std::time::{Duration, Instant};
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers, MouseEvent, MouseEventKind, MouseButton},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, MouseEvent, MouseEventKind, MouseButton},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap, Clear, Tabs, Row, Table, Cell},
+    layout::{Constraint, Direction, Layout, Rect},
     Frame, Terminal,
 };
 use ripple_asm::Register;
-use crate::vm::{VM, VMState, Instr};
+use crate::vm::{VM, VMState};
 use crate::settings::DebuggerSettings;
 
 // Fixed memory columns for navigation (actual display adjusts dynamically)
@@ -220,7 +217,7 @@ impl TuiDebugger {
         };
         
         if let Err(e) = settings.save() {
-            eprintln!("Warning: Failed to save debugger settings: {}", e);
+            eprintln!("Warning: Failed to save debugger settings: {e}");
         }
     }
     
@@ -474,7 +471,7 @@ impl TuiDebugger {
     
     pub(crate) fn step_vm_no_break_check(&mut self, vm: &mut VM) {
         // Save current registers for change detection
-        let old_registers = vm.registers.clone();
+        let old_registers = vm.registers;
         
         // Get current PC for history
         let pc = vm.registers[Register::Pc as usize] as usize;
@@ -572,10 +569,10 @@ impl TuiDebugger {
                                     let relative_row = (click_pos.1 - rect.y) as usize;
                                     let addr = self.disasm_scroll + relative_row;
                                     if addr < vm.instructions.len() {
-                                        if self.breakpoints.contains_key(&addr) {
-                                            self.breakpoints.remove(&addr);
+                                        if let std::collections::hash_map::Entry::Vacant(e) = self.breakpoints.entry(addr) {
+                                            e.insert(true);
                                         } else {
-                                            self.breakpoints.insert(addr, true);
+                                            self.breakpoints.remove(&addr);
                                         }
                                     }
                                 }
@@ -589,7 +586,7 @@ impl TuiDebugger {
                                     let col_offset = relative_col.saturating_sub(10) / 5; // Skip address prefix
                                     if col_offset < MEMORY_NAV_COLS {
                                         let addr = self.memory_base_addr + relative_row * MEMORY_NAV_COLS + col_offset;
-                                        self.command_buffer = format!("{:04x}:", addr);
+                                        self.command_buffer = format!("{addr:04x}:");
                                         self.mode = DebuggerMode::MemoryEdit;
                                     }
                                 }

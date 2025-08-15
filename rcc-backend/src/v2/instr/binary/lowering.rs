@@ -42,8 +42,7 @@ pub fn lower_binary_op(
     rhs: &Value,
     result_temp: TempId,
 ) -> Vec<AsmInst> {
-    debug!("lower_binary_op: op={:?}, lhs={:?}, rhs={:?}, result=t{}", 
-           op, lhs, rhs, result_temp);
+    debug!("lower_binary_op: op={op:?}, lhs={lhs:?}, rhs={rhs:?}, result=t{result_temp}");
     trace!("  Current register state: spill_count={}", mgr.get_spill_count());
     
     let mut insts = vec![];
@@ -51,7 +50,7 @@ pub fn lower_binary_op(
     
     // Step 1: Calculate register needs for Sethi-Ullman ordering
     let (left_need, right_need) = calculate_register_needs(mgr, lhs, rhs);
-    trace!("  Register needs: left={}, right={}", left_need, right_need);
+    trace!("  Register needs: left={left_need}, right={right_need}");
     
     // Step 2: Determine evaluation order
     // For commutative operations, evaluate the operand with higher register need first
@@ -68,22 +67,22 @@ pub fn lower_binary_op(
         // For commutative ops, evaluate higher-need operand first
         let rhs_reg = get_value_register(mgr, naming, rhs);
         insts.extend(mgr.take_instructions());
-        trace!("  RHS operand in {:?} (evaluated first due to higher need)", rhs_reg);
+        trace!("  RHS operand in {rhs_reg:?} (evaluated first due to higher need)");
         
         let lhs_reg = get_value_register(mgr, naming, lhs);
         insts.extend(mgr.take_instructions());
-        trace!("  LHS operand in {:?}", lhs_reg);
+        trace!("  LHS operand in {lhs_reg:?}");
         
         (lhs_reg, rhs_reg)
     } else {
         // Standard order: evaluate left then right
         let lhs_reg = get_value_register(mgr, naming, lhs);
         insts.extend(mgr.take_instructions());
-        trace!("  LHS operand in {:?}", lhs_reg);
+        trace!("  LHS operand in {lhs_reg:?}");
         
         let rhs_reg = get_value_register(mgr, naming, rhs);
         insts.extend(mgr.take_instructions());
-        trace!("  RHS operand in {:?}", rhs_reg);
+        trace!("  RHS operand in {rhs_reg:?}");
         
         (lhs_reg, rhs_reg)
     };
@@ -91,12 +90,12 @@ pub fn lower_binary_op(
     // Step 4: Allocate result register
     // Optimization: Try to reuse first register if possible
     let result_reg = if can_reuse_register(op) && lhs_reg != rhs_reg {
-        trace!("  Reusing LHS register {:?} for result", lhs_reg);
+        trace!("  Reusing LHS register {lhs_reg:?} for result");
         lhs_reg
     } else {
         let reg = mgr.get_register(result_name.clone());
         insts.extend(mgr.take_instructions());
-        trace!("  Allocated new register {:?} for result", reg);
+        trace!("  Allocated new register {reg:?} for result");
         reg
     };
     
@@ -128,10 +127,10 @@ pub fn lower_binary_op(
     
     // For arithmetic operations
     if let Some(inst) = generate_arithmetic_instruction(op, result_reg, lhs_reg, rhs_reg, should_swap) {
-        trace!("  Generated instruction: {:?}", inst);
+        trace!("  Generated instruction: {inst:?}");
         insts.push(inst);
     } else {
-        panic!("Unexpected operation type: {:?}", op);
+        panic!("Unexpected operation type: {op:?}");
     }
     
     // Ensure the result is properly bound to the result temp
@@ -140,11 +139,11 @@ pub fn lower_binary_op(
     // Step 6: Free registers that are no longer needed
     if result_reg != lhs_reg {
         mgr.free_register(lhs_reg);
-        trace!("  Freed LHS register {:?}", lhs_reg);
+        trace!("  Freed LHS register {lhs_reg:?}");
     }
     if result_reg != rhs_reg {
         mgr.free_register(rhs_reg);
-        trace!("  Freed RHS register {:?}", rhs_reg);
+        trace!("  Freed RHS register {rhs_reg:?}");
     }
     
     debug!("lower_binary_op complete: generated {} instructions", insts.len());
@@ -165,8 +164,7 @@ pub fn lower_binary_op_immediate(
     rhs_const: i16,
     result_temp: TempId,
 ) -> Vec<AsmInst> {
-    debug!("lower_binary_op_immediate: op={:?}, lhs={:?}, rhs={}, result=t{}", 
-           op, lhs, rhs_const, result_temp);
+    debug!("lower_binary_op_immediate: op={op:?}, lhs={lhs:?}, rhs={rhs_const}, result=t{result_temp}");
     
     let mut insts = vec![];
     let result_name = naming.temp_name(result_temp);
@@ -222,7 +220,7 @@ pub fn lower_binary_op_immediate(
         
         // Operations without immediate forms - load constant first
         IrBinaryOp::And | IrBinaryOp::Or | IrBinaryOp::Xor => {
-            debug!("  No immediate form for {:?}, loading constant into register", op);
+            debug!("  No immediate form for {op:?}, loading constant into register");
             let rhs_reg = mgr.get_register(naming.imm_value(rhs_const));
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::Li(rhs_reg, rhs_const));
@@ -235,7 +233,7 @@ pub fn lower_binary_op_immediate(
             }
             
             mgr.free_register(rhs_reg);
-            trace!("  Generated {:?} with loaded immediate", op);
+            trace!("  Generated {op:?} with loaded immediate");
         }
         
         IrBinaryOp::Shl | IrBinaryOp::LShr | IrBinaryOp::AShr => {

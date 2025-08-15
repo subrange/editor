@@ -148,7 +148,7 @@ impl VM {
         self.instructions.clear();
         for i in 0..instruction_count {
             if pos + INSTRUCTION_SIZE > binary.len() {
-                return Err(format!("Invalid binary: missing instruction {}", i));
+                return Err(format!("Invalid binary: missing instruction {i}"));
             }
             
             let instr = Instr {
@@ -273,7 +273,7 @@ impl VM {
         
         // Print instruction in verbose mode
         if self.verbose {
-            eprint!("[{:04X}] ", instr_idx);
+            eprint!("[{instr_idx:04X}] ");
             self.print_instruction(&instr);
         }
         
@@ -461,7 +461,7 @@ impl VM {
                     if mem_addr < self.memory.len() {
                         self.registers[rd] = self.memory[mem_addr];
                     } else {
-                        return Err(format!("LOAD: memory address out of bounds: {}", mem_addr));
+                        return Err(format!("LOAD: memory address out of bounds: {mem_addr}"));
                     }
                 }
             },
@@ -489,7 +489,7 @@ impl VM {
                             self.memory[MMIO_OUT_FLAG] = OUTPUT_BUSY;
                         }
                     } else {
-                        return Err(format!("STORE: memory address out of bounds: {}", mem_addr));
+                        return Err(format!("STORE: memory address out of bounds: {mem_addr}"));
                     }
                 }
             },
@@ -527,25 +527,23 @@ impl VM {
                 let rs = instr.word1 as usize;
                 let rt = instr.word2 as usize;
                 let offset = instr.word3 as i16;
-                if rs < 32 && rt < 32 {
-                    if self.registers[rs] == self.registers[rt] {
+                if rs < 32 && rt < 32
+                    && self.registers[rs] == self.registers[rt] {
                         let new_pc = (self.registers[Register::Pc as usize] as i16).wrapping_add(offset);
                         self.registers[Register::Pc as usize] = new_pc as u16;
                         self.skip_pc_increment = true;
                     }
-                }
             },
             0x16 => { // BNE
                 let rs = instr.word1 as usize;
                 let rt = instr.word2 as usize;
                 let offset = instr.word3 as i16;
-                if rs < 32 && rt < 32 {
-                    if self.registers[rs] != self.registers[rt] {
+                if rs < 32 && rt < 32
+                    && self.registers[rs] != self.registers[rt] {
                         let new_pc = (self.registers[Register::Pc as usize] as i16).wrapping_add(offset);
                         self.registers[Register::Pc as usize] = new_pc as u16;
                         self.skip_pc_increment = true;
                     }
-                }
             },
             0x17 => { // BLT
                 let rs = instr.word1 as usize;
@@ -621,9 +619,9 @@ impl VM {
                     eprintln!("  R30 (FP): 0x{:04X} ({})", self.registers[Register::Fp as usize], self.registers[Register::Fp as usize]);
                     eprintln!("  R31 (GP): 0x{:04X} ({})", self.registers[Register::Gp as usize], self.registers[Register::Gp as usize]);
                     
-                    eprintln!("\nMemory (first {} words):", DEBUG_MEMORY_DISPLAY_WORDS);
+                    eprintln!("\nMemory (first {DEBUG_MEMORY_DISPLAY_WORDS} words):");
                     for i in (0..DEBUG_MEMORY_DISPLAY_WORDS.min(self.memory.len())).step_by(DEBUG_MEMORY_WORDS_PER_LINE) {
-                        eprint!("  {:04X}: ", i);
+                        eprint!("  {i:04X}: ");
                         for j in 0..DEBUG_MEMORY_WORDS_PER_LINE {
                             if i + j < self.memory.len() {
                                 eprint!("{:04X} ", self.memory[i + j]);

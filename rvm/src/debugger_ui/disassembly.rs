@@ -27,7 +27,7 @@ impl TuiDebugger {
                     let mut label_spans = vec![];
                     label_spans.push(Span::raw("  "));
                     label_spans.push(Span::styled(
-                        format!("{}:", func_name),
+                        format!("{func_name}:"),
                         Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)
                     ));
                     items.push(ListItem::new(Line::from(label_spans)));
@@ -40,7 +40,7 @@ impl TuiDebugger {
             let in_history = self.execution_history.contains(&idx);
 
             // Format the instruction
-            let addr = format!("{:04X}", idx);
+            let addr = format!("{idx:04X}");
             
             // Build the line with appropriate styling
             let mut spans = vec![];
@@ -117,7 +117,7 @@ impl TuiDebugger {
                         Style::default().fg(Color::Cyan)
                     };
                     
-                    spans.push(Span::styled(format!("{:02X}", byte), style));
+                    spans.push(Span::styled(format!("{byte:02X}"), style));
                     if byte_idx < 7 {
                         spans.push(Span::raw(" "));
                     }
@@ -169,7 +169,7 @@ impl TuiDebugger {
             Some(Opcode::Xor) | Some(Opcode::Sll) | Some(Opcode::Srl) | Some(Opcode::Slt) | 
             Some(Opcode::Sltu) | Some(Opcode::Mul) | Some(Opcode::Div) | Some(Opcode::Mod) => {
                 // R-type: op rd, rs, rt
-                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(format!("{opcode_str:<6} "), opcode_style));
                 spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0)))); // Dark green
                 spans.push(Span::raw(", "));
                 spans.push(Span::styled(Self::register_name(instr.word2 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
@@ -179,7 +179,7 @@ impl TuiDebugger {
             Some(Opcode::Addi) | Some(Opcode::Andi) | Some(Opcode::Ori) | Some(Opcode::Xori) | 
             Some(Opcode::Slli) | Some(Opcode::Srli) | Some(Opcode::Muli) | Some(Opcode::Divi) | Some(Opcode::Modi) => {
                 // I-type with immediate: op rd, rs, imm
-                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(format!("{opcode_str:<6} "), opcode_style));
                 spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 spans.push(Span::raw(", "));
                 spans.push(Span::styled(Self::register_name(instr.word2 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
@@ -188,14 +188,14 @@ impl TuiDebugger {
             },
             Some(Opcode::Li) => {
                 // LI: li rd, imm
-                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(format!("{opcode_str:<6} "), opcode_style));
                 spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 spans.push(Span::raw(", "));
                 spans.push(Span::styled(format!("0x{:X}", instr.word2), Style::default().fg(Color::Rgb(255, 140, 0)))); // Orange
             },
             Some(Opcode::Load) | Some(Opcode::Store) => {
                 // LOAD/STORE: op r, bank, addr
-                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(format!("{opcode_str:<6} "), opcode_style));
                 spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 spans.push(Span::raw(", "));
                 
@@ -216,7 +216,7 @@ impl TuiDebugger {
             },
             Some(Opcode::Jal) => {
                 // JAL: jal rd, addr
-                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(format!("{opcode_str:<6} "), opcode_style));
                 spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 spans.push(Span::raw(", "));
                 
@@ -227,32 +227,32 @@ impl TuiDebugger {
                         // Show function name in bright cyan
                         spans.push(Span::styled(func_name.clone(), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
                         // Also show the address in parentheses
-                        spans.push(Span::styled(format!(" (0x{:04X})", target_addr), Style::default().fg(Color::DarkGray)));
+                        spans.push(Span::styled(format!(" (0x{target_addr:04X})"), Style::default().fg(Color::DarkGray)));
                     } else {
                         // No debug info, just show address
-                        spans.push(Span::styled(format!("0x{:04X}", target_addr), Style::default().fg(Color::Rgb(255, 140, 0))));
+                        spans.push(Span::styled(format!("0x{target_addr:04X}"), Style::default().fg(Color::Rgb(255, 140, 0))));
                     }
                 } else {
                     // Debug symbols disabled, just show address
-                    spans.push(Span::styled(format!("0x{:04X}", target_addr), Style::default().fg(Color::Rgb(255, 140, 0))));
+                    spans.push(Span::styled(format!("0x{target_addr:04X}"), Style::default().fg(Color::Rgb(255, 140, 0))));
                 }
             },
             Some(Opcode::Jalr) => {
                 // JALR: jalr rd, rs
-                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(format!("{opcode_str:<6} "), opcode_style));
                 spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 spans.push(Span::raw(", "));
                 spans.push(Span::styled(Self::register_name(instr.word3 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
             },
             Some(Opcode::Beq) | Some(Opcode::Bne) | Some(Opcode::Blt) | Some(Opcode::Bge) => {
                 // Branch: beq/bne/blt/bge rs, rt, offset
-                spans.push(Span::styled(format!("{:<6} ", opcode_str), opcode_style));
+                spans.push(Span::styled(format!("{opcode_str:<6} "), opcode_style));
                 spans.push(Span::styled(Self::register_name(instr.word1 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 spans.push(Span::raw(", "));
                 spans.push(Span::styled(Self::register_name(instr.word2 as u8), Style::default().fg(Color::Rgb(0, 200, 0))));
                 spans.push(Span::raw(", "));
                 let offset = instr.word3 as i16;
-                spans.push(Span::styled(format!("{}", offset), Style::default().fg(Color::Rgb(255, 140, 0))));
+                spans.push(Span::styled(format!("{offset}"), Style::default().fg(Color::Rgb(255, 140, 0))));
             },
             Some(Opcode::Brk) => {
                 // BRK
@@ -284,7 +284,7 @@ impl TuiDebugger {
                 let rd = Self::register_name(instr.word1 as u8);
                 let rs = Self::register_name(instr.word2 as u8);
                 let rt = Self::register_name(instr.word3 as u8);
-                format!("{:<6} {}, {}, {}", opcode_str, rd, rs, rt)
+                format!("{opcode_str:<6} {rd}, {rs}, {rt}")
             },
             Some(Opcode::Addi) | Some(Opcode::Andi) | Some(Opcode::Ori) | Some(Opcode::Xori) | 
             Some(Opcode::Slli) | Some(Opcode::Srli) | Some(Opcode::Muli) | Some(Opcode::Divi) | Some(Opcode::Modi) => {
@@ -300,7 +300,7 @@ impl TuiDebugger {
                 let r = Self::register_name(instr.word1 as u8);
                 let bank = Self::format_operand(instr.word2);
                 let addr = Self::format_operand(instr.word3);
-                format!("{:<6} {}, {}, {}", opcode_str, r, bank, addr)
+                format!("{opcode_str:<6} {r}, {bank}, {addr}")
             },
             Some(Opcode::Jal) => {
                 let rd = Self::register_name(instr.word1 as u8);
@@ -309,13 +309,13 @@ impl TuiDebugger {
             Some(Opcode::Jalr) => {
                 let rd = Self::register_name(instr.word1 as u8);
                 let rs = Self::register_name(instr.word3 as u8);
-                format!("{:<6} {}, {}", opcode_str, rd, rs)
+                format!("{opcode_str:<6} {rd}, {rs}")
             },
             Some(Opcode::Beq) | Some(Opcode::Bne) | Some(Opcode::Blt) | Some(Opcode::Bge) => {
                 let rs = Self::register_name(instr.word1 as u8);
                 let rt = Self::register_name(instr.word2 as u8);
                 let offset = instr.word3 as i16;
-                format!("{:<6} {}, {}, {}", opcode_str, rs, rt, offset)
+                format!("{opcode_str:<6} {rs}, {rt}, {offset}")
             },
             Some(Opcode::Brk) => "BRK".to_string(),
             None => format!("??? 0x{:02X}", instr.opcode),
@@ -370,7 +370,7 @@ impl TuiDebugger {
         if value < 32 {
             Self::register_name(value as u8).to_string()
         } else {
-            format!("0x{:X}", value)
+            format!("0x{value:X}")
         }
     }
 }

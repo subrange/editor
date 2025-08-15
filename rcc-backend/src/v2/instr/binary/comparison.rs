@@ -119,7 +119,7 @@ pub(super) fn generate_comparison_instructions(
             mgr.free_register(temp_reg);
             mgr.free_register(one_reg);
         }
-        _ => panic!("Not a comparison operation: {:?}", op),
+        _ => panic!("Not a comparison operation: {op:?}"),
     }
     
     insts

@@ -15,7 +15,7 @@ impl TuiDebugger {
         let mut spans = vec![];
 
         // Add prompt with appropriate styling
-        let prompt_text = format!("[{}] ", prompt);
+        let prompt_text = format!("[{prompt}] ");
         spans.push(Span::styled(prompt_text, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
 
         // Show what the user is typing

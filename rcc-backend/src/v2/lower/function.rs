@@ -84,7 +84,7 @@ fn bind_function_parameters(
     for (idx, (param_id, _ty)) in function.parameters.iter().enumerate() {
         // Use the builder to load and bind the parameter properly
         let (_addr_reg, _bank_reg) = builder.load_parameter_with_binding(idx, *param_id, mgr, naming);
-        trace!("  Bound parameter {} (t{})", idx, param_id);
+        trace!("  Bound parameter {idx} (t{param_id})");
     }
 }
 
@@ -126,7 +126,7 @@ fn handle_return_instruction(
                     let bank_info = mgr.get_pointer_bank(&temp_name)
                         .unwrap_or_else(|| {
                             // This is a compiler bug - all pointers must have bank info
-                            panic!("V2: COMPILER BUG: No bank info for pointer return value t{}. All pointers must have tracked bank information!", t);
+                            panic!("V2: COMPILER BUG: No bank info for pointer return value t{t}. All pointers must have tracked bank information!");
                         });
                     let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
                     
@@ -157,7 +157,7 @@ fn handle_return_instruction(
             Value::Constant(c) => {
                 // Load constant directly into return register
                 builder.add_instruction(AsmInst::Li(Reg::Rv0, *c as i16));
-                trace!("  Returning constant {} in Rv0", c);
+                trace!("  Returning constant {c} in Rv0");
                 Some((Reg::Rv0, None))
             }
             Value::FatPtr(fp) => {
@@ -191,7 +191,7 @@ fn handle_return_instruction(
                             let temp_name = naming.temp_name(*t);
                             let bank_info = mgr.get_pointer_bank(&temp_name)
                                 .unwrap_or_else(|| {
-                                    panic!("No bank info for Mixed pointer t{}", t);
+                                    panic!("No bank info for Mixed pointer t{t}");
                                 });
                             get_bank_register_with_mgr(&bank_info, mgr)
                         } else {
@@ -263,7 +263,7 @@ fn lower_basic_block(
     
     // Lower each instruction in the block
     for instruction in &block.instructions {
-        trace!("  Lowering instruction: {:?}", instruction);
+        trace!("  Lowering instruction: {instruction:?}");
         
         match instruction {
             Instruction::Return(value) => {
@@ -296,7 +296,7 @@ fn generate_epilogue(
     return_values: &[(Option<(Reg, Option<Reg>)>, usize)],
     epilogue_label: String,
 ) {
-    debug!("Generating epilogue (has_return: {})", has_any_return);
+    debug!("Generating epilogue (has_return: {has_any_return})");
     
     if has_any_return {
         builder.add_instruction(AsmInst::Label(epilogue_label));

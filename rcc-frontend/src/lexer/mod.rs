@@ -133,7 +133,7 @@ impl Lexer {
                 self.advance();
             } else {
                 return Err(CompilerError::lexer_error(
-                    format!("Invalid identifier start: {}", ch),
+                    format!("Invalid identifier start: {ch}"),
                     self.current_location(),
                 ));
             }
@@ -360,7 +360,7 @@ impl Lexer {
             
             Some(ch) => {
                 return Err(CompilerError::lexer_error(
-                    format!("Unexpected character: {}", ch),
+                    format!("Unexpected character: {ch}"),
                     self.current_location(),
                 ));
             }

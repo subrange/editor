@@ -122,8 +122,7 @@ impl Type {
             }
             Type::Union { fields, .. } => {
                 fields.iter()
-                    .map(|f| f.field_type.size_in_words())
-                    .flatten()
+                    .filter_map(|f| f.field_type.size_in_words())
                     .max()
             }
             Type::Enum { .. } => Some(2), // Enum is like int
@@ -214,30 +213,30 @@ impl fmt::Display for Type {
             Type::Long => write!(f, "long"),
             Type::UnsignedLong => write!(f, "unsigned long"),
             Type::Pointer { target, bank } => {
-                write!(f, "{}*", target)?;
+                write!(f, "{target}*")?;
                 if let Some(bank) = bank {
-                    write!(f, "@{}", bank)?;
+                    write!(f, "@{bank}")?;
                 }
                 Ok(())
             },
-            Type::Array { element_type, size: Some(n) } => write!(f, "{}[{}]", element_type, n),
-            Type::Array { element_type, size: None } => write!(f, "{}[]", element_type),
+            Type::Array { element_type, size: Some(n) } => write!(f, "{element_type}[{n}]"),
+            Type::Array { element_type, size: None } => write!(f, "{element_type}[]"),
             Type::Function { return_type, parameters, is_variadic } => {
-                write!(f, "{} (", return_type)?;
+                write!(f, "{return_type} (")?;
                 for (i, param) in parameters.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
-                    write!(f, "{}", param)?;
+                    write!(f, "{param}")?;
                 }
                 if *is_variadic { write!(f, ", ...")?; }
                 write!(f, ")")
             }
-            Type::Struct { name: Some(name), .. } => write!(f, "struct {}", name),
+            Type::Struct { name: Some(name), .. } => write!(f, "struct {name}"),
             Type::Struct { name: None, .. } => write!(f, "struct <anonymous>"),
-            Type::Union { name: Some(name), .. } => write!(f, "union {}", name),
+            Type::Union { name: Some(name), .. } => write!(f, "union {name}"),
             Type::Union { name: None, .. } => write!(f, "union <anonymous>"),
-            Type::Enum { name: Some(name), .. } => write!(f, "enum {}", name),
+            Type::Enum { name: Some(name), .. } => write!(f, "enum {name}"),
             Type::Enum { name: None, .. } => write!(f, "enum <anonymous>"),
-            Type::Typedef(name) => write!(f, "{}", name),
+            Type::Typedef(name) => write!(f, "{name}"),
             Type::Error => write!(f, "<error>"),
         }
     }
@@ -277,7 +276,7 @@ impl fmt::Display for StorageClass {
             StorageClass::Register => "register",
             StorageClass::Typedef => "typedef",
         };
-        write!(f, "{}", class_str)
+        write!(f, "{class_str}")
     }
 }
 

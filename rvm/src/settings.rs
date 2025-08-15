@@ -56,12 +56,12 @@ impl DebuggerSettings {
                     match serde_json::from_str(&contents) {
                         Ok(settings) => return settings,
                         Err(e) => {
-                            eprintln!("Failed to parse debugger settings: {}", e);
+                            eprintln!("Failed to parse debugger settings: {e}");
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to read debugger settings: {}", e);
+                    eprintln!("Failed to read debugger settings: {e}");
                 }
             }
         }
@@ -76,14 +76,14 @@ impl DebuggerSettings {
         
         // Create parent directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|e| format!("Failed to create config directory: {}", e))?;
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create config directory: {e}"))?;
         }
         
         let json = serde_json::to_string_pretty(self)
-            .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+            .map_err(|e| format!("Failed to serialize settings: {e}"))?;
         
         fs::write(&path, json)
-            .map_err(|e| format!("Failed to write settings: {}", e))?;
+            .map_err(|e| format!("Failed to write settings: {e}"))?;
         
         Ok(())
     }

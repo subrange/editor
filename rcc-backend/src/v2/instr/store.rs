@@ -27,7 +27,7 @@ pub fn lower_store(
     value: &Value,
     ptr_value: &Value,
 ) -> Vec<AsmInst> {
-    debug!("lower_store: value={:?}, ptr={:?}", value, ptr_value);
+    debug!("lower_store: value={value:?}, ptr={ptr_value:?}");
     
     let mut insts = vec![];
     
@@ -36,7 +36,7 @@ pub fn lower_store(
     let (src_reg, is_pointer, ptr_bank_reg) = match value {
         Value::Temp(t) => {
             let name = naming.temp_name(*t);
-            trace!("  Storing temp value: {}", name);
+            trace!("  Storing temp value: {name}");
             let reg = mgr.get_register(name.clone());
 
             let bank_src: Option<(Reg, bool)> = mgr.get_pointer_bank(&name)
@@ -48,7 +48,7 @@ pub fn lower_store(
         }
         Value::Constant(c) => {
             // Load constant into a register
-            trace!("  Storing constant value: {}", c);
+            trace!("  Storing constant value: {c}");
             let temp_reg_name = naming.store_const_value();
             let temp_reg = mgr.get_register(temp_reg_name);
             insts.extend(mgr.take_instructions());
@@ -57,7 +57,7 @@ pub fn lower_store(
         }
         Value::Global(name) => {
             // This should never be reached - globals should be resolved in lower.rs
-            panic!("Unexpected Value::Global('{}') as store value - should have been resolved in lower.rs", name);
+            panic!("Unexpected Value::Global('{name}') as store value - should have been resolved in lower.rs");
         }
         Value::FatPtr(fp) => {
             // Store fat pointer - need to handle both components
@@ -78,7 +78,7 @@ pub fn lower_store(
                 }
                 Value::Global(name) => {
                     // This should never happen - globals should be resolved to constants in lower.rs
-                    panic!("Unexpected Value::Global('{}') in FatPtr address - should have been resolved to Constant in lower.rs", name);
+                    panic!("Unexpected Value::Global('{name}') in FatPtr address - should have been resolved to Constant in lower.rs");
                 }
                 _ => panic!("Invalid fat pointer address type: {:?} in STORE", fp.addr),
             };
@@ -138,13 +138,13 @@ pub fn lower_store(
                     insts.push(AsmInst::Li(r, 0));
                     (r, true)
                 }
-                other => panic!("Store: Unsupported bank type for fat pointer: {:?}", other),
+                other => panic!("Store: Unsupported bank type for fat pointer: {other:?}"),
             };
             (addr_reg, true, Some((bank_reg, bank_owned)))
         }
         _ => {
-            warn!("  Invalid value for store: {:?}", value);
-            panic!("Invalid value for store: {:?}", value);
+            warn!("  Invalid value for store: {value:?}");
+            panic!("Invalid value for store: {value:?}");
         }
     };
     
@@ -154,7 +154,7 @@ pub fn lower_store(
     let (dest_addr_reg, dest_ptr_name) = match ptr_value {
         Value::Temp(t) => {
             let name = naming.temp_name(*t);
-            trace!("  Storing to temp pointer: {}", name);
+            trace!("  Storing to temp pointer: {name}");
             let reg = mgr.get_register(name.clone());
             (reg, name)
         }
@@ -171,12 +171,12 @@ pub fn lower_store(
                     let temp_reg = mgr.get_register(temp_reg_name);
                     insts.extend(mgr.take_instructions());
                     insts.push(AsmInst::Li(temp_reg, *c as i16));
-                    trace!("  Loaded destination address {} into {:?}", c, temp_reg);
+                    trace!("  Loaded destination address {c} into {temp_reg:?}");
                     temp_reg
                 }
                 Value::Global(name) => {
                     // This should never happen - globals should be resolved to constants in lower.rs
-                    panic!("Unexpected Value::Global('{}') in FatPtr destination address - should have been resolved to Constant in lower.rs", name);
+                    panic!("Unexpected Value::Global('{name}') in FatPtr destination address - should have been resolved to Constant in lower.rs");
                 }
                 _ => panic!("Invalid fat pointer address type: {:?} in STORE", fp.addr),
             };
@@ -191,10 +191,10 @@ pub fn lower_store(
         }
         Value::Global(name) => {
             // This should never happen - globals should be resolved to FatPtr in lower.rs
-            panic!("Unexpected Value::Global('{}') as store destination - should have been resolved to FatPtr in lower.rs", name);
+            panic!("Unexpected Value::Global('{name}') as store destination - should have been resolved to FatPtr in lower.rs");
         }
         _ => {
-            warn!("  Invalid pointer value for store: {:?}", ptr_value);
+            warn!("  Invalid pointer value for store: {ptr_value:?}");
             panic!("Invalid pointer value for store")
         }
     };
@@ -204,10 +204,10 @@ pub fn lower_store(
     // Step 3: Get the bank register for the destination
     let dest_bank_info = mgr.get_pointer_bank(&dest_ptr_name)
         .unwrap_or_else(|| {
-            panic!("STORE: COMPILER BUG: No bank info for pointer '{}'. All pointers must have tracked bank information!", dest_ptr_name);
+            panic!("STORE: COMPILER BUG: No bank info for pointer '{dest_ptr_name}'. All pointers must have tracked bank information!");
         });
     
-    debug!("  Destination pointer {} has bank info: {:?}", dest_ptr_name, dest_bank_info);
+    debug!("  Destination pointer {dest_ptr_name} has bank info: {dest_bank_info:?}");
     
     let dest_bank_reg = get_bank_register_with_mgr(&dest_bank_info, mgr);
     insts.extend(mgr.take_instructions());
@@ -216,7 +216,7 @@ pub fn lower_store(
     
     // Store the main value
     let store_inst = AsmInst::Store(src_reg, dest_bank_reg, dest_addr_reg);
-    trace!("  Generated STORE: {:?}", store_inst);
+    trace!("  Generated STORE: {store_inst:?}");
     insts.push(store_inst);
     
     // If storing a fat pointer, also store the bank component
@@ -228,10 +228,10 @@ pub fn lower_store(
             let bank_addr_reg = mgr.get_register(bank_addr_name);
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::AddI(bank_addr_reg, dest_addr_reg, 1));
-            trace!("  Bank component at address {:?} + 1", dest_addr_reg);
+            trace!("  Bank component at address {dest_addr_reg:?} + 1");
             // Store the bank value
             let bank_store = AsmInst::Store(bank_reg, dest_bank_reg, bank_addr_reg);
-            trace!("  Generated bank STORE: {:?}", bank_store);
+            trace!("  Generated bank STORE: {bank_store:?}");
             insts.push(bank_store);
             // Free temporary registers we allocated in this function
             mgr.free_register(bank_addr_reg);

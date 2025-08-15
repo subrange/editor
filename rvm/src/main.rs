@@ -21,8 +21,8 @@ fn print_usage() {
     eprintln!("Run a Ripple VM binary program");
     eprintln!();
     eprintln!("OPTIONS:");
-    eprintln!("  -b, --bank-size <size>   Set bank size (default: {})", DEFAULT_BANK_SIZE);
-    eprintln!("  -m, --memory <size>      Set memory size in words (default: {})", DEFAULT_MEMORY_SIZE);
+    eprintln!("  -b, --bank-size <size>   Set bank size (default: {DEFAULT_BANK_SIZE})");
+    eprintln!("  -m, --memory <size>      Set memory size in words (default: {DEFAULT_MEMORY_SIZE})");
     eprintln!("  -d, --debug              Enable debug mode (step through execution)");
     eprintln!("  -t, --tui                Enable TUI debugger_ui mode");
     eprintln!("  -v, --verbose            Show VM state during execution");
@@ -117,7 +117,7 @@ fn main() {
     
     // Read the binary file
     let binary = fs::read(&file_path).unwrap_or_else(|e| {
-        eprintln!("Error reading file '{}': {}", file_path, e);
+        eprintln!("Error reading file '{file_path}': {e}");
         process::exit(1);
     });
     
@@ -133,13 +133,13 @@ fn main() {
     
     // Load the binary
     if let Err(e) = vm.load_binary(&binary) {
-        eprintln!("Error loading binary: {}", e);
+        eprintln!("Error loading binary: {e}");
         process::exit(1);
     }
     
     if verbose {
-        println!("Loading binary from {}...", file_path);
-        println!("Bank size: {}", bank_size);
+        println!("Loading binary from {file_path}...");
+        println!("Bank size: {bank_size}");
         println!("Memory size: {} words", vm.memory.len());
     }
     
@@ -155,7 +155,7 @@ fn main() {
         vm.debug_mode = true;
         let mut tui = tui_debugger::TuiDebugger::new();
         if let Err(e) = tui.run(&mut vm) {
-            eprintln!("TUI error: {}", e);
+            eprintln!("TUI error: {e}");
             process::exit(1);
         }
     } else if debug_mode {
@@ -195,7 +195,7 @@ fn main() {
                 "r" => {
                     // Run to completion
                     if let Err(e) = vm.run() {
-                        eprintln!("Runtime error: {}", e);
+                        eprintln!("Runtime error: {e}");
                         process::exit(1);
                     }
                     break;
@@ -229,7 +229,7 @@ fn main() {
     } else {
         // Run normally
         if let Err(e) = vm.run() {
-            eprintln!("Runtime error: {}", e);
+            eprintln!("Runtime error: {e}");
             process::exit(1);
         }
     }

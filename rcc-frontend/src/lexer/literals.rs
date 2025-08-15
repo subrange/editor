@@ -34,7 +34,7 @@ impl Lexer {
             
             let value = i64::from_str_radix(&number[2..], 16)
                 .map_err(|_| CompilerError::lexer_error(
-                    format!("Invalid hex literal: {}", number),
+                    format!("Invalid hex literal: {number}"),
                     self.current_location(),
                 ))?;
             
@@ -53,7 +53,7 @@ impl Lexer {
         
         let value = number.parse::<i64>()
             .map_err(|_| CompilerError::lexer_error(
-                format!("Invalid integer literal: {}", number),
+                format!("Invalid integer literal: {number}"),
                 self.current_location(),
             ))?;
         
@@ -76,7 +76,7 @@ impl Lexer {
                     Some('0') => { self.advance(); 0 },
                     Some(c) => {
                         return Err(CompilerError::lexer_error(
-                            format!("Invalid escape sequence: \\{}", c),
+                            format!("Invalid escape sequence: \\{c}"),
                             self.current_location(),
                         ));
                     }
@@ -133,7 +133,7 @@ impl Lexer {
                         Some('0') => { string.push('\0'); self.advance(); },
                         Some(c) => {
                             return Err(CompilerError::lexer_error(
-                                format!("Invalid escape sequence: \\{}", c),
+                                format!("Invalid escape sequence: \\{c}"),
                                 self.current_location(),
                             ));
                         }

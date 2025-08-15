@@ -113,7 +113,7 @@ impl RegAllocV2 {
                 *reg
             }
             Some(BankInfo::NamedValue(name)) => {
-                panic!("Cannot get bank register for NamedValue('{}') in allocator - should use RegisterPressureManager", name);
+                panic!("Cannot get bank register for NamedValue('{name}') in allocator - should use RegisterPressureManager");
             }
             None => {
                 // Default to stack if unknown
@@ -138,13 +138,13 @@ impl RegAllocV2 {
         // Parameters are pushed before call, accessed via FP
         // param0 at FP-3, param1 at FP-4, etc.
         let offset = -(param_idx as i16 + 3);
-        debug!("Loading parameter {} from stack at FP{}", param_idx, offset);
+        debug!("Loading parameter {param_idx} from stack at FP{offset}");
         let dest = self.get_reg(format!("param{param_idx}"));
 
         self.instructions.push(AsmInst::Comment(format!("Load param {param_idx} from FP{offset}")));
         self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Fp, offset));
         self.instructions.push(AsmInst::Load(dest, Reg::Sb, Reg::Sc));
-        trace!("  Loaded param{} into {:?}", param_idx, dest);
+        trace!("  Loaded param{param_idx} into {dest:?}");
 
         dest
     }
@@ -168,7 +168,7 @@ impl RegAllocV2 {
             // Track if we're using a callee-saved register
             if matches!(reg, Reg::S0 | Reg::S1 | Reg::S2 | Reg::S3) {
                 self.used_callee_saved.insert(reg);
-                trace!("  Marked callee-saved register {:?} as used", reg);
+                trace!("  Marked callee-saved register {reg:?} as used");
             }
             
             self.reg_contents.insert(reg, for_value);
@@ -185,7 +185,7 @@ impl RegAllocV2 {
             .expect("No spillable registers!");
 
         let victim_value = self.reg_contents.remove(&victim).unwrap();
-        debug!("Spilling '{}' from {:?} to make room for '{}'" , victim_value, victim, for_value);
+        debug!("Spilling '{victim_value}' from {victim:?} to make room for '{for_value}'");
         trace!("  Spilling {victim_value} from {victim:?}");
 
         // Spill the victim
@@ -219,13 +219,13 @@ impl RegAllocV2 {
 
         // Check if already in a register
         if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == &value) {
-            trace!("  '{}' already in {:?}, no reload needed", value, reg);
+            trace!("  '{value}' already in {reg:?}, no reload needed");
             return reg;
         }
 
         // Check if spilled
         if let Some(&offset) = self.spill_slots.get(&value) {
-            debug!("Reloading '{}' from spill slot FP+{}", value, offset);
+            debug!("Reloading '{value}' from spill slot FP+{offset}");
             let reg = self.get_reg(value.clone());
 
             // Ensure SB is initialized
@@ -237,24 +237,24 @@ impl RegAllocV2 {
             self.instructions.push(AsmInst::Comment(format!("Reloading {value} from FP+{offset}")));
             self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Fp, offset));
             self.instructions.push(AsmInst::Load(reg, Reg::Sb, Reg::Sc));
-            debug!("Reloaded '{}' into {:?} from FP+{}", value, reg, offset);
+            debug!("Reloaded '{value}' into {reg:?} from FP+{offset}");
             return reg;
         }
         
         // Not spilled, allocate new
-        trace!("  '{}' not spilled, allocating new register", value);
+        trace!("  '{value}' not spilled, allocating new register");
         self.get_reg(value)
     }
     
     /// Pin a value to prevent spilling
     pub(super) fn pin_value(&mut self, value: String) {
-        trace!("Pinning value '{}'", value);
+        trace!("Pinning value '{value}'");
         self.pinned_values.insert(value);
     }
     
     /// Unpin a value
     pub(super) fn unpin_value(&mut self, value: &str) {
-        trace!("Unpinning value '{}'", value);
+        trace!("Unpinning value '{value}'");
         self.pinned_values.remove(value);
     }
     
@@ -278,7 +278,7 @@ impl RegAllocV2 {
     
     /// Mark a register as in use
     pub(super) fn mark_in_use(&mut self, reg: Reg, value: String) {
-        trace!("Marking {:?} as in use for '{}'", reg, value);
+        trace!("Marking {reg:?} as in use for '{value}'");
         self.reg_contents.insert(reg, value);
         self.free_list.retain(|&r| r != reg);
     }

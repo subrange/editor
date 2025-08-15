@@ -3,7 +3,7 @@
 //! This module handles parsing of declarations, function definitions, and initializers.
 
 use crate::ast::*;
-use crate::lexer::{Token, TokenType};
+use crate::lexer::TokenType;
 use crate::parser::errors::ParseError;
 use crate::parser::Parser;
 use rcc_common::{CompilerError, SourceSpan};

@@ -28,7 +28,7 @@ impl BankInfo {
             BankInfo::Stack => Reg::Sb,
             BankInfo::Register(reg) => *reg,
             BankInfo::NamedValue(name) => {
-                panic!("Cannot get register for NamedValue('{}') without RegisterPressureManager - use get_bank_register_with_mgr", name)
+                panic!("Cannot get register for NamedValue('{name}') without RegisterPressureManager - use get_bank_register_with_mgr")
             }
         }
     }

@@ -2,7 +2,7 @@
 
 use super::{TypedExpressionGenerator, convert_type_default};
 use crate::ast::BinaryOp;
-use crate::ir::{IrBinaryOp, IrType, Value};
+use crate::ir::{IrBinaryOp, Value};
 use crate::typed_ast::TypedExpr;
 use crate::types::Type;
 use crate::codegen::CodegenError;
@@ -40,7 +40,7 @@ pub fn generate_binary_operation(
         BinaryOp::LogicalOr => IrBinaryOp::Or,
         _ => {
             return Err(CodegenError::UnsupportedConstruct {
-                construct: format!("binary op: {:?}", op),
+                construct: format!("binary op: {op:?}"),
                 location: rcc_common::SourceLocation::new_simple(0, 0),
             }
             .into())
@@ -84,7 +84,7 @@ pub fn generate_compound_assignment(
         BinaryOp::RightShiftAssign => IrBinaryOp::AShr,
         _ => {
             return Err(CodegenError::UnsupportedConstruct {
-                construct: format!("compound assignment: {:?}", op),
+                construct: format!("compound assignment: {op:?}"),
                 location: rcc_common::SourceLocation::new_simple(0, 0),
             }
             .into())

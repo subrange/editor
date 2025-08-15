@@ -203,7 +203,7 @@ impl fmt::Display for Instruction {
             Instruction::DebugLoc { location } => {
                 write!(f, "!dbg !{}", location.line)
             }
-            Instruction::InlineAsm { assembly } => write!(f, "asm \"{}\"", assembly),
+            Instruction::InlineAsm { assembly } => write!(f, "asm \"{assembly}\""),
             Instruction::Comment(text) => write!(f, "; {text}"),
         }
     }

@@ -89,10 +89,10 @@ pub enum TokenType {
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TokenType::IntLiteral(n) => write!(f, "{}", n),
+            TokenType::IntLiteral(n) => write!(f, "{n}"),
             TokenType::CharLiteral(c) => write!(f, "'{}'", *c as char),
-            TokenType::StringLiteral(s) => write!(f, "\"{}\"", s),
-            TokenType::Identifier(s) => write!(f, "{}", s),
+            TokenType::StringLiteral(s) => write!(f, "\"{s}\""),
+            TokenType::Identifier(s) => write!(f, "{s}"),
             
             // Keywords
             TokenType::Auto => write!(f, "auto"),
@@ -181,8 +181,8 @@ impl fmt::Display for TokenType {
             
             TokenType::Newline => write!(f, "\\n"),
             TokenType::EndOfFile => write!(f, "EOF"),
-            TokenType::LineComment(s) => write!(f, "//{}", s),
-            TokenType::BlockComment(s) => write!(f, "/*{}*/", s),
+            TokenType::LineComment(s) => write!(f, "//{s}"),
+            TokenType::BlockComment(s) => write!(f, "/*{s}*/"),
         }
     }
 }

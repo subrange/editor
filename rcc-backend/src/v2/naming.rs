@@ -55,7 +55,7 @@ impl NameGenerator {
     
     /// Get the standard name for a temp value
     pub fn temp_name(&self, temp_id: TempId) -> String {
-        format!("t{}", temp_id)
+        format!("t{temp_id}")
     }
     
     // ===== Load operation naming =====
@@ -150,24 +150,24 @@ impl NameGenerator {
     /// Generate a label for loading a global
     pub fn load_global_label(&mut self, global_name: &str) -> String {
         let label_id = self.next_label_id();
-        format!("load_global_{}_{}", global_name, label_id)
+        format!("load_global_{global_name}_{label_id}")
     }
     
     /// Generate a label for storing to a global
     pub fn store_global_label(&mut self, global_name: &str) -> String {
         let label_id = self.next_label_id();
-        format!("store_global_{}_{}", global_name, label_id)
+        format!("store_global_{global_name}_{label_id}")
     }
     
     /// Generate a standard label name from a label ID
     /// This is used for branch targets and other control flow labels
     pub fn label_name(&self, label_id: rcc_common::LabelId) -> String {
-        format!("L{}", label_id)
+        format!("L{label_id}")
     }
     
     /// Generate a label for a basic block within a function
     pub fn block_label(&self, function_name: &str, block_id: rcc_common::LabelId) -> String {
-        format!("L_{}_{}", function_name, block_id)
+        format!("L_{function_name}_{block_id}")
     }
     
     /// Generate a label for the true branch of a select instruction

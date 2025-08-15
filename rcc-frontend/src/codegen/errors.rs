@@ -59,31 +59,31 @@ impl From<CodegenError> for CompilerError {
         match err {
             CodegenError::UnsupportedConstruct { construct, location } => {
                 CompilerError::codegen_error(
-                    format!("Unsupported construct: {}", construct),
+                    format!("Unsupported construct: {construct}"),
                     location,
                 )
             }
             CodegenError::InvalidType { ast_type, location } => {
                 CompilerError::codegen_error(
-                    format!("Invalid type: {:?}", ast_type),
+                    format!("Invalid type: {ast_type:?}"),
                     location,
                 )
             }
             CodegenError::UndefinedFunction { name, location } => {
                 CompilerError::codegen_error(
-                    format!("Undefined function: {}", name),
+                    format!("Undefined function: {name}"),
                     location,
                 )
             }
             CodegenError::UndefinedVariable { name, location } => {
                 CompilerError::codegen_error(
-                    format!("Undefined variable: {}", name),
+                    format!("Undefined variable: {name}"),
                     location,
                 )
             }
             CodegenError::InternalError { message, location } => {
                 CompilerError::codegen_error(
-                    format!("Internal error: {}", message),
+                    format!("Internal error: {message}"),
                     location,
                 )
             }
@@ -107,7 +107,7 @@ impl From<CodegenError> for CompilerError {
             }
             CodegenError::UnsupportedStorageClass { class, location } => {
                 CompilerError::codegen_error(
-                    format!("Unsupported storage class: {}", class),
+                    format!("Unsupported storage class: {class}"),
                     location,
                 )
             }

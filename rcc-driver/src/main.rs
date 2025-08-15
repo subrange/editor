@@ -88,13 +88,13 @@ fn main() {
     match cli.command {
         Commands::Test { test_name, output } => {
             if let Err(e) = run_test(&test_name, output.as_deref()) {
-                eprintln!("Error running test: {}", e);
+                eprintln!("Error running test: {e}");
                 std::process::exit(1);
             }
         }
         Commands::GenerateAsm { input, output } => {
             if let Err(e) = generate_asm_command(input.as_deref(), output.as_deref()) {
-                eprintln!("Error generating assembly: {}", e);
+                eprintln!("Error generating assembly: {e}");
                 std::process::exit(1);
             }
         }
@@ -115,7 +115,7 @@ fn main() {
                 .init();
             
             if let Err(e) = compile_c99_file(&input, output.as_deref(), emit_ir, print_ir, save_ir, ir_output.as_deref(), bank_size, trace_spills) {
-                eprintln!("Error compiling C99 file: {}", e);
+                eprintln!("Error compiling C99 file: {e}");
                 std::process::exit(1);
             }
         }
@@ -174,7 +174,7 @@ fn compile_c99_file(
                             println!("  Global variable: {} : {}", decl.name, decl.decl_type);
                         }
                         rcc_frontend::TopLevelItem::TypeDefinition { name, .. } => {
-                            println!("  Type definition: {}", name);
+                            println!("  Type definition: {name}");
                         }
                     }
                 }
@@ -182,7 +182,7 @@ fn compile_c99_file(
             ast
         }
         Err(e) => {
-            eprintln!("Parse error: {}", e);
+            eprintln!("Parse error: {e}");
             return Err(e.into());
         }
     };
@@ -210,28 +210,28 @@ fn compile_c99_file(
                         // Show initializer in a readable format
                         match init {
                             rcc_frontend::ir::Value::Constant(val) => {
-                                ir_output.push_str(&format!(" = {}", val));
+                                ir_output.push_str(&format!(" = {val}"));
                             }
                             rcc_frontend::ir::Value::ConstantArray(values) => {
                                 // If it looks like a string, show it as a string
                                 if values.last() == Some(&0) && 
                                    values[..values.len().saturating_sub(1)].iter()
-                                       .all(|&v| v >= 32 && v <= 126) {
+                                       .all(|&v| (32..=126).contains(&v)) {
                                     let s: String = values[..values.len().saturating_sub(1)].iter()
                                         .map(|&c| c as u8 as char).collect();
-                                    ir_output.push_str(&format!(" = \"{}\"", s));
+                                    ir_output.push_str(&format!(" = \"{s}\""));
                                 } else {
-                                    ir_output.push_str(&format!(" = {:?}", values));
+                                    ir_output.push_str(&format!(" = {values:?}"));
                                 }
                             }
                             _ => {
-                                ir_output.push_str(&format!(" = {:?}", init));
+                                ir_output.push_str(&format!(" = {init:?}"));
                             }
                         }
                     }
-                    ir_output.push_str("\n");
+                    ir_output.push('\n');
                 }
-                ir_output.push_str("\n");
+                ir_output.push('\n');
             }
             
             // String literals are included in globals now, so we don't need a separate section
@@ -239,12 +239,12 @@ fn compile_c99_file(
             for func in &ir_module.functions {
                 ir_output.push_str(&format!("define {} {{\n", func.name));
                 for (param_id, param_type) in &func.parameters {
-                    ir_output.push_str(&format!("  param %{}: {:?}\n", param_id, param_type));
+                    ir_output.push_str(&format!("  param %{param_id}: {param_type:?}\n"));
                 }
                 for block in &func.blocks {
                     ir_output.push_str(&format!("L{}:\n", block.id));
                     for inst in &block.instructions {
-                        ir_output.push_str(&format!("  {}\n", inst));
+                        ir_output.push_str(&format!("  {inst}\n"));
                     }
                 }
                 ir_output.push_str("}\n");
@@ -252,14 +252,14 @@ fn compile_c99_file(
             
             // If --emit-ir is set, just print IR and exit
             if emit_ir {
-                print!("{}", ir_output);
+                print!("{ir_output}");
                 return Ok(());
             }
             
             // Print IR if requested (when not using --emit-ir)
             if print_ir {
                 println!("\n=== IR Output ===");
-                print!("{}", ir_output);
+                print!("{ir_output}");
                 println!("=== End IR ===\n");
             }
             
@@ -308,14 +308,14 @@ fn compile_c99_file(
                     Ok(())
                 }
                 Err(e) => {
-                    eprintln!("Error: Failed to lower IR to assembly: {}", e);
+                    eprintln!("Error: Failed to lower IR to assembly: {e}");
                     eprintln!("Note: Code generation is still under development for complex features");
                     Err(e.into())
                 }
             }
         }
         Err(e) => {
-            eprintln!("Error: Failed to generate IR: {}", e);
+            eprintln!("Error: Failed to generate IR: {e}");
             eprintln!("Note: Code generation is still under development for complex features");
             Err(e.into())
         }

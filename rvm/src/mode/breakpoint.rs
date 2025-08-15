@@ -17,19 +17,19 @@ impl TuiDebugger {
                     // Convert instruction number to address
                     if instr_num < vm.instructions.len() {
                         let addr = instr_num; // Instruction number is the address
-                        if self.breakpoints.contains_key(&addr) {
-                            self.breakpoints.remove(&addr);
+                        if let std::collections::hash_map::Entry::Vacant(e) = self.breakpoints.entry(addr) {
+                            e.insert(true); // New breakpoints are enabled by default
                         } else {
-                            self.breakpoints.insert(addr, true); // New breakpoints are enabled by default
+                            self.breakpoints.remove(&addr);
                         }
                     }
                 } else if input.starts_with("0x") {
                     // Parse as hex address
                     if let Ok(addr) = usize::from_str_radix(&input[2..], 16) {
-                        if self.breakpoints.contains_key(&addr) {
-                            self.breakpoints.remove(&addr);
+                        if let std::collections::hash_map::Entry::Vacant(e) = self.breakpoints.entry(addr) {
+                            e.insert(true); // New breakpoints are enabled by default
                         } else {
-                            self.breakpoints.insert(addr, true); // New breakpoints are enabled by default
+                            self.breakpoints.remove(&addr);
                         }
                     }
                 }

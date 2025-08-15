@@ -6,7 +6,7 @@ use rcc_common::{TempId, LabelId};
 use crate::BankTag;
 use crate::ir::{
     Value, IrType, FatPointer,
-    IrBinaryOp, IrUnaryOp, Instruction,
+    IrBinaryOp, Instruction,
     BasicBlock, Function
 };
 
@@ -139,7 +139,7 @@ impl IrBuilder {
         let bank = if let Value::FatPtr(ref fat_ptr) = ptr {
             fat_ptr.bank
         } else {
-            return Err(format!("Pointer must be a fat pointer, got: {:?}", ptr));
+            return Err(format!("Pointer must be a fat pointer, got: {ptr:?}"));
         };
         
         let instr = Instruction::GetElementPtr { 

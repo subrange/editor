@@ -15,7 +15,5 @@ pub use module::lower_module_v2;
 pub use function::lower_function_v2;
 
 // Re-export function-level utilities for internal use
-pub(crate) use function::{calculate_local_slots, compute_alloca_offsets};
 
 // Re-export instruction lowering for internal use
-pub(crate) use instruction::lower_instruction;

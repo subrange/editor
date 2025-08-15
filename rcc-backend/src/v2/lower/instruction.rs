@@ -3,8 +3,7 @@
 //! This module is responsible for lowering individual IR instructions to assembly,
 //! delegating to specialized modules for each instruction type.
 
-use rcc_frontend::ir::{Instruction, Value, IrType, FatPointer};
-use rcc_frontend::BankTag;
+use rcc_frontend::ir::{Instruction, Value};
 use rcc_codegen::{AsmInst, Reg};
 use std::collections::HashMap;
 use log::{debug, warn};
@@ -35,19 +34,19 @@ pub fn lower_instruction(
     
     match instruction {
         Instruction::Binary { result, op, lhs, rhs, .. } => {
-            debug!("V2: Binary: t{} = {:?} {:?} {:?}", result, lhs, op, rhs);
+            debug!("V2: Binary: t{result} = {lhs:?} {op:?} {rhs:?}");
             let binary_insts = lower_binary_op(mgr, naming, *op, lhs, rhs, *result);
             insts.extend(binary_insts);
         }
         
         Instruction::Unary { result, op, operand, result_type } => {
-            debug!("V2: Unary: t{} = {:?} {:?}", result, op, operand);
+            debug!("V2: Unary: t{result} = {op:?} {operand:?}");
             let unary_insts = lower_unary_op(mgr, naming, *op, operand, result_type, *result);
             insts.extend(unary_insts);
         }
         
         Instruction::Load { result, ptr, result_type } => {
-            debug!("V2: Load: t{} = load {:?}", result, ptr);
+            debug!("V2: Load: t{result} = load {ptr:?}");
             
             // Handle global variable loads specially
             let load_insts = if let Value::Global(name) = ptr {
@@ -65,7 +64,7 @@ pub fn lower_instruction(
         }
         
         Instruction::Store { value, ptr } => {
-            debug!("V2: Store: {:?} -> {:?}", value, ptr);
+            debug!("V2: Store: {value:?} -> {ptr:?}");
 
             // Canonicalize both value and pointer to resolve any global references
             let canon_value = canonicalize_value(value, global_manager)?;
@@ -77,7 +76,7 @@ pub fn lower_instruction(
         }
         
         Instruction::GetElementPtr { result, ptr, indices, result_type } => {
-            debug!("V2: GEP: t{} = gep {:?} + {:?}", result, ptr, indices);
+            debug!("V2: GEP: t{result} = gep {ptr:?} + {indices:?}");
             
             // Calculate element size from result type
             // IMPORTANT: The VM uses 16-bit cells, so we need to convert bytes to cells
@@ -99,7 +98,7 @@ pub fn lower_instruction(
         }
         
         Instruction::Alloca { result, alloc_type, .. } => {
-            debug!("V2: Alloca: t{} = alloca {:?}", result, alloc_type);
+            debug!("V2: Alloca: t{result} = alloca {alloc_type:?}");
 
             // Fetch the precomputed offset for this alloca
             let offset = *alloca_offsets.get(result).expect("alloca offset missing");
@@ -121,7 +120,7 @@ pub fn lower_instruction(
             
             mgr.bind_value_to_register(result_name, result_reg);
 
-            debug!("V2: Alloca FP+{}", offset);
+            debug!("V2: Alloca FP+{offset}");
         }
         
         Instruction::Call { result, function: func, args, result_type } => {
@@ -198,7 +197,7 @@ pub fn lower_instruction(
                         call_args.push(CallArg::FatPointer { addr: addr_reg, bank: bank_reg });
                     }
                     _ => {
-                        warn!("V2: Unsupported argument type for call: {:?}", arg);
+                        warn!("V2: Unsupported argument type for call: {arg:?}");
                     }
                 }
             }
@@ -206,7 +205,7 @@ pub fn lower_instruction(
             // Extract function name for label-based calls
             let func_name = match func {
                 Value::Function(name) | Value::Global(name) => name.clone(),
-                _ => return Err(format!("V2: Invalid function value for call: {:?}", func)),
+                _ => return Err(format!("V2: Invalid function value for call: {func:?}")),
             };
             
             // Prepare the result name if there's a return value
@@ -237,16 +236,16 @@ pub fn lower_instruction(
         }
         
         Instruction::Branch(label) => {
-            debug!("V2: Branch to label {}", label);
+            debug!("V2: Branch to label {label}");
             // Get the proper label name with function context
             let label_name = naming.block_label(function_name, *label);
             // Create a simple unconditional branch
             insts.push(AsmInst::Beq(Reg::R0, Reg::R0, label_name.clone()));
-            insts.push(AsmInst::Comment(format!("Unconditional branch to {}", label_name)));
+            insts.push(AsmInst::Comment(format!("Unconditional branch to {label_name}")));
         }
         
         Instruction::BranchCond { condition, true_label, false_label } => {
-            debug!("V2: Conditional branch: {} ? {} : {}", condition, true_label, false_label);
+            debug!("V2: Conditional branch: {condition} ? {true_label} : {false_label}");
             // Get the proper label names with function context
             let true_label_name = naming.block_label(function_name, *true_label);
             let false_label_name = naming.block_label(function_name, *false_label);
@@ -257,11 +256,11 @@ pub fn lower_instruction(
             
             // Branch if condition is zero (false) to false_label
             insts.push(AsmInst::Beq(cond_reg, Reg::R0, false_label_name.clone()));
-            insts.push(AsmInst::Comment(format!("Branch to {} if condition is false", false_label_name)));
+            insts.push(AsmInst::Comment(format!("Branch to {false_label_name} if condition is false")));
             
             // If condition was non-zero (true), branch to true_label
             insts.push(AsmInst::Beq(Reg::R0, Reg::R0, true_label_name.clone()));
-            insts.push(AsmInst::Comment(format!("Unconditional branch to {} (condition was true)", true_label_name)));
+            insts.push(AsmInst::Comment(format!("Unconditional branch to {true_label_name} (condition was true)")));
             
             // Free the condition register
             mgr.free_register(cond_reg);
@@ -294,7 +293,7 @@ pub fn lower_instruction(
         }
         
         Instruction::Select { result, condition, true_value, false_value, .. } => {
-            debug!("V2: Select: t{} = {} ? {} : {}", result, condition, true_value, false_value);
+            debug!("V2: Select: t{result} = {condition} ? {true_value} : {false_value}");
             
             // Get condition value
             let cond_reg = match condition {
@@ -309,7 +308,7 @@ pub fn lower_instruction(
                     insts.push(AsmInst::Li(reg, *c as i16));
                     reg
                 }
-                _ => return Err(format!("V2: Unsupported condition type for select: {:?}", condition)),
+                _ => return Err(format!("V2: Unsupported condition type for select: {condition:?}")),
             };
             insts.extend(mgr.take_instructions());
             
@@ -365,22 +364,19 @@ pub fn lower_instruction(
         }
         
         Instruction::Cast { result, value, target_type: _ } => {
-            debug!("V2: Cast: t{} = cast {:?}", result, value);
+            debug!("V2: Cast: t{result} = cast {value:?}");
             // Most casts are handled as moves or conversions
             // This would be expanded based on the specific cast type
             warn!("V2: Cast instruction simplified - may need type-specific handling");
             
-            match value {
-                Value::Temp(t) => {
-                    let src_name = naming.temp_name(*t);
-                    let dst_name = naming.temp_name(*result);
-                    let src_reg = mgr.get_register(src_name);
-                    let dst_reg = mgr.get_register(dst_name);
-                    insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::Move(dst_reg, src_reg));
-                    mgr.free_register(src_reg);
-                }
-                _ => {}
+            if let Value::Temp(t) = value {
+                let src_name = naming.temp_name(*t);
+                let dst_name = naming.temp_name(*result);
+                let src_reg = mgr.get_register(src_name);
+                let dst_reg = mgr.get_register(dst_name);
+                insts.extend(mgr.take_instructions());
+                insts.push(AsmInst::Move(dst_reg, src_reg));
+                mgr.free_register(src_reg);
             }
         }
         

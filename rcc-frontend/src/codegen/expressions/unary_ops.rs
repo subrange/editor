@@ -136,7 +136,7 @@ pub fn generate_unary_operation(
                 UnaryOp::BitNot => IrUnaryOp::Not,
                 _ => {
                     return Err(CodegenError::UnsupportedConstruct {
-                        construct: format!("unary op: {:?}", op),
+                        construct: format!("unary op: {op:?}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     }
                     .into())
@@ -164,7 +164,7 @@ pub fn generate_unary_operation(
                 | IrUnaryOp::PtrToInt
                 | IrUnaryOp::IntToPtr => {
                     return Err(CodegenError::UnsupportedConstruct {
-                        construct: format!("unary op: {:?}", ir_op),
+                        construct: format!("unary op: {ir_op:?}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     }
                     .into())
@@ -252,7 +252,7 @@ pub fn generate_lvalue_address(
             )?)
         }
         _ => Err(CodegenError::UnsupportedConstruct {
-            construct: format!("lvalue: {:?}", expr),
+            construct: format!("lvalue: {expr:?}"),
             location: rcc_common::SourceLocation::new_simple(0, 0),
         }
         .into()),

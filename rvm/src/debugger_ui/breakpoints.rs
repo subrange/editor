@@ -81,7 +81,7 @@ impl TuiDebugger {
                 } else {
                     Style::default().fg(Color::Yellow).add_modifier(Modifier::CROSSED_OUT)
                 };
-                spans.push(Span::styled(format!("{:04X}", addr), addr_style));
+                spans.push(Span::styled(format!("{addr:04X}"), addr_style));
                 
                 // Show instruction at that address if available
                 if addr < vm.instructions.len() {

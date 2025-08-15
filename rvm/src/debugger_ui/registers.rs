@@ -150,9 +150,9 @@ impl TuiDebugger {
         };
 
         vec![
-            Span::styled(format!("{:3}", name), name_style),
+            Span::styled(format!("{name:3}"), name_style),
             Span::styled(":", Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{:04X}", value), value_style),
+            Span::styled(format!("{value:04X}"), value_style),
         ]
     }
 
@@ -173,9 +173,9 @@ impl TuiDebugger {
         };
 
         vec![
-            Span::styled(format!("{:3}", name), name_style),
+            Span::styled(format!("{name:3}"), name_style),
             Span::styled(":", Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{:04X}", value), value_style),
+            Span::styled(format!("{value:04X}"), value_style),
         ]
     }
 }

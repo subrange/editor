@@ -31,7 +31,7 @@ impl Debugger {
                 let rd = Self::register_name(instr.word1 as u8);
                 let rs = Self::register_name(instr.word2 as u8);
                 let rt = Self::register_name(instr.word3 as u8);
-                format!("{} {}, {}, {}", opcode_str, rd, rs, rt)
+                format!("{opcode_str} {rd}, {rs}, {rt}")
             },
             0x0A..=0x0D | 0x0F | 0x10 | 0x1D..=0x1F => {
                 // I-format with immediate: ADDI, ANDI, ORI, XORI, SLLI, SRLI, MULI, DIVI, MODI
@@ -51,33 +51,33 @@ impl Debugger {
                 let rd = Self::register_name(instr.word1 as u8);
                 let bank = Self::format_operand(instr.word2);
                 let addr = Self::format_operand(instr.word3);
-                format!("{} {}, {}, {}", opcode_str, rd, bank, addr)
+                format!("{opcode_str} {rd}, {bank}, {addr}")
             },
             0x12 => {
                 // STORE
                 let rs = Self::register_name(instr.word1 as u8);
                 let bank = Self::format_operand(instr.word2);
                 let addr = Self::format_operand(instr.word3);
-                format!("{} {}, {}, {}", opcode_str, rs, bank, addr)
+                format!("{opcode_str} {rs}, {bank}, {addr}")
             },
             0x13 => {
                 // JAL
                 let rd = Self::register_name(instr.word1 as u8);
                 let addr = instr.word3;
-                format!("{} {}, 0x{:04X}", opcode_str, rd, addr)
+                format!("{opcode_str} {rd}, 0x{addr:04X}")
             },
             0x14 => {
                 // JALR
                 let rd = Self::register_name(instr.word1 as u8);
                 let rs = Self::register_name(instr.word3 as u8);
-                format!("{} {}, {}", opcode_str, rd, rs)
+                format!("{opcode_str} {rd}, {rs}")
             },
             0x15..=0x18 => {
                 // Branch instructions: BEQ, BNE, BLT, BGE
                 let rs = Self::register_name(instr.word1 as u8);
                 let rt = Self::register_name(instr.word2 as u8);
                 let offset = instr.word3 as i16;
-                format!("{} {}, {}, {}", opcode_str, rs, rt, offset)
+                format!("{opcode_str} {rs}, {rt}, {offset}")
             },
             0x19 => {
                 // BRK
@@ -113,8 +113,8 @@ impl Debugger {
         
         // Special registers first
         print!("  {} ", format!("R0={:04X}", vm.registers[0]).bright_black());
-        print!("  {} ", format!("PC={:04X}", pc).bright_green());
-        print!("  {} ", format!("PCB={:04X}", pcb).bright_green());
+        print!("  {} ", format!("PC={pc:04X}").bright_green());
+        print!("  {} ", format!("PCB={pcb:04X}").bright_green());
         print!("  {} ", format!("RA={:04X}", vm.registers[Register::Ra as usize]).bright_magenta());
         println!("  {} ", format!("RAB={:04X}", vm.registers[Register::Rab as usize]).bright_magenta());
         
@@ -142,7 +142,7 @@ impl Debugger {
         if let Some(formatted) = self.format_instruction(vm) {
             println!("\n{}", "Next Instruction:".bright_cyan().bold());
             
-            print!("  [{:04X}] ", pc);
+            print!("  [{pc:04X}] ");
             
             // Color the instruction based on type
             let instr = vm.get_current_instruction().unwrap();
@@ -158,7 +158,7 @@ impl Debugger {
                 formatted.normal()
             };
             
-            println!("{}", colored);
+            println!("{colored}");
             
             // Show raw bytes in dim
             println!("       {}", 
@@ -194,7 +194,7 @@ impl Debugger {
             crate::vm::VMState::Running => "Running".bright_green(),
             crate::vm::VMState::Halted => "Halted".bright_red(),
             crate::vm::VMState::Breakpoint => "Breakpoint".bright_yellow().bold(),
-            crate::vm::VMState::Error(e) => format!("Error: {}", e).bright_red().bold(),
+            crate::vm::VMState::Error(e) => format!("Error: {e}").bright_red().bold(),
         }
     }
     
@@ -255,11 +255,11 @@ impl Debugger {
     fn format_immediate(value: u16) -> String {
         let signed = value as i16;
         if signed < 0 {
-            format!("{}", signed)
+            format!("{signed}")
         } else if value > 9 {
-            format!("0x{:X}", value)
+            format!("0x{value:X}")
         } else {
-            format!("{}", value)
+            format!("{value}")
         }
     }
 }

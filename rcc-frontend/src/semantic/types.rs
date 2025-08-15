@@ -3,10 +3,8 @@
 //! This module handles type checking, type resolution (typedef, struct references),
 //! and type compatibility checks.
 
-use crate::types::{Type, BankTag};
+use crate::types::Type;
 use crate::ast::{Expression, ExpressionKind, BinaryOp, UnaryOp};
-use crate::semantic::errors::SemanticError;
-use rcc_common::{CompilerError, SourceLocation};
 use std::collections::HashMap;
 
 /// Type context for semantic analysis

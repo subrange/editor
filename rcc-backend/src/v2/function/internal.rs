@@ -70,7 +70,7 @@ impl FunctionLowering {
     
     /// Helper to handle return value using this function's context
     pub(super) fn handle_call_return(&mut self, is_pointer: bool) -> (Vec<AsmInst>, (Reg, Option<Reg>)) {
-        debug!("Handling call return value (is_pointer: {})", is_pointer);
+        debug!("Handling call return value (is_pointer: {is_pointer})");
         let cc = super::calling_convention::CallingConvention::new();
         // For internal use in FunctionBuilder, we don't have a specific result name
         // The builder will handle binding later
@@ -83,7 +83,7 @@ impl FunctionLowering {
         trace!("  Return handling generated {} instructions", insts.len());
         // We need to return the registers even if None was returned
         // Use Rv0/Rv1 directly since that's where the values are
-        let return_regs = regs.unwrap_or_else(|| {
+        let return_regs = regs.unwrap_or({
             if is_pointer {
                 (Reg::Rv0, Some(Reg::Rv1))
             } else {
@@ -96,7 +96,7 @@ impl FunctionLowering {
     /// Helper to load a parameter using this function's context
     /// param_types: The types of all parameters to calculate correct stack offsets
     pub(super) fn load_param(&mut self, index: usize, param_types: &[(rcc_common::TempId, rcc_frontend::ir::IrType)]) -> (Vec<AsmInst>, Reg, Option<Reg>) {
-        debug!("Loading parameter {}", index);
+        debug!("Loading parameter {index}");
         let cc = super::calling_convention::CallingConvention::new();
         let result = cc.load_param(index, param_types, &mut self.pressure_manager, &mut self.naming);
         trace!("  Parameter load generated {} instructions, result in {:?}, bank in {:?}", result.0.len(), result.1, result.2);
@@ -108,14 +108,14 @@ impl FunctionLowering {
     /// NOTE: For simplicity, we always save all callee-saved registers (S0-S3)
     /// A smarter implementation would only save the ones actually used
     pub(super) fn emit_prologue(&mut self, local_slots: i16) -> Vec<AsmInst> {
-        info!("Emitting function prologue with {} local slots", local_slots);
+        info!("Emitting function prologue with {local_slots} local slots");
         let mut insts = Vec::new();
         
         insts.push(AsmInst::Comment("=== Function Prologue ===".to_string()));
         
         // Initialize pressure manager with local count
         // This will handle R13 initialization automatically
-        debug!("  Initializing pressure manager for {} locals", local_slots);
+        debug!("  Initializing pressure manager for {local_slots} locals");
         self.pressure_manager = RegisterPressureManager::new(local_slots);
         self.pressure_manager.init();
         
@@ -143,7 +143,7 @@ impl FunctionLowering {
         // A smarter implementation would track which ones are actually used
         insts.push(AsmInst::Comment("Save callee-saved registers S0-S3".to_string()));
         for reg in [Reg::S0, Reg::S1, Reg::S2, Reg::S3] {
-            trace!("  Saving {:?}", reg);
+            trace!("  Saving {reg:?}");
             insts.push(AsmInst::Store(reg, Reg::Sb, Reg::Sp));
             insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, 1));
         }
@@ -155,7 +155,7 @@ impl FunctionLowering {
         
         // Allocate space for locals
         if local_slots > 0 {
-            debug!("  Allocating {} stack slots for locals", local_slots);
+            debug!("  Allocating {local_slots} stack slots for locals");
             insts.push(AsmInst::Comment(format!("Allocate {local_slots} slots for locals")));
             insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, local_slots));
         } else {
@@ -192,7 +192,7 @@ impl FunctionLowering {
         // So FP-1 = S3, FP-2 = S2, FP-3 = S1, FP-4 = S0, FP-5 = old FP, FP-6 = RA
         insts.push(AsmInst::Comment("Restore callee-saved registers S3-S0".to_string()));
         for (offset, reg) in [(-1, Reg::S3), (-2, Reg::S2), (-3, Reg::S1), (-4, Reg::S0)] {
-            trace!("  Restoring {:?} from FP{}", reg, offset);
+            trace!("  Restoring {reg:?} from FP{offset}");
             insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, offset));
             insts.push(AsmInst::Load(reg, Reg::Sb, Reg::Sc));
         }
@@ -239,26 +239,26 @@ impl FunctionLowering {
             // Return value or fat pointer
             if let Some(bank) = bank_reg {
                 // Fat pointer return: R3=addr, R4=bank
-                info!("  Returning fat pointer: addr={:?}, bank={:?}", addr_reg, bank);
+                info!("  Returning fat pointer: addr={addr_reg:?}, bank={bank:?}");
                 insts.push(AsmInst::Comment("Return fat pointer".to_string()));
                 if addr_reg != Reg::Rv0 {
-                    trace!("  Moving address from {:?} to R3", addr_reg);
+                    trace!("  Moving address from {addr_reg:?} to R3");
                     insts.push(AsmInst::Add(Reg::Rv0, addr_reg, Reg::R0));
                 } else {
                     trace!("  Address already in R3");
                 }
                 if bank != Reg::Rv1 {
-                    trace!("  Moving bank from {:?} to R4", bank);
+                    trace!("  Moving bank from {bank:?} to R4");
                     insts.push(AsmInst::Add(Reg::Rv1, bank, Reg::R0));
                 } else {
                     trace!("  Bank already in R4");
                 }
             } else {
                 // Scalar return: R3=value
-                info!("  Returning scalar value in {:?}", addr_reg);
+                info!("  Returning scalar value in {addr_reg:?}");
                 insts.push(AsmInst::Comment("Return scalar value".to_string()));
                 if addr_reg != Reg::Rv0 {
-                    trace!("  Moving value from {:?} to R3", addr_reg);
+                    trace!("  Moving value from {addr_reg:?} to R3");
                     insts.push(AsmInst::Add(Reg::Rv0, addr_reg, Reg::R0));
                 } else {
                     trace!("  Value already in R3");
@@ -279,15 +279,15 @@ impl FunctionLowering {
     
     /// Get local variable address
     pub(super) fn get_local_addr(&mut self, offset: i16) -> Reg {
-        debug!("Getting address of local variable at FP+{}", offset);
+        debug!("Getting address of local variable at FP+{offset}");
         
         // Use pressure manager for better register allocation
         let local_name = self.naming.local_name(offset);
-        trace!("  Allocating register for local '{}'", local_name);
+        trace!("  Allocating register for local '{local_name}'");
         let reg = self.pressure_manager.get_register(local_name.clone());
         
         self.instructions.push(AsmInst::Comment(format!("Get address of local at FP+{offset}")));
-        trace!("  Computing address: FP + {}", offset);
+        trace!("  Computing address: FP + {offset}");
         self.instructions.push(AsmInst::Add(reg, Reg::Fp, Reg::R0));
         self.instructions.push(AsmInst::AddI(reg, reg, offset));
         
@@ -299,24 +299,24 @@ impl FunctionLowering {
         self.instructions.extend(spill_insts);
         
         // Mark this as a stack pointer
-        trace!("  Marking '{}' as stack pointer", local_name);
+        trace!("  Marking '{local_name}' as stack pointer");
         self.pressure_manager.set_pointer_bank(local_name, 
                                         BankInfo::Stack);
         
-        debug!("Local address in register {:?}", reg);
+        debug!("Local address in register {reg:?}");
         reg
     }
     
     /// Load from local variable
     pub(super) fn load_local(&mut self, offset: i16, dest: Reg) -> Vec<AsmInst> {
-        info!("Loading from local variable at FP+{} into {:?}", offset, dest);
+        info!("Loading from local variable at FP+{offset} into {dest:?}");
         let mut insts = Vec::new();
         
         insts.push(AsmInst::Comment(format!("Load from local at FP+{offset}")));
         
         // Calculate address using pressure manager
         let addr_name = self.naming.local_addr_name(offset);
-        trace!("  Allocating temporary register for address calculation ({})", addr_name);
+        trace!("  Allocating temporary register for address calculation ({addr_name})");
         let addr_reg = self.pressure_manager.get_register(addr_name);
         
         let spill_insts = self.pressure_manager.take_instructions();
@@ -325,15 +325,15 @@ impl FunctionLowering {
         }
         insts.extend(spill_insts);
         
-        trace!("  Computing address: FP + {}", offset);
+        trace!("  Computing address: FP + {offset}");
         insts.push(AsmInst::Add(addr_reg, Reg::Fp, Reg::R0));
         insts.push(AsmInst::AddI(addr_reg, addr_reg, offset));
         
         // Load using R13 as bank
-        debug!("  Loading from stack (bank R13) at address in {:?} to {:?}", addr_reg, dest);
+        debug!("  Loading from stack (bank R13) at address in {addr_reg:?} to {dest:?}");
         insts.push(AsmInst::Load(dest, Reg::Sb, addr_reg));
         
-        trace!("  Freeing temporary address register {:?}", addr_reg);
+        trace!("  Freeing temporary address register {addr_reg:?}");
         self.pressure_manager.free_register(addr_reg);
         
         debug!("Load complete: generated {} instructions", insts.len());
@@ -342,14 +342,14 @@ impl FunctionLowering {
     
     /// Store to local variable
     pub(super) fn store_local(&mut self, offset: i16, src: Reg) -> Vec<AsmInst> {
-        info!("Storing {:?} to local variable at FP+{}", src, offset);
+        info!("Storing {src:?} to local variable at FP+{offset}");
         let mut insts = Vec::new();
         
         insts.push(AsmInst::Comment(format!("Store to local at FP+{offset}")));
         
         // Calculate address using pressure manager
         let addr_name = self.naming.local_addr_name(offset);
-        trace!("  Allocating temporary register for address calculation ({})", addr_name);
+        trace!("  Allocating temporary register for address calculation ({addr_name})");
         let addr_reg = self.pressure_manager.get_register(addr_name);
         
         let spill_insts = self.pressure_manager.take_instructions();
@@ -358,15 +358,15 @@ impl FunctionLowering {
         }
         insts.extend(spill_insts);
         
-        trace!("  Computing address: FP + {}", offset);
+        trace!("  Computing address: FP + {offset}");
         insts.push(AsmInst::Add(addr_reg, Reg::Fp, Reg::R0));
         insts.push(AsmInst::AddI(addr_reg, addr_reg, offset));
         
         // Store using R13 as bank
-        debug!("  Storing {:?} to stack (bank R13) at address in {:?}", src, addr_reg);
+        debug!("  Storing {src:?} to stack (bank R13) at address in {addr_reg:?}");
         insts.push(AsmInst::Store(src, Reg::Sb, addr_reg));
         
-        trace!("  Freeing temporary address register {:?}", addr_reg);
+        trace!("  Freeing temporary address register {addr_reg:?}");
         self.pressure_manager.free_register(addr_reg);
         
         debug!("Store complete: generated {} instructions", insts.len());

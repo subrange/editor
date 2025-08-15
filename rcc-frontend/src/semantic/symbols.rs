@@ -59,7 +59,7 @@ impl<'a> SymbolManager<'a> {
         // Handle typedef specially - it defines a type alias, not a variable
         if decl.storage_class == StorageClass::Typedef {
             // Resolve the type first
-            let analyzer = TypeAnalyzer::new(&self.type_definitions);
+            let analyzer = TypeAnalyzer::new(self.type_definitions);
             decl.decl_type = analyzer.resolve_type(&decl.decl_type);
             // Register this as a type definition
             self.type_definitions.insert(decl.name.clone(), decl.decl_type.clone());
@@ -75,7 +75,7 @@ impl<'a> SymbolManager<'a> {
         }
         
         // Resolve the type (in case it references a named struct/union/enum)
-        let analyzer = TypeAnalyzer::new(&self.type_definitions);
+        let analyzer = TypeAnalyzer::new(self.type_definitions);
         decl.decl_type = analyzer.resolve_type(&decl.decl_type);
         
         // Fix storage class for global variables
@@ -114,7 +114,7 @@ impl<'a> SymbolManager<'a> {
         }
         
         // Resolve field types in struct/union definitions
-        let analyzer = TypeAnalyzer::new(&self.type_definitions);
+        let analyzer = TypeAnalyzer::new(self.type_definitions);
         match &mut type_def {
             Type::Struct { fields, .. } => {
                 for field in fields.iter_mut() {

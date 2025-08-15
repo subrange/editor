@@ -45,13 +45,13 @@ pub fn get_value_register(
         }
         Value::Global(name) => {
             // This should never happen - globals should be resolved in lower.rs
-            panic!("Unexpected Value::Global('{}') - should have been resolved to FatPtr in lower.rs", name);
+            panic!("Unexpected Value::Global('{name}') - should have been resolved to FatPtr in lower.rs");
         }
         Value::Function(name) => {
             // Function addresses are like globals
             let func_name = naming.func_addr(name);
-            let reg = mgr.get_register(func_name);
-            reg
+            
+            mgr.get_register(func_name)
         }
         Value::FatPtr(fp) => {
             // For most operations, we just need the address part
@@ -140,7 +140,7 @@ pub fn resolve_global_to_fatptr(
             bank: BankTag::Global,
         }))
     } else {
-        Err(format!("Unknown global variable: {}", name))
+        Err(format!("Unknown global variable: {name}"))
     }
 }
 
@@ -159,7 +159,7 @@ pub fn resolve_bank_tag_to_info(
         BankTag::Stack => BankInfo::Stack,
         BankTag::Mixed => resolve_mixed_bank(fp, mgr, naming),
         BankTag::Null => panic!("NULL pointer dereference: attempted to access NULL pointer"),
-        other => panic!("Helpers: Unsupported bank type for fat pointer: {:?}", other),
+        other => panic!("Helpers: Unsupported bank type for fat pointer: {other:?}"),
     }
 }
 
@@ -177,14 +177,14 @@ pub fn resolve_mixed_bank(
             let temp_name = naming.temp_name(*t);
             mgr.get_pointer_bank(&temp_name)
                 .unwrap_or_else(|| {
-                    panic!("HELPERS: COMPILER BUG: No bank info for Mixed pointer '{}'. All pointers must have tracked bank information!", temp_name);
+                    panic!("HELPERS: COMPILER BUG: No bank info for Mixed pointer '{temp_name}'. All pointers must have tracked bank information!");
                 })
         }
         Value::Constant(_) => {
             panic!("FatPtr with BankTag::Mixed cannot have a constant address")
         }
         other => {
-            warn!("Unexpected address type for Mixed fat ptr: {:?}", other);
+            warn!("Unexpected address type for Mixed fat ptr: {other:?}");
             BankInfo::Stack
         }
     }
@@ -244,7 +244,7 @@ pub fn materialize_bank_to_register(
             panic!("NULL pointer dereference: attempted to use NULL pointer")
         }
         _ => {
-            panic!("HELPERS: Unexpected bank tag type: {:?}", bank_tag);
+            panic!("HELPERS: Unexpected bank tag type: {bank_tag:?}");
         }
     }
 }
@@ -290,13 +290,13 @@ pub fn get_pointer_address_and_name(
             };
             
             // Generate a unique key for this pointer's bank info
-            let ptr_name = naming.pointer_bank_key(&format!("ptr_{}", result_temp));
+            let ptr_name = naming.pointer_bank_key(&format!("ptr_{result_temp}"));
             (addr_reg, ptr_name, insts)
         }
         Value::Global(_) => {
             panic!("Value::Global should have been resolved to FatPtr in lower.rs")
         }
-        _ => panic!("Invalid pointer value type: {:?}", ptr_value)
+        _ => panic!("Invalid pointer value type: {ptr_value:?}")
     }
 }
 
@@ -316,10 +316,10 @@ pub fn canonicalize_value(
                     if let Some(info) = global_manager.get_global_info(name) {
                         Ok(Value::FatPtr(FatPointer {
                             addr: Box::new(Value::Constant(info.address as i64)),
-                            bank: fp.bank.clone(),
+                            bank: fp.bank,
                         }))
                     } else {
-                        Err(format!("Unknown global variable in FatPtr: {}", name))
+                        Err(format!("Unknown global variable in FatPtr: {name}"))
                     }
                 }
                 _ => Ok(value.clone())

@@ -33,7 +33,7 @@ impl TuiDebugger {
         if let Some(ref msg) = self.status_message {
             spans.push(Span::raw(" "));
             spans.push(Span::styled(
-                format!(" {} ", msg),
+                format!(" {msg} "),
                 Style::default().bg(Color::Yellow).fg(Color::Black).add_modifier(Modifier::BOLD)
             ));
         }
@@ -87,7 +87,7 @@ impl TuiDebugger {
         let total_breakpoints = self.breakpoints.len();
         if total_breakpoints > 0 {
             let active_breakpoints = self.breakpoints.values().filter(|&&enabled| enabled).count();
-            let bp_text = format!(" {}/{} BP ", active_breakpoints, total_breakpoints);
+            let bp_text = format!(" {active_breakpoints}/{total_breakpoints} BP ");
             let used_width = spans.iter().map(|s| s.content.len()).sum::<usize>();
             let padding = (area.width as usize).saturating_sub(used_width + bp_text.len());
             if padding > 0 {

@@ -37,7 +37,7 @@ impl From<ParseError> for CompilerError {
             }
             ParseError::UnexpectedEndOfFile { expected, location } => {
                 CompilerError::parse_error(
-                    format!("Unexpected end of file, expected {}", expected),
+                    format!("Unexpected end of file, expected {expected}"),
                     location,
                 )
             }

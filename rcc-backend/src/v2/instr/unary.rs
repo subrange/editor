@@ -31,8 +31,7 @@ pub fn lower_unary_op(
     result_type: &IrType,
     result_temp: TempId,
 ) -> Vec<AsmInst> {
-    debug!("lower_unary_op: op={:?}, operand={:?}, result_type={:?}, result=t{}", 
-           op, operand, result_type, result_temp);
+    debug!("lower_unary_op: op={op:?}, operand={operand:?}, result_type={result_type:?}, result=t{result_temp}");
     trace!("  Current register state: spill_count={}", mgr.get_spill_count());
     
     let mut insts = vec![];
@@ -41,16 +40,16 @@ pub fn lower_unary_op(
     // Get register for operand
     let operand_reg = get_value_register(mgr, naming, operand);
     insts.extend(mgr.take_instructions());
-    trace!("  Operand in {:?}", operand_reg);
+    trace!("  Operand in {operand_reg:?}");
     
     // Allocate result register (can often reuse operand register for some operations)
     let result_reg = if can_reuse_register(op) {
-        trace!("  Reusing operand register {:?} for result", operand_reg);
+        trace!("  Reusing operand register {operand_reg:?} for result");
         operand_reg
     } else {
         let reg = mgr.get_register(result_name.clone());
         insts.extend(mgr.take_instructions());
-        trace!("  Allocated new register {:?} for result", reg);
+        trace!("  Allocated new register {reg:?} for result");
         reg
     };
     
@@ -128,7 +127,7 @@ pub fn lower_unary_op(
                     if result_reg != operand_reg {
                         insts.push(AsmInst::Add(result_reg, operand_reg, Reg::R0)); // MOV
                     }
-                    trace!("  TRUNC is move/no-op for target type {:?}", result_type);
+                    trace!("  TRUNC is move/no-op for target type {result_type:?}");
                 }
             }
         }
@@ -157,7 +156,7 @@ pub fn lower_unary_op(
     // Free operand register if not reused
     if result_reg != operand_reg {
         mgr.free_register(operand_reg);
-        trace!("  Freed operand register {:?}", operand_reg);
+        trace!("  Freed operand register {operand_reg:?}");
     }
     
     debug!("lower_unary_op complete: generated {} instructions", insts.len());

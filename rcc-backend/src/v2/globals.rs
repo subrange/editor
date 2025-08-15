@@ -6,7 +6,7 @@
 use rcc_frontend::ir::{GlobalVariable, IrType, Value};
 use rcc_codegen::{AsmInst, Reg};
 use std::collections::HashMap;
-use log::{debug, info, trace};
+use log::debug;
 
 /// Information about a global variable's allocation
 #[derive(Debug, Clone)]
@@ -93,7 +93,7 @@ impl GlobalManager {
         // Add comment - if it looks like string data, format it nicely
         let is_likely_string = values.last() == Some(&0) && 
             values[..values.len().saturating_sub(1)].iter()
-                .all(|&v| v >= 0 && v <= 127);
+                .all(|&v| (0..=127).contains(&v));
         
         if is_likely_string {
             // Create a safe string representation for the comment
@@ -104,10 +104,10 @@ impl GlobalManager {
                     b'\r' => "\\r".to_string(),
                     b'\\' => "\\\\".to_string(),
                     c if c.is_ascii_graphic() || c == b' ' => (c as char).to_string(),
-                    c => format!("\\x{:02x}", c),
+                    c => format!("\\x{c:02x}"),
                 })
                 .collect();
-            insts.push(AsmInst::Comment(format!("String data \"{}\" at address {}", safe_str, address)));
+            insts.push(AsmInst::Comment(format!("String data \"{safe_str}\" at address {address}")));
         } else {
             insts.push(AsmInst::Comment(format!("Array {} at address {}", global.name, address)));
         }

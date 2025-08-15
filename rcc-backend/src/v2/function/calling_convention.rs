@@ -170,8 +170,8 @@ impl CallingConvention {
             } else {
                 // This arg goes on stack
                 match &arg {
-                    CallArg::Scalar(_) => trace!("  Arg {} (scalar) goes on stack", idx),
-                    CallArg::FatPointer { .. } => trace!("  Arg {} (fat ptr) goes on stack", idx),
+                    CallArg::Scalar(_) => trace!("  Arg {idx} (scalar) goes on stack"),
+                    CallArg::FatPointer { .. } => trace!("  Arg {idx} (fat ptr) goes on stack"),
                 }
                 stack_args.push((idx, arg));
             }
@@ -212,7 +212,7 @@ impl CallingConvention {
             for (idx, dest_reg, arg) in reg_args {
                 match arg {
                     CallArg::Scalar(src_reg) => {
-                        insts.push(AsmInst::Comment(format!("Arg {idx} (scalar) to {:?}", dest_reg)));
+                        insts.push(AsmInst::Comment(format!("Arg {idx} (scalar) to {dest_reg:?}")));
                         if src_reg != dest_reg {
                             insts.push(AsmInst::Add(dest_reg, src_reg, Reg::R0));
                         }
@@ -225,7 +225,7 @@ impl CallingConvention {
                             Reg::A2 => Reg::A3,
                             _ => panic!("Invalid fat pointer register assignment"),
                         };
-                        insts.push(AsmInst::Comment(format!("Arg {idx} (fat ptr) to {:?},{:?}", dest_reg, bank_reg)));
+                        insts.push(AsmInst::Comment(format!("Arg {idx} (fat ptr) to {dest_reg:?},{bank_reg:?}")));
                         if addr != dest_reg {
                             insts.push(AsmInst::Add(dest_reg, addr, Reg::R0));
                         }
@@ -249,7 +249,7 @@ impl CallingConvention {
     /// Generate call instruction
     /// For cross-bank calls, sets PCB first then uses JAL
     pub(super) fn emit_call(&self, func_addr: u16, func_bank: u16) -> Vec<AsmInst> {
-        info!("Emitting call to function at bank:{}, addr:{}", func_bank, func_addr);
+        info!("Emitting call to function at bank:{func_bank}, addr:{func_addr}");
         let mut insts = Vec::new();
         
         insts.push(AsmInst::Comment(format!("Call function at bank:{func_bank}, addr:{func_addr}")));
@@ -257,7 +257,7 @@ impl CallingConvention {
         // JAL only jumps within current bank, saving RA/RAB
         // For cross-bank calls, we need to set PCB first
         if func_bank != 0 {
-            debug!("  Cross-bank call: setting PCB to {}", func_bank);
+            debug!("  Cross-bank call: setting PCB to {func_bank}");
             insts.push(AsmInst::Comment("Set PCB for cross-bank call".to_string()));
             insts.push(AsmInst::Li(Reg::Pcb, func_bank as i16));
         } else {
@@ -268,7 +268,7 @@ impl CallingConvention {
         // The actual instruction is: JAL RA, R0, addr (RA is implicit)
         // Our AsmInst::Jal(bank, addr) abstraction will be lowered to proper format
         // First param is traditionally bank but for in-bank jumps it's 0
-        trace!("  JAL instruction: saves RA←PC+1, RAB←PCB, jumps to addr {}", func_addr);
+        trace!("  JAL instruction: saves RA←PC+1, RAB←PCB, jumps to addr {func_addr}");
         insts.push(AsmInst::Jal(0, func_addr as i16));
         
         debug!("Call emission complete: generated {} instructions", insts.len());
@@ -287,8 +287,8 @@ impl CallingConvention {
         if let Some(name) = result_name {
             if is_pointer {
                 // Fat pointer return in Rv0 (addr) and Rv1 (bank)
-                debug!("Handling fat pointer return for '{}'", name);
-                insts.push(AsmInst::Comment(format!("Fat pointer return value for {}", name)));
+                debug!("Handling fat pointer return for '{name}'");
+                insts.push(AsmInst::Comment(format!("Fat pointer return value for {name}")));
                 
                 // Bind Rv0 to the result name
                 pressure_manager.bind_value_to_register(name.clone(), Reg::Rv0);
@@ -299,8 +299,8 @@ impl CallingConvention {
                 (insts, Some((Reg::Rv0, Some(Reg::Rv1))))
             } else {
                 // Scalar return in Rv0
-                debug!("Handling scalar return for '{}'", name);
-                insts.push(AsmInst::Comment(format!("Scalar return value for {}", name)));
+                debug!("Handling scalar return for '{name}'");
+                insts.push(AsmInst::Comment(format!("Scalar return value for {name}")));
                 
                 // Bind Rv0 to the result name
                 pressure_manager.bind_value_to_register(name, Reg::Rv0);
@@ -318,10 +318,10 @@ impl CallingConvention {
     pub(super) fn cleanup_stack(&self, num_args_words: i16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         if num_args_words > 0 {
-            debug!("Cleaning up {} words from stack after call", num_args_words);
+            debug!("Cleaning up {num_args_words} words from stack after call");
             insts.push(AsmInst::Comment(format!("Clean up {num_args_words} words from stack")));
             insts.push(AsmInst::AddI(Reg::Sp, Reg::Sp, -num_args_words));
-            trace!("  Adjusted SP by -{}", num_args_words);
+            trace!("  Adjusted SP by -{num_args_words}");
         } else {
             trace!("No stack cleanup needed (0 arguments)");
         }
@@ -372,7 +372,7 @@ impl CallingConvention {
                 CallArg::FatPointer { .. } => 2,
             };
         }
-        debug!("  Call will use {} stack words", stack_words);
+        debug!("  Call will use {stack_words} stack words");
         
         // 1. Setup arguments
         trace!("  Setting up call arguments");
@@ -387,7 +387,7 @@ impl CallingConvention {
                 insts.extend(call);
             }
             CallTarget::Label(label) => {
-                insts.push(AsmInst::Comment(format!("Call function {}", label)));
+                insts.push(AsmInst::Comment(format!("Call function {label}")));
                 insts.push(AsmInst::Call(label));
             }
         }
@@ -402,7 +402,7 @@ impl CallingConvention {
         insts.extend(ret_insts);
         
         // 4. Clean up stack
-        trace!("  Cleaning up {} stack words", stack_words);
+        trace!("  Cleaning up {stack_words} stack words");
         let cleanup = self.cleanup_stack(stack_words);
         insts.extend(cleanup);
         
@@ -419,11 +419,11 @@ impl CallingConvention {
                      param_types: &[(rcc_common::TempId, rcc_frontend::ir::IrType)],
                      pressure_manager: &mut RegisterPressureManager,
                      naming: &mut NameGenerator) -> (Vec<AsmInst>, Reg, Option<Reg>) {
-        info!("Loading parameter {}", index);
+        info!("Loading parameter {index}");
         let mut insts = Vec::new();
 
         let param_name = naming.param_name(index);
-        trace!("  Allocating register for parameter '{}'", param_name);
+        trace!("  Allocating register for parameter '{param_name}'");
         let dest = pressure_manager.get_register(param_name);
 
         let spill_insts = pressure_manager.take_instructions();
@@ -449,8 +449,8 @@ impl CallingConvention {
 
         if let Some(arg_reg) = param_reg {
             // Parameter is in a register
-            debug!("  Parameter {} is in register {:?}", index, arg_reg);
-            insts.push(AsmInst::Comment(format!("Load param {index} from {:?}", arg_reg)));
+            debug!("  Parameter {index} is in register {arg_reg:?}");
+            insts.push(AsmInst::Comment(format!("Load param {index} from {arg_reg:?}")));
             if dest != arg_reg {
                 insts.push(AsmInst::Add(dest, arg_reg, Reg::R0));
             }
@@ -461,10 +461,10 @@ impl CallingConvention {
                     Reg::A0 => Reg::A1,
                     Reg::A1 => Reg::A2,
                     Reg::A2 => Reg::A3,
-                    _ => panic!("Invalid fat pointer register for param {}", index),
+                    _ => panic!("Invalid fat pointer register for param {index}"),
                 };
-                debug!("  Loading fat pointer bank from {:?}", bank_reg);
-                insts.push(AsmInst::Comment(format!("Load param {index} bank from {:?}", bank_reg)));
+                debug!("  Loading fat pointer bank from {bank_reg:?}");
+                insts.push(AsmInst::Comment(format!("Load param {index} bank from {bank_reg:?}")));
 
                 // Track the bank in the register manager
                 let param_name = naming.param_name(index);
@@ -482,12 +482,12 @@ impl CallingConvention {
             // Parameter is on the stack
             // Use the centralized helper to calculate the offset
             let param_offset = self.calculate_stack_param_offset(index, param_types, first_stack_param);
-            debug!("  Parameter {} (stack param) is at FP{}", index, param_offset);
+            debug!("  Parameter {index} (stack param) is at FP{param_offset}");
 
             insts.push(AsmInst::Comment(format!("Load param {index} from FP{param_offset}")));
-            trace!("  Computing address: FP + {}", param_offset);
+            trace!("  Computing address: FP + {param_offset}");
             insts.push(AsmInst::AddI(Reg::Sc, Reg::Fp, param_offset));
-            trace!("  Loading from stack (bank SB) at computed address into {:?}", dest);
+            trace!("  Loading from stack (bank SB) at computed address into {dest:?}");
             insts.push(AsmInst::Load(dest, Reg::Sb, Reg::Sc));
 
             // If this is a fat pointer, also load the bank from the next stack slot

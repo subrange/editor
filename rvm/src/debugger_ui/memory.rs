@@ -58,7 +58,7 @@ impl TuiDebugger {
 
             let mut spans = vec![
                 Span::styled(row_indicator, Style::default().fg(indicator_color)),
-                Span::styled(format!("{:04X}: ", addr), Style::default().fg(Color::DarkGray)),
+                Span::styled(format!("{addr:04X}: "), Style::default().fg(Color::DarkGray)),
             ];
 
             // Hex values
@@ -101,7 +101,7 @@ impl TuiDebugger {
                     };
                     
                     // Apply style only to the hex value, not the space
-                    spans.push(Span::styled(format!("{:04X}", value), style));
+                    spans.push(Span::styled(format!("{value:04X}"), style));
                     spans.push(Span::raw(" ")); // Add space separately
                 } else {
                     spans.push(Span::raw("     "));
@@ -116,7 +116,7 @@ impl TuiDebugger {
                     let idx = addr + col;
                     if idx < vm.memory.len() {
                         let value = (vm.memory[idx] & 0xFF) as u8;
-                        let ch = if value >= 0x20 && value < 0x7F {
+                        let ch = if (0x20..0x7F).contains(&value) {
                             value as char
                         } else {
                             '.'
@@ -146,7 +146,7 @@ impl TuiDebugger {
 
         // Calculate bank based on cursor position
         let cursor_bank = cursor_addr / vm.bank_size as usize;
-        let total_banks = (vm.memory.len() + vm.bank_size as usize - 1) / vm.bank_size as usize;
+        let total_banks = vm.memory.len().div_ceil(vm.bank_size as usize);
         
         let ascii_indicator = if self.show_ascii { " [ASCII]" } else { "" };
         let title = format!(" Memory Bank {}/{} @ {:04X}{} (cursor: {:04X}) [{}] ",

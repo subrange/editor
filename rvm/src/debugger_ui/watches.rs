@@ -53,17 +53,17 @@ impl TuiDebugger {
                 if watch.address < vm.memory.len() {
                     let value = vm.memory[watch.address];
                     let formatted = match watch.format {
-                        crate::tui_debugger::WatchFormat::Hex => format!("0x{:04X}", value),
-                        crate::tui_debugger::WatchFormat::Decimal => format!("{}", value),
+                        crate::tui_debugger::WatchFormat::Hex => format!("0x{value:04X}"),
+                        crate::tui_debugger::WatchFormat::Decimal => format!("{value}"),
                         crate::tui_debugger::WatchFormat::Char => {
                             let ch = (value & 0xFF) as u8;
-                            if ch >= 0x20 && ch < 0x7F {
+                            if (0x20..0x7F).contains(&ch) {
                                 format!("'{}'", ch as char)
                             } else {
-                                format!("\\x{:02X}", ch)
+                                format!("\\x{ch:02X}")
                             }
                         }
-                        crate::tui_debugger::WatchFormat::Binary => format!("{:016b}", value),
+                        crate::tui_debugger::WatchFormat::Binary => format!("{value:016b}"),
                     };
                     spans.push(Span::styled(formatted, Style::default().fg(Color::White)));
                 } else {
@@ -74,7 +74,7 @@ impl TuiDebugger {
             }
         }
 
-        let scroll_indicator = if self.memory_watches.len() > 0 {
+        let scroll_indicator = if !self.memory_watches.is_empty() {
             format!(" [{}/{}]", self.selected_watch + 1, self.memory_watches.len())
         } else {
             String::new()

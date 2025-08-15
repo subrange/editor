@@ -78,48 +78,48 @@ impl fmt::Display for AsmInst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             // Arithmetic
-            AsmInst::Add(rd, rs, rt) => write!(f, "ADD {}, {}, {}", rd, rs, rt),
-            AsmInst::Sub(rd, rs, rt) => write!(f, "SUB {}, {}, {}", rd, rs, rt),
-            AsmInst::Mul(rd, rs, rt) => write!(f, "MUL {}, {}, {}", rd, rs, rt),
-            AsmInst::Div(rd, rs, rt) => write!(f, "DIV {}, {}, {}", rd, rs, rt),
-            AsmInst::Mod(rd, rs, rt) => write!(f, "MOD {}, {}, {}", rd, rs, rt),
+            AsmInst::Add(rd, rs, rt) => write!(f, "ADD {rd}, {rs}, {rt}"),
+            AsmInst::Sub(rd, rs, rt) => write!(f, "SUB {rd}, {rs}, {rt}"),
+            AsmInst::Mul(rd, rs, rt) => write!(f, "MUL {rd}, {rs}, {rt}"),
+            AsmInst::Div(rd, rs, rt) => write!(f, "DIV {rd}, {rs}, {rt}"),
+            AsmInst::Mod(rd, rs, rt) => write!(f, "MOD {rd}, {rs}, {rt}"),
             
             // Arithmetic Immediate
-            AsmInst::AddI(rd, rs, imm) => write!(f, "ADDI {}, {}, {}", rd, rs, imm),
-            AsmInst::SubI(rd, rs, imm) => write!(f, "SUBI {}, {}, {}", rd, rs, imm),
-            AsmInst::MulI(rd, rs, imm) => write!(f, "MULI {}, {}, {}", rd, rs, imm),
-            AsmInst::DivI(rd, rs, imm) => write!(f, "DIVI {}, {}, {}", rd, rs, imm),
-            AsmInst::ModI(rd, rs, imm) => write!(f, "MODI {}, {}, {}", rd, rs, imm),
+            AsmInst::AddI(rd, rs, imm) => write!(f, "ADDI {rd}, {rs}, {imm}"),
+            AsmInst::SubI(rd, rs, imm) => write!(f, "SUBI {rd}, {rs}, {imm}"),
+            AsmInst::MulI(rd, rs, imm) => write!(f, "MULI {rd}, {rs}, {imm}"),
+            AsmInst::DivI(rd, rs, imm) => write!(f, "DIVI {rd}, {rs}, {imm}"),
+            AsmInst::ModI(rd, rs, imm) => write!(f, "MODI {rd}, {rs}, {imm}"),
             
             // Logical
-            AsmInst::And(rd, rs, rt) => write!(f, "AND {}, {}, {}", rd, rs, rt),
-            AsmInst::Or(rd, rs, rt) => write!(f, "OR {}, {}, {}", rd, rs, rt),
-            AsmInst::Xor(rd, rs, rt) => write!(f, "XOR {}, {}, {}", rd, rs, rt),
-            AsmInst::Sll(rd, rs, rt) => write!(f, "SLL {}, {}, {}", rd, rs, rt),
-            AsmInst::Srl(rd, rs, rt) => write!(f, "SRL {}, {}, {}", rd, rs, rt),
-            AsmInst::Slt(rd, rs, rt) => write!(f, "SLT {}, {}, {}", rd, rs, rt),
-            AsmInst::Sltu(rd, rs, rt) => write!(f, "SLTU {}, {}, {}", rd, rs, rt),
+            AsmInst::And(rd, rs, rt) => write!(f, "AND {rd}, {rs}, {rt}"),
+            AsmInst::Or(rd, rs, rt) => write!(f, "OR {rd}, {rs}, {rt}"),
+            AsmInst::Xor(rd, rs, rt) => write!(f, "XOR {rd}, {rs}, {rt}"),
+            AsmInst::Sll(rd, rs, rt) => write!(f, "SLL {rd}, {rs}, {rt}"),
+            AsmInst::Srl(rd, rs, rt) => write!(f, "SRL {rd}, {rs}, {rt}"),
+            AsmInst::Slt(rd, rs, rt) => write!(f, "SLT {rd}, {rs}, {rt}"),
+            AsmInst::Sltu(rd, rs, rt) => write!(f, "SLTU {rd}, {rs}, {rt}"),
             
             // Memory
-            AsmInst::Load(rd, bank, addr) => write!(f, "LOAD {}, {}, {}", rd, bank, addr),
-            AsmInst::Store(rs, bank, addr) => write!(f, "STORE {}, {}, {}", rs, bank, addr),
-            AsmInst::Li(rd, imm) => write!(f, "LI {}, {}", rd, imm),
+            AsmInst::Load(rd, bank, addr) => write!(f, "LOAD {rd}, {bank}, {addr}"),
+            AsmInst::Store(rs, bank, addr) => write!(f, "STORE {rs}, {bank}, {addr}"),
+            AsmInst::Li(rd, imm) => write!(f, "LI {rd}, {imm}"),
             
             // Control Flow
-            AsmInst::Jal(bank, addr) => write!(f, "JAL {}, {}", bank, addr),
-            AsmInst::Jalr(bank, addr, link) => write!(f, "JALR {}, {}, {}", bank, addr, link),
-            AsmInst::Beq(rs, rt, label) => write!(f, "BEQ {}, {}, {}", rs, rt, label),
-            AsmInst::Bne(rs, rt, label) => write!(f, "BNE {}, {}, {}", rs, rt, label),
-            AsmInst::Blt(rs, rt, label) => write!(f, "BLT {}, {}, {}", rs, rt, label),
-            AsmInst::Bge(rs, rt, label) => write!(f, "BGE {}, {}, {}", rs, rt, label),
+            AsmInst::Jal(bank, addr) => write!(f, "JAL {bank}, {addr}"),
+            AsmInst::Jalr(bank, addr, link) => write!(f, "JALR {bank}, {addr}, {link}"),
+            AsmInst::Beq(rs, rt, label) => write!(f, "BEQ {rs}, {rt}, {label}"),
+            AsmInst::Bne(rs, rt, label) => write!(f, "BNE {rs}, {rt}, {label}"),
+            AsmInst::Blt(rs, rt, label) => write!(f, "BLT {rs}, {rt}, {label}"),
+            AsmInst::Bge(rs, rt, label) => write!(f, "BGE {rs}, {rt}, {label}"),
             
             // Virtual/Pseudo
-            AsmInst::Move(rd, rs) => write!(f, "MOVE {}, {}", rd, rs),
-            AsmInst::Inc(rd) => write!(f, "INC {}", rd),
-            AsmInst::Dec(rd) => write!(f, "DEC {}", rd),
-            AsmInst::Push(rs) => write!(f, "PUSH {}", rs),
-            AsmInst::Pop(rd) => write!(f, "POP {}", rd),
-            AsmInst::Call(label) => write!(f, "CALL {}", label),
+            AsmInst::Move(rd, rs) => write!(f, "MOVE {rd}, {rs}"),
+            AsmInst::Inc(rd) => write!(f, "INC {rd}"),
+            AsmInst::Dec(rd) => write!(f, "DEC {rd}"),
+            AsmInst::Push(rs) => write!(f, "PUSH {rs}"),
+            AsmInst::Pop(rd) => write!(f, "POP {rd}"),
+            AsmInst::Call(label) => write!(f, "CALL {label}"),
             AsmInst::Ret => write!(f, "RET"),
             
             // System
@@ -127,9 +127,9 @@ impl fmt::Display for AsmInst {
             AsmInst::Halt => write!(f, "HALT"),
             
             // Pseudo
-            AsmInst::Label(label) => write!(f, "{}:", label),
-            AsmInst::Comment(text) => write!(f, "; {}", text),
-            AsmInst::Raw(asm) => write!(f, "{}", asm),
+            AsmInst::Label(label) => write!(f, "{label}:"),
+            AsmInst::Comment(text) => write!(f, "; {text}"),
+            AsmInst::Raw(asm) => write!(f, "{asm}"),
         }
     }
 }

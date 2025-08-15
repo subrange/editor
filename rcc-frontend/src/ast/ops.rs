@@ -63,7 +63,7 @@ impl fmt::Display for BinaryOp {
             BinaryOp::RightShiftAssign => ">>=",
             BinaryOp::Index => "[]",
         };
-        write!(f, "{}", op_str)
+        write!(f, "{op_str}")
     }
 }
 
@@ -105,7 +105,7 @@ impl fmt::Display for UnaryOp {
             UnaryOp::PostDecrement => "--",
             UnaryOp::Sizeof => "sizeof",
         };
-        write!(f, "{}", op_str)
+        write!(f, "{op_str}")
     }
 }
 

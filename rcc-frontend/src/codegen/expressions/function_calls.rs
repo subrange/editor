@@ -1,7 +1,7 @@
 //! Function call code generation
 
 use super::{TypedExpressionGenerator, convert_type_default};
-use crate::ir::{IrType, Value, FatPointer};
+use crate::ir::{Value, FatPointer};
 use crate::typed_ast::TypedExpr;
 use crate::types::{Type, BankTag};
 use crate::CompilerError;

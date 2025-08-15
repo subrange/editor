@@ -45,7 +45,7 @@ impl fmt::Display for Value {
                 write!(f, "[")?;
                 for (i, val) in values.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
-                    write!(f, "{}", val)?;
+                    write!(f, "{val}")?;
                 }
                 write!(f, "]")
             }

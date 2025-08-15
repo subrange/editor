@@ -35,7 +35,7 @@ pub fn generate_sizeof_expr(
     operand: &TypedExpr,
 ) -> Result<Value, CompilerError> {
     // sizeof returns size in bytes for C compatibility
-    let size = size_in_bytes(&operand.get_type());
+    let size = size_in_bytes(operand.get_type());
     Ok(Value::Constant(size as i64))
 }
 

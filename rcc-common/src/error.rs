@@ -121,7 +121,7 @@ impl fmt::Display for Diagnostic {
         
         if !self.notes.is_empty() {
             for note in &self.notes {
-                write!(f, "\n  note: {}", note)?;
+                write!(f, "\n  note: {note}")?;
             }
         }
         
@@ -198,7 +198,7 @@ impl ErrorReporter {
     /// Print all diagnostics to stderr
     pub fn print_diagnostics(&self) {
         for diagnostic in &self.diagnostics {
-            eprintln!("{}", diagnostic);
+            eprintln!("{diagnostic}");
         }
     }
 

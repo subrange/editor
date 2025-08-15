@@ -14,7 +14,7 @@ pub fn generate_string_literal(
     *gen.next_string_id += 1;
     
     // Create a simple, readable name for the string literal
-    let name = format!("__str_{}", string_id);
+    let name = format!("__str_{string_id}");
     
     // Convert string bytes to array of constants (including null terminator)
     let mut char_values: Vec<i64> = s.bytes().map(|b| b as i64).collect();

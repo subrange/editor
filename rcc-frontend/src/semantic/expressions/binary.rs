@@ -36,7 +36,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
                     Ok(self.type_analyzer.arithmetic_result_type(left_type, right_type))
                 } else {
                     Err(SemanticError::InvalidOperation {
-                        operation: format!("{}", op),
+                        operation: format!("{op}"),
                         operand_type: left_type.clone(),
                         location: left.span.start.clone(),
                     }
@@ -54,7 +54,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
                     Ok(self.type_analyzer.arithmetic_result_type(left_type, right_type))
                 } else {
                     Err(SemanticError::InvalidOperation {
-                        operation: format!("{}", op),
+                        operation: format!("{op}"),
                         operand_type: left_type.clone(),
                         location: left.span.start.clone(),
                     }
@@ -204,7 +204,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
             if let Some(target) = left_type.pointer_target() {
                 if target.size_in_words().is_none() {
                     return Err(SemanticError::InvalidOperation {
-                        operation: format!("pointer arithmetic on incomplete type"),
+                        operation: "pointer arithmetic on incomplete type".to_string(),
                         operand_type: left_type.clone(),
                         location: location.clone(),
                     }
@@ -220,7 +220,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
             if let Some(target) = right_type.pointer_target() {
                 if target.size_in_words().is_none() {
                     return Err(SemanticError::InvalidOperation {
-                        operation: format!("pointer arithmetic on incomplete type"),
+                        operation: "pointer arithmetic on incomplete type".to_string(),
                         operand_type: right_type.clone(),
                         location: location.clone(),
                     }
@@ -240,7 +240,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
                 // Check if element types are compatible
                 if !self.are_types_compatible(left_elem, right_elem) {
                     return Err(SemanticError::InvalidOperation {
-                        operation: format!("subtracting pointers to incompatible types"),
+                        operation: "subtracting pointers to incompatible types".to_string(),
                         operand_type: left_type.clone(),
                         location: location.clone(),
                     }
@@ -250,7 +250,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
                 // Verify the types have known sizes
                 if left_elem.size_in_words().is_none() {
                     return Err(SemanticError::InvalidOperation {
-                        operation: format!("pointer difference on incomplete type"),
+                        operation: "pointer difference on incomplete type".to_string(),
                         operand_type: left_type.clone(),
                         location: location.clone(),
                     }
@@ -263,7 +263,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
         }
 
         Err(SemanticError::InvalidOperation {
-            operation: format!("{}", op),
+            operation: format!("{op}"),
             operand_type: left_type.clone(),
             location: location.clone(),
         }

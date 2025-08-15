@@ -26,6 +26,12 @@ pub struct SemanticAnalyzer {
     type_definitions: HashMap<String, Type>, // Named type definitions (structs, unions, enums)
 }
 
+impl Default for SemanticAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SemanticAnalyzer {
     /// Create a new semantic analyzer
     pub fn new() -> Self {

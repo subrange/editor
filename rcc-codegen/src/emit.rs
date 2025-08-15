@@ -26,19 +26,19 @@ pub fn emit_instructions(instructions: Vec<AsmInst>) -> Result<String, CodegenEr
         match instruction {
             AsmInst::Label(ref label) => {
                 // Labels get their own line with no indentation
-                output.push_str(&format!("{}\n", instruction));
+                output.push_str(&format!("{instruction}\n"));
             }
             AsmInst::Comment(ref comment) => {
                 // Comments get their own line with no indentation
-                output.push_str(&format!("{}\n", instruction));
+                output.push_str(&format!("{instruction}\n"));
             }
             AsmInst::Raw(ref asm) => {
                 // Raw assembly passes through with indentation
-                output.push_str(&format!("    {}\n", asm));
+                output.push_str(&format!("    {asm}\n"));
             }
             _ => {
                 // Regular instructions are indented
-                output.push_str(&format!("    {}\n", instruction));
+                output.push_str(&format!("    {instruction}\n"));
             }
         }
     }

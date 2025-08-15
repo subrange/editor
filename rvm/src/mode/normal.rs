@@ -119,7 +119,7 @@ impl TuiDebugger {
                 if self.focused_pane == FocusedPane::Memory {
                     // Pre-fill with current cursor position
                     let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS + self.memory_cursor_col;
-                    self.command_buffer = format!("{:04x}:", addr);
+                    self.command_buffer = format!("{addr:04x}:");
                     self.mode = DebuggerMode::MemoryEdit;
                 } else if self.focused_pane == FocusedPane::Disassembly && self.show_instruction_hex {
                     // Edit instruction byte at cursor
@@ -226,7 +226,7 @@ impl TuiDebugger {
             // Quick memory edit - if in memory view and pressing hex digit
             KeyCode::Char(c) if self.focused_pane == FocusedPane::Memory && c.is_ascii_hexdigit() => {
                 let addr = self.memory_base_addr + self.memory_scroll * MEMORY_NAV_COLS + self.memory_cursor_col;
-                self.command_buffer = format!("{:04x}:{}", addr, c);
+                self.command_buffer = format!("{addr:04x}:{c}");
                 self.mode = DebuggerMode::MemoryEdit;
             }
             
@@ -252,10 +252,10 @@ impl TuiDebugger {
             let addr = self.disasm_scroll + self.disasm_cursor_row;
             // Make sure we're within valid instruction range
             if addr < vm.instructions.len() {
-                if self.breakpoints.contains_key(&addr) {
-                    self.breakpoints.remove(&addr);
+                if let std::collections::hash_map::Entry::Vacant(e) = self.breakpoints.entry(addr) {
+                    e.insert(true); // New breakpoints are enabled by default
                 } else {
-                    self.breakpoints.insert(addr, true); // New breakpoints are enabled by default
+                    self.breakpoints.remove(&addr);
                 }
             }
         }
@@ -387,10 +387,8 @@ impl TuiDebugger {
                     } else if self.disasm_scroll < vm.instructions.len().saturating_sub(1) {
                         self.disasm_scroll += 1;
                     }
-                } else {
-                    if self.disasm_scroll < vm.instructions.len().saturating_sub(1) {
-                        self.disasm_scroll += 1;
-                    }
+                } else if self.disasm_scroll < vm.instructions.len().saturating_sub(1) {
+                    self.disasm_scroll += 1;
                 }
             }
             FocusedPane::Memory => {
@@ -536,7 +534,7 @@ impl TuiDebugger {
                 let new_scroll = self.stack_scroll + 10;
                 if new_scroll < self.execution_history.len() {
                     self.stack_scroll = new_scroll;
-                } else if self.execution_history.len() > 0 {
+                } else if !self.execution_history.is_empty() {
                     self.stack_scroll = self.execution_history.len() - 1;
                 }
             }

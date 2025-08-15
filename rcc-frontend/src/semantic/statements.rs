@@ -27,8 +27,8 @@ impl<'a> StatementAnalyzer<'a> {
         match &mut stmt.kind {
             StatementKind::Expression(expr) => {
                 let analyzer = ExpressionAnalyzer::new(
-                    &self.symbol_types,
-                    &self.type_definitions,
+                    self.symbol_types,
+                    self.type_definitions,
                 );
                 analyzer.analyze(expr, symbol_table)?;
             }
@@ -52,8 +52,8 @@ impl<'a> StatementAnalyzer<'a> {
             
             StatementKind::If { condition, then_stmt, else_stmt } => {
                 let analyzer = ExpressionAnalyzer::new(
-                    &self.symbol_types,
-                    &self.type_definitions,
+                    self.symbol_types,
+                    self.type_definitions,
                 );
                 analyzer.analyze(condition, symbol_table)?;
                 analyzer.check_boolean_context(condition)?;
@@ -67,8 +67,8 @@ impl<'a> StatementAnalyzer<'a> {
             
             StatementKind::While { condition, body } => {
                 let analyzer = ExpressionAnalyzer::new(
-                    &self.symbol_types,
-                    &self.type_definitions,
+                    self.symbol_types,
+                    self.type_definitions,
                 );
                 analyzer.analyze(condition, symbol_table)?;
                 analyzer.check_boolean_context(condition)?;
@@ -86,8 +86,8 @@ impl<'a> StatementAnalyzer<'a> {
                 
                 if let Some(condition) = condition {
                     let analyzer = ExpressionAnalyzer::new(
-                        &self.symbol_types,
-                        &self.type_definitions,
+                        self.symbol_types,
+                        self.type_definitions,
                     );
                     analyzer.analyze(condition, symbol_table)?;
                     analyzer.check_boolean_context(condition)?;
@@ -95,8 +95,8 @@ impl<'a> StatementAnalyzer<'a> {
                 
                 if let Some(update) = update {
                     let analyzer = ExpressionAnalyzer::new(
-                        &self.symbol_types,
-                        &self.type_definitions,
+                        self.symbol_types,
+                        self.type_definitions,
                     );
                     analyzer.analyze(update, symbol_table)?;
                 }
@@ -110,8 +110,8 @@ impl<'a> StatementAnalyzer<'a> {
                 self.analyze_statement(body, symbol_table)?;
                 
                 let analyzer = ExpressionAnalyzer::new(
-                    &self.symbol_types,
-                    &self.type_definitions,
+                    self.symbol_types,
+                    self.type_definitions,
                 );
                 analyzer.analyze(condition, symbol_table)?;
                 analyzer.check_boolean_context(condition)?;
@@ -120,8 +120,8 @@ impl<'a> StatementAnalyzer<'a> {
             StatementKind::Return(expr_opt) => {
                 if let Some(expr) = expr_opt {
                     let analyzer = ExpressionAnalyzer::new(
-                        &self.symbol_types,
-                        &self.type_definitions,
+                        self.symbol_types,
+                        self.type_definitions,
                     );
                     analyzer.analyze(expr, symbol_table)?;
                     
@@ -178,7 +178,7 @@ impl<'a> StatementAnalyzer<'a> {
         // Handle typedef specially - it defines a type alias, not a variable
         if decl.storage_class == StorageClass::Typedef {
             // Resolve the type first
-            let analyzer = crate::semantic::types::TypeAnalyzer::new(&self.type_definitions);
+            let analyzer = crate::semantic::types::TypeAnalyzer::new(self.type_definitions);
             decl.decl_type = analyzer.resolve_type(&decl.decl_type);
             // Register this as a type definition
             self.type_definitions.insert(decl.name.clone(), decl.decl_type.clone());
@@ -195,7 +195,7 @@ impl<'a> StatementAnalyzer<'a> {
         }
         
         // Resolve the type (in case it references a named struct/union/enum or typedef)
-        let analyzer = crate::semantic::types::TypeAnalyzer::new(&self.type_definitions);
+        let analyzer = crate::semantic::types::TypeAnalyzer::new(self.type_definitions);
         decl.decl_type = analyzer.resolve_type(&decl.decl_type);
         
         // Add to symbol table
@@ -208,8 +208,8 @@ impl<'a> StatementAnalyzer<'a> {
         // Analyze initializer if present
         if let Some(initializer) = &mut decl.initializer {
             let expr_analyzer = ExpressionAnalyzer::new(
-                &self.symbol_types,
-                &self.type_definitions,
+                self.symbol_types,
+                self.type_definitions,
             );
             expr_analyzer.analyze_initializer(initializer, &decl.decl_type, symbol_table)?;
         }

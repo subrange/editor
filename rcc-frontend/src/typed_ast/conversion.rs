@@ -93,7 +93,7 @@ fn type_initializer(
                     if let Some(array_size) = size {
                         if initializers.len() as u64 > *array_size {
                             return Err(TypeError::TypeMismatch(format!(
-                                "Too many initializers for array of size {}", array_size
+                                "Too many initializers for array of size {array_size}"
                             )));
                         }
                     }
@@ -112,7 +112,7 @@ fn type_initializer(
                 }
                 _ => {
                     Err(TypeError::TypeMismatch(format!(
-                        "List initializer not supported for type {:?}", expected_type
+                        "List initializer not supported for type {expected_type:?}"
                     )))
                 }
             }
@@ -394,7 +394,7 @@ pub fn type_expression(
                     }
                 }
                 _ => return Err(TypeError::TypeMismatch(
-                    format!("Member access requires struct type, got {:?}", struct_type)
+                    format!("Member access requires struct type, got {struct_type:?}")
                 ))
             };
             
@@ -404,12 +404,12 @@ pub fn type_expression(
                 fields,
                 rcc_common::SourceLocation::new_simple(0, 0), // TODO: Use actual location
                 Some(&type_env.type_definitions)
-            ).map_err(|e| TypeError::TypeMismatch(format!("Failed to calculate struct layout: {}", e)))?;
+            ).map_err(|e| TypeError::TypeMismatch(format!("Failed to calculate struct layout: {e}")))?;
             
             // Find the field and get its offset
             let field_layout = crate::semantic::struct_layout::find_field(&layout, member)
                 .ok_or_else(|| TypeError::UndefinedMember {
-                    struct_name: format!("{:?}", struct_type),
+                    struct_name: format!("{struct_type:?}"),
                     member_name: member.clone(),
                 })?;
             

@@ -144,7 +144,7 @@ pub fn generate_pointer_compound_assignment(
         }
         _ => {
             return Err(CodegenError::UnsupportedConstruct {
-                construct: format!("pointer compound assignment: {:?}", op),
+                construct: format!("pointer compound assignment: {op:?}"),
                 location: rcc_common::SourceLocation::new_simple(0, 0),
             }
             .into())

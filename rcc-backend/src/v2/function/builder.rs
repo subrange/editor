@@ -53,6 +53,12 @@ pub struct FunctionBuilder {
     param_types: Vec<(rcc_common::TempId, rcc_frontend::ir::IrType)>,
 }
 
+impl Default for FunctionBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FunctionBuilder {
     /// Make a standalone function call without a FunctionBuilder context
     /// 
@@ -110,7 +116,7 @@ impl FunctionBuilder {
     /// 
     /// Must be called before any other operations
     pub fn begin_function(&mut self, local_slots: i16) -> &mut Self {
-        debug!("Beginning function with {} local slots", local_slots);
+        debug!("Beginning function with {local_slots} local slots");
         assert!(!self.prologue_emitted, "Prologue already emitted");
         
         let prologue = self.func.emit_prologue(local_slots);
@@ -131,7 +137,7 @@ impl FunctionBuilder {
         mgr: &mut crate::v2::RegisterPressureManager,
         naming: &mut crate::v2::naming::NameGenerator
     ) -> (Reg, Option<Reg>) {
-        debug!("Loading and binding parameter {} (t{})", index, param_id);
+        debug!("Loading and binding parameter {index} (t{param_id})");
         assert!(self.prologue_emitted, "Must emit prologue before loading parameters");
         assert!(!self.epilogue_emitted, "Cannot load parameters after epilogue");
         
@@ -145,11 +151,11 @@ impl FunctionBuilder {
         
         // If this is a fat pointer, track the bank
         if let Some(bank) = bank_reg {
-            debug!("  Parameter {} is a fat pointer with bank in {:?}", index, bank);
+            debug!("  Parameter {index} is a fat pointer with bank in {bank:?}");
             mgr.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank));
         }
         
-        trace!("  Parameter {} bound to {:?} (bank: {:?})", index, addr_reg, bank_reg);
+        trace!("  Parameter {index} bound to {addr_reg:?} (bank: {bank_reg:?})");
         (addr_reg, bank_reg)
     }
     
@@ -157,7 +163,7 @@ impl FunctionBuilder {
     /// 
     /// Returns the register containing the parameter
     pub fn load_parameter(&mut self, index: usize) -> Reg {
-        debug!("Loading parameter {} (simple)", index);
+        debug!("Loading parameter {index} (simple)");
         assert!(self.prologue_emitted, "Must emit prologue before loading parameters");
         assert!(!self.epilogue_emitted, "Cannot load parameters after epilogue");
         
@@ -171,7 +177,7 @@ impl FunctionBuilder {
     
     /// Get the address of a local variable
     pub fn get_local_address(&mut self, offset: i16) -> Reg {
-        debug!("Getting address of local at offset {}", offset);
+        debug!("Getting address of local at offset {offset}");
         assert!(self.prologue_emitted, "Must emit prologue before accessing locals");
         assert!(!self.epilogue_emitted, "Cannot access locals after epilogue");
         
@@ -235,7 +241,7 @@ impl FunctionBuilder {
         
         // Extract the return registers
         let (ret_addr, ret_bank) = return_regs.unwrap_or((Reg::Rv0, None));
-        debug!("Call complete: return in {:?}, bank: {:?}", ret_addr, ret_bank);
+        debug!("Call complete: return in {ret_addr:?}, bank: {ret_bank:?}");
         (ret_addr, ret_bank)
     }
     
@@ -263,7 +269,7 @@ impl FunctionBuilder {
             CallArg::Scalar(_) => 1,
             CallArg::FatPointer { .. } => 2,
         }).sum::<i16>();
-        debug!("  Call will use {} stack words", stack_words);
+        debug!("  Call will use {stack_words} stack words");
         
         // Setup arguments
         trace!("  Setting up call arguments");
@@ -276,16 +282,16 @@ impl FunctionBuilder {
         self.instructions.extend(call);
         
         // Handle return value
-        debug!("  Handling return value (is_pointer: {})", returns_pointer);
+        debug!("  Handling return value (is_pointer: {returns_pointer})");
         let (ret_insts, (ret_addr, ret_bank)) = self.func.handle_call_return(returns_pointer);
         self.instructions.extend(ret_insts);
         
         // Cleanup stack
-        trace!("  Cleaning up {} stack words", stack_words);
+        trace!("  Cleaning up {stack_words} stack words");
         let cleanup = self.cc.cleanup_stack(stack_words);
         self.instructions.extend(cleanup);
         
-        debug!("Call complete: return in {:?}, bank: {:?}", ret_addr, ret_bank);
+        debug!("Call complete: return in {ret_addr:?}, bank: {ret_bank:?}");
         (ret_addr, ret_bank)
     }
     
@@ -303,7 +309,7 @@ impl FunctionBuilder {
             CallArg::FatPointer { .. } => 2,
         }).sum::<i16>();
         
-        trace!("  Pushing {} words to cleanup stack", stack_words);
+        trace!("  Pushing {stack_words} words to cleanup stack");
         self.cleanup_stack.push(stack_words);
         
         // Setup arguments
@@ -332,7 +338,7 @@ impl FunctionBuilder {
         let stack_words = self.cleanup_stack.pop()
             .expect("end_call called without matching begin_call");
         
-        debug!("Ending call sequence, cleaning up {} stack words", stack_words);
+        debug!("Ending call sequence, cleaning up {stack_words} stack words");
         let cleanup = self.cc.cleanup_stack(stack_words);
         trace!("  Cleanup generated {} instructions", cleanup.len());
         self.instructions.extend(cleanup);
@@ -361,7 +367,7 @@ impl FunctionBuilder {
     /// 
     /// Automatically emits epilogue
     pub fn end_function(&mut self, return_value: Option<(Reg, Option<Reg>)>) -> &mut Self {
-        info!("Ending function with return value: {:?}", return_value);
+        info!("Ending function with return value: {return_value:?}");
         assert!(self.prologue_emitted, "Must emit prologue before epilogue");
         assert!(!self.epilogue_emitted, "Epilogue already emitted");
         assert!(self.cleanup_stack.is_empty(), "Unclosed call sequences");

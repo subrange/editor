@@ -172,7 +172,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                     
                     _ => {
                         Err(CodegenError::UnsupportedConstruct {
-                            construct: format!("cast from {:?} to {:?}", source_type, target_type),
+                            construct: format!("cast from {source_type:?} to {target_type:?}"),
                             location: rcc_common::SourceLocation::new_simple(0, 0),
                         }
                         .into())
@@ -272,7 +272,7 @@ impl<'a> TypedExpressionGenerator<'a> {
             }
             
             TypedExpr::Conditional { .. } => {
-                return Err(CodegenError::UnsupportedConstruct {
+                Err(CodegenError::UnsupportedConstruct {
                     construct: "conditional expression (? :)".to_string(),
                     location: rcc_common::SourceLocation::new_simple(0, 0),
                 }

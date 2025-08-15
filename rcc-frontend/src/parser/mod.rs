@@ -85,14 +85,14 @@ impl Parser {
                 Ok(token)
             } else {
                 Err(ParseError::UnexpectedToken {
-                    expected: format!("{} in {}", token_type, context),
+                    expected: format!("{token_type} in {context}"),
                     found: token,
                 })
             }
         } else {
             let location = SourceLocation::new_simple(0, 0); // TODO: Better EOF location tracking
             Err(ParseError::UnexpectedEndOfFile {
-                expected: format!("{} in {}", token_type, context),
+                expected: format!("{token_type} in {context}"),
                 location,
             })
         }
