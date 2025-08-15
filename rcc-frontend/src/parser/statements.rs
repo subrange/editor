@@ -210,11 +210,16 @@ impl Parser {
         // TODO: Support extended syntax with constraints
         self.expect(TokenType::LeftParen, "inline assembly")?;
         
-        // Expect a string literal containing the assembly code
+        // Expect a string literal containing the assembly code (with adjacent string concatenation)
         let assembly = match self.peek().map(|t| &t.token_type) {
             Some(TokenType::StringLiteral(s)) => {
-                let code = s.clone();
+                let mut code = s.clone();
                 self.advance();
+                // Handle adjacent string concatenation
+                while let Some(TokenType::StringLiteral(next)) = self.peek().map(|t| &t.token_type) {
+                    code.push_str(next);
+                    self.advance();
+                }
                 code
             }
             _ => {

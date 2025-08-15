@@ -2,6 +2,788 @@
   "version": 1,
   "objects": [
     {
+      "name": "__char_patch",
+      "object": {
+        "version": 1,
+        "instructions": [
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 3,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 30,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 23,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 30,
+            "word2": 29,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 10
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 20
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 26,
+            "word2": 7,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 25,
+            "word2": 8,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 24,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 24
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 23,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 23,
+            "word2": 23,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 23
+          },
+          {
+            "opcode": 16,
+            "word0": 16,
+            "word1": 15,
+            "word2": 8,
+            "word3": 1
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 16,
+            "word2": 7,
+            "word3": 15
+          },
+          {
+            "opcode": 11,
+            "word0": 11,
+            "word1": 15,
+            "word2": 8,
+            "word3": 1
+          },
+          {
+            "opcode": 22,
+            "word0": 22,
+            "word1": 15,
+            "word2": 0,
+            "word3": 3
+          },
+          {
+            "opcode": 11,
+            "word0": 11,
+            "word1": 5,
+            "word2": 16,
+            "word3": 255
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 3
+          },
+          {
+            "opcode": 16,
+            "word0": 16,
+            "word1": 5,
+            "word2": 16,
+            "word3": 8
+          },
+          {
+            "opcode": 11,
+            "word0": 11,
+            "word1": 5,
+            "word2": 5,
+            "word3": 255
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 29,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65534
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 25,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65533
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 24,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65532
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65531
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 30,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 3,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 2,
+            "word2": 4,
+            "word3": 0
+          },
+          {
+            "opcode": 20,
+            "word0": 20,
+            "word1": 0,
+            "word2": 0,
+            "word3": 3
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 3,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 30,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 23,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 30,
+            "word2": 29,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 11
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 20
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 26,
+            "word2": 7,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 25,
+            "word2": 8,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 24,
+            "word2": 9,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 23,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 23
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 22,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 22,
+            "word2": 22,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 22
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 21,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 21,
+            "word2": 21,
+            "word3": 2
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 21
+          },
+          {
+            "opcode": 16,
+            "word0": 16,
+            "word1": 15,
+            "word2": 8,
+            "word3": 1
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 16,
+            "word2": 7,
+            "word3": 15
+          },
+          {
+            "opcode": 11,
+            "word0": 11,
+            "word1": 15,
+            "word2": 8,
+            "word3": 1
+          },
+          {
+            "opcode": 22,
+            "word0": 22,
+            "word1": 15,
+            "word2": 0,
+            "word3": 5
+          },
+          {
+            "opcode": 11,
+            "word0": 11,
+            "word1": 16,
+            "word2": 16,
+            "word3": 65280
+          },
+          {
+            "opcode": 11,
+            "word0": 11,
+            "word1": 15,
+            "word2": 9,
+            "word3": 255
+          },
+          {
+            "opcode": 4,
+            "word0": 4,
+            "word1": 16,
+            "word2": 16,
+            "word3": 15
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 5
+          },
+          {
+            "opcode": 11,
+            "word0": 11,
+            "word1": 16,
+            "word2": 16,
+            "word3": 255
+          },
+          {
+            "opcode": 11,
+            "word0": 11,
+            "word1": 15,
+            "word2": 9,
+            "word3": 255
+          },
+          {
+            "opcode": 15,
+            "word0": 15,
+            "word1": 15,
+            "word2": 15,
+            "word3": 8
+          },
+          {
+            "opcode": 4,
+            "word0": 4,
+            "word1": 16,
+            "word2": 16,
+            "word3": 15
+          },
+          {
+            "opcode": 16,
+            "word0": 16,
+            "word1": 15,
+            "word2": 8,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 16,
+            "word2": 7,
+            "word3": 15
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 29,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65534
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 25,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65533
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 24,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65532
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65531
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 30,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 3,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 2,
+            "word2": 4,
+            "word3": 0
+          },
+          {
+            "opcode": 20,
+            "word0": 20,
+            "word1": 0,
+            "word2": 0,
+            "word3": 3
+          }
+        ],
+        "data": [],
+        "labels": {
+          "L___ld8_99999": {
+            "name": "L___ld8_99999",
+            "bank": 0,
+            "offset": 124,
+            "absolute_address": 124
+          },
+          "__ld8_hi": {
+            "name": "__ld8_hi",
+            "bank": 0,
+            "offset": 112,
+            "absolute_address": 112
+          },
+          "L___st8_99999": {
+            "name": "L___st8_99999",
+            "bank": 0,
+            "offset": 348,
+            "absolute_address": 348
+          },
+          "__st8_hi": {
+            "name": "__st8_hi",
+            "bank": 0,
+            "offset": 320,
+            "absolute_address": 320
+          },
+          "__st8_store": {
+            "name": "__st8_store",
+            "bank": 0,
+            "offset": 336,
+            "absolute_address": 336
+          },
+          "__ld8_done": {
+            "name": "__ld8_done",
+            "bank": 0,
+            "offset": 120,
+            "absolute_address": 120
+          },
+          "__ld8": {
+            "name": "__ld8",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
+          "__st8": {
+            "name": "__st8",
+            "bank": 0,
+            "offset": 184,
+            "absolute_address": 184
+          },
+          "L___st8_1": {
+            "name": "L___st8_1",
+            "bank": 0,
+            "offset": 256,
+            "absolute_address": 256
+          }
+        },
+        "data_labels": {},
+        "unresolved_references": {},
+        "entry_point": null
+      }
+    },
+    {
       "name": "putchar",
       "object": {
         "version": 1,
@@ -896,17 +1678,11 @@
         ],
         "data": [],
         "labels": {
-          "L_puts_1": {
-            "name": "L_puts_1",
+          "L_puts_99999": {
+            "name": "L_puts_99999",
             "bank": 0,
-            "offset": 84,
-            "absolute_address": 84
-          },
-          "L_puts_3": {
-            "name": "L_puts_3",
-            "bank": 0,
-            "offset": 248,
-            "absolute_address": 248
+            "offset": 292,
+            "absolute_address": 292
           },
           "puts": {
             "name": "puts",
@@ -920,11 +1696,17 @@
             "offset": 112,
             "absolute_address": 112
           },
-          "L_puts_99999": {
-            "name": "L_puts_99999",
+          "L_puts_3": {
+            "name": "L_puts_3",
             "bank": 0,
-            "offset": 292,
-            "absolute_address": 292
+            "offset": 248,
+            "absolute_address": 248
+          },
+          "L_puts_1": {
+            "name": "L_puts_1",
+            "bank": 0,
+            "offset": 84,
+            "absolute_address": 84
           }
         },
         "data_labels": {},
@@ -1579,24 +2361,6 @@
         ],
         "data": [],
         "labels": {
-          "L_memset_1": {
-            "name": "L_memset_1",
-            "bank": 0,
-            "offset": 132,
-            "absolute_address": 132
-          },
-          "L_memset_99999": {
-            "name": "L_memset_99999",
-            "bank": 0,
-            "offset": 300,
-            "absolute_address": 300
-          },
-          "L_memset_2": {
-            "name": "L_memset_2",
-            "bank": 0,
-            "offset": 168,
-            "absolute_address": 168
-          },
           "L_memset_4": {
             "name": "L_memset_4",
             "bank": 0,
@@ -1614,6 +2378,24 @@
             "bank": 0,
             "offset": 268,
             "absolute_address": 268
+          },
+          "L_memset_99999": {
+            "name": "L_memset_99999",
+            "bank": 0,
+            "offset": 300,
+            "absolute_address": 300
+          },
+          "L_memset_1": {
+            "name": "L_memset_1",
+            "bank": 0,
+            "offset": 132,
+            "absolute_address": 132
+          },
+          "L_memset_2": {
+            "name": "L_memset_2",
+            "bank": 0,
+            "offset": 168,
+            "absolute_address": 168
           }
         },
         "data_labels": {},
@@ -2588,6 +3370,12 @@
         ],
         "data": [],
         "labels": {
+          "memcpy": {
+            "name": "memcpy",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
           "L_memcpy_4": {
             "name": "L_memcpy_4",
             "bank": 0,
@@ -2600,29 +3388,23 @@
             "offset": 204,
             "absolute_address": 204
           },
-          "L_memcpy_99999": {
-            "name": "L_memcpy_99999",
-            "bank": 0,
-            "offset": 488,
-            "absolute_address": 488
-          },
           "L_memcpy_2": {
             "name": "L_memcpy_2",
             "bank": 0,
             "offset": 240,
             "absolute_address": 240
           },
-          "memcpy": {
-            "name": "memcpy",
-            "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
           "L_memcpy_3": {
             "name": "L_memcpy_3",
             "bank": 0,
             "offset": 456,
             "absolute_address": 456
+          },
+          "L_memcpy_99999": {
+            "name": "L_memcpy_99999",
+            "bank": 0,
+            "offset": 488,
+            "absolute_address": 488
           }
         },
         "data_labels": {},

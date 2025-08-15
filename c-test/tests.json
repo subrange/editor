@@ -531,6 +531,30 @@
       "expected": "BA",
       "use_runtime": true,
       "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_inline_asm_multiline_simple.c",
+      "expected": "YYY\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_inline_asm_syntax.c",
+      "expected": "OK\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_inline_asm_nolabels.c",
+      "expected": "OK\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test___internals.c",
+      "expected": "AB\nC",
+      "use_runtime": true,
+      "description": "Added via command line"
     }
   ],
   "known_failures": [
@@ -549,6 +573,10 @@
     {
       "file": "tests-known-failures/test_struct_inline_simple.c",
       "description": "Inline struct definitions not supported"
+    },
+    {
+      "file": "tests-known-failures/sierpinski.c",
+      "description": "Added via command line"
     }
   ]
 }

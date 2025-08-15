@@ -18,7 +18,13 @@ impl Parser {
             Some(Token { token_type: TokenType::CharLiteral(value), .. }) => {
                 ExpressionKind::CharLiteral(value)
             }
-            Some(Token { token_type: TokenType::StringLiteral(value), .. }) => {
+            Some(Token { token_type: TokenType::StringLiteral(mut value), .. }) => {
+                // Handle adjacent string literal concatenation (C standard feature)
+                // "hello" "world" becomes "helloworld"
+                while let Some(Token { token_type: TokenType::StringLiteral(next), .. }) = self.peek() {
+                    value.push_str(&next);
+                    self.advance();
+                }
                 ExpressionKind::StringLiteral(value)
             }
             Some(Token { token_type: TokenType::Identifier(name), .. }) => {

@@ -10,7 +10,7 @@ BANK_SIZE ?= 16384  # Default: 16KB (doubled from 8192 to handle larger programs
 MAX_IMMEDIATE = 65535
 
 # Source files
-C_SOURCES = putchar.c puts.c memset.c memcpy.c
+C_SOURCES = __char_patch.c putchar.c puts.c memset.c memcpy.c
 ASM_SOURCES = crt0.asm
 
 # Generated files

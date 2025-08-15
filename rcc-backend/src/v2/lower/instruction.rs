@@ -389,11 +389,12 @@ pub fn lower_instruction(
         }
 
         Instruction::InlineAsm { assembly } => {
-            for line in assembly.lines() {
-                let trimmed = line.trim();
+            // Split by semicolons or newlines to handle both styles
+            // This allows "inst1; inst2; inst3" or multiline assembly
+            for part in assembly.split(|c| c == ';' || c == '\n') {
+                let trimmed = part.trim();
                 if !trimmed.is_empty() {
-                    // For now, pass through as raw assembly
-                    // We'll need a way to handle this in AsmInst
+                    // Pass through as raw assembly
                     insts.push(AsmInst::Raw(trimmed.to_string()));
                 }
             }
