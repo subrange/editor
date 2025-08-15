@@ -13,7 +13,8 @@ Options:
   --timeout N   Set timeout in seconds for test execution (default: 2)
   --verbose     Show output from test programs as they run
   --backend B   Execution backend: 'bf' (default) or 'rvm' for Ripple VM
-  --run         Use -t flag when running with RVM (trace mode)
+  --run         Run tests normally without trace mode
+  --debug       Use -t flag when running with RVM (trace/debug mode)
   --add         Add a test to tests.json (usage: --add test.c "expected output")
   test_name     Optional: Names of tests to run (without path or .c extension)
                 Can specify multiple tests
@@ -27,7 +28,8 @@ Examples:
   python3 c-test/run_tests.py --timeout 10       # Run with 10 second timeout
   python3 c-test/run_tests.py --verbose          # Show test program output
   python3 c-test/run_tests.py --backend rvm      # Run tests on Ripple VM instead of BF
-  python3 c-test/run_tests.py test_minimal_insert --run  # Compile and run with TUI debugger
+  python3 c-test/run_tests.py test_minimal_insert --run    # Compile and run normally
+  python3 c-test/run_tests.py test_minimal_insert --debug  # Compile and run with TUI debugger
   python3 c-test/run_tests.py --add test_new.c "Hello\\n"  # Add a new test to tests.json
 
 Prerequisites:
@@ -116,7 +118,7 @@ def run_command(cmd, timeout=2):
             timeout_msg = f"{timeout_msg}\nStderr: {stderr}"
         return -1, stdout, timeout_msg
 
-def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False, backend='bf', run_mode=False):
+def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False, backend='bf', debug_mode=False):
     """Compile a C file and run it, checking output
     
     Args:
@@ -127,7 +129,7 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
         timeout: Timeout in seconds for execution
         verbose: If True, show program output
         backend: Execution backend - 'bf' for Brainfuck or 'rvm' for Ripple VM
-        run_mode: If True, use -t flag when running with RVM
+        debug_mode: If True, use -t flag when running with RVM
     
     Returns:
         tuple: (success, message, has_provenance_warning)
@@ -175,7 +177,7 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
             return False, f"Linking failed: {stderr}", has_provenance_warning
         
         # Run on RVM
-        rvm_flags = "-t" if run_mode else ""
+        rvm_flags = "-t" if debug_mode else ""
         ret, stdout, stderr = run_command(f"{RVM} {bin_file} --memory 4294967296 {rvm_flags}".strip(), timeout=timeout)
         if ret == -1:
             if verbose and stdout:
@@ -330,6 +332,7 @@ def main():
     clean_only = "--clean" in sys.argv
     verbose = "--verbose" in sys.argv
     run_mode = "--run" in sys.argv
+    debug_mode = "--debug" in sys.argv
     add_mode = "--add" in sys.argv
     test_files = []  # Changed from single_test to support multiple tests
     timeout = 2  # Default timeout in seconds
@@ -494,10 +497,13 @@ def main():
         print(f"Warning: Test configuration file {tests_json_path} not found")
         print("Using empty test list")
     
-    # Handle --run mode for interactive debugging
-    if run_mode and test_files:
-        # In run mode, we just compile and then run interactively
-        print("Interactive run mode enabled (TUI debugger)")
+    # Handle --run or --debug mode
+    if (run_mode or debug_mode) and test_files:
+        # In run/debug mode, we compile and then run
+        if debug_mode:
+            print("Debug mode enabled (TUI debugger with -t flag)")
+        else:
+            print("Run mode enabled (normal execution)")
         print("-" * 60)
         
         for test_file in test_files:
@@ -569,12 +575,19 @@ def main():
                 continue
             
             print(f"{GREEN}✓ Successfully built {bin_file}{NC}")
-            print(f"Running: {RVM} {bin_file} -t")
-            print("-" * 60)
             
-            # Run interactively with TUI debugger
-            import subprocess
-            subprocess.run([RVM, bin_file, "-t"])
+            if debug_mode:
+                print(f"Running: {RVM} {bin_file} -t")
+                print("-" * 60)
+                # Run with TUI debugger
+                import subprocess
+                subprocess.run([RVM, bin_file, "-t"])
+            else:
+                print(f"Running: {RVM} {bin_file}")
+                print("-" * 60)
+                # Run normally without TUI debugger
+                import subprocess
+                subprocess.run([RVM, bin_file])
         
         return 0
     
@@ -678,7 +691,7 @@ def main():
                 print(f"SKIP {test_file}: File not found")
                 continue
                 
-            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, run_mode)
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, False)
             
             if success:
                 if has_provenance_warning:
@@ -700,7 +713,7 @@ def main():
                 print(f"SKIP {test_file}: File not found")
                 continue
                 
-            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, run_mode)
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, False)
             
             if success:
                 if has_provenance_warning:

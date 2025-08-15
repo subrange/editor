@@ -224,7 +224,130 @@ impl Parser {
     
     /// Parse direct declarator
     pub fn parse_direct_declarator(&mut self, base_type: Type) -> Result<(String, Type), CompilerError> {
-        // Get identifier name
+        // Check for parenthesized declarator first
+        if self.check(&TokenType::LeftParen) {
+            // Look ahead to see if this is a parenthesized declarator
+            let is_parenthesized = if let Some(next_token) = self.tokens.get(1) {
+                // If we see a star after '(', it's definitely a parenthesized declarator
+                matches!(next_token.token_type, TokenType::Star)
+            } else {
+                false
+            };
+            
+            if is_parenthesized {
+                self.advance(); // consume '('
+                
+                // Parse the inner declarator (e.g., *parr)
+                let (name, inner_ptr_type) = self.parse_declarator(Type::Void)?;
+                
+                self.expect(TokenType::RightParen, "parenthesized declarator")?;
+                
+                // Now parse any array/function suffixes that apply after the parentheses
+                // For `int (*parr)[4]`, after parsing (*parr), we need to parse [4]
+                let mut final_type = base_type;
+                
+                // Apply suffixes (arrays, functions)
+                loop {
+                    if self.match_token(&TokenType::LeftBracket) {
+                        // Array suffix - this array contains elements of the current type
+                        let size = if self.check(&TokenType::RightBracket) {
+                            None
+                        } else {
+                            let size_expr = self.parse_assignment_expression()?;
+                            if let ExpressionKind::IntLiteral(size) = size_expr.kind {
+                                if size >= 0 {
+                                    Some(size as u64)
+                                } else {
+                                    return Err(ParseError::InvalidExpression {
+                                        message: "Array size must be non-negative".to_string(),
+                                        location: size_expr.span.start,
+                                    }.into());
+                                }
+                            } else {
+                                return Err(ParseError::InvalidExpression {
+                                    message: "Array size must be a constant expression".to_string(),
+                                    location: size_expr.span.start,
+                                }.into());
+                            }
+                        };
+                        
+                        self.expect(TokenType::RightBracket, "array declarator")?;
+                        
+                        final_type = Type::Array {
+                            element_type: Box::new(final_type),
+                            size,
+                        };
+                    } else if self.match_token(&TokenType::LeftParen) {
+                        // Function suffix
+                        let mut parameter_types = Vec::new();
+                        let mut parameter_info = Vec::new();
+                        
+                        if !self.check(&TokenType::RightParen) {
+                            loop {
+                                if parameter_types.is_empty() && self.check(&TokenType::Void) {
+                                    if let Some(next_token) = self.tokens.get(1) {
+                                        if matches!(next_token.token_type, TokenType::RightParen) {
+                                            self.advance(); // consume void
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                let param_start = self.current_location();
+                                let param_type = self.parse_type_specifier()?;
+                                
+                                let (param_name, full_param_type) = if matches!(self.peek().map(|t| &t.token_type), 
+                                    Some(TokenType::Star) | Some(TokenType::Identifier(_))) {
+                                    let (name, full_type) = self.parse_declarator(param_type)?;
+                                    (Some(name), full_type)
+                                } else {
+                                    (None, param_type)
+                                };
+                                
+                                let param_end = self.current_location();
+                                
+                                parameter_types.push(full_param_type.clone());
+                                parameter_info.push((param_name, full_param_type, SourceSpan::new(param_start, param_end)));
+                                
+                                if !self.match_token(&TokenType::Comma) {
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        self.expect(TokenType::RightParen, "function declarator")?;
+                        self.last_function_params = Some(parameter_info);
+                        
+                        final_type = Type::Function {
+                            return_type: Box::new(final_type),
+                            parameters: parameter_types,
+                            is_variadic: false,
+                        };
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Now combine the pointer type from the inner declarator with the final type
+                // For `int (*parr)[4]`:
+                // - inner_ptr_type should be Pointer (from *parr)
+                // - final_type should be Array[4] of int
+                // - Result: Pointer to Array[4] of int
+                
+                if matches!(inner_ptr_type, Type::Pointer { .. }) {
+                    // Apply the pointer to the final type
+                    let result_type = Type::Pointer {
+                        target: Box::new(final_type),
+                        bank: None,
+                    };
+                    return Ok((name, result_type));
+                } else {
+                    return Ok((name, final_type));
+                }
+            }
+        }
+        
+        // Not a parenthesized declarator - parse normally
         let name = if let Some(Token { token_type: TokenType::Identifier(name), .. }) = self.advance() {
             name
         } else {

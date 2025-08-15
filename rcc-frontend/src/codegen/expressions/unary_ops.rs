@@ -21,10 +21,20 @@ pub fn generate_unary_operation(
         }
         UnaryOp::Dereference => {
             // For dereference, generate the pointer and load from it
+            // EXCEPT for arrays, which decay to pointers
             let ptr = gen.generate(operand)?;
-            let ir_type = convert_type_default(result_type)?;
-            let result = gen.builder.build_load(ptr, ir_type)?;
-            Ok(Value::Temp(result))
+            
+            // Check if the result type is an array
+            if matches!(result_type, Type::Array { .. }) {
+                // Arrays decay to pointers - just return the address
+                // The pointer value already points to the first element
+                Ok(ptr)
+            } else {
+                // Regular dereference - load the value
+                let ir_type = convert_type_default(result_type)?;
+                let result = gen.builder.build_load(ptr, ir_type)?;
+                Ok(Value::Temp(result))
+            }
         }
         UnaryOp::LogicalNot => {
             // Generate operand == 0

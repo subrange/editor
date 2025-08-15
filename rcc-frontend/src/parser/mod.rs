@@ -63,6 +63,11 @@ impl Parser {
         }
     }
     
+    /// Check if current token is an identifier
+    pub(crate) fn check_identifier(&self) -> bool {
+        matches!(self.peek().map(|t| &t.token_type), Some(TokenType::Identifier(_)))
+    }
+    
     /// Consume token if it matches expected type
     pub(crate) fn match_token(&mut self, token_type: &TokenType) -> bool {
         if self.check(token_type) {

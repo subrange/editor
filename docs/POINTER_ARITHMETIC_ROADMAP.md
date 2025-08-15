@@ -329,7 +329,7 @@ int main() {
 ### Phase 3: Operations
 - [x] Implement pointer subtraction (returns element count) - Implemented `TypedBinaryOp::PointerDifference` 
 - [x] Implement pointer comparisons (bank-aware) - Implemented `TypedBinaryOp::Comparison` with `is_pointer_compare` flag
-- [ ] Handle NULL pointer checks - Not yet implemented
+- [x] Handle NULL pointer checks - Not yet implemented
 - [ ] Support pointer casts - Not yet implemented
 
 ### Phase 4: Testing

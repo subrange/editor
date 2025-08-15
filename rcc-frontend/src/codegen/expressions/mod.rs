@@ -93,8 +93,9 @@ impl<'a> TypedExpressionGenerator<'a> {
             TypedExpr::Call {
                 function,
                 arguments,
+                expr_type,
                 ..
-            } => function_calls::generate_function_call(self, function, arguments),
+            } => function_calls::generate_function_call(self, function, arguments, expr_type),
             
             TypedExpr::Cast {
                 operand,

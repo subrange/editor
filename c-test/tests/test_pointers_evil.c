@@ -28,99 +28,86 @@ int ptr_diff(int *a, int *b) {
 }
 
 int main() {
-    int checksum = 0;
-
-    /* 1. Basic dereference/local */
     int a = 10;
     int *pa = &a;
-    checksum = checksum ^ *pa;
 
-    /* 2. Modify local via pointer */
+    // 1. Basic dereference/local
+    if (*pa == 10) putchar('Y'); else putchar('N');
+
+    // 2. Modify local via pointer
     *pa = 20;
-    checksum = checksum ^ a;
+    if (a == 20) putchar('Y'); else putchar('N');
 
-    /* 3. Global var via pointer */
+    // 3. Global var via pointer
     int *pg = &global_x;
-    checksum = checksum ^ *pg;
+    if (*pg == 123) putchar('Y'); else putchar('N');
 
-    /* 4. Modify global var via pointer */
+    // 4. Modify global var via pointer
     *pg = *pg + 1;
-    checksum = checksum ^ global_x;
+    if (global_x == 124) putchar('Y'); else putchar('N');
 
-    /* 5. Pointer to pointer */
+    // 5. Pointer to pointer
     int *pb = &a;
     int **ppb = &pb;
     **ppb = **ppb + 3;
-    checksum = checksum ^ a;
+    if (a == 23) putchar('Y'); else putchar('N');
 
-    /* 6. Array + pointer arithmetic */
+    // 6. Array + pointer arithmetic
     int arr[4];
     arr[0] = 1; arr[1] = 2; arr[2] = 3; arr[3] = 4;
     int *p = arr;
-    checksum = checksum ^ *(p+2);
-    *(p+1) = 42;
-    checksum = checksum ^ arr[1];
+    if (*(p + 2) == 3) putchar('Y'); else putchar('N');
+    *(p + 1) = 42;
+    if (arr[1] == 42) putchar('Y'); else putchar('N');
 
-    /* 7. Array of pointers */
+    // 7. Array of pointers
     int x = 5; int y = 6; int z = 7;
     int *ptrs[3];
     ptrs[0] = &x; ptrs[1] = &y; ptrs[2] = &z;
-    checksum = checksum ^ *ptrs[1];
+    if (*ptrs[1] == 6) putchar('Y'); else putchar('N');
     *ptrs[0] = 99;
-    checksum = checksum ^ x;
+    if (x == 99) putchar('Y'); else putchar('N');
 
-    /* 8. Pointer to array */
+    // 8. Pointer to array
     int (*parr)[4] = &arr;
-    checksum = checksum ^ (*parr)[3];
+    if ((*parr)[3] == 4) putchar('Y'); else putchar('N');
 
-    /* 9. Void pointer casting */
+    // 9. Void pointer casting
     void *vp = &y;
     touch_void(vp);
-    checksum = checksum ^ y;
+    if (y == 999) putchar('Y'); else putchar('N');
 
-    /* 10. Struct-like navigation (manual) */
-    /* Simulate struct Node { int val; struct Node *next; }; */
+    // 10. Struct-like navigation (manual)
     int n1_val = 11;
     int *n1_next_val;
     int n2_val = 22;
     int *n2_next_val = 0;
     n1_next_val = &n2_val;
-    checksum = checksum ^ *n1_next_val;
+    if (*n1_next_val == 22) putchar('Y'); else putchar('N');
 
-    /* 11. Return pointer from function */
+    // 11. Return pointer from function
     int tval = 77;
-    checksum = checksum ^ *return_ptr(&tval);
+    int *tp = return_ptr(&tval);
+    if (*tp == 77) putchar('Y'); else putchar('N');
 
-    /* 12. Pass pointer to function */
+    // 12. Pass pointer to function
     int nums[3];
     nums[0] = 5; nums[1] = 6; nums[2] = 7;
     increment_all(nums, 3);
-    checksum = checksum ^ (nums[0] + nums[1] + nums[2]);
+    if (nums[0] == 6 && nums[1] == 7 && nums[2] == 8)
+        putchar('Y');
+    else
+        putchar('N');
 
-    /* 13. Pointer comparison & diff */
-    checksum = checksum ^ ptr_diff(&arr[3], &arr[0]);
+    // 13. Pointer comparison & diff
+    int diff = ptr_diff(&arr[3], &arr[0]);
+    if (diff == 3) putchar('Y'); else putchar('N');
 
-    /* 14. Swap via pointer */
+    // 14. Swap via pointer
     int m = 1; int n = 2;
     swap_ints(&m, &n);
-    checksum = checksum ^ (m*10 + n);
+    if (m == 2 && n == 1) putchar('Y'); else putchar('N');
 
-    /* Output checksum as decimal */
-    int out = checksum;
-    char buf[12];
-    int idx = 0;
-    if (out == 0) { putchar('0'); putchar('\n'); return 0; }
-    if (out < 0) { putchar('-'); out = -out; }
-    while (out > 0) {
-        buf[idx] = '0' + (out % 10);
-        idx = idx + 1;
-        out = out / 10;
-    }
-    while (idx > 0) {
-        idx = idx - 1;
-        putchar(buf[idx]);
-    }
     putchar('\n');
-
     return 0;
 }

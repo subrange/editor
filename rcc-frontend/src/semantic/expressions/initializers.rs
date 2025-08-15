@@ -25,7 +25,12 @@ impl InitializerAnalyzer {
 
                 // Check type compatibility
                 if let Some(expr_type) = &expr.expr_type {
-                    if !expected_type.is_assignable_from(expr_type) {
+                    // Special case: Allow 0 to initialize pointers (NULL)
+                    let is_null_init = matches!(expected_type, Type::Pointer { .. })
+                        && expr_type.is_integer()
+                        && matches!(expr.kind, ExpressionKind::IntLiteral(0));
+                    
+                    if !is_null_init && !expected_type.is_assignable_from(expr_type) {
                         return Err(SemanticError::TypeMismatch {
                             expected: expected_type.clone(),
                             found: expr_type.clone(),

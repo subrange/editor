@@ -6,6 +6,7 @@
 //! DO NOT CONFUSE WITH /v2/function/internal.rs which is an internal implementation detail.
 
 use rcc_frontend::ir::{Function, Instruction, Value, IrType};
+use rcc_frontend::BankTag;
 use rcc_codegen::{AsmInst, Reg};
 use std::collections::HashMap;
 use log::{debug, info, trace};
@@ -158,6 +159,60 @@ fn handle_return_instruction(
                 builder.add_instruction(AsmInst::Li(Reg::Rv0, *c as i16));
                 trace!("  Returning constant {} in Rv0", c);
                 Some((Reg::Rv0, None))
+            }
+            Value::FatPtr(fp) => {
+                // Handle fat pointer return
+                // Get the address part
+                let addr_reg = match fp.addr.as_ref() {
+                    Value::Temp(t) => {
+                        let temp_name = naming.temp_name(*t);
+                        mgr.get_register(temp_name)
+                    }
+                    Value::Constant(c) => {
+                        builder.add_instruction(AsmInst::Li(Reg::Rv0, *c as i16));
+                        Reg::Rv0
+                    }
+                    _ => panic!("Unexpected value type in FatPtr address: {:?}", fp.addr),
+                };
+                
+                // Get the bank part
+                let bank_reg = match fp.bank {
+                    BankTag::Global => {
+                        builder.add_instruction(AsmInst::Move(Reg::Rv1, Reg::Gp));
+                        Reg::Rv1
+                    }
+                    BankTag::Stack => {
+                        builder.add_instruction(AsmInst::Move(Reg::Rv1, Reg::Sb));
+                        Reg::Rv1
+                    }
+                    BankTag::Mixed => {
+                        // For Mixed, the bank should be tracked in the register manager
+                        if let Value::Temp(t) = fp.addr.as_ref() {
+                            let temp_name = naming.temp_name(*t);
+                            let bank_info = mgr.get_pointer_bank(&temp_name)
+                                .unwrap_or_else(|| {
+                                    panic!("No bank info for Mixed pointer t{}", t);
+                                });
+                            get_bank_register_with_mgr(&bank_info, mgr)
+                        } else {
+                            panic!("Mixed bank requires temp value");
+                        }
+                    }
+                    _ => panic!("Unsupported bank tag for return: {:?}", fp.bank),
+                };
+                
+                builder.add_instructions(mgr.take_instructions());
+                
+                // Move to return registers if needed
+                if addr_reg != Reg::Rv0 {
+                    builder.add_instruction(AsmInst::Move(Reg::Rv0, addr_reg));
+                }
+                if bank_reg != Reg::Rv1 {
+                    builder.add_instruction(AsmInst::Move(Reg::Rv1, bank_reg));
+                }
+                
+                trace!("  Returning fat pointer in Rv0/Rv1");
+                Some((Reg::Rv0, Some(Reg::Rv1)))
             }
             _ => {
                 trace!("  Void return");

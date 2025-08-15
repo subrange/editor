@@ -1,14 +1,16 @@
 //! Function call code generation
 
-use super::TypedExpressionGenerator;
-use crate::ir::{IrType, Value};
+use super::{TypedExpressionGenerator, convert_type_default};
+use crate::ir::{IrType, Value, FatPointer};
 use crate::typed_ast::TypedExpr;
+use crate::types::{Type, BankTag};
 use crate::CompilerError;
 
 pub fn generate_function_call(
     gen: &mut TypedExpressionGenerator,
     function: &TypedExpr,
     arguments: &[TypedExpr],
+    return_type: &Type,
 ) -> Result<Value, CompilerError> {
     // For function calls, we need the function name directly, not its loaded value
     let func_val = match function {
@@ -33,7 +35,24 @@ pub fn generate_function_call(
         arg_vals.push(gen.generate(arg)?);
     }
     
-    // TODO: Get proper return type
-    let result = gen.builder.build_call(func_val, arg_vals, IrType::I16)?;
-    Ok(result.map(Value::Temp).unwrap_or(Value::Constant(0)))
+    // Get the proper return type
+    let ir_return_type = convert_type_default(return_type)?;
+    let result = gen.builder.build_call(func_val, arg_vals, ir_return_type)?;
+    
+    // Handle the return value based on type
+    match result {
+        Some(temp_id) => {
+            // If the return type is a pointer, wrap it in a FatPointer with Mixed bank
+            // Mixed is used for pointers that can come from different sources
+            if matches!(return_type, Type::Pointer { .. }) {
+                Ok(Value::FatPtr(FatPointer {
+                    addr: Box::new(Value::Temp(temp_id)),
+                    bank: BankTag::Mixed,
+                }))
+            } else {
+                Ok(Value::Temp(temp_id))
+            }
+        }
+        None => Ok(Value::Constant(0)), // void return
+    }
 }

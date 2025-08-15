@@ -342,7 +342,7 @@
     },
     {
       "file": "tests/test_pointers_evil.c",
-      "expected": "Y\n",
+      "expected": "YYYYYYYYYYYYYYYY\n",
       "use_runtime": true,
       "description": "Test EVERYTHING that can go wrong with pointers. And it does."
     },
@@ -471,6 +471,60 @@
       "expected": "Y\n",
       "use_runtime": true,
       "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_complex_declarator.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_null_pointer.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_return_ptr_deref.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_pointer_diff.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_increment_all.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_ptr_diff_context.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_s3_kitchen_sink.c",
+      "expected": "=== S3 KITCHEN SINK TEST ===\nT1: Locals\nLOCAL\nT2: Globals\nG\nGLOBAL\n42\nT3: Evil ptrs\nP999\nT4: Arrays\nD\nT5: Shift\nXABC\nT6: Structs\nY\nT7: Nested\nYTEST\nT8: StructArr\nY\nT9: Casts\nAY\nT10: PtrCast\nYAB\nT11: NULL\nYYY\nT12: PtrArith\nYY5\nT13: PtrCmp\nYYY\nT14: Conds\nYYY\nT15: Math\n40\nT16: Recur\n120\nT17: Strings\nHELLO\nINIT\nT18: For\n01234\nT19: Break\nB0B1B2\nT20: Unary\n1\nT21: DoWhile\nD0D1D2\nT22: Typedef\nOK\nT23: AddrOf\nYY\nT24: StructAsg\nY\nT25: Mixed\nYYY\n=== END S3 KITCHEN SINK ===",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_s3_essentials.c",
+      "expected": "=== S3 ESSENTIALS ===\nT1: Struct\n34\nT2: StructPtr\n56\nT3: Nested\n1278\nT4: Cast\nAY\nT5: PtrCast\nY\nT6: NULL\nYY\nT7: PtrArith\n323\nT8: PtrCmp\nYYY\nT9: StructArr\n3456\nT10: AddrOf\n98\n=== END S3 ESSENTIALS ===\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_struct_assignment.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Struct assignment bug - copies incorrectly"
     }
   ],
   "known_failures": [

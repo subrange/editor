@@ -131,6 +131,11 @@ impl Type {
         }
     }
     
+    /// Check if type is void
+    pub fn is_void(&self) -> bool {
+        matches!(self, Type::Void)
+    }
+    
     /// Check if type is integer
     pub fn is_integer(&self) -> bool {
         matches!(self, 
