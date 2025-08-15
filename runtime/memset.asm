@@ -79,10 +79,14 @@ L_memset_2:
     ADD SC, FP, R0
     ADDI SC, SC, 13
     STORE S3, SB, SC
-    MOD S3, T1, T5
-; Spill t1 to slot 1
+; Spill bank for t0 to slot 1
     ADD SC, FP, R0
     ADDI SC, SC, 14
+    STORE A1, SB, SC
+    MOD S3, T1, T5
+; Spill t1 to slot 2
+    ADD SC, FP, R0
+    ADDI SC, SC, 15
     STORE S2, SB, SC
     ADD S2, T6, T2
     ADD T1, S3, R0

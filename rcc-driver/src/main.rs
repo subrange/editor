@@ -75,6 +75,10 @@ enum Commands {
         /// Bank size in cells (default: 4096)
         #[arg(long, default_value = "4096")]
         bank_size: u16,
+        
+        /// Enable spill/reload tracing for debugging register allocation
+        #[arg(long)]
+        trace_spills: bool,
     },
 }
 
@@ -94,7 +98,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Compile { input, output, emit_ir, print_ir, save_ir, ir_output, debug, bank_size } => {
+        Commands::Compile { input, output, emit_ir, print_ir, save_ir, ir_output, debug, bank_size, trace_spills } => {
             // Initialize logger based on debug level
             let log_level = match debug {
                 0 => "error",
@@ -110,7 +114,7 @@ fn main() {
                 .format_target(false)
                 .init();
             
-            if let Err(e) = compile_c99_file(&input, output.as_deref(), emit_ir, print_ir, save_ir, ir_output.as_deref(), bank_size) {
+            if let Err(e) = compile_c99_file(&input, output.as_deref(), emit_ir, print_ir, save_ir, ir_output.as_deref(), bank_size, trace_spills) {
                 eprintln!("Error compiling C99 file: {}", e);
                 std::process::exit(1);
             }
@@ -144,6 +148,7 @@ fn compile_c99_file(
     save_ir: bool,
     ir_output_path: Option<&std::path::Path>,
     bank_size: u16,
+    trace_spills: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Don't print compilation message if we're just emitting IR
     if !emit_ir {
@@ -280,6 +285,7 @@ fn compile_c99_file(
             let options = LoweringOptions {
                 bank_size,
                 use_v2: true,
+                trace_spills,
             };
             match lower_module_to_assembly_with_options(&ir_module, options) {
                 Ok(asm_instructions) => {

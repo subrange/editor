@@ -72,6 +72,13 @@ pub struct RegisterPressureManager {
     /// Map from alloca temp names to their FP offsets
     /// This allows recomputing alloca addresses when they're not in registers
     alloca_offsets: BTreeMap<String, i16>,
+    
+    /// Enable detailed spill/reload tracing
+    trace_spills: bool,
+    
+    /// Map from fat pointer values to their bank spill slots
+    /// When we spill a fat pointer, we need to track both address and bank
+    fat_ptr_bank_slots: BTreeMap<String, i16>,
 }
 
 impl RegisterPressureManager {
@@ -94,6 +101,8 @@ impl RegisterPressureManager {
             instructions: Vec::new(),
             local_count,
             alloca_offsets: BTreeMap::new(),
+            trace_spills: false,
+            fat_ptr_bank_slots: BTreeMap::new(),
         }
     }
     
@@ -105,6 +114,16 @@ impl RegisterPressureManager {
         // Take any initialization instructions from the allocator
         self.instructions.extend(self.allocator.take_instructions());
         trace!("  R13 initialized, spill base set to FP+{}", self.local_count);
+    }
+    
+    /// Enable or disable spill tracing
+    pub fn set_trace_spills(&mut self, enabled: bool) {
+        self.trace_spills = enabled;
+        if enabled {
+            eprintln!("\n=== SPILL TRACE ENABLED ===");
+            eprintln!("Function initialized with {} local slots", self.local_count);
+            eprintln!("Spill slots will start at FP+{}", self.local_count);
+        }
     }
     
     /// Get the number of local slots this manager was initialized with
@@ -340,6 +359,10 @@ impl RegisterPressureManager {
             // Check if this is an alloca - allocas are addresses, don't spill them
             if self.alloca_offsets.contains_key(&value) {
                 debug!("  '{}' is an alloca address, not spilling (will recompute when needed)", value);
+                if self.trace_spills {
+                    eprintln!("SPILL: {} (alloca at FP+{}) from {:?} - NOT SPILLED (will recompute)",
+                             value, self.alloca_offsets[&value], reg);
+                }
                 // Just remove from register, it will be recomputed when needed
                 self.reg_contents.remove(&reg);
                 return;

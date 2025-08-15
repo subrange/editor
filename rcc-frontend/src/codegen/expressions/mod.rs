@@ -233,20 +233,37 @@ impl<'a> TypedExpressionGenerator<'a> {
                     field_type_ir.clone()
                 )?;
                 
-                // Check if the field is an array type
+                // Check if the field is an array type or pointer type
                 // Arrays should decay to pointers when accessed (not loaded)
-                if let Type::Array { .. } = expr_type {
-                    // For array fields, return the pointer to the first element
-                    // This allows array indexing to work: buf.data[i]
-                    Ok(field_ptr)
-                } else {
-                    // For non-array fields, load the value from the field address
-                    let temp_id = self.builder.build_load(field_ptr, field_type_ir)
-                        .map_err(|e| CodegenError::InternalError {
-                            message: e,
-                            location: rcc_common::SourceLocation::new_simple(0, 0),
-                        })?;
-                    Ok(Value::Temp(temp_id))
+                // Pointers should be returned as FatPtr for further operations
+                match expr_type {
+                    Type::Array { .. } => {
+                        // For array fields, return the pointer to the first element
+                        // This allows array indexing to work: buf.data[i]
+                        Ok(field_ptr)
+                    }
+                    Type::Pointer { .. } => {
+                        // For pointer fields, load the value but return as FatPtr
+                        let temp_id = self.builder.build_load(field_ptr, field_type_ir)
+                            .map_err(|e| CodegenError::InternalError {
+                                message: e,
+                                location: rcc_common::SourceLocation::new_simple(0, 0),
+                            })?;
+                        // Wrap in FatPtr with Mixed bank (loaded pointer, bank unknown)
+                        Ok(Value::FatPtr(FatPointer {
+                            addr: Box::new(Value::Temp(temp_id)),
+                            bank: BankTag::Mixed,
+                        }))
+                    }
+                    _ => {
+                        // For other fields, load the value normally
+                        let temp_id = self.builder.build_load(field_ptr, field_type_ir)
+                            .map_err(|e| CodegenError::InternalError {
+                                message: e,
+                                location: rcc_common::SourceLocation::new_simple(0, 0),
+                            })?;
+                        Ok(Value::Temp(temp_id))
+                    }
                 }
             }
             

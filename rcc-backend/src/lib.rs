@@ -19,6 +19,7 @@ pub use v2::lower_module_v2;
 pub struct LoweringOptions {
     pub bank_size: u16,
     pub use_v2: bool,
+    pub trace_spills: bool,
 }
 
 impl Default for LoweringOptions {
@@ -26,6 +27,7 @@ impl Default for LoweringOptions {
         Self {
             bank_size: 4096,
             use_v2: true,
+            trace_spills: false,
         }
     }
 }
@@ -36,5 +38,5 @@ pub fn lower_module_to_assembly_with_options(
     options: LoweringOptions,
 ) -> Result<Vec<rcc_codegen::AsmInst>, String> {
     // Always use v2 backend now that v1 is removed
-    lower_module_v2(module, options.bank_size)
+    lower_module_v2(module, options.bank_size, options.trace_spills)
 }

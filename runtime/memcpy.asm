@@ -99,20 +99,28 @@ L_memcpy_2:
     ADD SC, FP, R0
     ADDI SC, SC, 17
     STORE S3, SB, SC
-; Spill t1 to slot 2
+; Spill bank for t0 to slot 2
     ADD SC, FP, R0
     ADDI SC, SC, 18
+    STORE A1, SB, SC
+; Spill t1 to slot 3
+    ADD SC, FP, R0
+    ADDI SC, SC, 19
     STORE S2, SB, SC
     LI S2, 4096
     DIV S3, S0, S2
-; Spill t2 to slot 3
-    ADD SC, FP, R0
-    ADDI SC, SC, 19
-    STORE S1, SB, SC
-    MOD S1, S0, S2
-; Spill t3 to slot 4
+; Spill t2 to slot 4
     ADD SC, FP, R0
     ADDI SC, SC, 20
+    STORE S1, SB, SC
+; Spill bank for t2 to slot 5
+    ADD SC, FP, R0
+    ADDI SC, SC, 21
+    STORE S0, SB, SC
+    MOD S1, S0, S2
+; Spill t3 to slot 6
+    ADD SC, FP, R0
+    ADDI SC, SC, 22
     STORE T7, SB, SC
     ADD T7, T2, S3
     ADD S0, S1, R0
@@ -123,27 +131,27 @@ L_memcpy_2:
     ADDI S2, T5, 1
     LOAD S1, SB, S2
     LOAD T4, SB, T0
-; Spill t4 to slot 5
+; Spill t4 to slot 7
     ADD SC, FP, R0
-    ADDI SC, SC, 21
+    ADDI SC, SC, 23
     STORE T6, SB, SC
     ADD T6, T4, R0
     ADD S2, S3, T6
 ; Runtime bank overflow calculation for dynamic GEP
-; Spill t15 to slot 6
+; Spill t15 to slot 8
     ADD SC, FP, R0
-    ADDI SC, SC, 22
+    ADDI SC, SC, 24
     STORE T1, SB, SC
     LI T1, 4096
     DIV T3, S2, T1
-; Spill load_f0_op15_t14_bank_val to slot 7
+; Spill load_f0_op15_t14_bank_val to slot 9
     ADD SC, FP, R0
-    ADDI SC, SC, 23
+    ADDI SC, SC, 25
     STORE T2, SB, SC
     MOD T2, S2, T1
-; Spill gep_new_bank_f0_op21_t16 to slot 8
+; Spill gep_new_bank_f0_op21_t16 to slot 10
     ADD SC, FP, R0
-    ADDI SC, SC, 24
+    ADDI SC, SC, 26
     STORE T7, SB, SC
     ADD T7, S1, T3
     ADD S2, T2, R0

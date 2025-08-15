@@ -377,6 +377,14 @@ def main():
         test_file = test_files[0]
         expected_output = test_files[1] if len(test_files) > 1 else None
         
+        # Process escape sequences in expected output
+        if expected_output is not None:
+            # Replace common escape sequences
+            expected_output = expected_output.replace('\\n', '\n')
+            expected_output = expected_output.replace('\\t', '\t')
+            expected_output = expected_output.replace('\\r', '\r')
+            expected_output = expected_output.replace('\\\\', '\\')
+        
         # Determine if it's a regular test or known failure
         is_known_failure = "known-failures" in test_file or expected_output is None
         

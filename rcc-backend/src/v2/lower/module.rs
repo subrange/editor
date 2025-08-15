@@ -12,7 +12,7 @@ use crate::v2::naming::new_function_naming;
 use super::function::lower_function_v2;
 
 /// Lower an entire module using the V2 backend
-pub fn lower_module_v2(module: &Module, bank_size: u16) -> Result<Vec<AsmInst>, String> {
+pub fn lower_module_v2(module: &Module, bank_size: u16, trace_spills: bool) -> Result<Vec<AsmInst>, String> {
     info!("V2: Lowering module '{}' with bank_size {}", module.name, bank_size);
     let mut all_instructions = Vec::new();
     
@@ -77,6 +77,7 @@ pub fn lower_module_v2(module: &Module, bank_size: u16) -> Result<Vec<AsmInst>, 
         // Create a fresh register manager and naming context for this function
         // The manager stores local_slots internally and lower_function_v2 will retrieve it
         let mut mgr = RegisterPressureManager::new(local_slots);
+        mgr.set_trace_spills(trace_spills);
         let mut naming = new_function_naming();
         
         let function_asm = lower_function_v2(function, &mut mgr, &mut naming, &global_manager)?;
