@@ -55,13 +55,26 @@ pub fn generate_pointer_difference(
     let left_val = gen.generate(left)?;
     let right_val = gen.generate(right)?;
     
-    // Calculate byte difference
+    // Extract address components from FatPointers
+    // When subtracting pointers, we only care about addresses, not banks
+    let left_addr = match left_val {
+        Value::FatPtr(ref fp) => *fp.addr.clone(),
+        _ => left_val.clone(),
+    };
+    
+    let right_addr = match right_val {
+        Value::FatPtr(ref fp) => *fp.addr.clone(),
+        _ => right_val.clone(),
+    };
+    
+    // Calculate byte difference using only addresses
     let byte_diff =
         gen.builder
-            .build_binary(IrBinaryOp::Sub, left_val, right_val, IrType::I16)?;
+            .build_binary(IrBinaryOp::Sub, left_addr, right_addr, IrType::I16)?;
     
     // Divide by element size to get element count
-    let elem_size = super::super::types::get_ast_type_size(elem_type) as i64;
+    // Use size_in_words since Ripple VM is word-addressed
+    let elem_size = elem_type.size_in_words().unwrap_or(1) as i64;
     let result = gen.builder.build_binary(
         IrBinaryOp::UDiv,
         Value::Temp(byte_diff),

@@ -158,6 +158,7 @@ pub fn resolve_bank_tag_to_info(
         BankTag::Global => BankInfo::Global,
         BankTag::Stack => BankInfo::Stack,
         BankTag::Mixed => resolve_mixed_bank(fp, mgr, naming),
+        BankTag::Null => panic!("NULL pointer dereference: attempted to access NULL pointer"),
         other => panic!("Helpers: Unsupported bank type for fat pointer: {:?}", other),
     }
 }
@@ -238,6 +239,9 @@ pub fn materialize_bank_to_register(
         }
         BankTag::Mixed => {
             panic!("Cannot materialize Mixed bank tag without additional context - use resolve_mixed_bank first")
+        }
+        BankTag::Null => {
+            panic!("NULL pointer dereference: attempted to use NULL pointer")
         }
         _ => {
             panic!("HELPERS: Unexpected bank tag type: {:?}", bank_tag);

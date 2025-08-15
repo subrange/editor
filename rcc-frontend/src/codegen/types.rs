@@ -74,31 +74,3 @@ pub fn convert_type(ast_type: &Type, location: SourceLocation) -> Result<IrType,
         }.into()),
     }
 }
-
-/// Get the size of an AST type in bytes
-pub fn get_ast_type_size(ast_type: &Type) -> u64 {
-    match ast_type {
-        Type::Void => 0,
-        Type::Bool => 1,
-        Type::Char | Type::SignedChar | Type::UnsignedChar => 1,
-        Type::Short | Type::UnsignedShort => 2,
-        Type::Int | Type::UnsignedInt => 2, // 16-bit int on Ripple
-        Type::Long | Type::UnsignedLong => 4,
-        Type::Pointer { .. } => 4, // Fat pointers: 2 bytes address + 2 bytes bank
-        Type::Array { element_type, size } => {
-            let elem_size = get_ast_type_size(element_type);
-            
-            if let Some(size) = size {
-                elem_size * size
-            } else {
-                0
-            }
-        }
-        Type::Function { .. } => 0, // Functions don't have size
-        Type::Struct { .. } | Type::Union { .. } => {
-            // Use the size_in_bytes method from Type
-            ast_type.size_in_words().unwrap_or(0)
-        }
-        _ => 0, // TODO: Handle other types
-    }
-}

@@ -117,11 +117,14 @@ impl<'a> TypedExpressionGenerator<'a> {
                     // Integer to pointer cast
                     (source, Type::Pointer { .. }) if source.is_integer() => {
                         // Create a fat pointer from an integer value
-                        // The integer becomes the address, bank is Unknown since we don't know
-                        // what memory region an arbitrary integer address refers to
+                        // Check if this is a NULL pointer (literal 0)
+                        let bank_tag = match &operand_val {
+                            Value::Constant(0) => BankTag::Null,  // NULL pointer
+                            _ => BankTag::Global,  // Other integer-to-pointer casts use Global
+                        };
                         Ok(Value::FatPtr(FatPointer {
                             addr: Box::new(operand_val),
-                            bank: BankTag::Unknown,  // Unknown origin for integer-to-pointer casts
+                            bank: bank_tag,
                         }))
                     }
                     

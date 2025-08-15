@@ -158,3 +158,49 @@ pub fn lower_load(
     debug!("lower_load complete: generated {} instructions", insts.len());
     insts
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rcc_frontend::ir::FatPointer;
+    use rcc_frontend::BankTag;
+    
+    #[test]
+    #[should_panic(expected = "NULL pointer dereference")]
+    fn test_load_from_null_pointer() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Create a NULL pointer
+        let null_ptr = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(0)),
+            bank: BankTag::Null,
+        });
+        
+        // Attempt to load from NULL pointer - should panic
+        let result_type = Type::Int;
+        let result_temp = 1;
+        lower_load(&mut mgr, &mut naming, &null_ptr, &result_type, result_temp);
+    }
+    
+    #[test]
+    fn test_load_from_valid_pointer() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Create a valid global pointer
+        let valid_ptr = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(100)),
+            bank: BankTag::Global,
+        });
+        
+        // Load from valid pointer - should succeed
+        let result_type = Type::Int;
+        let result_temp = 1;
+        let insts = lower_load(&mut mgr, &mut naming, &valid_ptr, &result_type, result_temp);
+        
+        // Should generate at least one LOAD instruction
+        assert!(!insts.is_empty());
+        assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Load(_, _, _))));
+    }
+}

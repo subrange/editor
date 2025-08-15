@@ -128,6 +128,16 @@ pub fn lower_store(
                         }
                     }
                 }
+                BankTag::Null => {
+                    // Storing a NULL pointer value is OK - we use a special bank value for NULL
+                    // We can use 0 or a special sentinel value to represent NULL bank
+                    let name = naming.store_fatptr_bank();
+                    let r = mgr.get_register(name);
+                    insts.extend(mgr.take_instructions());
+                    // Use 0 as the bank value for NULL pointers
+                    insts.push(AsmInst::Li(r, 0));
+                    (r, true)
+                }
                 other => panic!("Store: Unsupported bank type for fat pointer: {:?}", other),
             };
             (addr_reg, true, Some((bank_reg, bank_owned)))
@@ -332,5 +342,63 @@ mod tests {
         
         // This should panic
         lower_store(&mut mgr, &mut naming, &value, &ptr);
+    }
+    
+    #[test]
+    #[should_panic(expected = "NULL pointer dereference: attempted to store through NULL pointer")]
+    fn test_store_through_null_pointer() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Try to store through a NULL pointer - should panic
+        let value = Value::Constant(42);
+        let null_ptr = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(0)),
+            bank: BankTag::Null,
+        });
+        
+        // This should panic
+        lower_store(&mut mgr, &mut naming, &value, &null_ptr);
+    }
+    
+    #[test]
+    #[should_panic(expected = "NULL pointer dereference: attempted to store through NULL pointer")]
+    fn test_store_null_pointer_value() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Try to store a NULL pointer value - the value itself is OK,
+        // but storing through NULL destination should panic
+        let null_value = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(0)),
+            bank: BankTag::Null,
+        });
+        let null_dest = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(0)),
+            bank: BankTag::Null,
+        });
+        
+        // This should panic because of NULL destination
+        lower_store(&mut mgr, &mut naming, &null_value, &null_dest);
+    }
+    
+    #[test]
+    fn test_store_null_pointer_as_value_to_valid_location() {
+        let mut mgr = RegisterPressureManager::new(10);
+        let mut naming = NameGenerator::new(0);
+        
+        // Storing a NULL pointer value to a valid location should work
+        let null_value = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(0)),
+            bank: BankTag::Null,
+        });
+        let valid_dest = Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Constant(100)),
+            bank: BankTag::Global,
+        });
+        
+        // This should succeed - we can store NULL pointers, just not through them
+        let insts = lower_store(&mut mgr, &mut naming, &null_value, &valid_dest);
+        assert!(!insts.is_empty());
     }
 }

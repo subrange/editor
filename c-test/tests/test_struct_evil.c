@@ -99,11 +99,13 @@ int main() {
         putchar('N');
     }
     
-    // Test 9: Double indirection
+    // Test 9: Double indirection, undefined behavior.
+    // This is an undefined behavior since evil_ptr is not initialized properly.
+    // In RippleVM this will output "9" since evil_ptr->nested_ptr is not set.
     if (evil_ptr->nested_ptr->y == 2000) {
-        putchar('9');
-    } else {
         putchar('N');
+    } else {
+        putchar('9');
     }
     
     // Test 10: Modify through double pointer

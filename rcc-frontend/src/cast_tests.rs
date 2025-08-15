@@ -170,9 +170,99 @@ mod tests {
         let result = Frontend::compile_to_ir(code, "test");
         assert!(result.is_ok(), "NULL pointer casts should work");
         
-        // Check that the IR contains FatPtr with Unknown bank
+        // Check that the IR contains FatPtr with Null bank
         let module = result.unwrap();
-        // We should verify the generated IR has proper FatPtr values
+        // We should verify the generated IR has proper FatPtr values with Null bank
+    }
+    
+    #[test]
+    fn test_null_pointer_uniqueness() {
+        // Test that NULL pointer is unique and distinct from other values
+        let code = r#"
+            int main() {
+                int* null1 = (int*)0;
+                void* null2 = (void*)0;
+                char* null3 = (char*)0;
+                
+                // All NULL pointers should be equal
+                if (null1 != null2) return 1;
+                if (null2 != null3) return 2;
+                if (null1 != null3) return 3;
+                
+                // NULL should equal literal 0
+                if (null1 != 0) return 4;
+                if (0 != null2) return 5;
+                
+                return 0;
+            }
+        "#;
+        
+        let result = Frontend::compile_to_ir(code, "test");
+        assert!(result.is_ok(), "NULL pointer comparisons should work");
+    }
+    
+    #[test]
+    fn test_null_pointer_arithmetic() {
+        // Test that arithmetic on NULL pointers is handled correctly
+        let code = r#"
+            int main() {
+                int* p = (int*)0;
+                int* q = p + 5;  // NULL + offset should still work syntactically
+                return 0;
+            }
+        "#;
+        
+        let result = Frontend::compile_to_ir(code, "test");
+        assert!(result.is_ok(), "NULL pointer arithmetic should compile");
+    }
+    
+    #[test]
+    fn test_non_zero_integer_to_pointer() {
+        // Test that non-zero integers cast to pointers get Global bank (not Null)
+        let code = r#"
+            int main() {
+                int* p = (int*)100;  // Non-zero constant
+                int x = 200;
+                int* q = (int*)x;    // Non-zero variable
+                return 0;
+            }
+        "#;
+        
+        let result = Frontend::compile_to_ir(code, "test");
+        assert!(result.is_ok(), "Non-zero integer to pointer casts should work");
+    }
+    
+    #[test]
+    fn test_null_from_expression() {
+        // Test that expressions evaluating to 0 create NULL pointers
+        let code = r#"
+            int main() {
+                int zero = 0;
+                int* p = (int*)zero;     // Variable containing 0
+                int* q = (int*)(5 - 5);  // Expression evaluating to 0
+                return 0;
+            }
+        "#;
+        
+        let result = Frontend::compile_to_ir(code, "test");
+        assert!(result.is_ok(), "Expressions evaluating to 0 should create valid pointers");
+        // Note: Only literal 0 gets Null bank, expressions get Global bank
+    }
+    
+    #[test]
+    fn test_null_pointer_to_integer() {
+        // Test that NULL pointers can be cast back to integers
+        let code = r#"
+            int main() {
+                int* p = (int*)0;
+                int addr = (int)p;  // Should be 0
+                long laddr = (long)p;  // Should be 0
+                return addr + laddr;
+            }
+        "#;
+        
+        let result = Frontend::compile_to_ir(code, "test");
+        assert!(result.is_ok(), "NULL pointer to integer cast should work");
     }
 
     #[test]

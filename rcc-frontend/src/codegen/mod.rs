@@ -11,7 +11,7 @@ pub mod codegen;
 
 pub use errors::CodegenError;
 pub use codegen::TypedCodeGenerator;
-pub use types::{convert_type, get_ast_type_size};
+pub use types::{convert_type};
 
 use crate::ir::FatPointer;
 use crate::ir::Value;

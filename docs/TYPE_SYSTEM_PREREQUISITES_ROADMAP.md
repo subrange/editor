@@ -455,7 +455,6 @@ Parser needs to distinguish typedef names from regular identifiers.
 
 ### Key Test Files to Enable
 - `test_pointers_evil.c` - Requires casts, void pointers
-- `test_struct_simple.c` - Requires struct support
 - Future pointer arithmetic tests from POINTER_ARITHMETIC_ROADMAP.md
 
 ## Implementation Order (REVISED)

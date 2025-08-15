@@ -55,37 +55,25 @@ L_puts_2:
     ADD SC, FP, R0
     ADDI SC, SC, 10
     STORE S3, SB, SC
-; Spill bank for t0 to slot 1
+; Spill t2 to slot 1
     ADD SC, FP, R0
     ADDI SC, SC, 11
-    STORE A1, SB, SC
-; Spill t2 to slot 2
+    STORE T7, SB, SC
+; Spill load_f0_op5_t2_bank_val to slot 2
     ADD SC, FP, R0
     ADDI SC, SC, 12
-    STORE T7, SB, SC
-; Spill bank load_f0_op5_t2_bank_val (in T5) for t2 to slot 3
+    STORE T5, SB, SC
+; Spill t4 to slot 3
     ADD SC, FP, R0
     ADDI SC, SC, 13
-    STORE T5, SB, SC
-; Spill load_f0_op5_t2_bank_val to slot 4
+    STORE T2, SB, SC
+; Spill load_f0_op8_t4_bank_val to slot 4
     ADD SC, FP, R0
     ADDI SC, SC, 14
-    STORE T5, SB, SC
-; Spill t4 to slot 5
+    STORE T0, SB, SC
+; Spill t5 to slot 5
     ADD SC, FP, R0
     ADDI SC, SC, 15
-    STORE T2, SB, SC
-; Spill bank load_f0_op8_t4_bank_val (in T0) for t4 to slot 6
-    ADD SC, FP, R0
-    ADDI SC, SC, 16
-    STORE T0, SB, SC
-; Spill load_f0_op8_t4_bank_val to slot 7
-    ADD SC, FP, R0
-    ADDI SC, SC, 17
-    STORE T0, SB, SC
-; Spill t5 to slot 8
-    ADD SC, FP, R0
-    ADDI SC, SC, 18
     STORE S1, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0
@@ -107,17 +95,17 @@ L_puts_2:
 L_puts_3:
     LI T7, 10
 ; Spill live registers before call
-; Spill t6 to slot 9
+; Spill t6 to slot 6
     ADD SC, FP, R0
-    ADDI SC, SC, 19
+    ADDI SC, SC, 16
     STORE RV0, SB, SC
-; Spill load_f0_op11_t7_bank_val to slot 10
+; Spill load_f0_op11_t7_bank_val to slot 7
     ADD SC, FP, R0
-    ADDI SC, SC, 20
+    ADDI SC, SC, 17
     STORE S0, SB, SC
-; Spill const_f0_op13_10 to slot 11
+; Spill const_f0_op13_10 to slot 8
     ADD SC, FP, R0
-    ADDI SC, SC, 21
+    ADDI SC, SC, 18
     STORE T7, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0

@@ -14,6 +14,7 @@ pub enum BankTag {
     Heap = 2,    // Reserved for future heap
     Unknown,     // Parameter or loaded pointer
     Mixed,       // Can be different banks on different paths
+    Null,        // NULL pointer - invalid to dereference
 }
 
 impl fmt::Display for BankTag {
@@ -24,6 +25,7 @@ impl fmt::Display for BankTag {
             BankTag::Heap => write!(f, "heap"),
             BankTag::Unknown => write!(f, "unknown"),
             BankTag::Mixed => write!(f, "mixed"),
+            BankTag::Null => write!(f, "null"),
         }
     }
 }
