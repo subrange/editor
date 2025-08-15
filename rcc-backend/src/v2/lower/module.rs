@@ -80,7 +80,7 @@ pub fn lower_module_v2(module: &Module, bank_size: u16, trace_spills: bool) -> R
         mgr.set_trace_spills(trace_spills);
         let mut naming = new_function_naming();
         
-        let function_asm = lower_function_v2(function, &mut mgr, &mut naming, &global_manager)?;
+        let function_asm = lower_function_v2(function, &mut mgr, &mut naming, &global_manager, bank_size)?;
         all_instructions.extend(function_asm);
     }
     

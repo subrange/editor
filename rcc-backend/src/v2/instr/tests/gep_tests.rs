@@ -20,7 +20,7 @@ fn test_gep_simple_array_access() {
     let indices = vec![Value::Constant(3)];
     let element_size = 1; // 16-bit integers take 1 cell each
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 10);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 10, BANK_SIZE_INSTRUCTIONS);
     
     // Should calculate offset = 3 * 1 = 3
     assert!(insts.iter().any(|inst| {
@@ -47,7 +47,7 @@ fn test_gep_zero_offset() {
     let indices = vec![Value::Constant(0)];
     let element_size = 2; // Fat pointer takes 2 cells
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20, BANK_SIZE_INSTRUCTIONS);
     
     // Should just copy base address (add with R0)
     assert!(insts.iter().any(|inst| {
@@ -76,7 +76,7 @@ fn test_gep_dynamic_index() {
     let indices = vec![Value::Temp(11)]; // Dynamic index
     let element_size = 2; // Fat pointer takes 2 cells
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 30);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 30, BANK_SIZE_INSTRUCTIONS);
     
     // Should generate shift instruction (element_size = 2 = 2^1)
     // First load shift amount (1), then shift
@@ -127,7 +127,7 @@ fn test_gep_power_of_two_optimization() {
         
         let indices = vec![Value::Temp(101)]; // Dynamic index
         
-        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 200);
+        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 200, BANK_SIZE_INSTRUCTIONS);
         
         if let Some(shift) = expected_shift {
             // Check that we load the shift amount and then perform the shift
@@ -156,7 +156,7 @@ fn test_gep_non_power_of_two_size() {
     let indices = vec![Value::Temp(51)];
     let element_size = 3; // Not a power of 2
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 60);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 60, BANK_SIZE_INSTRUCTIONS);
     
     // Should use multiplication
     assert!(insts.iter().any(|inst| {
@@ -182,7 +182,7 @@ fn test_gep_large_static_offset() {
     let indices = vec![Value::Constant(2000)]; // Large index
     let element_size = 8; // Total offset = 16000 (crosses bank at 4096)
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 80);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 80, BANK_SIZE_INSTRUCTIONS);
     
     // Should generate large offset
     let expected_offset = 2000 * 8;
@@ -215,7 +215,7 @@ fn test_gep_global_pointer() {
     let indices = vec![Value::Constant(5)];
     let element_size = 2;
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 90);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 90, BANK_SIZE_INSTRUCTIONS);
     
     // Should load the constant global address
     assert!(insts.iter().any(|inst| {
@@ -249,7 +249,7 @@ fn test_gep_fat_pointer_with_constant_addr() {
     let indices = vec![Value::Constant(10)];
     let element_size = 4;
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 100);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 100, BANK_SIZE_INSTRUCTIONS);
     
     // Should load constant address
     assert!(insts.iter().any(|inst| {
@@ -284,7 +284,7 @@ fn test_gep_preserves_bank_info() {
         let element_size = 2;
         let result_temp = 210;
         
-        let _insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, result_temp);
+        let _insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, result_temp, BANK_SIZE_INSTRUCTIONS);
         
         // Check that bank info is preserved
         let result_name = format!("t{}", result_temp);
@@ -308,7 +308,7 @@ fn test_gep_negative_offset() {
     let indices = vec![Value::Constant(-5)];
     let element_size = 4;
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 310);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 310, BANK_SIZE_INSTRUCTIONS);
     
     // Should generate negative offset
     assert!(insts.iter().any(|inst| {
@@ -335,7 +335,7 @@ fn test_gep_register_pressure() {
     let indices = vec![Value::Temp(401)];
     let element_size = 7; // Non-power-of-2 to force multiplication
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 410);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 410, BANK_SIZE_INSTRUCTIONS);
     
     // Should have spill/reload comments if register pressure is high
     let has_spills = insts.iter().any(|inst| {
@@ -369,7 +369,7 @@ fn test_gep_runtime_bank_overflow() {
     let indices = vec![Value::Temp(501)];
     let element_size = 1; // Simple case
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 510);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 510, BANK_SIZE_INSTRUCTIONS);
     
     // Should calculate bank delta
     assert!(insts.iter().any(|inst| matches!(inst, AsmInst::Div(_, _, _))), 
@@ -408,7 +408,7 @@ fn test_gep_dynamic_with_existing_dynamic_bank() {
     let indices = vec![Value::Temp(601)];
     let element_size = 2;
     
-    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 610);
+    let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 610, BANK_SIZE_INSTRUCTIONS);
     
     // Should update the existing dynamic bank register
     assert!(insts.iter().any(|inst| {

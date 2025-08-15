@@ -243,6 +243,7 @@ fn lower_basic_block(
     alloca_offsets: &HashMap<rcc_common::TempId, i16>,
     global_manager: &GlobalManager,
     epilogue_label: &str,
+    bank_size: u16,
 ) -> Result<Vec<(Option<(Reg, Option<Reg>)>, usize)>, String> {
     debug!("Lowering block {} (index {})", block.id, block_idx);
     
@@ -279,7 +280,7 @@ fn lower_basic_block(
             
             _ => {
                 // Use the existing lower_instruction for other instructions
-                let insts = lower_instruction(mgr, naming, instruction, &function.name, alloca_offsets, global_manager)?;
+                let insts = lower_instruction(mgr, naming, instruction, &function.name, alloca_offsets, global_manager, bank_size)?;
                 builder.add_instructions(insts);
             }
         }
@@ -317,7 +318,8 @@ pub fn lower_function_v2(
     function: &Function, 
     mgr: &mut RegisterPressureManager,
     naming: &mut NameGenerator,
-    global_manager: &GlobalManager
+    global_manager: &GlobalManager,
+    bank_size: u16
 ) -> Result<Vec<AsmInst>, String> {
     info!("V2: Lowering function '{}' with {} blocks", function.name, function.blocks.len());
     
@@ -362,6 +364,7 @@ pub fn lower_function_v2(
             &alloca_offsets,
             global_manager,
             &epilogue_label,
+            bank_size,
         )?;
         
         if !return_values.is_empty() {

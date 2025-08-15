@@ -469,6 +469,7 @@ int main() {
     putchar('\n');
 
     // Test 24: Struct assignment (SKIPPED - compiler bug)
+    asm("brk");
     puts("T24: StructAsg");
     // p2 = p1 causes incorrect code generation
     // Manually copy fields instead
@@ -483,39 +484,39 @@ int main() {
     putchar('\n');
 
     // Test 25: Mixed pointer/array/struct (NEW!)
-//    puts("T25: Mixed");
-//    struct Point points[3];
-//    points[0].x = 10;
-//    points[0].y = 20;
-//    points[1].x = 30;
-//    points[1].y = 40;
-//    points[2].x = 50;
-//    points[2].y = 60;
-//
-//    struct Point* pp = &points[1];
-//    if (pp->x == 30) {
-//        putchar('Y');
-//    } else {
-//        putchar('N');
-//    }
-//
-//    pp = pp + 1;  // Move to points[2]
-//    if (pp->x == 50) {
-//        putchar('Y');
-//    } else {
-//        putchar('N');
-//    }
-//
-//    pp = pp - 2;  // Move to points[0]
-//    if (pp->x == 10) {
-//        putchar('Y');
-//    } else {
-//        putchar('N');
-//    }
-//    putchar('\n');
-//
-//    // Final message
-//    puts("=== END S3 KITCHEN SINK ===");
+    puts("T25: Mixed");
+    struct Point points[3];
+    points[0].x = 10;
+    points[0].y = 20;
+    points[1].x = 30;
+    points[1].y = 40;
+    points[2].x = 50;
+    points[2].y = 60;
+
+    struct Point* pp = &points[1];
+    if (pp->x == 30) {
+        putchar('Y');
+    } else {
+        putchar('N');
+    }
+
+    pp = pp + 1;  // Move to points[2]
+    if (pp->x == 50) {
+        putchar('Y');
+    } else {
+        putchar('N');
+    }
+
+    pp = pp - 2;  // Move to points[0]
+    if (pp->x == 10) {
+        putchar('Y');
+    } else {
+        putchar('N');
+    }
+    putchar('\n');
+
+    // Final message
+    puts("=== END S3 KITCHEN SINK ===");
     
     return 0;
 }

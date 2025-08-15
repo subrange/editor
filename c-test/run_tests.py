@@ -97,7 +97,7 @@ RUNTIME_LIB = f"{RUNTIME_DIR}/libruntime.par"
 BUILD_DIR = f"{BASE_DIR}/build"
 
 # Assembler settings (must match Makefile)
-BANK_SIZE = 4096
+BANK_SIZE = 8192
 MAX_IMMEDIATE = 65535
 
 def run_command(cmd, timeout=2):

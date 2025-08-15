@@ -115,6 +115,9 @@ pub struct TuiDebugger {
     panel_areas: HashMap<FocusedPane, Rect>,
     last_click_time: Option<Instant>,
     last_click_pos: Option<(u16, u16)>,
+    
+    // Status message for auto-pause and other notifications
+    pub(crate) status_message: Option<String>,
 }
 
 impl TuiDebugger {
@@ -169,6 +172,7 @@ impl TuiDebugger {
             panel_areas: HashMap::new(),
             last_click_time: None,
             last_click_pos: None,
+            status_message: None,
         }
     }
     
@@ -502,12 +506,25 @@ impl TuiDebugger {
     }
     
     pub(crate) fn run_until_break(&mut self, vm: &mut VM) {
+        const MAX_STEPS_BEFORE_PAUSE: usize = 10_000_000; // Pause after 10 million steps to prevent hanging
+        let mut steps_executed = 0;
+        
         while matches!(vm.state, VMState::Running) {
             // Step will check for breakpoint.rs before executing
             self.step_vm(vm);
+            steps_executed += 1;
             
             // If we hit a breakpoint.rs or other state change, stop
             if !matches!(vm.state, VMState::Running) {
+                break;
+            }
+            
+            // Safety check: pause if we've executed too many steps (likely infinite loop)
+            if steps_executed >= MAX_STEPS_BEFORE_PAUSE {
+                // Set state to breakpoint to pause execution
+                vm.state = VMState::Breakpoint;
+                // Store status message to display in UI
+                self.status_message = Some(format!("Auto-paused after {}M steps (possible infinite loop)", MAX_STEPS_BEFORE_PAUSE / 1_000_000));
                 break;
             }
         }

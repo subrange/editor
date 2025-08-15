@@ -29,6 +29,7 @@ pub fn lower_instruction(
     function_name: &str,
     alloca_offsets: &HashMap<rcc_common::TempId, i16>,
     global_manager: &GlobalManager,
+    bank_size: u16,
 ) -> Result<Vec<AsmInst>, String> {
     let mut insts = Vec::new();
     
@@ -93,7 +94,7 @@ pub fn lower_instruction(
             
             // Canonicalize pointer to resolve any global references
             let canonical_ptr = canonicalize_value(ptr, global_manager)?;
-            let gep_insts = lower_gep(mgr, naming, &canonical_ptr, indices, element_size, *result);
+            let gep_insts = lower_gep(mgr, naming, &canonical_ptr, indices, element_size, *result, bank_size);
             insts.extend(gep_insts);
         }
         

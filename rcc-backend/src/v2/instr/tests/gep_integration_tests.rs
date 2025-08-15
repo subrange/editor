@@ -35,7 +35,7 @@ fn test_gep_then_store() {
     let element_size = 1; // 16-bit integers = 1 cell each
     let gep_result_temp: TempId = 10;
     
-    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_result_temp);
+    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_result_temp, BANK_SIZE_INSTRUCTIONS);
     
     // Step 2: Store value 42 to the computed address
     let value_to_store = Value::Constant(42);
@@ -79,7 +79,7 @@ fn test_gep_then_load() {
     let element_size = 1;
     let gep_result_temp: TempId = 30;
     
-    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_result_temp);
+    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_result_temp, BANK_SIZE_INSTRUCTIONS);
     
     // Step 2: Load from the computed address
     let ptr_to_load = Value::Temp(gep_result_temp);
@@ -123,7 +123,7 @@ fn test_gep_with_dynamic_index_then_store() {
     let element_size = 2; // Fat pointers = 2 cells each
     let gep_result_temp: TempId = 60;
     
-    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_result_temp);
+    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_result_temp, BANK_SIZE_INSTRUCTIONS);
     
     // Store a value to the computed address
     let value_to_store = Value::Temp(52);
@@ -159,7 +159,7 @@ fn test_gep_chain() {
     let row_size = 10; // 10 elements per row
     let first_gep_temp: TempId = 110;
     
-    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[i_index], row_size, first_gep_temp);
+    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[i_index], row_size, first_gep_temp, BANK_SIZE_INSTRUCTIONS);
     
     // Second GEP: calculate &arr[i][j]
     let j_index = Value::Constant(7);
@@ -167,7 +167,7 @@ fn test_gep_chain() {
     let second_gep_temp: TempId = 120;
     
     let first_result = Value::Temp(first_gep_temp);
-    let second_gep_insts = lower_gep(&mut mgr, &mut naming, &first_result, &[j_index], element_size, second_gep_temp);
+    let second_gep_insts = lower_gep(&mut mgr, &mut naming, &first_result, &[j_index], element_size, second_gep_temp, BANK_SIZE_INSTRUCTIONS);
     insts.extend(second_gep_insts);
     
     // Should calculate offset = 3*10 + 7 = 37
@@ -204,7 +204,7 @@ fn test_gep_in_loop_pattern() {
         let element_size = 1;
         let gep_temp = 210 + i as TempId;
         
-        let gep_insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_temp);
+        let gep_insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_temp, BANK_SIZE_INSTRUCTIONS);
         all_insts.extend(gep_insts);
         
         // Store i to arr[i]
@@ -249,7 +249,7 @@ fn test_gep_with_large_array_crossing_banks() {
     let element_size = 1;
     let gep_temp: TempId = 310;
     
-    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_temp);
+    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_temp, BANK_SIZE_INSTRUCTIONS);
     
     // Load from the computed address
     let ptr = Value::Temp(gep_temp);
@@ -289,7 +289,7 @@ fn test_gep_load_store_pointer() {
     let element_size = 2; // Fat pointers are 2 cells
     let gep_temp: TempId = 410;
     
-    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_temp);
+    let mut insts = lower_gep(&mut mgr, &mut naming, &array_base, &[index], element_size, gep_temp, BANK_SIZE_INSTRUCTIONS);
     
     // Store a fat pointer to arr[2]
     let ptr_value = Value::FatPtr(FatPointer {

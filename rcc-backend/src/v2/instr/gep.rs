@@ -46,6 +46,7 @@ pub fn lower_gep(
     indices: &[Value],
     element_size: i16,
     result_temp: TempId,
+    bank_size: u16,
 ) -> Vec<AsmInst> {
     debug!(
         "lower_gep: base={:?}, indices={:?}, elem_size={}, result=t{}",
@@ -163,9 +164,9 @@ pub fn lower_gep(
         }
 
         // Check for bank overflow (only needed if offset is large)
-        if offset.abs() >= BANK_SIZE_INSTRUCTIONS as i16 {
-            let bank_crossing = offset / BANK_SIZE_INSTRUCTIONS as i16;
-            let new_offset = offset % BANK_SIZE_INSTRUCTIONS as i16;
+        if offset.abs() >= bank_size as i16 {
+            let bank_crossing = offset / bank_size as i16;
+            let new_offset = offset % bank_size as i16;
 
             warn!(
                 "  Static bank overflow detected! Offset {} crosses {} banks",
@@ -279,7 +280,7 @@ pub fn lower_gep(
         let bank_size_reg = mgr.get_register(naming.gep_bank_size(result_temp));
         insts.extend(mgr.take_instructions());
 
-        insts.push(AsmInst::Li(bank_size_reg, BANK_SIZE_INSTRUCTIONS as i16));
+        insts.push(AsmInst::Li(bank_size_reg, bank_size as i16));
         insts.push(AsmInst::Div(bank_delta_reg, result_addr_reg, bank_size_reg));
         trace!("  Calculated bank delta (banks crossed)");
 
@@ -383,7 +384,7 @@ mod tests {
         let indices = vec![Value::Constant(5)];
         let element_size = 4; // 4-byte elements
 
-        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20);
+        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20, BANK_SIZE_INSTRUCTIONS);
 
         // Should generate ADD immediate instruction
         assert!(insts
@@ -407,7 +408,7 @@ mod tests {
         let indices = vec![Value::Temp(11)];
         let element_size = 8; // 8-byte elements (power of 2)
 
-        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20);
+        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20, BANK_SIZE_INSTRUCTIONS);
 
         // Should generate shift instruction for power-of-2 size
         // Check for shift instruction (using Sll with register, not SllI)
@@ -429,7 +430,7 @@ mod tests {
         let indices = vec![Value::Constant(large_index)];
         let element_size = 4;
 
-        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20);
+        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20, BANK_SIZE_INSTRUCTIONS);
 
         // Should generate warning about bank overflow
         assert!(insts.iter().any(|inst| {

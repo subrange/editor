@@ -29,6 +29,15 @@ impl TuiDebugger {
             Style::default().bg(state_color).fg(Color::Black).add_modifier(Modifier::BOLD)
         ));
 
+        // Show status message if present
+        if let Some(ref msg) = self.status_message {
+            spans.push(Span::raw(" "));
+            spans.push(Span::styled(
+                format!(" {} ", msg),
+                Style::default().bg(Color::Yellow).fg(Color::Black).add_modifier(Modifier::BOLD)
+            ));
+        }
+        
         spans.push(Span::raw(" "));
 
         // Show active pane
