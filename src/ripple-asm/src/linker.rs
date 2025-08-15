@@ -136,6 +136,7 @@ impl Linker {
             labels: global_labels,
             data_labels: global_data_labels,
             entry_point,
+            bank_size: self.bank_size,
         })
     }
 
@@ -231,6 +232,7 @@ pub struct LinkedProgram {
     pub labels: HashMap<String, Label>,
     pub data_labels: HashMap<String, u32>,
     pub entry_point: u32,
+    pub bank_size: u16,
 }
 
 impl LinkedProgram {
@@ -239,6 +241,9 @@ impl LinkedProgram {
         
         // Write magic number for linked program
         binary.extend_from_slice(b"RLINK");
+        
+        // Write bank size (new field in binary format)
+        binary.extend_from_slice(&self.bank_size.to_le_bytes());
         
         // Write entry point
         binary.extend_from_slice(&self.entry_point.to_le_bytes());
@@ -294,6 +299,7 @@ impl LinkedProgram {
         let mut output = String::new();
         
         output.push_str(&format!("; Linked Program\n"));
+        output.push_str(&format!("; Bank size: {}\n", self.bank_size));
         output.push_str(&format!("; Entry point: 0x{:08X}\n", self.entry_point));
         output.push_str(&format!("; Instructions: {}\n", self.instructions.len()));
         output.push_str(&format!("; Data size: {} bytes\n\n", self.data.len()));

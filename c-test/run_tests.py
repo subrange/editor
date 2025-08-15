@@ -13,6 +13,7 @@ Options:
   --timeout N   Set timeout in seconds for test execution (default: 2)
   --verbose     Show output from test programs as they run
   --backend B   Execution backend: 'bf' (default) or 'rvm' for Ripple VM
+  --bank-size N Set bank size for assembler (default: 16384, was 8192)
   --run         Run tests normally without trace mode
   --debug       Use -t flag when running with RVM (trace/debug mode)
   --add         Add a test to tests.json (usage: --add test.c "expected output")
@@ -28,6 +29,7 @@ Examples:
   python3 c-test/run_tests.py --timeout 10       # Run with 10 second timeout
   python3 c-test/run_tests.py --verbose          # Show test program output
   python3 c-test/run_tests.py --backend rvm      # Run tests on Ripple VM instead of BF
+  python3 c-test/run_tests.py --bank-size 16384  # Use 16KB bank size for larger programs
   python3 c-test/run_tests.py test_minimal_insert --run    # Compile and run normally
   python3 c-test/run_tests.py test_minimal_insert --debug  # Compile and run with TUI debugger
   python3 c-test/run_tests.py --add test_new.c "Hello\\n"  # Add a new test to tests.json
@@ -97,7 +99,7 @@ RUNTIME_LIB = f"{RUNTIME_DIR}/libruntime.par"
 BUILD_DIR = f"{BASE_DIR}/build"
 
 # Assembler settings (must match Makefile)
-BANK_SIZE = 8192
+BANK_SIZE = 16384  # Doubled from 8192 to 16384 to handle larger programs
 MAX_IMMEDIATE = 65535
 
 def run_command(cmd, timeout=2):
@@ -118,7 +120,7 @@ def run_command(cmd, timeout=2):
             timeout_msg = f"{timeout_msg}\nStderr: {stderr}"
         return -1, stdout, timeout_msg
 
-def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False, backend='bf', debug_mode=False):
+def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, verbose=False, backend='bf', debug_mode=False, bank_size=BANK_SIZE):
     """Compile a C file and run it, checking output
     
     Args:
@@ -159,7 +161,7 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
                 has_provenance_warning = True
     
     # Assemble to object
-    ret, stdout, stderr = run_command(f"{RASM} assemble {asm_file} -o {pobj_file} --bank-size {BANK_SIZE} --max-immediate {MAX_IMMEDIATE}")
+    ret, stdout, stderr = run_command(f"{RASM} assemble {asm_file} -o {pobj_file} --bank-size {bank_size} --max-immediate {MAX_IMMEDIATE}")
     if ret != 0:
         return False, f"Assembly failed: {stderr}", has_provenance_warning
     
@@ -168,9 +170,9 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
         # For RVM, link to binary format
         bin_file = f"{BUILD_DIR}/{basename}.bin"
         if use_full_runtime:
-            link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f binary -o {bin_file}"
+            link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f binary --bank-size {bank_size} -o {bin_file}"
         else:
-            link_cmd = f"{RLINK} {CRT0} {pobj_file} -f binary -o {bin_file}"
+            link_cmd = f"{RLINK} {CRT0} {pobj_file} -f binary --bank-size {bank_size} -o {bin_file}"
         
         ret, stdout, stderr = run_command(link_cmd)
         if ret != 0:
@@ -181,16 +183,16 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
         ret, stdout, stderr = run_command(f"{RVM} {bin_file} --memory 4294967296 {rvm_flags}".strip(), timeout=timeout)
         if ret == -1:
             if verbose and stdout:
-                print(f"    Partial output before timeout: {repr(stdout)}")
+                print(f"    Partial output before timeout:\n{stdout}")
             return False, stderr, has_provenance_warning
 
         run_command(f"{RASM} disassemble {bin_file} -o {BUILD_DIR}/{basename}.disassembly.asm")  # Save disassembly for debugging
     else:
         # For BF backend, link to macro format
         if use_full_runtime:
-            link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f macro --standalone -o {bf_file}"
+            link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f macro --standalone --bank-size {bank_size} -o {bf_file}"
         else:
-            link_cmd = f"{RLINK} {CRT0} {pobj_file} -f macro --standalone -o {bf_file}"
+            link_cmd = f"{RLINK} {CRT0} {pobj_file} -f macro --standalone --bank-size {bank_size} -o {bf_file}"
         
         ret, stdout, stderr = run_command(link_cmd)
         if ret != 0:
@@ -205,11 +207,11 @@ def compile_and_run(c_file, expected_output, use_full_runtime=True, timeout=2, v
         ret, stdout, stderr = run_command(f"bf {expanded_file} --cell-size 16 --tape-size 150000000", timeout=timeout)
         if ret == -1:
             if verbose and stdout:
-                print(f"    Partial output before timeout: {repr(stdout)}")
+                print(f"    Partial output before timeout:\n{stdout}")
             return False, stderr, has_provenance_warning
     
     if verbose and stdout:
-        print(f"    Output: {repr(stdout)}")
+        print(f"    Output:\n{stdout}")
     
     if expected_output is None:
         # No expected output specified, just return the actual output
@@ -337,6 +339,7 @@ def main():
     test_files = []  # Changed from single_test to support multiple tests
     timeout = 2  # Default timeout in seconds
     backend = 'rvm'  # Default backend
+    bank_size = BANK_SIZE  # Allow override from command line
     
     # Parse arguments
     i = 1
@@ -352,6 +355,18 @@ def main():
                     return 1
             else:
                 print("Error: --timeout requires a value")
+                return 1
+        elif arg == "--bank-size":
+            if i + 1 < len(sys.argv):
+                try:
+                    bank_size = int(sys.argv[i + 1])
+                    i += 1  # Skip the bank size value
+                    print(f"Using bank size: {bank_size}")
+                except ValueError:
+                    print(f"Error: Invalid bank size value '{sys.argv[i + 1]}'")
+                    return 1
+            else:
+                print("Error: --bank-size requires a value")
                 return 1
         elif arg == "--backend":
             if i + 1 < len(sys.argv):
@@ -450,17 +465,17 @@ def main():
         print(f"Removed {num_cleaned} files")
         return 0
     
-    # Ensure runtime is built
+    # Ensure runtime is built with the correct bank size
     backend_msg = f", backend: {backend.upper()}" if backend != 'bf' else ""
     verbose_msg = ", verbose" if verbose else ""
-    print(f"Building runtime library (timeout: {timeout}s{backend_msg}{verbose_msg})...")
-    ret, _, stderr = run_command(f"cd {RUNTIME_DIR} && make clean && make all")
+    print(f"Building runtime library (timeout: {timeout}s, bank_size: {bank_size}{backend_msg}{verbose_msg})...")
+    ret, _, stderr = run_command(f"cd {RUNTIME_DIR} && make clean && make all BANK_SIZE={bank_size}")
     if ret != 0:
         print(f"Failed to build runtime: {stderr}")
         return 1
     
     # Also ensure crt0.pobj is built (it's not part of the library archive)
-    ret, _, stderr = run_command(f"cd {RUNTIME_DIR} && make crt0.pobj")
+    ret, _, stderr = run_command(f"cd {RUNTIME_DIR} && make crt0.pobj BANK_SIZE={bank_size}")
     if ret != 0:
         print(f"Failed to build crt0.pobj: {stderr}")
         return 1
@@ -558,16 +573,16 @@ def main():
                 continue
             
             # Assemble to object
-            ret, stdout, stderr = run_command(f"{RASM} assemble {asm_file} -o {pobj_file} --bank-size {BANK_SIZE} --max-immediate {MAX_IMMEDIATE}")
+            ret, stdout, stderr = run_command(f"{RASM} assemble {asm_file} -o {pobj_file} --bank-size {bank_size} --max-immediate {MAX_IMMEDIATE}")
             if ret != 0:
                 print(f"{RED}✗ Assembly failed{NC}: {stderr}")
                 continue
             
             # Link to binary
             if use_runtime:
-                link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f binary -o {bin_file}"
+                link_cmd = f"{RLINK} {CRT0} {RUNTIME_LIB} {pobj_file} -f binary --bank-size {bank_size} -o {bin_file}"
             else:
-                link_cmd = f"{RLINK} {CRT0} {pobj_file} -f binary -o {bin_file}"
+                link_cmd = f"{RLINK} {CRT0} {pobj_file} -f binary --bank-size {bank_size} -o {bin_file}"
             
             ret, stdout, stderr = run_command(link_cmd)
             if ret != 0:
@@ -655,14 +670,14 @@ def main():
                 print(f"Note: Expected output not defined in test list, will show actual output")
                 print("-" * 60)
                 
-                success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose, backend, False)
+                success, message, has_provenance_warning = compile_and_run(found_path, None, use_runtime, timeout, verbose, backend, False, bank_size)
                 
                 if success:
                     if has_provenance_warning:
                         print(f"{YELLOW}✓ {found_path}: COMPILED WITH WARNINGS{NC} (pointer provenance unknown)")
                     else:
                         print(f"{GREEN}✓ {found_path}: COMPILED AND RAN{NC}")
-                    print(f"Output: {repr(message)}")
+                    print(f"Output:\n{message}")
                 else:
                     print(f"{RED}✗ {found_path}{NC}: {message}")
             
@@ -691,7 +706,7 @@ def main():
                 print(f"SKIP {test_file}: File not found")
                 continue
                 
-            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, False)
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, False, bank_size)
             
             if success:
                 if has_provenance_warning:
@@ -713,7 +728,7 @@ def main():
                 print(f"SKIP {test_file}: File not found")
                 continue
                 
-            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, False)
+            success, message, has_provenance_warning = compile_and_run(test_file, expected, use_full_runtime, timeout, verbose, backend, False, bank_size)
             
             if success:
                 if has_provenance_warning:

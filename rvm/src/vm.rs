@@ -115,6 +115,17 @@ impl VM {
         
         let mut pos = 5;
         
+        // Read bank size (new field in binary format)
+        // Always expect it to be present in new format
+        if pos + 2 > binary.len() {
+            return Err("Invalid binary: missing bank size".to_string());
+        }
+        let binary_bank_size = u16::from_le_bytes([binary[pos], binary[pos+1]]);
+        if binary_bank_size != 0 {  // 0 means not specified, use default
+            self.bank_size = binary_bank_size;
+        }
+        pos += 2;
+        
         // Read entry point
         if pos + 4 > binary.len() {
             return Err("Invalid binary: missing entry point".to_string());

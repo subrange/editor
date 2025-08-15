@@ -5,8 +5,8 @@ RCC = ../target/release/rcc
 RASM = ../src/ripple-asm/target/release/rasm
 RLINK = ../src/ripple-asm/target/release/rlink
 
-# Assembler settings
-BANK_SIZE = 8192  # Size of each bank in bytes
+# Assembler settings (can be overridden from command line)
+BANK_SIZE ?= 16384  # Default: 16KB (doubled from 8192 to handle larger programs)
 MAX_IMMEDIATE = 65535
 
 # Source files

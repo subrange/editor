@@ -14,7 +14,6 @@ use rcc_frontend::ir::Value;
 use rcc_frontend::BankTag;
 // Use the bank size constant from V2 module
 // TODO: This should eventually be passed as a parameter from rcc-driver
-use crate::v2::BANK_SIZE_INSTRUCTIONS;
 
 /// Lower a GetElementPtr instruction to assembly
 ///
