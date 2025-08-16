@@ -19,7 +19,7 @@ use crate::compiler::{build_runtime, ToolPaths};
 use crate::command::run_command_sync;
 use crate::config::TestConfig;
 use crate::tui::{
-    app::{TuiApp, AppMode, FocusedPane, TestResult},
+    app::{TuiApp, AppMode, FocusedPane, TestResult, MetadataField},
     event::{Event, EventHandler, KeyEvent},
     ui,
 };
@@ -98,6 +98,9 @@ impl TuiRunner {
                 }
                 Event::Tick => {
                     // Handle any background updates
+                }
+                Event::Mouse(_) => {
+                    // Ignore mouse events for now
                 }
             }
         }
@@ -183,6 +186,8 @@ impl TuiRunner {
             AppMode::FindTest => self.handle_find_test_input(key),
             AppMode::Running => self.handle_running_input(key),
             AppMode::SelectCategory => self.handle_category_input(key),
+            AppMode::AddingMetadata => self.handle_metadata_input(key),
+            AppMode::ConfirmDelete => self.handle_delete_confirmation(key),
         }
     }
 
@@ -265,6 +270,20 @@ impl TuiRunner {
             }
             KeyCode::Char('/') => {
                 self.app.start_find_test();
+            }
+            KeyCode::Char('m') => {
+                // Add metadata to orphan test
+                if self.app.is_current_test_orphan() {
+                    self.app.start_adding_metadata();
+                }
+            }
+            KeyCode::Char('x') | KeyCode::Delete => {
+                // Delete test (any test, not just orphans)
+                self.app.start_delete_test();
+            }
+            KeyCode::Char('o') => {
+                // Jump to first orphan test
+                self.app.jump_to_first_orphan();
             }
             KeyCode::Tab => {
                 self.app.focused_pane = match self.app.focused_pane {
@@ -441,6 +460,117 @@ impl TuiRunner {
                 self.app.select_current_category();
                 self.app.show_categories = false;
                 self.app.mode = AppMode::Normal;
+            }
+            _ => {}
+        }
+        Ok(true)
+    }
+
+    fn handle_delete_confirmation(&mut self, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Char('y') | KeyCode::Char('Y') => {
+                // Confirm deletion
+                if let Err(e) = self.app.confirm_delete_test() {
+                    self.app.append_output(&format!("Failed to delete test: {}\n", e));
+                } else {
+                    self.app.append_output("Test deleted successfully!\n");
+                }
+            }
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                // Cancel deletion
+                self.app.cancel_delete();
+            }
+            _ => {}
+        }
+        Ok(true)
+    }
+
+    fn handle_metadata_input(&mut self, key: KeyEvent) -> Result<bool> {
+        
+        match key.code {
+            KeyCode::Esc => {
+                // Cancel metadata input
+                self.app.metadata_input = crate::tui::app::MetadataInput::default();
+                self.app.mode = AppMode::Normal;
+            }
+            KeyCode::Enter => {
+                // Save metadata
+                if let Err(e) = self.app.save_metadata() {
+                    self.app.append_output(&format!("Failed to save metadata: {}\n", e));
+                } else {
+                    self.app.append_output("Metadata saved successfully!\n");
+                }
+            }
+            KeyCode::Tab => {
+                // Move to next field
+                self.app.metadata_input.focused_field = match self.app.metadata_input.focused_field {
+                    MetadataField::ExpectedOutput => MetadataField::Description,
+                    MetadataField::Description => MetadataField::UseRuntime,
+                    MetadataField::UseRuntime => MetadataField::IsKnownFailure,
+                    MetadataField::IsKnownFailure => MetadataField::ExpectedOutput,
+                };
+            }
+            KeyCode::BackTab => {
+                // Move to previous field (Shift+Tab)
+                self.app.metadata_input.focused_field = match self.app.metadata_input.focused_field {
+                    MetadataField::ExpectedOutput => MetadataField::IsKnownFailure,
+                    MetadataField::Description => MetadataField::ExpectedOutput,
+                    MetadataField::UseRuntime => MetadataField::Description,
+                    MetadataField::IsKnownFailure => MetadataField::UseRuntime,
+                };
+            }
+            KeyCode::Char(' ') => {
+                // Toggle checkbox fields
+                match self.app.metadata_input.focused_field {
+                    MetadataField::UseRuntime => {
+                        self.app.metadata_input.use_runtime = !self.app.metadata_input.use_runtime;
+                    }
+                    MetadataField::IsKnownFailure => {
+                        self.app.metadata_input.is_known_failure = !self.app.metadata_input.is_known_failure;
+                    }
+                    _ => {}
+                }
+            }
+            KeyCode::Char(c) => {
+                // Add character to text fields
+                match self.app.metadata_input.focused_field {
+                    MetadataField::ExpectedOutput => {
+                        // Handle special escape sequences
+                        if c == '\\' && !self.app.metadata_input.expected_output.ends_with('\\') {
+                            self.app.metadata_input.expected_output.push('\\');
+                        } else if self.app.metadata_input.expected_output.ends_with('\\') {
+                            let _ = self.app.metadata_input.expected_output.pop();
+                            match c {
+                                'n' => self.app.metadata_input.expected_output.push('\n'),
+                                't' => self.app.metadata_input.expected_output.push('\t'),
+                                'r' => self.app.metadata_input.expected_output.push('\r'),
+                                '\\' => self.app.metadata_input.expected_output.push('\\'),
+                                _ => {
+                                    self.app.metadata_input.expected_output.push('\\');
+                                    self.app.metadata_input.expected_output.push(c);
+                                }
+                            }
+                        } else {
+                            self.app.metadata_input.expected_output.push(c);
+                        }
+                    }
+                    MetadataField::Description => {
+                        self.app.metadata_input.description.push(c);
+                    }
+                    _ => {}
+                }
+            }
+            KeyCode::Backspace => {
+                // Remove character from text fields
+                match self.app.metadata_input.focused_field {
+                    MetadataField::ExpectedOutput => {
+                        self.app.metadata_input.expected_output.pop();
+                    }
+                    MetadataField::Description => {
+                        self.app.metadata_input.description.pop();
+                    }
+                    _ => {}
+                }
             }
             _ => {}
         }

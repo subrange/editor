@@ -122,6 +122,32 @@ pub fn discover_tests() -> Result<TestConfig> {
     })
 }
 
+/// Discover orphan tests (C files without .meta.json)
+pub fn discover_orphan_tests() -> Result<Vec<TestCase>> {
+    let mut orphans = Vec::new();
+    
+    // Define the test directories to scan
+    let test_dirs = vec![
+        "c-test/tests",
+        "c-test/tests-runtime", 
+        "c-test/tests-known-failures",
+        "c-test/known-failures",
+        "c-test/examples",
+    ];
+    
+    for dir in test_dirs {
+        let dir_path = Path::new(dir);
+        if dir_path.exists() {
+            scan_directory_for_orphans(dir_path, &mut orphans)?;
+        }
+    }
+    
+    // Sort orphans by path for consistent ordering
+    orphans.sort_by(|a, b| a.file.cmp(&b.file));
+    
+    Ok(orphans)
+}
+
 /// Recursively scan a directory for test files with .meta.json
 fn scan_directory_for_tests(
     dir: &Path,
@@ -175,6 +201,54 @@ fn scan_directory_for_tests(
                         description: metadata.description,
                     });
                 }
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+/// Recursively scan a directory for orphan test files (C files without .meta.json)
+fn scan_directory_for_orphans(
+    dir: &Path,
+    orphans: &mut Vec<TestCase>,
+) -> Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.is_dir() {
+            // Skip build directory
+            if path.file_name() == Some(std::ffi::OsStr::new("build")) {
+                continue;
+            }
+            // Recursively scan subdirectories
+            scan_directory_for_orphans(&path, orphans)?;
+        } else if path.extension() == Some(std::ffi::OsStr::new("c")) {
+            // Check for corresponding .meta.json file
+            let meta_path = path.with_extension("meta.json");
+            if !meta_path.exists() {
+                // This is an orphan test - create a TestCase with minimal info
+                let relative_path = if path.starts_with("c-test/") {
+                    path.strip_prefix("c-test/")?.to_path_buf()
+                } else if let Ok(rel) = path.strip_prefix(std::env::current_dir()?.join("c-test")) {
+                    rel.to_path_buf()
+                } else {
+                    // Try to make it relative to c-test
+                    let path_str = path.to_string_lossy();
+                    if let Some(idx) = path_str.find("c-test/") {
+                        PathBuf::from(&path_str[idx + 7..])
+                    } else {
+                        path.clone()
+                    }
+                };
+                
+                orphans.push(TestCase {
+                    file: relative_path,
+                    expected: None,
+                    use_runtime: true, // Default to using runtime
+                    description: Some("[ORPHAN] Test without metadata".to_string()),
+                });
             }
         }
     }

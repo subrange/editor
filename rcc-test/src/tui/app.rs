@@ -1,7 +1,7 @@
 use std::collections::{HashMap, BTreeMap};
 use std::path::PathBuf;
 use std::sync::mpsc;
-use crate::config::{TestConfig, TestCase, KnownFailure};
+use crate::config::{TestConfig, TestCase, KnownFailure, discover_orphan_tests};
 use crate::compiler::ToolPaths;
 
 fn fuzzy_match(text: &str, pattern: &str) -> bool {
@@ -41,6 +41,8 @@ pub enum AppMode {
     FindTest,  // Fuzzy finder mode
     Running,
     SelectCategory,
+    AddingMetadata,  // Adding metadata to an orphan test
+    ConfirmDelete,   // Confirming deletion of orphan test
 }
 
 #[derive(Debug, Clone)]
@@ -52,13 +54,25 @@ pub struct CategoryView {
 }
 
 impl CategoryView {
-    pub fn from_tests(tests: &[TestCase], failures: &[KnownFailure]) -> BTreeMap<String, CategoryView> {
+    pub fn from_tests(tests: &[TestCase], failures: &[KnownFailure], orphans: &[TestCase]) -> BTreeMap<String, CategoryView> {
         let mut categories: BTreeMap<String, Vec<TestCase>> = BTreeMap::new();
         
         // Group tests by category
         for test in tests {
             let category = Self::get_category_from_path(&test.file);
             categories.entry(category).or_insert_with(Vec::new).push(test.clone());
+        }
+        
+        // Add orphan tests - group them by their path structure
+        for orphan in orphans {
+            let category = Self::get_category_from_path(&orphan.file);
+            // Mark orphan tests with a special prefix in their category
+            let orphan_category = if category == "Uncategorized" {
+                "Orphan Tests".to_string()
+            } else {
+                format!("Orphan › {}", category)
+            };
+            categories.entry(orphan_category).or_insert_with(Vec::new).push(orphan.clone());
         }
         
         // Add known failures as a category
@@ -179,6 +193,7 @@ pub struct TuiApp {
     pub tools: ToolPaths,
     pub filtered_tests: Vec<TestCase>,
     pub filtered_failures: Vec<KnownFailure>,
+    pub orphan_tests: Vec<TestCase>,  // Tests without metadata
 
     // Selection and scrolling
     pub selected_test: usize,
@@ -212,6 +227,12 @@ pub struct TuiApp {
     pub tests_total: usize,
     pub tests_completed: usize,
 
+    // Metadata input for orphan tests
+    pub metadata_input: MetadataInput,
+    
+    // Delete confirmation
+    pub delete_target: Option<PathBuf>,
+
     // Settings
     pub bank_size: usize,
     pub timeout_secs: u64,
@@ -219,9 +240,43 @@ pub struct TuiApp {
     pub help_scroll: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct MetadataInput {
+    pub test_file: Option<PathBuf>,
+    pub expected_output: String,
+    pub use_runtime: bool,
+    pub is_known_failure: bool,
+    pub description: String,
+    pub focused_field: MetadataField,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MetadataField {
+    ExpectedOutput,
+    Description,
+    UseRuntime,
+    IsKnownFailure,
+}
+
+impl Default for MetadataInput {
+    fn default() -> Self {
+        Self {
+            test_file: None,
+            expected_output: String::new(),
+            use_runtime: true,
+            is_known_failure: false,
+            description: String::new(),
+            focused_field: MetadataField::ExpectedOutput,
+        }
+    }
+}
+
 impl TuiApp {
     pub fn new(test_config: TestConfig, tools: ToolPaths, bank_size: usize, timeout_secs: u64) -> Self {
-        let categories = CategoryView::from_tests(&test_config.tests, &test_config.known_failures);
+        // Discover orphan tests
+        let orphan_tests = discover_orphan_tests().unwrap_or_else(|_| Vec::new());
+        
+        let categories = CategoryView::from_tests(&test_config.tests, &test_config.known_failures, &orphan_tests);
         let mut app = Self {
             focused_pane: FocusedPane::TestList,
             mode: AppMode::Normal,
@@ -229,6 +284,7 @@ impl TuiApp {
 
             filtered_tests: test_config.tests.clone(),
             filtered_failures: test_config.known_failures.clone(),
+            orphan_tests,
             test_config,
             tools,
 
@@ -257,6 +313,9 @@ impl TuiApp {
             test_receiver: None,
             tests_total: 0,
             tests_completed: 0,
+
+            metadata_input: MetadataInput::default(),
+            delete_target: None,
 
             bank_size,
             timeout_secs,
@@ -359,6 +418,67 @@ impl TuiApp {
                     current_idx += 1;
                 }
             }
+        }
+    }
+    
+    pub fn jump_to_first_orphan(&mut self) {
+        // First, find if there's an orphan test and its location
+        let mut found_orphan: Option<(String, usize)> = None;
+        let mut current_idx = 0;
+        
+        for (name, category) in self.categories.iter() {
+            current_idx += 1; // Category header
+            
+            // Check if this is an orphan category
+            if name.starts_with("Orphan") && !category.tests.is_empty() {
+                found_orphan = Some((name.clone(), current_idx));
+                break;
+            } else if category.expanded {
+                // Check tests in non-orphan categories for orphan tests
+                for (test_idx, test) in category.tests.iter().enumerate() {
+                    if self.orphan_tests.iter().any(|orphan| orphan.file == test.file) {
+                        found_orphan = Some((name.clone(), current_idx + test_idx));
+                        break;
+                    }
+                }
+                if found_orphan.is_some() {
+                    break;
+                }
+                current_idx += category.tests.len();
+            } else {
+                // Category is collapsed, check if it contains orphans
+                for test in &category.tests {
+                    if self.orphan_tests.iter().any(|orphan| orphan.file == test.file) {
+                        found_orphan = Some((name.clone(), current_idx));
+                        break;
+                    }
+                }
+                if found_orphan.is_some() {
+                    break;
+                }
+            }
+        }
+        
+        // Now apply the changes if we found an orphan
+        if let Some((category_name, position)) = found_orphan {
+            // Expand the category if needed
+            if let Some(category) = self.categories.get_mut(&category_name) {
+                if !category.expanded {
+                    category.expanded = true;
+                }
+            }
+            
+            // Jump to the position
+            self.selected_item = position;
+            self.ensure_selection_visible();
+            
+            // If we're on a category header, move down to the first test
+            if self.categories.contains_key(&category_name) && category_name.starts_with("Orphan") {
+                self.move_selection_down();
+            }
+        } else {
+            // If no orphan found, show a message in output
+            self.append_output("No orphan tests found.\n");
         }
     }
 
@@ -631,5 +751,158 @@ impl TuiApp {
                 self.select_category(category_name.clone());
             }
         }
+    }
+
+    pub fn is_current_test_orphan(&self) -> bool {
+        if let Some(test) = self.get_selected_test_details() {
+            // Check if this test is in the orphan list
+            self.orphan_tests.iter().any(|orphan| orphan.file == test.file)
+        } else {
+            false
+        }
+    }
+
+    pub fn start_adding_metadata(&mut self) {
+        if let Some(test) = self.get_selected_test_details() {
+            if self.is_current_test_orphan() {
+                self.metadata_input = MetadataInput {
+                    test_file: Some(test.file.clone()),
+                    expected_output: String::new(),
+                    use_runtime: true,
+                    is_known_failure: false,
+                    description: String::new(),
+                    focused_field: MetadataField::ExpectedOutput,
+                };
+                self.mode = AppMode::AddingMetadata;
+            }
+        }
+    }
+
+    pub fn start_delete_test(&mut self) {
+        if let Some(test) = self.get_selected_test_details() {
+            // Allow deletion of any test (orphan or regular)
+            self.delete_target = Some(test.file.clone());
+            self.mode = AppMode::ConfirmDelete;
+        }
+    }
+    
+    pub fn confirm_delete_test(&mut self) -> anyhow::Result<()> {
+        if let Some(test_file) = &self.delete_target {
+            // Construct full path
+            let full_path = if test_file.is_relative() && !test_file.starts_with("c-test") {
+                PathBuf::from("c-test").join(test_file)
+            } else {
+                test_file.clone()
+            };
+            
+            // Delete the C file
+            std::fs::remove_file(&full_path)?;
+            
+            // Also delete the .meta.json file if it exists
+            let meta_path = full_path.with_extension("meta.json");
+            if meta_path.exists() {
+                let _ = std::fs::remove_file(&meta_path);
+            }
+            
+            // Remove from appropriate list
+            let is_orphan = self.orphan_tests.iter().any(|t| t.file == *test_file);
+            
+            if is_orphan {
+                // Remove from orphan list
+                if let Some(idx) = self.orphan_tests.iter().position(|t| t.file == *test_file) {
+                    self.orphan_tests.remove(idx);
+                }
+            } else {
+                // Remove from regular tests or known failures
+                if let Some(idx) = self.test_config.tests.iter().position(|t| t.file == *test_file) {
+                    self.test_config.tests.remove(idx);
+                } else if let Some(idx) = self.test_config.known_failures.iter().position(|t| t.file == *test_file) {
+                    self.test_config.known_failures.remove(idx);
+                }
+            }
+            
+            // Rebuild categories
+            self.categories = CategoryView::from_tests(
+                &self.test_config.tests,
+                &self.test_config.known_failures,
+                &self.orphan_tests
+            );
+            
+            // Clear delete target and return to normal mode
+            self.delete_target = None;
+            self.mode = AppMode::Normal;
+        }
+        
+        Ok(())
+    }
+    
+    pub fn cancel_delete(&mut self) {
+        self.delete_target = None;
+        self.mode = AppMode::Normal;
+    }
+
+    pub fn save_metadata(&mut self) -> anyhow::Result<()> {
+        if let Some(test_file) = &self.metadata_input.test_file {
+            // Create metadata
+            let metadata = crate::config::TestMetadata {
+                expected: if self.metadata_input.is_known_failure {
+                    None
+                } else {
+                    Some(self.metadata_input.expected_output.clone())
+                },
+                use_runtime: self.metadata_input.use_runtime,
+                description: if self.metadata_input.description.is_empty() {
+                    None
+                } else {
+                    Some(self.metadata_input.description.clone())
+                },
+                known_failure: self.metadata_input.is_known_failure,
+                category: None,
+            };
+
+            // Save the metadata file
+            let full_path = if test_file.is_relative() && !test_file.starts_with("c-test") {
+                PathBuf::from("c-test").join(test_file)
+            } else {
+                test_file.clone()
+            };
+            
+            let meta_path = full_path.with_extension("meta.json");
+            let content = serde_json::to_string_pretty(&metadata)?;
+            std::fs::write(meta_path, content)?;
+
+            // Remove from orphan list and add to appropriate category
+            if let Some(idx) = self.orphan_tests.iter().position(|t| t.file == *test_file) {
+                let orphan = self.orphan_tests.remove(idx);
+                
+                // Add to test config
+                if self.metadata_input.is_known_failure {
+                    self.test_config.known_failures.push(KnownFailure {
+                        file: orphan.file,
+                        description: metadata.description,
+                    });
+                } else {
+                    self.test_config.tests.push(TestCase {
+                        file: orphan.file,
+                        expected: metadata.expected,
+                        use_runtime: metadata.use_runtime,
+                        description: metadata.description,
+                    });
+                }
+                
+                // Rebuild categories
+                self.categories = CategoryView::from_tests(
+                    &self.test_config.tests,
+                    &self.test_config.known_failures,
+                    &self.orphan_tests
+                );
+            }
+
+            // Clear metadata input and return to normal mode
+            self.metadata_input = MetadataInput::default();
+            self.mode = AppMode::Normal;
+        }
+        
+        Ok(())
     }
 }

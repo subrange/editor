@@ -5,7 +5,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs, Wrap},
     Frame,
 };
-use crate::tui::app::{TuiApp, AppMode, FocusedPane, CategoryView};
+use crate::tui::app::{TuiApp, AppMode, FocusedPane, MetadataField};
 use rcc_frontend::c_formatter;
 
 pub fn draw(f: &mut Frame, app: &mut TuiApp) {
@@ -45,6 +45,16 @@ pub fn draw(f: &mut Frame, app: &mut TuiApp) {
     // Draw find test modal if in find mode
     if app.mode == AppMode::FindTest {
         draw_find_test_modal(f, size, app);
+    }
+
+    // Draw metadata input modal if adding metadata
+    if app.mode == AppMode::AddingMetadata {
+        draw_metadata_input_modal(f, size, app);
+    }
+
+    // Draw delete confirmation modal if confirming deletion
+    if app.mode == AppMode::ConfirmDelete {
+        draw_delete_confirmation_modal(f, size, app);
     }
 
     // Draw status bar at bottom
@@ -116,8 +126,13 @@ fn create_test_item<'a>(test: &'a crate::config::TestCase, index: usize, app: &'
         Span::raw("  "),  // Indent for tests under categories
     ];
 
-    // Add test result indicator
-    if let Some(result) = app.test_results.get(test_name) {
+    // Check if this is an orphan test
+    let is_orphan = app.orphan_tests.iter().any(|orphan| orphan.file == test.file);
+    
+    // Add test result indicator or orphan indicator
+    if is_orphan {
+        spans.push(Span::styled("⚠ ", Style::default().fg(Color::Magenta)));
+    } else if let Some(result) = app.test_results.get(test_name) {
         if result.passed {
             spans.push(Span::styled("✓ ", Style::default().fg(Color::Rgb(0, 200, 0))));
         } else {
@@ -130,6 +145,11 @@ fn create_test_item<'a>(test: &'a crate::config::TestCase, index: usize, app: &'
     }
     
     spans.push(Span::raw(test_name));
+    
+    // Add orphan indicator text
+    if is_orphan {
+        spans.push(Span::styled(" [no metadata]", Style::default().fg(Color::DarkGray)));
+    }
     
     ListItem::new(Line::from(spans))
 }
@@ -524,6 +544,184 @@ fn draw_test_details(f: &mut Frame, area: Rect, app: &TuiApp) {
     }
 }
 
+fn draw_delete_confirmation_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
+    let test_name = app.delete_target.as_ref()
+        .and_then(|f| f.file_stem())
+        .and_then(|s| s.to_str())
+        .unwrap_or("unknown");
+    
+    // Check if it's an orphan test
+    let is_orphan = app.delete_target.as_ref()
+        .map(|f| app.orphan_tests.iter().any(|t| t.file == *f))
+        .unwrap_or(false);
+    
+    // Calculate modal dimensions
+    let modal_width = 60;
+    let modal_height = 10;
+    let modal_area = Rect::new(
+        (area.width.saturating_sub(modal_width)) / 2,
+        (area.height.saturating_sub(modal_height)) / 2,
+        modal_width,
+        modal_height,
+    );
+    
+    // Clear background
+    f.render_widget(Clear, modal_area);
+    
+    // Create the confirmation message
+    let test_type = if is_orphan { "orphan test" } else { "test" };
+    let lines = vec![
+        Line::from(""),
+        Line::from(Span::styled("⚠ Warning", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))),
+        Line::from(""),
+        Line::from(format!("Are you sure you want to delete the {}:", test_type)),
+        Line::from(Span::styled(format!("  {}", test_name), Style::default().fg(Color::Cyan))),
+        Line::from(""),
+        Line::from("This action cannot be undone!"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Press ", Style::default().fg(Color::DarkGray)),
+            Span::styled("y", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" to confirm or ", Style::default().fg(Color::DarkGray)),
+            Span::styled("n/Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" to cancel", Style::default().fg(Color::DarkGray)),
+        ]),
+    ];
+    
+    let paragraph = Paragraph::new(lines)
+        .block(Block::default()
+            .title(" Delete Test ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Red)))
+        .alignment(Alignment::Center);
+    
+    f.render_widget(paragraph, modal_area);
+}
+
+fn draw_metadata_input_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
+    // Calculate modal dimensions
+    let modal_width = 80;
+    let modal_height = 20;
+    let modal_area = Rect::new(
+        (area.width.saturating_sub(modal_width)) / 2,
+        (area.height.saturating_sub(modal_height)) / 2,
+        modal_width,
+        modal_height,
+    );
+    
+    // Clear background
+    f.render_widget(Clear, modal_area);
+    
+    // Create layout for the modal
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),  // Title
+            Constraint::Length(5),  // Expected output
+            Constraint::Length(3),  // Description
+            Constraint::Length(3),  // Options (runtime, known failure)
+            Constraint::Min(1),     // Help text
+        ])
+        .split(modal_area);
+    
+    // Draw title
+    let test_name = app.metadata_input.test_file.as_ref()
+        .and_then(|f| f.file_stem())
+        .and_then(|s| s.to_str())
+        .unwrap_or("unknown");
+    
+    let title = Paragraph::new(format!("Add Metadata for: {}", test_name))
+        .block(Block::default()
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Yellow));
+    f.render_widget(title, chunks[0]);
+    
+    // Draw expected output field
+    let expected_style = if app.metadata_input.focused_field == MetadataField::ExpectedOutput {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default().fg(Color::Gray)
+    };
+    
+    let expected_text = if app.metadata_input.expected_output.is_empty() {
+        "(enter expected output, use \\n for newlines)".to_string()
+    } else {
+        app.metadata_input.expected_output.clone()
+    };
+    
+    let expected = Paragraph::new(expected_text)
+        .block(Block::default()
+            .title("Expected Output")
+            .borders(Borders::ALL)
+            .border_style(expected_style))
+        .wrap(Wrap { trim: false });
+    f.render_widget(expected, chunks[1]);
+    
+    // Draw description field
+    let desc_style = if app.metadata_input.focused_field == MetadataField::Description {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default().fg(Color::Gray)
+    };
+    
+    let desc_text = if app.metadata_input.description.is_empty() {
+        "(optional description)".to_string()
+    } else {
+        app.metadata_input.description.clone()
+    };
+    
+    let description = Paragraph::new(desc_text)
+        .block(Block::default()
+            .title("Description")
+            .borders(Borders::LEFT | Borders::RIGHT | Borders::TOP)
+            .border_style(desc_style));
+    f.render_widget(description, chunks[2]);
+    
+    // Draw options
+    let runtime_check = if app.metadata_input.use_runtime { "[✓]" } else { "[ ]" };
+    let failure_check = if app.metadata_input.is_known_failure { "[✓]" } else { "[ ]" };
+    
+    let runtime_style = if app.metadata_input.focused_field == MetadataField::UseRuntime {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default()
+    };
+    
+    let failure_style = if app.metadata_input.focused_field == MetadataField::IsKnownFailure {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default()
+    };
+    
+    let options = vec![
+        Line::from(vec![
+            Span::styled(format!("{} Use Runtime", runtime_check), runtime_style),
+            Span::raw("    "),
+            Span::styled(format!("{} Known Failure", failure_check), failure_style),
+        ])
+    ];
+    
+    let options_widget = Paragraph::new(options)
+        .block(Block::default()
+            .borders(Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)));
+    f.render_widget(options_widget, chunks[3]);
+    
+    // Draw help text
+    let help = Paragraph::new(vec![
+        Line::from("Tab: Next field | Shift+Tab: Previous field | Space: Toggle checkbox"),
+        Line::from("Enter: Save metadata | Esc: Cancel | m: Add metadata to orphan test"),
+    ])
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(Alignment::Center);
+    f.render_widget(help, chunks[4]);
+}
+
 fn draw_find_test_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
     // Calculate modal size based on results
     let modal_width = 70;
@@ -661,6 +859,7 @@ fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         Line::from("  k/↑     Move up in test list"),
         Line::from("  g       Go to first test"),
         Line::from("  G       Go to last test"),
+        Line::from("  o       Jump to first orphan test"),
         Line::from("  Enter   Run selected test"),
         Line::from("  Shift+R Run all tests in category"),
         Line::from("  r       Run all visible tests"),
@@ -688,12 +887,18 @@ fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         Line::from("  ✓       Test passed"),
         Line::from("  ✗       Test failed"),
         Line::from("  ⟳       Test running"),
+        Line::from("  ⚠       Orphan test (no metadata)"),
         Line::from("  [C]     Core category"),
         Line::from("  [M]     Memory category"),
         Line::from("  [A]     Advanced category"),
         Line::from("  [I]     Integration category"),
         Line::from("  [R]     Runtime category"),
         Line::from("  [F]     Known failure"),
+        Line::from(""),
+        Line::from(Span::styled("── Test Management ──", Style::default().fg(Color::Yellow))),
+        Line::from("  x       Delete selected test"),
+        Line::from("  o       Jump to first orphan test"),
+        Line::from("  m       Add metadata to orphan test"),
         Line::from(""),
         Line::from(Span::styled("── Other Commands ──", Style::default().fg(Color::Yellow))),
         Line::from("  ?       Toggle this help"),
@@ -784,6 +989,8 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
         AppMode::FindTest => ("FIND", Style::default().bg(Color::Magenta).fg(Color::Black)),
         AppMode::Running => ("RUNNING", Style::default().bg(Color::Green).fg(Color::Black)),
         AppMode::SelectCategory => ("CATEGORY", Style::default().bg(Color::Cyan).fg(Color::Black)),
+        AppMode::AddingMetadata => ("METADATA", Style::default().bg(Color::Yellow).fg(Color::Black)),
+        AppMode::ConfirmDelete => ("DELETE", Style::default().bg(Color::Red).fg(Color::Black)),
     };
     
     let mode_spans = vec![

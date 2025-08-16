@@ -1,11 +1,19 @@
-use crossterm::event::{self, Event as CEvent, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event as CEvent, KeyCode, KeyModifiers, MouseEventKind};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 pub enum Event<I> {
     Input(I),
+    Mouse(MouseEvent),
     Tick,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MouseEvent {
+    pub kind: MouseEventKind,
+    pub column: u16,
+    pub row: u16,
 }
 
 pub struct EventHandler {
