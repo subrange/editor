@@ -42,8 +42,8 @@ pub struct Cli {
     #[arg(short, long)]
     pub debug: bool,
 
-    /// Path to tests.json file
-    #[arg(long, default_value = "c-test/tests.json")]
+    /// Path to test directory (deprecated, kept for compatibility)
+    #[arg(long, default_value = "c-test", hide = true)]
     pub tests_file: PathBuf,
 
     /// Build directory for artifacts
@@ -70,7 +70,7 @@ pub enum Command {
         filter: Option<String>,
     },
     
-    /// Add a new test to tests.json
+    /// Add a new test (creates .meta.json file)
     Add {
         /// Test file path
         file: PathBuf,
@@ -113,7 +113,7 @@ pub enum Command {
     /// Show statistics about the test suite
     Stats,
     
-    /// Rename a test (updates both JSON and file)
+    /// Rename a test (updates both .meta.json and .c file)
     Rename {
         /// Current test name or path
         old_name: String,

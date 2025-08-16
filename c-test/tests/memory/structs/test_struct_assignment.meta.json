@@ -1,0 +1,5 @@
+{
+  "description": "Struct assignment bug - copies incorrectly",
+  "use_runtime": true,
+  "expected": "Y\n"
+}

@@ -1,0 +1,4 @@
+{
+  "expected": "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n",
+  "use_runtime": true
+}

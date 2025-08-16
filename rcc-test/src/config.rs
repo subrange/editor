@@ -1,8 +1,22 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 
-/// Test configuration loaded from tests.json
+/// Test metadata stored in .meta.json files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestMetadata {
+    pub expected: Option<String>,
+    #[serde(default = "default_true")]
+    pub use_runtime: bool,
+    pub description: Option<String>,
+    #[serde(default)]
+    pub known_failure: bool,
+    #[serde(default)]
+    pub category: Option<String>,
+}
+
+/// Test configuration discovered from .meta.json files
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestConfig {
     pub tests: Vec<TestCase>,
@@ -72,17 +86,154 @@ impl Backend {
     }
 }
 
-/// Load test configuration from JSON file
-pub fn load_tests(path: &Path) -> Result<TestConfig> {
-    let content = std::fs::read_to_string(path)?;
-    let config: TestConfig = serde_json::from_str(&content)?;
-    Ok(config)
+/// Load test configuration by discovering .meta.json files
+pub fn load_tests(_path: &Path) -> Result<TestConfig> {
+    discover_tests()
 }
 
-/// Save test configuration to JSON file
-pub fn save_tests(config: &TestConfig, path: &Path) -> Result<()> {
-    let content = serde_json::to_string_pretty(config)?;
-    std::fs::write(path, content)?;
+/// Discover tests by scanning for .meta.json files
+pub fn discover_tests() -> Result<TestConfig> {
+    let mut tests = Vec::new();
+    let mut known_failures = Vec::new();
+    
+    // Define the test directories to scan
+    let test_dirs = vec![
+        "c-test/tests",
+        "c-test/tests-runtime", 
+        "c-test/tests-known-failures",
+        "c-test/known-failures",
+        "c-test/examples",
+    ];
+    
+    for dir in test_dirs {
+        let dir_path = Path::new(dir);
+        if dir_path.exists() {
+            scan_directory_for_tests(dir_path, &mut tests, &mut known_failures)?;
+        }
+    }
+    
+    // Sort tests by path for consistent ordering
+    tests.sort_by(|a, b| a.file.cmp(&b.file));
+    known_failures.sort_by(|a, b| a.file.cmp(&b.file));
+    
+    Ok(TestConfig {
+        tests,
+        known_failures,
+    })
+}
+
+/// Recursively scan a directory for test files with .meta.json
+fn scan_directory_for_tests(
+    dir: &Path,
+    tests: &mut Vec<TestCase>,
+    known_failures: &mut Vec<KnownFailure>,
+) -> Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.is_dir() {
+            // Skip build directory
+            if path.file_name() == Some(std::ffi::OsStr::new("build")) {
+                continue;
+            }
+            // Recursively scan subdirectories
+            scan_directory_for_tests(&path, tests, known_failures)?;
+        } else if path.extension() == Some(std::ffi::OsStr::new("c")) {
+            // Check for corresponding .meta.json file
+            let meta_path = path.with_extension("meta.json");
+            if meta_path.exists() {
+                // Load metadata
+                let meta_content = std::fs::read_to_string(&meta_path)?;
+                let metadata: TestMetadata = serde_json::from_str(&meta_content)?;
+                
+                // Get relative path from c-test directory
+                let relative_path = if path.starts_with("c-test/") {
+                    path.strip_prefix("c-test/")?.to_path_buf()
+                } else if let Ok(rel) = path.strip_prefix(std::env::current_dir()?.join("c-test")) {
+                    rel.to_path_buf()
+                } else {
+                    // Try to make it relative to c-test
+                    let path_str = path.to_string_lossy();
+                    if let Some(idx) = path_str.find("c-test/") {
+                        PathBuf::from(&path_str[idx + 7..])
+                    } else {
+                        path.clone()
+                    }
+                };
+                
+                if metadata.known_failure {
+                    known_failures.push(KnownFailure {
+                        file: relative_path,
+                        description: metadata.description,
+                    });
+                } else {
+                    tests.push(TestCase {
+                        file: relative_path,
+                        expected: metadata.expected,
+                        use_runtime: metadata.use_runtime,
+                        description: metadata.description,
+                    });
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+/// Save test configuration to individual .meta.json files
+pub fn save_tests(config: &TestConfig, _path: &Path) -> Result<()> {
+    // Save regular tests
+    for test in &config.tests {
+        save_test_metadata(&test.file, &test.expected, test.use_runtime, &test.description, false)?;
+    }
+    
+    // Save known failures
+    for failure in &config.known_failures {
+        save_test_metadata(&failure.file, &None, true, &failure.description, true)?;
+    }
+    
+    Ok(())
+}
+
+/// Save metadata for a single test
+fn save_test_metadata(
+    file: &Path,
+    expected: &Option<String>,
+    use_runtime: bool,
+    description: &Option<String>,
+    known_failure: bool,
+) -> Result<()> {
+    // Construct the full path
+    let full_path = if file.is_relative() && !file.starts_with("c-test") {
+        Path::new("c-test").join(file)
+    } else {
+        file.to_path_buf()
+    };
+    
+    let meta_path = full_path.with_extension("meta.json");
+    
+    // Create metadata
+    let mut metadata = HashMap::new();
+    
+    if known_failure {
+        metadata.insert("known_failure", serde_json::Value::Bool(true));
+    } else {
+        if let Some(exp) = expected {
+            metadata.insert("expected", serde_json::Value::String(exp.clone()));
+        }
+        metadata.insert("use_runtime", serde_json::Value::Bool(use_runtime));
+    }
+    
+    if let Some(desc) = description {
+        metadata.insert("description", serde_json::Value::String(desc.clone()));
+    }
+    
+    // Write the metadata file
+    let content = serde_json::to_string_pretty(&metadata)?;
+    std::fs::write(meta_path, content)?;
+    
     Ok(())
 }
 

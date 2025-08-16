@@ -8,39 +8,19 @@ This directory contains the test suite for the Ripple C compiler (rcc), which co
 c-test/
 ├── tests/                    # Main test cases that should pass
 ├── tests-known-failures/     # Tests expected to fail (unsupported features)
-├── build/                    # Temporary build artifacts (auto-created)
-└── run_tests.py             # Test runner script
+└── build/                    # Temporary build artifacts (auto-created)
 ```
 
 ## Running Tests
 
-```bash
-# Run all tests
-python3 run_tests.py
-
-# Run single test file
-python3 run_tests.py tests/test_example.c
-
-# Run tests with verbose flag to see what build program outputs
-python3 run_tests.py tests/test_example.c --verbose
-
-# Run tests with custom timeout. Default is 2 seconds.
-python3 run_tests.py tests/test_example.c --timeout 5
-
-# Run tests without cleanup (keep generated files for debugging)
-python3 run_tests.py --no-cleanup
-
-# Clean build directory only
-python3 run_tests.py --clean
-```
+Use rct in rcc-test
 
 ## Adding a New Test
 
 ### 1. Create a Test File
 
 Create a `.c` file in the appropriate directory:
-- `tests/` - For all tests
-- `tests-known-failures/` - For tests documenting unsupported features
+- `tests/`
 
 ### 2. Write Test Code
 
@@ -61,36 +41,20 @@ int main() {
 }
 ```
 
-### 3. Add Test to run_tests.py
-
-Edit `run_tests.py` and add your test to the `tests` list:
-
-```python
-tests = [
-    # ... existing tests ...
-    ("tests/test_example.c", "Y\n", False),  # (file, expected_output, use_runtime)
-]
-```
-
-Parameters:
-- **file**: Path to test C file
-- **expected_output**: Exact expected output string
-- **use_runtime**: `False` for basic tests, `True` for runtime tests
+### 3. Add Test 
 
 ### 4. Run Your Test
 
 ```bash
-python3 run_tests.py
+
+rct run test_example
+
 ```
 
 ## Test Guidelines
 
 1. **Keep tests focused** - Test one feature at a time
 2. **Use assertions** - Output 'Y' for pass, 'N' for fail conditions
-3. **Avoid unsupported features**:
-   - `mul`, `muli`, `slt` VM opcodes (have bugs)
-   - `typedef` declarations
-   - Complex pointer provenance
 4. **Include newlines** - End output with `\n` for clean formatting
 
 ## Prerequisites
@@ -98,14 +62,15 @@ python3 run_tests.py
 Before running tests, ensure you have:
 
 ```bash
-# Build the C compiler
+# Build the C compiler and tools
 cd .. && cargo build --release
 
 # Build the assembler
-cd ../src/ripple-asm && cargo build --release
+cd ../src/ripple-asm && cargo build --release && cd ..
 
 # Build rbt tool
-cd ../rbt && cargo build --release
+cd ../rbt && cargo build --release && cd ..
+
 
 # Install required tools
 brew install coreutils  # for gtimeout

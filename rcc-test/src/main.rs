@@ -557,6 +557,14 @@ fn rename_test(tests_file: &Path, old_name: &str, new_name: &str) -> Result<()> 
         std::fs::rename(&old_path, &new_path)
             .context(format!("Failed to rename file from {} to {}", old_path.display(), new_path.display()))?;
         
+        // Also rename the .meta.json file
+        let old_meta_path = old_path.with_extension("meta.json");
+        let new_meta_path = new_path.with_extension("meta.json");
+        if old_meta_path.exists() {
+            std::fs::rename(&old_meta_path, &new_meta_path)
+                .context(format!("Failed to rename metadata file from {} to {}", old_meta_path.display(), new_meta_path.display()))?;
+        }
+        
         // Update the configuration
         if is_known_failure {
             if let Some(idx) = found_index {

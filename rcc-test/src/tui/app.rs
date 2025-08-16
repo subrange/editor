@@ -72,7 +72,7 @@ impl TestCategory {
             Self::Advanced => path_str.contains("/advanced/"),
             Self::Memory => path_str.contains("/memory/"),
             Self::Integration => path_str.contains("/integration/"),
-            Self::Runtime => path_str.contains("/runtime/"),
+            Self::Runtime => path_str.contains("/runtime/") || path_str.contains("tests-runtime/"),
             Self::Experimental => path_str.contains("/experimental/"),
             Self::KnownFailures | Self::Examples => false,
             Self::All => true,
