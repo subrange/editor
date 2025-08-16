@@ -2,8 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::*;
 use rcc_test::cli::{Cli, Command};
-use rcc_test::command::run_command_sync;
-use rcc_test::compiler::{build_runtime, ToolPaths};
+use rcc_test::compiler::{build_runtime, compile_c_to_binary, ToolPaths};
 use rcc_test::config::{self, RunConfig};
 use rcc_test::runner::{cleanup_build_dir, TestRunner};
 use rcc_test::tui::runner::TuiRunner;
@@ -405,59 +404,14 @@ fn debug_test(test_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> {
     
     println!("Compiling: {}", actual_test_path.display());
     
-    // Compile the test
-    let basename = test_path.file_stem().unwrap().to_str().unwrap();
-    let asm_file = cli.build_dir.join(format!("{basename}.asm"));
-    let ir_file = cli.build_dir.join(format!("{basename}.ir"));
-    let pobj_file = cli.build_dir.join(format!("{basename}.pobj"));
-    let bin_file = cli.build_dir.join(format!("{basename}.bin"));
-    
-    // Compile C to assembly - use actual_test_path instead of test_path
-    let cmd = format!(
-        "{} compile {} -o {} --save-ir --ir-output {}",
-        tools.rcc.display(),
-        actual_test_path.display(),
-        asm_file.display(),
-        ir_file.display()
-    );
-    
-    println!("Running: {}", cmd.dimmed());
-    let result = run_command_sync(&cmd, 30)?;
-    if result.exit_code != 0 {
-        anyhow::bail!("Compilation failed: {}", result.stderr);
-    }
-    
-    // Assemble
-    let cmd = format!(
-        "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
-        tools.rasm.display(),
-        asm_file.display(),
-        pobj_file.display(),
-        cli.bank_size
-    );
-    
-    println!("Running: {}", cmd.dimmed());
-    let result = run_command_sync(&cmd, 30)?;
-    if result.exit_code != 0 {
-        anyhow::bail!("Assembly failed: {}", result.stderr);
-    }
-    
-    // Link
-    let cmd = format!(
-        "{} {} {} {} -f binary --bank-size {} -o {}",
-        tools.rlink.display(),
-        tools.crt0().display(),
-        tools.libruntime().display(),
-        pobj_file.display(),
+    // Compile the test using the shared function
+    let bin_file = compile_c_to_binary(
+        &actual_test_path,
+        tools,
         cli.bank_size,
-        bin_file.display()
-    );
-    
-    println!("Running: {}", cmd.dimmed());
-    let result = run_command_sync(&cmd, 30)?;
-    if result.exit_code != 0 {
-        anyhow::bail!("Linking failed: {}", result.stderr);
-    }
+        true, // use_runtime
+        30,   // timeout_secs
+    )?;
     
     println!("{}", format!("Successfully built {}", bin_file.display()).green());
     
@@ -686,56 +640,14 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> 
     
     println!("Compiling: {}", actual_path.display());
     
-    // Compile the program
-    let basename = program_path.file_stem().unwrap().to_str().unwrap();
-    let asm_file = cli.build_dir.join(format!("{basename}.asm"));
-    let ir_file = cli.build_dir.join(format!("{basename}.ir"));
-    let pobj_file = cli.build_dir.join(format!("{basename}.pobj"));
-    let bin_file = cli.build_dir.join(format!("{basename}.bin"));
-    
-    // Compile C to assembly
-    let cmd = format!(
-        "{} compile {} -o {} --save-ir --ir-output {}",
-        tools.rcc.display(),
-        actual_path.display(),
-        asm_file.display(),
-        ir_file.display()
-    );
-    
-    let result = run_command_sync(&cmd, 30)?;
-    if result.exit_code != 0 {
-        anyhow::bail!("Compilation failed: {}", result.stderr);
-    }
-    
-    // Assemble
-    let cmd = format!(
-        "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
-        tools.rasm.display(),
-        asm_file.display(),
-        pobj_file.display(),
-        cli.bank_size
-    );
-    
-    let result = run_command_sync(&cmd, 30)?;
-    if result.exit_code != 0 {
-        anyhow::bail!("Assembly failed: {}", result.stderr);
-    }
-    
-    // Link (always with runtime for examples)
-    let cmd = format!(
-        "{} {} {} {} -f binary --bank-size {} -o {}",
-        tools.rlink.display(),
-        tools.crt0().display(),
-        tools.libruntime().display(),
-        pobj_file.display(),
+    // Compile the program using the shared function
+    let bin_file = compile_c_to_binary(
+        &actual_path,
+        tools,
         cli.bank_size,
-        bin_file.display()
-    );
-    
-    let result = run_command_sync(&cmd, 30)?;
-    if result.exit_code != 0 {
-        anyhow::bail!("Linking failed: {}", result.stderr);
-    }
+        true, // use_runtime (always with runtime for examples)
+        30,   // timeout_secs
+    )?;
     
     println!("{}", format!("Successfully built {}", bin_file.display()).green());
     

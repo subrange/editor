@@ -152,6 +152,99 @@ pub struct CompilationResult {
     pub error_message: Option<String>,
 }
 
+/// Compile a C file to binary without running it
+/// This is used by debug_test and exec_program commands
+pub fn compile_c_to_binary(
+    c_file: &Path,
+    tools: &ToolPaths,
+    bank_size: usize,
+    use_runtime: bool,
+    timeout_secs: u64,
+) -> Result<PathBuf> {
+    let basename = c_file
+        .file_stem()
+        .context("Invalid C file path")?
+        .to_str()
+        .context("Non-UTF8 filename")?;
+
+    let preprocessed_file = tools.build_dir.join(format!("{basename}.pp.c"));
+    let asm_file = tools.build_dir.join(format!("{basename}.asm"));
+    let ir_file = tools.build_dir.join(format!("{basename}.ir"));
+    let pobj_file = tools.build_dir.join(format!("{basename}.pobj"));
+    let bin_file = tools.build_dir.join(format!("{basename}.bin"));
+
+    // Step 1: Preprocess the C file (with runtime include directory)
+    let cmd = format!(
+        "{} {} -o {} -I {}",
+        tools.rcpp.display(),
+        c_file.display(),
+        preprocessed_file.display(),
+        tools.runtime_dir.join("include").display()
+    );
+
+    let result = run_command_sync(&cmd, timeout_secs)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Preprocessing failed: {}", result.stderr);
+    }
+
+    // Step 2: Compile preprocessed C to assembly (with --no-preprocess since we already preprocessed)
+    let cmd = format!(
+        "{} compile {} -o {} --save-ir --ir-output {} --no-preprocess",
+        tools.rcc.display(),
+        preprocessed_file.display(),
+        asm_file.display(),
+        ir_file.display()
+    );
+
+    let result = run_command_sync(&cmd, timeout_secs)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Compilation failed: {}", result.stderr);
+    }
+
+    // Step 3: Assemble to object
+    let cmd = format!(
+        "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
+        tools.rasm.display(),
+        asm_file.display(),
+        pobj_file.display(),
+        bank_size
+    );
+
+    let result = run_command_sync(&cmd, timeout_secs)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Assembly failed: {}", result.stderr);
+    }
+
+    // Step 4: Link to binary
+    let link_cmd = if use_runtime {
+        format!(
+            "{} {} {} {} -f binary --bank-size {} -o {}",
+            tools.rlink.display(),
+            tools.crt0().display(),
+            tools.libruntime().display(),
+            pobj_file.display(),
+            bank_size,
+            bin_file.display()
+        )
+    } else {
+        format!(
+            "{} {} {} -f binary --bank-size {} -o {}",
+            tools.rlink.display(),
+            tools.crt0().display(),
+            pobj_file.display(),
+            bank_size,
+            bin_file.display()
+        )
+    };
+
+    let result = run_command_sync(&link_cmd, timeout_secs)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Linking failed: {}", result.stderr);
+    }
+
+    Ok(bin_file)
+}
+
 /// Compile a C file to executable
 pub fn compile_c_file(
     c_file: &Path,
