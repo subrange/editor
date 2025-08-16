@@ -118,6 +118,12 @@ pub struct TuiDebugger {
     pub(crate) status_message: Option<String>,
 }
 
+impl Default for TuiDebugger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TuiDebugger {
     pub fn new() -> Self {
         // Load settings from disk

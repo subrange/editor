@@ -82,7 +82,7 @@ pub fn calculate_value_need(value: &Value) -> usize {
         Value::Constant(_) => 1,    // Need to load into register
         Value::ConstantArray(_) => 0, // Arrays don't go in registers
         Value::Temp(_) => 1,         // Temps need a register
-        Value::Global(_) => panic!("Value::Global should be resolved in lower.rs {:?}", value), // Should be resolved to FatPtr
+        Value::Global(_) => panic!("Value::Global should be resolved in lower.rs {value:?}"), // Should be resolved to FatPtr
         Value::FatPtr(_) => 2,       // Fat pointers need 2 registers (addr + bank)
         Value::Function(_) => 1,     // Function addresses need a register
         Value::Undef => 0,           // Undefined values don't need registers
@@ -330,7 +330,7 @@ pub fn canonicalize_value(
         }
         Value::Function(name) => {
             // Function pointers are not yet implemented
-            Err(format!("Function pointers not yet implemented. Cannot use function '{}' as a value", name))
+            Err(format!("Function pointers not yet implemented. Cannot use function '{name}' as a value"))
         }
         _ => Ok(value.clone())
     }

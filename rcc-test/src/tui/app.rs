@@ -64,7 +64,7 @@ impl CategoryView {
         // Group tests by category
         for test in tests {
             let category = Self::get_category_from_path(&test.file);
-            categories.entry(category).or_insert_with(Vec::new).push(test.clone());
+            categories.entry(category).or_default().push(test.clone());
         }
         
         // Add orphan tests - group them by their path structure
@@ -74,9 +74,9 @@ impl CategoryView {
             let orphan_category = if category == "Uncategorized" {
                 "Orphan Tests".to_string()
             } else {
-                format!("Orphan › {}", category)
+                format!("Orphan › {category}")
             };
-            categories.entry(orphan_category).or_insert_with(Vec::new).push(orphan.clone());
+            categories.entry(orphan_category).or_default().push(orphan.clone());
         }
         
         // Add known failures as a category
@@ -432,7 +432,7 @@ impl TuiApp {
         let mut current_idx = 0;
         
         // Search through all visible items
-        for (_name, category) in &self.categories {
+        for category in self.categories.values() {
             current_idx += 1; // Category header
             
             if category.expanded {
@@ -577,7 +577,7 @@ impl TuiApp {
             }
         } else {
             // All categories view
-            for (_name, category) in &self.categories {
+            for category in self.categories.values() {
                 count += 1; // Category header
                 if category.expanded {
                     count += category.tests.len();
@@ -829,7 +829,7 @@ impl TuiApp {
         // Get the last test result output
         let output = self.test_results.get(test_name)
             .map(|r| r.output.clone())
-            .unwrap_or_else(String::new);
+            .unwrap_or_default();
         
         if output.is_empty() {
             self.append_output("No test output available. Run the test first.\n");
@@ -852,7 +852,7 @@ impl TuiApp {
         // Clear the metadata input state
         self.metadata_input = MetadataInput::default();
         
-        self.append_output(&format!("Added metadata for {} with current output as expected.\n", test_name));
+        self.append_output(&format!("Added metadata for {test_name} with current output as expected.\n"));
         Ok(())
     }
 
@@ -1018,7 +1018,7 @@ impl TuiApp {
                     
                     // Auto-save immediately for golden update
                     self.save_expected_output()?;
-                    self.append_output(&format!("Updated expected output for {} to match actual output.\n", test_name));
+                    self.append_output(&format!("Updated expected output for {test_name} to match actual output.\n"));
                 } else {
                     self.append_output("Test is already passing, no need to update expected output.\n");
                 }
@@ -1085,7 +1085,7 @@ impl TuiApp {
                 self.append_output("Tests reloaded successfully.\n");
             }
             Err(e) => {
-                self.append_output(&format!("Failed to reload tests: {}\n", e));
+                self.append_output(&format!("Failed to reload tests: {e}\n"));
             }
         }
     }
@@ -1274,7 +1274,7 @@ impl TuiApp {
                     &self.orphan_tests
                 );
                 
-                self.append_output(&format!("Test moved to category: {}\n", target_category));
+                self.append_output(&format!("Test moved to category: {target_category}\n"));
             }
             
             // Clear move state
@@ -1406,7 +1406,7 @@ impl TuiApp {
         self.new_test_description.clear();
         self.mode = AppMode::Normal;
         
-        self.append_output(&format!("Created new test: {}\n", test_name_with_ext));
+        self.append_output(&format!("Created new test: {test_name_with_ext}\n"));
         Ok(())
     }
     
@@ -1429,7 +1429,7 @@ impl TuiApp {
                     .unwrap_or("")
                     .to_lowercase()
                     .replace(' ', "-");
-                Ok(format!("known-failures/{}", subdir))
+                Ok(format!("known-failures/{subdir}"))
             },
             cat if cat.starts_with("Orphan › ") => {
                 // Extract the original category from orphan category
@@ -1440,7 +1440,7 @@ impl TuiApp {
                 // For nested categories like "Foo › Bar"
                 let parts: Vec<&str> = cat.split(" › ").collect();
                 let path = parts.join("/").to_lowercase().replace(' ', "-");
-                Ok(format!("tests/{}", path))
+                Ok(format!("tests/{path}"))
             }
         }
     }

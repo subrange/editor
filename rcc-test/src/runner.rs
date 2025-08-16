@@ -107,14 +107,14 @@ impl TestRunner {
             } else {
                 // Try to find the file directly
                 let possible_paths = [
-                    format!("c-test/tests/{}.c", name),
-                    format!("c-test/examples/{}.c", name),
-                    format!("c-test/tests-known-failures/{}.c", name),
-                    format!("c-test/known-failures/{}.c", name),
-                    format!("tests/{}.c", name),
-                    format!("examples/{}.c", name),
-                    format!("tests-known-failures/{}.c", name),
-                    format!("known-failures/{}.c", name),
+                    format!("c-test/tests/{name}.c"),
+                    format!("c-test/examples/{name}.c"),
+                    format!("c-test/tests-known-failures/{name}.c"),
+                    format!("c-test/known-failures/{name}.c"),
+                    format!("tests/{name}.c"),
+                    format!("examples/{name}.c"),
+                    format!("tests-known-failures/{name}.c"),
+                    format!("known-failures/{name}.c"),
                 ];
 
                 for path_str in &possible_paths {
@@ -301,7 +301,7 @@ impl TestRunner {
             Err(e) => TestResult {
                 name: test_name,
                 status: TestStatus::CompilationError,
-                message: Some(format!("Error: {}", e)),
+                message: Some(format!("Error: {e}")),
                 actual_output: None,
                 expected_output: test.expected.clone(),
                 duration_ms,

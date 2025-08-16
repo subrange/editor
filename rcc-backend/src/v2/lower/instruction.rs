@@ -391,7 +391,7 @@ pub fn lower_instruction(
         Instruction::InlineAsm { assembly } => {
             // Split by semicolons or newlines to handle both styles
             // This allows "inst1; inst2; inst3" or multiline assembly
-            for part in assembly.split(|c| c == ';' || c == '\n') {
+            for part in assembly.split([';', '\n']) {
                 let trimmed = part.trim();
                 if !trimmed.is_empty() {
                     // Pass through as raw assembly

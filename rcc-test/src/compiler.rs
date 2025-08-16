@@ -86,9 +86,9 @@ pub fn compile_c_file(
         .to_str()
         .context("Non-UTF8 filename")?;
 
-    let asm_file = tools.build_dir.join(format!("{}.asm", basename));
-    let ir_file = tools.build_dir.join(format!("{}.ir", basename));
-    let pobj_file = tools.build_dir.join(format!("{}.pobj", basename));
+    let asm_file = tools.build_dir.join(format!("{basename}.asm"));
+    let ir_file = tools.build_dir.join(format!("{basename}.ir"));
+    let pobj_file = tools.build_dir.join(format!("{basename}.pobj"));
 
     // Clean up previous files
     let _ = std::fs::remove_file(&asm_file);
@@ -174,7 +174,7 @@ fn compile_and_run_rvm(
     use_runtime: bool,
     has_provenance_warning: bool,
 ) -> Result<CompilationResult> {
-    let bin_file = tools.build_dir.join(format!("{}.bin", basename));
+    let bin_file = tools.build_dir.join(format!("{basename}.bin"));
 
     // Link to binary
     let link_cmd = if use_runtime {
@@ -225,7 +225,7 @@ fn compile_and_run_rvm(
             "{} disassemble {} -o {}",
             tools.rasm.display(),
             bin_file.display(),
-            tools.build_dir.join(format!("{}.disassembly.asm", basename)).display()
+            tools.build_dir.join(format!("{basename}.disassembly.asm")).display()
         ),
         10,
     );
@@ -255,8 +255,8 @@ fn compile_and_run_bf(
     use_runtime: bool,
     has_provenance_warning: bool,
 ) -> Result<CompilationResult> {
-    let bf_file = tools.build_dir.join(format!("{}.bfm", basename));
-    let expanded_file = tools.build_dir.join(format!("{}_expanded.bf", basename));
+    let bf_file = tools.build_dir.join(format!("{basename}.bfm"));
+    let expanded_file = tools.build_dir.join(format!("{basename}_expanded.bf"));
 
     // Link to macro format
     let link_cmd = if use_runtime {

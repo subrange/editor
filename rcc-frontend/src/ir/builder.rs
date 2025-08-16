@@ -140,7 +140,7 @@ impl IrBuilder {
             fat_ptr.bank
         } else {
             let func_name = self.current_function.as_ref().map(|f| f.name.clone()).unwrap_or_else(|| "unknown".to_string());
-            return Err(format!("Pointer must be a fat pointer in function '{}', got: {ptr:?}", func_name));
+            return Err(format!("Pointer must be a fat pointer in function '{func_name}', got: {ptr:?}"));
         };
         
         let instr = Instruction::GetElementPtr { 

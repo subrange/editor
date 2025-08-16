@@ -38,7 +38,7 @@ fn run() -> Result<()> {
         Some(Command::Clean) => {
             println!("Cleaning build directory...");
             let count = cleanup_build_dir(&cli.build_dir)?;
-            println!("Removed {} files", count);
+            println!("Removed {count} files");
             return Ok(());
         }
 
@@ -75,7 +75,7 @@ fn run() -> Result<()> {
         }
 
         Some(Command::Debug { ref test }) => {
-            debug_test(&test, &cli, &tools)?;
+            debug_test(test, &cli, &tools)?;
             return Ok(());
         }
 
@@ -189,7 +189,7 @@ fn run_tests(cli: &Cli, tools: &ToolPaths, filter: Option<String>) -> Result<()>
             .collect();
         
         if filtered_tests.is_empty() {
-            println!("No tests match filter: {}", pattern);
+            println!("No tests match filter: {pattern}");
             return Ok(());
         }
         
@@ -207,7 +207,7 @@ fn run_tests(cli: &Cli, tools: &ToolPaths, filter: Option<String>) -> Result<()>
     if !cli.no_cleanup {
         let count = cleanup_build_dir(&cli.build_dir)?;
         if cli.verbose {
-            println!("\nCleaned up {} files", count);
+            println!("\nCleaned up {count} files");
         }
     }
     
@@ -302,7 +302,7 @@ fn add_test(
     }
     
     if let Some(exp) = expected {
-        println!("Expected output: {:?}", exp);
+        println!("Expected output: {exp:?}");
     }
     
     Ok(())
@@ -367,11 +367,11 @@ fn show_stats(tests_file: &Path) -> Result<()> {
     let with_runtime = config.tests.iter().filter(|t| t.use_runtime).count();
     let without_runtime = config.tests.len() - with_runtime;
     
-    println!("With runtime:        {}", with_runtime);
-    println!("Without runtime:     {}", without_runtime);
+    println!("With runtime:        {with_runtime}");
+    println!("Without runtime:     {without_runtime}");
     
     let with_expected = config.tests.iter().filter(|t| t.expected.is_some()).count();
-    println!("With expected output: {}", with_expected);
+    println!("With expected output: {with_expected}");
     
     println!("Known failures:      {}", config.known_failures.len());
     
@@ -383,7 +383,7 @@ fn show_stats(tests_file: &Path) -> Result<()> {
         .map(|e| e.lines().count())
         .sum();
     
-    println!("Total expected lines: {}", total_expected_lines);
+    println!("Total expected lines: {total_expected_lines}");
     
     Ok(())
 }
@@ -407,10 +407,10 @@ fn debug_test(test_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> {
     
     // Compile the test
     let basename = test_path.file_stem().unwrap().to_str().unwrap();
-    let asm_file = cli.build_dir.join(format!("{}.asm", basename));
-    let ir_file = cli.build_dir.join(format!("{}.ir", basename));
-    let pobj_file = cli.build_dir.join(format!("{}.pobj", basename));
-    let bin_file = cli.build_dir.join(format!("{}.bin", basename));
+    let asm_file = cli.build_dir.join(format!("{basename}.asm"));
+    let ir_file = cli.build_dir.join(format!("{basename}.ir"));
+    let pobj_file = cli.build_dir.join(format!("{basename}.pobj"));
+    let bin_file = cli.build_dir.join(format!("{basename}.bin"));
     
     // Compile C to assembly - use actual_test_path instead of test_path
     let cmd = format!(
@@ -530,11 +530,11 @@ fn rename_test(tests_file: &Path, old_name: &str, new_name: &str) -> Result<()> 
         
         // Construct new path preserving directory structure
         let new_file_path = if test.file.starts_with("tests-known-failures") {
-            PathBuf::from("tests-known-failures").join(format!("{}.c", new_name))
+            PathBuf::from("tests-known-failures").join(format!("{new_name}.c"))
         } else if test.file.starts_with("tests") {
-            PathBuf::from("tests").join(format!("{}.c", new_name))
+            PathBuf::from("tests").join(format!("{new_name}.c"))
         } else {
-            PathBuf::from(format!("{}.c", new_name))
+            PathBuf::from(format!("{new_name}.c"))
         };
         
         let new_path = if new_file_path.is_relative() && !new_file_path.starts_with("c-test") {
@@ -570,16 +570,14 @@ fn rename_test(tests_file: &Path, old_name: &str, new_name: &str) -> Result<()> 
             if let Some(idx) = found_index {
                 config.known_failures[idx].file = new_file_path;
             }
-        } else {
-            if let Some(idx) = found_index {
-                config.tests[idx].file = new_file_path;
-            }
+        } else if let Some(idx) = found_index {
+            config.tests[idx].file = new_file_path;
         }
         
         // Save the updated configuration
         config::save_tests(&config, tests_file)?;
         
-        println!("✓ Renamed test '{}' to '{}'", old_name, new_name);
+        println!("✓ Renamed test '{old_name}' to '{new_name}'");
         println!("  File: {} -> {}", old_path.display(), new_path.display());
         
         Ok(())
@@ -690,10 +688,10 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> 
     
     // Compile the program
     let basename = program_path.file_stem().unwrap().to_str().unwrap();
-    let asm_file = cli.build_dir.join(format!("{}.asm", basename));
-    let ir_file = cli.build_dir.join(format!("{}.ir", basename));
-    let pobj_file = cli.build_dir.join(format!("{}.pobj", basename));
-    let bin_file = cli.build_dir.join(format!("{}.bin", basename));
+    let asm_file = cli.build_dir.join(format!("{basename}.asm"));
+    let ir_file = cli.build_dir.join(format!("{basename}.ir"));
+    let pobj_file = cli.build_dir.join(format!("{basename}.pobj"));
+    let bin_file = cli.build_dir.join(format!("{basename}.bin"));
     
     // Compile C to assembly
     let cmd = format!(
@@ -813,7 +811,7 @@ impl TestFinder {
         
         // Normalize the name
         let name = name.strip_suffix(".c").unwrap_or(name);
-        let filename = format!("{}.c", name);
+        let filename = format!("{name}.c");
         
         // Search recursively
         if let Ok(found) = Self::find_file_recursive(Path::new(Self::TEST_ROOT), &filename) {

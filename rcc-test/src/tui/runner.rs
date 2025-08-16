@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use crossterm::{
     cursor,
-    event::{self, KeyCode},
+    event::KeyCode,
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -53,7 +53,7 @@ impl TuiRunner {
         if !crt0_path.exists() || !libruntime_path.exists() {
             self.app.append_output("Building runtime library...\n");
             if let Err(e) = build_runtime(&self.app.tools, self.app.bank_size) {
-                self.app.append_output(&format!("Failed to build runtime: {}\n", e));
+                self.app.append_output(&format!("Failed to build runtime: {e}\n"));
             } else {
                 self.app.append_output("Runtime library built successfully.\n\n");
             }
@@ -72,7 +72,7 @@ impl TuiRunner {
         terminal.show_cursor()?;
 
         if let Err(err) = res {
-            println!("{:?}", err);
+            println!("{err:?}");
         }
 
         Ok(())
@@ -111,7 +111,7 @@ impl TuiRunner {
         
         match msg {
             TestMessage::Started(test_name) => {
-                self.app.append_output(&format!("Running: {}\n", test_name));
+                self.app.append_output(&format!("Running: {test_name}\n"));
             }
             TestMessage::Completed(test_name, result) => {
                 if result.passed {
@@ -143,7 +143,7 @@ impl TuiRunner {
                     passed, failed, passed + failed));
             }
             TestMessage::Progress(msg) => {
-                self.app.append_output(&format!("{}\n", msg));
+                self.app.append_output(&format!("{msg}\n"));
             }
             TestMessage::Finished => {
                 self.app.test_receiver = None;
@@ -291,7 +291,7 @@ impl TuiRunner {
                         }
                         // Now add the metadata with the output
                         if let Err(e) = self.app.quick_add_orphan_metadata() {
-                            self.app.append_output(&format!("Failed to add metadata: {}\n", e));
+                            self.app.append_output(&format!("Failed to add metadata: {e}\n"));
                         }
                     }
                 } else {
@@ -323,7 +323,7 @@ impl TuiRunner {
             KeyCode::Char('g') => {
                 // Golden update - apply actual output as expected for failing test
                 if let Err(e) = self.app.apply_golden_output() {
-                    self.app.append_output(&format!("Failed to apply golden output: {}\n", e));
+                    self.app.append_output(&format!("Failed to apply golden output: {e}\n"));
                 }
             }
             KeyCode::Char('n') => {
@@ -444,12 +444,9 @@ impl TuiRunner {
                 match self.app.focused_pane {
                     FocusedPane::RightPanel => {
                         // Jump to end of current tab
-                        match self.app.selected_tab {
-                            3 => {
-                                let total_lines = self.app.output_buffer.lines().count();
-                                self.app.output_scroll = total_lines.saturating_sub(10);
-                            }
-                            _ => {}
+                        if self.app.selected_tab == 3 {
+                            let total_lines = self.app.output_buffer.lines().count();
+                            self.app.output_scroll = total_lines.saturating_sub(10);
                         }
                     }
                     FocusedPane::TestList => {
@@ -545,7 +542,7 @@ impl TuiRunner {
             KeyCode::Char('y') | KeyCode::Char('Y') => {
                 // Confirm deletion
                 if let Err(e) = self.app.confirm_delete_test() {
-                    self.app.append_output(&format!("Failed to delete test: {}\n", e));
+                    self.app.append_output(&format!("Failed to delete test: {e}\n"));
                 } else {
                     self.app.append_output("Test deleted successfully!\n");
                 }
@@ -568,7 +565,7 @@ impl TuiRunner {
             KeyCode::Enter => {
                 // Save expected output
                 if let Err(e) = self.app.save_expected_output() {
-                    self.app.append_output(&format!("Failed to save expected output: {}\n", e));
+                    self.app.append_output(&format!("Failed to save expected output: {e}\n"));
                 }
             }
             KeyCode::Char(c) => {
@@ -610,7 +607,7 @@ impl TuiRunner {
             KeyCode::Enter => {
                 // Save metadata
                 if let Err(e) = self.app.save_metadata() {
-                    self.app.append_output(&format!("Failed to save metadata: {}\n", e));
+                    self.app.append_output(&format!("Failed to save metadata: {e}\n"));
                 } else {
                     self.app.append_output("Metadata saved successfully!\n");
                 }
@@ -694,7 +691,7 @@ impl TuiRunner {
     fn run_selected_test(&mut self) -> Result<()> {
         if let Some(test_name) = self.app.get_selected_test_name() {
             self.app.clear_output();
-            self.app.append_output(&format!("Running test: {}\n", test_name));
+            self.app.append_output(&format!("Running test: {test_name}\n"));
             self.app.append_output(&("-".repeat(60)) );
             self.app.append_output("\n");
             
@@ -733,16 +730,16 @@ impl TuiRunner {
                         duration_ms: duration,
                     };
 
-                    self.app.append_output(&format!("\nOutput:\n{}\n", output));
+                    self.app.append_output(&format!("\nOutput:\n{output}\n"));
                     self.app.append_output(&format!("\n{}\n", "-".repeat(60)));
                     
                     if passed {
-                        self.app.append_output(&format!("✓ Test PASSED in {}ms\n", duration));
+                        self.app.append_output(&format!("✓ Test PASSED in {duration}ms\n"));
                     } else {
-                        self.app.append_output(&format!("✗ Test FAILED in {}ms\n", duration));
+                        self.app.append_output(&format!("✗ Test FAILED in {duration}ms\n"));
                         if let Some(test) = test {
                             if let Some(expected) = &test.expected {
-                                self.app.append_output(&format!("\nExpected:\n{}\n", expected));
+                                self.app.append_output(&format!("\nExpected:\n{expected}\n"));
                             }
                         }
                     }
@@ -750,11 +747,11 @@ impl TuiRunner {
                     self.app.record_test_result(test_name, result);
                 }
                 Err(e) => {
-                    self.app.append_output(&format!("\n✗ Error: {}\n", e));
+                    self.app.append_output(&format!("\n✗ Error: {e}\n"));
                     
                     let result = TestResult {
                         passed: false,
-                        output: format!("Error: {}", e),
+                        output: format!("Error: {e}"),
                         expected: test.as_ref().and_then(|t| t.expected.clone()),
                         duration_ms: start.elapsed().as_millis(),
                     };
@@ -775,7 +772,7 @@ impl TuiRunner {
                 .unwrap_or("unknown");
             
             // Notify user
-            self.app.append_output(&format!("\nOpening {} in vim...\n", test_name));
+            self.app.append_output(&format!("\nOpening {test_name} in vim...\n"));
             self.app.append_output("(TUI will resume after vim exits)\n");
             
             // Pause the event handler FIRST
@@ -809,7 +806,7 @@ impl TuiRunner {
             terminal.hide_cursor()?;
             
             // Clear any events that might have been queued
-            while let Ok(_) = self.events.rx.try_recv() {
+            while self.events.rx.try_recv().is_ok() {
                 // Discard any queued events
             }
             
@@ -828,7 +825,7 @@ impl TuiRunner {
             if !status.success() {
                 self.app.append_output("Vim exited with error\n");
             } else {
-                self.app.append_output(&format!("Finished editing {}\n", test_name));
+                self.app.append_output(&format!("Finished editing {test_name}\n"));
             }
         } else {
             self.app.append_output("No test selected for editing.\n");
@@ -840,7 +837,7 @@ impl TuiRunner {
         if let Some(test_name) = self.app.get_selected_test_name() {
             if let Some(test_path) = self.app.get_selected_test_path() {
                 // Temporarily exit TUI to run debugger
-                self.app.append_output(&format!("\nLaunching debugger for: {}\n", test_name));
+                self.app.append_output(&format!("\nLaunching debugger for: {test_name}\n"));
                 self.app.append_output("(TUI will resume after debugger exits)\n");
                 
                 // We need to compile first
@@ -852,10 +849,10 @@ impl TuiRunner {
 
                 // Compile the test
                 let basename = test_name;
-                let asm_file = self.app.tools.build_dir.join(format!("{}.asm", basename));
-                let ir_file = self.app.tools.build_dir.join(format!("{}.ir", basename));
-                let pobj_file = self.app.tools.build_dir.join(format!("{}.pobj", basename));
-                let bin_file = self.app.tools.build_dir.join(format!("{}.bin", basename));
+                let asm_file = self.app.tools.build_dir.join(format!("{basename}.asm"));
+                let ir_file = self.app.tools.build_dir.join(format!("{basename}.ir"));
+                let pobj_file = self.app.tools.build_dir.join(format!("{basename}.pobj"));
+                let bin_file = self.app.tools.build_dir.join(format!("{basename}.bin"));
 
                 // Compile C to assembly
                 let cmd = format!(
@@ -867,7 +864,7 @@ impl TuiRunner {
                 );
 
                 if let Err(e) = run_command_sync(&cmd, 30) {
-                    self.app.append_output(&format!("Compilation failed: {}\n", e));
+                    self.app.append_output(&format!("Compilation failed: {e}\n"));
                     return Ok(());
                 }
 
@@ -881,7 +878,7 @@ impl TuiRunner {
                 );
 
                 if let Err(e) = run_command_sync(&cmd, 30) {
-                    self.app.append_output(&format!("Assembly failed: {}\n", e));
+                    self.app.append_output(&format!("Assembly failed: {e}\n"));
                     return Ok(());
                 }
 
@@ -897,7 +894,7 @@ impl TuiRunner {
                 );
 
                 if let Err(e) = run_command_sync(&cmd, 30) {
-                    self.app.append_output(&format!("Linking failed: {}\n", e));
+                    self.app.append_output(&format!("Linking failed: {e}\n"));
                     return Ok(());
                 }
 
@@ -934,7 +931,7 @@ impl TuiRunner {
                 terminal.hide_cursor()?;
                 
                 // Clear any events that might have been queued
-                while let Ok(_) = self.events.rx.try_recv() {
+                while self.events.rx.try_recv().is_ok() {
                     // Discard any queued events
                 }
                 
@@ -969,12 +966,12 @@ impl TuiRunner {
         let tests_to_run = self.app.get_category_tests(&category_name);
         
         if tests_to_run.is_empty() {
-            self.app.append_output(&format!("No tests in category '{}'.\n", category_name));
+            self.app.append_output(&format!("No tests in category '{category_name}'.\n"));
             return Ok(());
         }
         
         self.app.clear_output();
-        self.app.append_output(&format!("Running all tests in category '{}'...\n", category_name));
+        self.app.append_output(&format!("Running all tests in category '{category_name}'...\n"));
         self.app.append_output(&("-".repeat(60)));
         self.app.append_output("\n");
         
@@ -1097,10 +1094,10 @@ impl TuiRunner {
 
         // Compile the test
         let basename = test_name;
-        let asm_file = self.app.tools.build_dir.join(format!("{}.asm", basename));
-        let ir_file = self.app.tools.build_dir.join(format!("{}.ir", basename));
-        let pobj_file = self.app.tools.build_dir.join(format!("{}.pobj", basename));
-        let bin_file = self.app.tools.build_dir.join(format!("{}.bin", basename));
+        let asm_file = self.app.tools.build_dir.join(format!("{basename}.asm"));
+        let ir_file = self.app.tools.build_dir.join(format!("{basename}.ir"));
+        let pobj_file = self.app.tools.build_dir.join(format!("{basename}.pobj"));
+        let bin_file = self.app.tools.build_dir.join(format!("{basename}.bin"));
 
         // Compile C to assembly
         let cmd = format!(
@@ -1177,7 +1174,7 @@ impl TuiRunner {
             KeyCode::Enter => {
                 // Save new name
                 if let Err(e) = self.app.save_rename_test() {
-                    self.app.append_output(&format!("Failed to rename test: {}\n", e));
+                    self.app.append_output(&format!("Failed to rename test: {e}\n"));
                 }
             }
             KeyCode::Char(c) => {
@@ -1223,7 +1220,7 @@ impl TuiRunner {
                 
                 // Save the move with the selected category
                 if let Err(e) = self.app.save_move_test(target_category) {
-                    self.app.append_output(&format!("Failed to move test: {}\n", e));
+                    self.app.append_output(&format!("Failed to move test: {e}\n"));
                 }
             }
             _ => {}
@@ -1240,7 +1237,7 @@ impl TuiRunner {
             KeyCode::Enter => {
                 // Save new test
                 if let Err(e) = self.app.save_new_test() {
-                    self.app.append_output(&format!("Failed to create test: {}\n", e));
+                    self.app.append_output(&format!("Failed to create test: {e}\n"));
                 }
             }
             KeyCode::Tab => {

@@ -4,6 +4,12 @@ use crate::vm::VM;
 
 pub struct Debugger {}
 
+impl Default for Debugger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Debugger {
     pub fn new() -> Self {
         Self {}

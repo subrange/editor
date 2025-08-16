@@ -103,8 +103,8 @@ impl TestResult {
         for (i, (exp, act)) in expected_lines.iter().zip(actual_lines.iter()).enumerate() {
             if exp != act {
                 println!("  First difference at line {}:", i + 1);
-                println!("    Expected: {}", format!("{:?}", exp).green());
-                println!("    Got:      {}", format!("{:?}", act).red());
+                println!("    Expected: {}", format!("{exp:?}").green());
+                println!("    Got:      {}", format!("{act:?}").red());
                 break;
             }
         }
@@ -127,13 +127,13 @@ impl TestResult {
                 ChangeTag::Insert => "+".green(),
                 ChangeTag::Equal => " ".dimmed(),
             };
-            print!("  {}{}", sign, change);
+            print!("  {sign}{change}");
         }
 
         // Show raw comparison for debugging
         println!("\n  {}", "Raw comparison:".dimmed());
-        println!("    Expected: {:?}", expected);
-        println!("    Got:      {:?}", actual);
+        println!("    Expected: {expected:?}");
+        println!("    Got:      {actual:?}");
     }
 }
 
@@ -201,7 +201,7 @@ impl TestSummary {
         }
         
         let duration_secs = self.total_duration_ms as f64 / 1000.0;
-        println!("Duration:       {:.2}s", duration_secs);
+        println!("Duration:       {duration_secs:.2}s");
         
         println!("{}", "=".repeat(60));
         
@@ -274,7 +274,7 @@ impl ProgressReporter {
 fn indent_lines(text: &str, spaces: usize) -> String {
     let indent = " ".repeat(spaces);
     text.lines()
-        .map(|line| format!("{}{}", indent, line))
+        .map(|line| format!("{indent}{line}"))
         .collect::<Vec<_>>()
         .join("\n")
 }

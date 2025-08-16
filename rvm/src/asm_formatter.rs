@@ -235,7 +235,7 @@ pub fn format_asm_line(line: &str) -> Vec<Span<'static>> {
             if trimmed_part.starts_with('r') || trimmed_part.starts_with('R') ||
                ["pc", "pcb", "ra", "rab"].contains(&trimmed_part.to_lowercase().as_str()) {
                 spans.push(Span::styled(
-                    format!(" {}", trimmed_part),
+                    format!(" {trimmed_part}"),
                     Style::default().fg(Color::Rgb(0, 200, 0))
                 ));
             }
@@ -243,14 +243,14 @@ pub fn format_asm_line(line: &str) -> Vec<Span<'static>> {
             else if trimmed_part.starts_with("0x") || trimmed_part.starts_with("0X") ||
                     trimmed_part.parse::<i32>().is_ok() {
                 spans.push(Span::styled(
-                    format!(" {}", trimmed_part),
+                    format!(" {trimmed_part}"),
                     Style::default().fg(Color::Rgb(255, 140, 0))
                 ));
             }
             // Check for labels/symbols
             else if !trimmed_part.is_empty() {
                 spans.push(Span::styled(
-                    format!(" {}", trimmed_part),
+                    format!(" {trimmed_part}"),
                     Style::default().fg(Color::Cyan)
                 ));
             }

@@ -115,7 +115,7 @@ fn draw_category_selector(f: &mut Frame, area: Rect, app: &TuiApp) {
 
     // Different title based on mode
     let title = if app.mode == AppMode::MovingTest {
-        format!(" Move Test to Category (↑/↓: Navigate | Enter: Move | Esc: Cancel) ")
+        " Move Test to Category (↑/↓: Navigate | Enter: Move | Esc: Cancel) ".to_string()
     } else {
         " Select Category (↑/↓: Navigate | Enter: Select | Esc: Cancel) ".to_string()
     };
@@ -322,7 +322,7 @@ fn draw_source_code(f: &mut Frame, area: Rect, app: &TuiApp) {
                     f.render_widget(paragraph, area);
                 }
                 Err(e) => {
-                    let paragraph = Paragraph::new(format!("Error reading file: {}", e))
+                    let paragraph = Paragraph::new(format!("Error reading file: {e}"))
                         .block(Block::default().borders(Borders::ALL).title(format!(" Source: {} ", test_path.display()))
                             .border_style(Style::default().fg(Color::Gray)));
                     f.render_widget(paragraph, area);
@@ -344,7 +344,7 @@ fn draw_source_code(f: &mut Frame, area: Rect, app: &TuiApp) {
 
 fn draw_asm_code(f: &mut Frame, area: Rect, app: &TuiApp) {
     if let Some(test_name) = app.get_selected_test_name() {
-        let asm_path = app.tools.build_dir.join(format!("{}.asm", test_name));
+        let asm_path = app.tools.build_dir.join(format!("{test_name}.asm"));
         
         if asm_path.exists() {
             match std::fs::read_to_string(&asm_path) {
@@ -372,7 +372,7 @@ fn draw_asm_code(f: &mut Frame, area: Rect, app: &TuiApp) {
                         .block(
                             Block::default()
                                 .borders(Borders::ALL)
-                                .title(format!(" ASM: {}.asm ", test_name))
+                                .title(format!(" ASM: {test_name}.asm "))
                                 .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 1 {
                                     Style::default().fg(Color::Cyan)
                                 } else {
@@ -385,15 +385,15 @@ fn draw_asm_code(f: &mut Frame, area: Rect, app: &TuiApp) {
                     f.render_widget(paragraph, area);
                 }
                 Err(e) => {
-                    let paragraph = Paragraph::new(format!("Error reading ASM file: {}", e))
-                        .block(Block::default().borders(Borders::ALL).title(format!(" ASM: {}.asm ", test_name))
+                    let paragraph = Paragraph::new(format!("Error reading ASM file: {e}"))
+                        .block(Block::default().borders(Borders::ALL).title(format!(" ASM: {test_name}.asm "))
                             .border_style(Style::default().fg(Color::Gray)));
                     f.render_widget(paragraph, area);
                 }
             }
         } else {
             let paragraph = Paragraph::new("ASM file not found. Run the test first to generate it.")
-                .block(Block::default().borders(Borders::ALL).title(format!(" ASM: {}.asm ", test_name))
+                .block(Block::default().borders(Borders::ALL).title(format!(" ASM: {test_name}.asm "))
                     .border_style(Style::default().fg(Color::Gray)));
             f.render_widget(paragraph, area);
         }
@@ -407,7 +407,7 @@ fn draw_asm_code(f: &mut Frame, area: Rect, app: &TuiApp) {
 
 fn draw_ir_code(f: &mut Frame, area: Rect, app: &TuiApp) {
     if let Some(test_name) = app.get_selected_test_name() {
-        let ir_path = app.tools.build_dir.join(format!("{}.ir", test_name));
+        let ir_path = app.tools.build_dir.join(format!("{test_name}.ir"));
         
         let content = if ir_path.exists() {
             match std::fs::read_to_string(&ir_path) {
@@ -419,7 +419,7 @@ fn draw_ir_code(f: &mut Frame, area: Rect, app: &TuiApp) {
                         .collect::<Vec<_>>()
                         .join("\n")
                 }
-                Err(e) => format!("Error reading IR file: {}", e),
+                Err(e) => format!("Error reading IR file: {e}"),
             }
         } else {
             "IR file not found. Run the test first to generate it.".to_string()
@@ -429,7 +429,7 @@ fn draw_ir_code(f: &mut Frame, area: Rect, app: &TuiApp) {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(format!(" IR: {}.ir ", test_name))
+                    .title(format!(" IR: {test_name}.ir "))
                     .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 2 {
                         Style::default().fg(Color::Cyan)
                     } else {
@@ -513,7 +513,7 @@ fn draw_test_details(f: &mut Frame, area: Rect, app: &TuiApp) {
                 Span::styled("Expected Output: ", Style::default().add_modifier(Modifier::BOLD)),
             ]));
             for line in expected.lines() {
-                lines.push(Line::from(format!("  {}", line)));
+                lines.push(Line::from(format!("  {line}")));
             }
         }
 
@@ -541,7 +541,7 @@ fn draw_test_details(f: &mut Frame, area: Rect, app: &TuiApp) {
                         Span::styled("Actual Output: ", Style::default().add_modifier(Modifier::BOLD)),
                     ]));
                     for line in result.output.lines() {
-                        lines.push(Line::from(format!("  {}", line)));
+                        lines.push(Line::from(format!("  {line}")));
                     }
                 }
             }
@@ -596,8 +596,8 @@ fn draw_delete_confirmation_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
         Line::from(""),
         Line::from(Span::styled("⚠ Warning", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))),
         Line::from(""),
-        Line::from(format!("Are you sure you want to delete the {}:", test_type)),
-        Line::from(Span::styled(format!("  {}", test_name), Style::default().fg(Color::Cyan))),
+        Line::from(format!("Are you sure you want to delete the {test_type}:")),
+        Line::from(Span::styled(format!("  {test_name}"), Style::default().fg(Color::Cyan))),
         Line::from(""),
         Line::from("This action cannot be undone!"),
         Line::from(""),
@@ -650,7 +650,7 @@ fn draw_edit_expected_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
         .split(modal_area);
     
     // Draw title
-    let title = Paragraph::new(format!("Edit Expected Output for: {}", test_name))
+    let title = Paragraph::new(format!("Edit Expected Output for: {test_name}"))
         .block(Block::default()
             .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
             .border_style(Style::default().fg(Color::Cyan)))
@@ -722,7 +722,7 @@ fn draw_metadata_input_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
         .and_then(|s| s.to_str())
         .unwrap_or("unknown");
     
-    let title = Paragraph::new(format!("Add Metadata for: {}", test_name))
+    let title = Paragraph::new(format!("Add Metadata for: {test_name}"))
         .block(Block::default()
             .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
             .border_style(Style::default().fg(Color::Cyan)))
@@ -789,9 +789,9 @@ fn draw_metadata_input_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
     
     let options = vec![
         Line::from(vec![
-            Span::styled(format!("{} Use Runtime", runtime_check), runtime_style),
+            Span::styled(format!("{runtime_check} Use Runtime"), runtime_style),
             Span::raw("    "),
-            Span::styled(format!("{} Known Failure", failure_check), failure_style),
+            Span::styled(format!("{failure_check} Known Failure"), failure_style),
         ])
     ];
     
@@ -893,7 +893,7 @@ fn draw_find_test_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
             // Add path info
             let path_str = test.file.to_string_lossy();
             spans.push(Span::styled(
-                format!("  ({})", path_str),
+                format!("  ({path_str})"),
                 style.fg(Color::DarkGray)
             ));
             
@@ -1105,7 +1105,7 @@ fn draw_rename_test_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
         .split(modal_area);
     
     // Draw title
-    let title = Paragraph::new(format!("Rename Test: {}", test_name))
+    let title = Paragraph::new(format!("Rename Test: {test_name}"))
         .block(Block::default()
             .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
             .border_style(Style::default().fg(Color::Cyan)))
@@ -1170,7 +1170,7 @@ fn draw_create_test_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
         .split(modal_area);
     
     // Draw title
-    let title = Paragraph::new(format!("Create New Test in: {}", current_category))
+    let title = Paragraph::new(format!("Create New Test in: {current_category}"))
         .block(Block::default()
             .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
             .border_style(Style::default().fg(Color::Cyan)))
@@ -1186,7 +1186,7 @@ fn draw_create_test_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
     };
     
     let name_prefix = if !app.new_test_focused_field { "▶ Name: " } else { "  Name: " };
-    let name_field = Paragraph::new(format!("{}{}", name_prefix, name_text))
+    let name_field = Paragraph::new(format!("{name_prefix}{name_text}"))
         .block(Block::default()
             .borders(Borders::LEFT | Borders::RIGHT)
             .border_style(Style::default().fg(Color::Cyan)))
@@ -1247,7 +1247,7 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
     };
     
     let mode_spans = vec![
-        Span::styled(format!(" {} ", mode_text), mode_style),
+        Span::styled(format!(" {mode_text} "), mode_style),
         Span::raw(" "),  // Add spacing after mode
     ];
     let mode = Paragraph::new(Line::from(mode_spans))
@@ -1256,9 +1256,9 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
 
     // Current action or info
     let info = if let Some(ref test) = app.running_test {
-        format!("Running: {}", test)
+        format!("Running: {test}")
     } else if let Some(test_name) = app.get_selected_test_name() {
-        format!("Selected: {}", test_name)
+        format!("Selected: {test_name}")
     } else {
         "No test selected".to_string()
     };

@@ -22,7 +22,7 @@ impl Parser {
                 // Handle adjacent string literal concatenation (C standard feature)
                 // "hello" "world" becomes "helloworld"
                 while let Some(Token { token_type: TokenType::StringLiteral(next), .. }) = self.peek() {
-                    value.push_str(&next);
+                    value.push_str(next);
                     self.advance();
                 }
                 ExpressionKind::StringLiteral(value)

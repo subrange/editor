@@ -25,7 +25,7 @@ pub async fn run_command(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .context(format!("Failed to spawn command: {}", cmd))?;
+        .context(format!("Failed to spawn command: {cmd}"))?;
 
     let timeout_duration = Duration::from_secs(timeout_secs);
 
@@ -47,7 +47,7 @@ pub async fn run_command(
             Ok(CommandResult {
                 exit_code: -1,
                 stdout: String::new(),
-                stderr: format!("Timeout after {}s", timeout_secs),
+                stderr: format!("Timeout after {timeout_secs}s"),
                 timed_out: true,
             })
         }
@@ -81,11 +81,9 @@ pub fn cleanup_file(path: &Path) -> Result<()> {
 /// Clean up multiple files matching a pattern
 pub fn cleanup_pattern(pattern: &str) -> Result<usize> {
     let mut count = 0;
-    for entry in glob::glob(pattern)? {
-        if let Ok(path) = entry {
-            cleanup_file(&path)?;
-            count += 1;
-        }
+    for path in (glob::glob(pattern)?).flatten() {
+        cleanup_file(&path)?;
+        count += 1;
     }
     Ok(count)
 }
