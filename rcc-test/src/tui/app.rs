@@ -388,18 +388,33 @@ impl TuiApp {
     }
 
     pub fn move_selection_up(&mut self) {
+        let total_items = self.get_total_visible_items();
+        if total_items == 0 {
+            return;
+        }
+        
         if self.selected_item > 0 {
             self.selected_item -= 1;
-            self.ensure_selection_visible();
+        } else {
+            // Wrap to last item
+            self.selected_item = total_items - 1;
         }
+        self.ensure_selection_visible();
     }
 
     pub fn move_selection_down(&mut self) {
         let total_items = self.get_total_visible_items();
-        if self.selected_item < total_items.saturating_sub(1) {
-            self.selected_item += 1;
-            self.ensure_selection_visible();
+        if total_items == 0 {
+            return;
         }
+        
+        if self.selected_item < total_items - 1 {
+            self.selected_item += 1;
+        } else {
+            // Wrap to first item
+            self.selected_item = 0;
+        }
+        self.ensure_selection_visible();
     }
     
     pub fn get_total_visible_items(&self) -> usize {
@@ -493,6 +508,42 @@ impl TuiApp {
         
         SelectedItemType::None
     }
+    
+    pub fn get_current_category_name(&self) -> Option<String> {
+        let mut current_idx = 0;
+        
+        if let Some(ref selected_cat) = self.selected_category {
+            // Single category view - always return this category
+            return Some(selected_cat.clone());
+        }
+        
+        // All categories view - find which category the cursor is in
+        for (name, category) in &self.categories {
+            if current_idx == self.selected_item {
+                // Cursor is on category header
+                return Some(name.clone());
+            }
+            current_idx += 1;
+            
+            if category.expanded {
+                let category_end = current_idx + category.tests.len();
+                if self.selected_item < category_end {
+                    // Cursor is on a test within this category
+                    return Some(name.clone());
+                }
+                current_idx = category_end;
+            }
+        }
+        
+        None
+    }
+    
+    pub fn get_category_tests(&self, category_name: &str) -> Vec<TestCase> {
+        self.categories
+            .get(category_name)
+            .map(|cat| cat.tests.clone())
+            .unwrap_or_default()
+    }
 
     pub fn ensure_selection_visible(&mut self) {
         // Adjust scroll to keep selection visible
@@ -558,12 +609,14 @@ impl TuiApp {
         if self.selected_category_index > 0 {
             self.selected_category_index -= 1;
         } else {
+            // Wrap to last category
             self.selected_category_index = total_categories - 1;
         }
     }
 
     pub fn move_category_selection_down(&mut self) {
         let total_categories = self.categories.len() + 1; // +1 for "All Tests" option
+        // Wrap around using modulo
         self.selected_category_index = (self.selected_category_index + 1) % total_categories;
     }
 

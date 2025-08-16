@@ -256,6 +256,10 @@ impl TuiRunner {
             KeyCode::Char('r') => {
                 self.run_all_visible_tests()?;
             }
+            KeyCode::Char('R') => {
+                // Shift+R - run all tests in current category
+                self.run_category_tests()?;
+            }
             KeyCode::Char('c') => {
                 self.app.toggle_category_selection();
             }
@@ -628,10 +632,36 @@ impl TuiRunner {
         Ok(())
     }
 
-    fn run_all_visible_tests(&mut self) -> Result<()> {
-        use crate::runner::TestRunner;
-        use crate::config::{RunConfig, Backend};
+    fn run_category_tests(&mut self) -> Result<()> {
+        // Get the current category name
+        let category_name = match self.app.get_current_category_name() {
+            Some(name) => name,
+            None => {
+                self.app.append_output("No category selected.\n");
+                return Ok(());
+            }
+        };
         
+        // Get tests in this category
+        let tests_to_run = self.app.get_category_tests(&category_name);
+        
+        if tests_to_run.is_empty() {
+            self.app.append_output(&format!("No tests in category '{}'.\n", category_name));
+            return Ok(());
+        }
+        
+        self.app.clear_output();
+        self.app.append_output(&format!("Running all tests in category '{}'...\n", category_name));
+        self.app.append_output(&("-".repeat(60)));
+        self.app.append_output("\n");
+        
+        // Auto-switch to Output tab when running tests
+        self.app.selected_tab = 3;
+        
+        self.run_test_batch(tests_to_run)
+    }
+
+    fn run_all_visible_tests(&mut self) -> Result<()> {
         self.app.clear_output();
         self.app.append_output("Running tests...\n");
         self.app.append_output(&("-".repeat(60)));
@@ -647,6 +677,13 @@ impl TuiRunner {
             return Ok(());
         }
 
+        self.run_test_batch(tests_to_run)
+    }
+    
+    fn run_test_batch(&mut self, tests_to_run: Vec<crate::config::TestCase>) -> Result<()> {
+        use crate::runner::TestRunner;
+        use crate::config::{RunConfig, Backend};
+        
         // Create channel for communication
         let (tx, rx) = mpsc::channel();
         self.app.test_receiver = Some(rx);
