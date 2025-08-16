@@ -83,7 +83,13 @@ impl<'a> ExpressionAnalyzer<'a> {
 
                 // Check if function is callable
                 if let Some(func_type) = &function.expr_type {
-                    match func_type {
+                    // Dereference function pointer to get the actual function type
+                    let callable_type = match func_type {
+                        Type::Pointer { target, .. } => target.as_ref(),
+                        other => other,
+                    };
+                    
+                    match callable_type {
                         Type::Function {
                             return_type,
                             parameters,

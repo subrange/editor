@@ -13,7 +13,31 @@ c-test/
 
 ## Running Tests
 
-Use rct in rcc-test
+```bash
+# Run all tests
+rct
+
+# Run specific tests (without .c extension)
+rct test_add test_bool
+
+# Run with different backend (default is rvm)
+rct --backend bf
+
+# Run with verbose output
+rct -v
+
+# Run with custom timeout (default is 2 seconds)
+rct --timeout 5
+
+# Keep build artifacts for debugging
+rct --no-cleanup
+
+# Run tests sequentially instead of in parallel
+rct --no-parallel
+
+# Debug mode (RVM with -t flag)
+rct -d
+```
 
 ## Adding a New Test
 
@@ -41,14 +65,30 @@ int main() {
 }
 ```
 
-### 3. Add Test 
+### 3. Add Test to Suite
+
+```bash
+# Add a test with expected output
+rct add tests/test_example.c "Y\n"
+
+# Add a test with description
+rct add tests/test_example.c "Y\n" -d "Tests basic arithmetic"
+
+# Add a test that doesn't use runtime
+rct add tests/test_standalone.c "42" --no-runtime
+```
 
 ### 4. Run Your Test
 
 ```bash
+# Run a specific test
+rct test_example
 
-rct run test_example
+# Run multiple tests
+rct test_example test_arithmetic
 
+# Run all tests matching a pattern
+rct run -f "test_*"
 ```
 
 ## Test Guidelines
@@ -77,6 +117,40 @@ brew install coreutils  # for gtimeout
 npm install -g @ahineya/bfm bf  # Brainfuck tools
 ```
 
+## Additional Commands
+
+```bash
+# List all available tests
+rct list
+
+# List only test names
+rct list --names-only
+
+# Include known failures in listing
+rct list --include-failures
+
+# Check for test files not added to suite
+rct check
+
+# Show test suite statistics
+rct stats
+
+# Clean build directory
+rct clean
+
+# Build runtime library
+rct build-runtime
+
+# Debug a single test interactively
+rct debug test_example
+
+# Rename a test (updates both .c and .meta.json)
+rct rename old_test new_test
+
+# Launch interactive TUI for test management
+rct tui
+```
+
 ## Understanding Test Output
 
 - ✓ Green: Test passed
@@ -89,13 +163,15 @@ npm install -g @ahineya/bfm bf  # Brainfuck tools
 Use `--no-cleanup` to keep intermediate files:
 
 ```bash
-python3 run_tests.py --no-cleanup
+rct --no-cleanup test_example
 ```
 
 This preserves in `build/`:
 - `.asm` - Generated assembly
 - `.pobj` - Assembled object files
-- `.bf` - Linked Brainfuck output
-- `_expanded.bfm` - Expanded macro code
+- `.bin` - Final binary (RVM backend)
+- `.bfm` - Linked Brainfuck macro output (BF backend)
+- `_expanded.bf` - Expanded macro code (BF backend)
+- `.disassembly.asm` - Disassembled binary (for debugging)
 
 You can then manually inspect or run individual compilation steps.

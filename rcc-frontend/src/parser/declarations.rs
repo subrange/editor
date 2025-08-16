@@ -63,8 +63,8 @@ impl Parser {
             _ => {}
         }
         
-        // Parse declarator (name and type modifications like pointers, arrays, functions)
-        let (name, full_type) = self.parse_declarator(base_type)?;
+        // Parse first declarator (name and type modifications like pointers, arrays, functions)
+        let (name, full_type) = self.parse_declarator(base_type.clone())?;
         
         // Check if this is a function definition (has a body)
         if let Type::Function { .. } = full_type {
@@ -75,9 +75,68 @@ impl Parser {
             }
         }
         
-        // Otherwise it's a declaration
-        let declaration = self.parse_declaration_with_type(name, full_type, storage_class)?;
-        Ok(TopLevelItem::Declaration(declaration))
+        // Otherwise it's a declaration (possibly with multiple declarators)
+        // If this is a typedef declaration, register the name
+        if storage_class == StorageClass::Typedef {
+            self.typedef_names.insert(name.clone());
+        }
+        
+        // Parse optional initializer
+        let initializer = if self.match_token(&TokenType::Equal) {
+            Some(self.parse_initializer()?)
+        } else {
+            None
+        };
+        
+        let first_decl = Declaration {
+            node_id: self.node_id_gen.next(),
+            name,
+            decl_type: full_type,
+            storage_class,
+            initializer,
+            span: SourceSpan::new(start_loc.clone(), self.current_location()),
+            symbol_id: None,
+        };
+        
+        // Check for additional declarators (comma-separated)
+        if self.match_token(&TokenType::Comma) {
+            let mut declarations = vec![first_decl];
+            
+            loop {
+                let (name, full_type) = self.parse_declarator(base_type.clone())?;
+                
+                // If this is a typedef, register the name
+                if storage_class == StorageClass::Typedef {
+                    self.typedef_names.insert(name.clone());
+                }
+                
+                let initializer = if self.match_token(&TokenType::Equal) {
+                    Some(self.parse_initializer()?)
+                } else {
+                    None
+                };
+                
+                declarations.push(Declaration {
+                    node_id: self.node_id_gen.next(),
+                    name,
+                    decl_type: full_type,
+                    storage_class,
+                    initializer,
+                    span: SourceSpan::new(start_loc.clone(), self.current_location()),
+                    symbol_id: None,
+                });
+                
+                if !self.match_token(&TokenType::Comma) {
+                    break;
+                }
+            }
+            
+            self.expect(TokenType::Semicolon, "declaration")?;
+            Ok(TopLevelItem::Declarations(declarations))
+        } else {
+            self.expect(TokenType::Semicolon, "declaration")?;
+            Ok(TopLevelItem::Declarations(vec![first_decl]))
+        }
     }
     
     /// Parse function definition
@@ -137,6 +196,11 @@ impl Parser {
     ) -> Result<Declaration, CompilerError> {
         let start_location = self.current_location();
         
+        // If this is a typedef declaration, register the name
+        if storage_class == StorageClass::Typedef {
+            self.typedef_names.insert(name.clone());
+        }
+        
         // Parse optional initializer
         let initializer = if self.match_token(&TokenType::Equal) {
             Some(self.parse_initializer()?)
@@ -168,6 +232,12 @@ impl Parser {
         
         // Parse first declarator
         let (name, full_type) = self.parse_declarator(base_type.clone())?;
+        
+        // If this is a typedef, register the name
+        if storage_class == StorageClass::Typedef {
+            self.typedef_names.insert(name.clone());
+        }
+        
         let initializer = if self.match_token(&TokenType::Equal) {
             Some(self.parse_initializer()?)
         } else {
@@ -187,6 +257,12 @@ impl Parser {
         // Parse additional declarators (comma-separated)
         while self.match_token(&TokenType::Comma) {
             let (name, full_type) = self.parse_declarator(base_type.clone())?;
+            
+            // If this is a typedef, register the name
+            if storage_class == StorageClass::Typedef {
+                self.typedef_names.insert(name.clone());
+            }
+            
             let initializer = if self.match_token(&TokenType::Equal) {
                 Some(self.parse_initializer()?)
             } else {

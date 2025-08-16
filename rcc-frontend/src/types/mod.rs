@@ -193,6 +193,12 @@ impl Type {
             // Array to pointer decay
             (Type::Pointer { target, .. }, Type::Array { element_type, .. }) => target == element_type,
             
+            // Function to function pointer decay
+            (Type::Pointer { target, .. }, func @ Type::Function { .. }) => {
+                // The pointer must point to the same function type
+                target.as_ref() == func
+            }
+            
             _ => false,
         }
     }

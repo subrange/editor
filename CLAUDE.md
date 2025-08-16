@@ -68,23 +68,23 @@ rlink -f macro program.pobj
 ## Development Guidelines
 
 - **Testing and Execution**
-- After every change of the C compiler, please make sure you add the test case to `python3 c-test/run_tests.py` and run it to ensure that we don't have any regressions
+- After every change of the C compiler, please make sure you add the test case using `rct add` and run it with `rct` to ensure that we don't have any regressions
 - After every change of the C compiler, make sure to rebuild it from project root with `cargo build --release` to ensure the latest changes are included
 - VM opcodes div, mod, divi, modi, mul, muli, slt, and store have been fixed and are now safe to use
-- In c-test tests, use if(condition) putchar('1') else putchar('N') to make sure we actually have some asserts and can capture it in run_tests.py
+- In c-test tests, use if(condition) putchar('Y') else putchar('N') to make sure we actually have some asserts and can capture it in the test runner
 
 - Rasm, Rlink are placed in src/ripple-asm/target/release/ and can be run from there
 
 ## Developing C Compiler
 
 When working on the C compiler, follow these steps:
-1. Create a new test file in `c-test/tests/` for completely standalone tests, or `c-test/tests-runtime/` for tests that require C runtime with putchar and friends..
-2. Add the test to a proper section of `c-test/run_tests.py` with expected output.
+1. Create a new test file in `c-test/tests/` for tests.
+2. Add the test to the suite using `rct add tests/test_name.c "expected output"`.
 3. Implement compiler logic
-4. Run the test suite with `python3 c-test/run_tests.py --no-cleanup` to verify changes.
+4. Run the test suite with `rct --no-cleanup` to verify changes.
 5. Ensure all tests pass.
 6. If tests fail, debug using the generated files in `c-test/build/`.
-7. Once all tests pass, run `python3 c-test/run_tests.py --clean` to remove build artifacts.
+7. Once all tests pass, run `rct clean` to remove build artifacts.
 
 ## Directory Structure
 
@@ -93,24 +93,40 @@ c-test/
 ├── tests/                    # Main test cases that should pass
 ├── tests-known-failures/     # Tests expected to fail (unsupported features)
 ├── build/                    # Temporary build artifacts (auto-created)
-└── run_tests.py             # Test runner script
+└── *.meta.json              # Test metadata files (created by rct add)
+
+rcc-test/
+├── src/
+│   ├── main.rs              # Main entry point for rct
+│   ├── cli.rs               # CLI argument parsing
+│   └── ...                  # Test runner implementation
+└── Cargo.toml               # Rust dependencies
 ```
 
 ## Running Tests
 
 ```bash
 # Run all tests
-python3 run_tests.py
+rct
 
-# Run single test file
-python3 run_tests.py tests/test_example.c
+# Run specific tests (without path or .c extension)
+rct test_example test_example2
 
-# Run multiple test files, omitting the extension is allowed
-python3 run_tests.py test_example test_example2
+# Run tests with custom timeout (default is 2 seconds)
+rct test_example --timeout 5
 
-# Run tests with custom timeout. Default is 2 seconds.
-python3 run_tests.py tests/test_example.c --timeout 5
+# Run with different backend
+rct --backend bf  # Use Brainfuck backend
+rct --backend rvm # Use RVM backend (default)
 
+# Run with verbose output
+rct -v
+
+# Debug mode for RVM
+rct -d
+
+# Run tests sequentially
+rct --no-parallel
 ```
 
 ## Adding a New Test
@@ -118,7 +134,7 @@ python3 run_tests.py tests/test_example.c --timeout 5
 ### 1. Create a Test File
 
 Create a `.c` file in the appropriate directory:
-- `tests/` - For all tests
+- `tests/*category*` - For all tests
 - `tests-known-failures/` - For tests documenting unsupported features
 
 ### 2. Write Test Code
@@ -140,31 +156,36 @@ int main() {
 }
 ```
 
-### 3. Add Test to run_tests.py
+### 3. Add Test to Test Suite
 
+```bash
 # Add a regular test with expected output
-```python3 c-test/run_tests.py --add test_new.c "Hello\n"```
+rct add tests/test_new.c "Hello\n"
 
-# Add a known failure test (no expected output)
-```python3 c-test/run_tests.py --add test_unsupported.c```
+# Add a test with description
+rct add tests/test_new.c "Hello\n" -d "Test greeting output"
 
+# Add a test that doesn't use runtime
+rct add tests/test_standalone.c "42" --no-runtime
+```
 
-Parameters:
-- **file**: Path to test C file
-- **expected_output**: Exact expected output string
-- **use_runtime**: `False` for basic tests, `True` for runtime tests
+The `rct add` command creates a `.meta.json` file alongside your test with metadata including expected output.
 
 ### 4. Run Your Test
 
 ```bash
-python3 run_tests.py
+# Run specific test
+rct test_new
+
+# Run all tests
+rct
 ```
 
 ## Test Guidelines
 
 1. **Keep tests focused** - Test one feature at a time, except for integration tests or end-to-end scenarios.
 2. **Use assertions** - Output 'Y' for pass, 'N' for fail conditions
-4. **Include newlines** - End output with `\n` for clean formatting
+3. **Include newlines** - End output with `\n` for clean formatting
 
 ## Understanding Test Output
 
@@ -175,24 +196,56 @@ python3 run_tests.py
 
 ## Debugging Failed Tests
 
-run_tests.py keeps all generated files in `build/` directory for debugging purposes by default.
+Use `--no-cleanup` flag to keep all generated files in `build/` directory for debugging:
 
 ```bash
-python3 run_tests.py 
+rct test_name --no-cleanup
 ```
 
 This preserves in `build/`:
 - `.ir` - Intermediate representation files
 - `.asm` - Generated assembly
 - `.pobj` - Assembled object files
-- `.bin` - Final binary output
-- `.disassembly.asm` - Disassembled output of the binary, used rasm for disassembly
+- `.bin` - Final binary output (RVM backend)
+- `.disassembly.asm` - Disassembled output of the binary, uses rasm for disassembly
 
-If ran with --backend bf, then instead of `.bin` you will have:
+If ran with `--backend bf`, then instead of `.bin` you will have:
 - `.bfm` - Linked Brainfuck macro output
 - `_expanded.bf` - Expanded macro code
 
 You can then manually inspect or run individual compilation steps.
+
+### Interactive Debugging
+
+For detailed debugging of a single test:
+
+```bash
+rct debug test_name
+```
+
+This runs the test interactively, showing each compilation step.
+
+### Additional Test Management Commands
+
+```bash
+# List all tests
+rct list
+
+# Check for orphaned test files
+rct check
+
+# Show test suite statistics
+rct stats
+
+# Clean build artifacts
+rct clean
+
+# Rename a test
+rct rename old_name new_name
+
+# Launch interactive TUI
+rct tui
+```
 
 IMPORTANT: Use `rcc compile file.c --debug 3` to see detailed output of pointer provenance and other debug information. It is VERY helpful.
 IMPORTANT: Use "log" crate's `trace!` and `debug!` macros to log detailed information during compilation. This will help you understand how the compiler processes your code.
@@ -219,3 +272,5 @@ VERY IMPORTANT RULES:
 3. Conservative implementation -
    Better to fail loudly than silently
    corrupt
+IMPORTANT: rcc is a project inside rust workspace, so everything is being built into the project root target/release directory.
+IMPORTANT: rct (Ripple C Test runner) is located in target/release/rct after building with `cargo build --release`.

@@ -58,14 +58,16 @@ impl SemanticAnalyzer {
                     };
                     symbol_manager.declare_function(func)?;
                 }
-                TopLevelItem::Declaration(decl) => {
-                    let mut symbol_manager = symbols::SymbolManager {
-                        symbol_table: &mut self.symbol_table,
-                        symbol_locations: &mut self.symbol_locations,
-                        symbol_types: &mut self.symbol_types,
-                        type_definitions: &mut self.type_definitions,
-                    };
-                    symbol_manager.declare_global_variable(decl)?;
+                TopLevelItem::Declarations(decls) => {
+                    for decl in decls {
+                        let mut symbol_manager = symbols::SymbolManager {
+                            symbol_table: &mut self.symbol_table,
+                            symbol_locations: &mut self.symbol_locations,
+                            symbol_types: &mut self.symbol_types,
+                            type_definitions: &mut self.type_definitions,
+                        };
+                        symbol_manager.declare_global_variable(decl)?;
+                    }
                 }
                 TopLevelItem::TypeDefinition { name, type_def, .. } => {
                     let mut symbol_manager = symbols::SymbolManager {

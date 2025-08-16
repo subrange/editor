@@ -149,8 +149,8 @@ pub enum TopLevelItem {
     /// Function definition
     Function(FunctionDefinition),
     
-    /// Global variable declaration
-    Declaration(Declaration),
+    /// Global variable declarations (can be multiple with comma-separated declarators)
+    Declarations(Vec<Declaration>),
     
     /// Struct/union/enum definition
     TypeDefinition {

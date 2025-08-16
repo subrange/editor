@@ -140,6 +140,9 @@ pub fn resolve_global_to_fatptr(
             bank: BankTag::Global,
         }))
     } else {
+        // If it's not a global variable, it might be a function
+        // Functions don't have addresses in global memory, they're just labels
+        // Return an error that will be caught and handled appropriately
         Err(format!("Unknown global variable: {name}"))
     }
 }
@@ -324,6 +327,10 @@ pub fn canonicalize_value(
                 }
                 _ => Ok(value.clone())
             }
+        }
+        Value::Function(name) => {
+            // Function pointers are not yet implemented
+            Err(format!("Function pointers not yet implemented. Cannot use function '{}' as a value", name))
         }
         _ => Ok(value.clone())
     }

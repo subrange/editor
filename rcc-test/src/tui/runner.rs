@@ -188,6 +188,10 @@ impl TuiRunner {
             AppMode::SelectCategory => self.handle_category_input(key),
             AppMode::AddingMetadata => self.handle_metadata_input(key),
             AppMode::ConfirmDelete => self.handle_delete_confirmation(key),
+            AppMode::EditingExpected => self.handle_edit_expected_input(key),
+            AppMode::RenamingTest => self.handle_rename_test_input(key),
+            AppMode::MovingTest => self.handle_move_test_input(key),
+            AppMode::CreatingTest => self.handle_create_test_input(key),
         }
     }
 
@@ -271,6 +275,29 @@ impl TuiRunner {
             KeyCode::Char('/') => {
                 self.app.start_find_test();
             }
+            KeyCode::Char('a') => {
+                // Add new test from template
+                self.app.start_create_test();
+            }
+            KeyCode::Char('A') => {
+                // Quick add orphan test metadata with current output (Shift+A)
+                if self.app.is_current_test_orphan() {
+                    // First run the test to get output if needed
+                    let test_name = self.app.get_selected_test_name();
+                    if let Some(name) = test_name {
+                        if !self.app.test_results.contains_key(&name) {
+                            // Run the test first to get output
+                            self.run_selected_test()?;
+                        }
+                        // Now add the metadata with the output
+                        if let Err(e) = self.app.quick_add_orphan_metadata() {
+                            self.app.append_output(&format!("Failed to add metadata: {}\n", e));
+                        }
+                    }
+                } else {
+                    self.app.append_output("Current test is not an orphan test.\n");
+                }
+            }
             KeyCode::Char('m') => {
                 // Add metadata to orphan test
                 if self.app.is_current_test_orphan() {
@@ -288,6 +315,24 @@ impl TuiRunner {
             KeyCode::Char('e') => {
                 // Edit selected test in vim
                 self.edit_selected_test(terminal)?;
+            }
+            KeyCode::Char('E') => {
+                // Edit expected output (Shift+E)
+                self.app.start_edit_expected();
+            }
+            KeyCode::Char('g') => {
+                // Golden update - apply actual output as expected for failing test
+                if let Err(e) = self.app.apply_golden_output() {
+                    self.app.append_output(&format!("Failed to apply golden output: {}\n", e));
+                }
+            }
+            KeyCode::Char('n') => {
+                // Rename selected test
+                self.app.start_rename_test();
+            }
+            KeyCode::Char('M') => {
+                // Move selected test to different category (Shift+M)
+                self.app.start_move_test();
             }
             KeyCode::Tab => {
                 self.app.focused_pane = match self.app.focused_pane {
@@ -312,9 +357,29 @@ impl TuiRunner {
                 self.app.selected_tab = 4;  // Details
             }
             KeyCode::F(5) => {
+                // Force complete UI refresh and reload tests
+                
+                // Clear the terminal completely
+                terminal.clear()?;
+                
+                // Reset all scroll positions
+                self.app.source_scroll = 0;
+                self.app.asm_scroll = 0;
+                self.app.ir_scroll = 0;
+                self.app.output_scroll = 0;
+                self.app.details_scroll = 0;
+                self.app.help_scroll = 0;
+                
+                // Clear output buffer to start fresh
+                self.app.clear_output();
+                
                 // Reload all tests from filesystem
                 self.app.reload_all_tests();
-                self.app.append_output("Refreshing test list...\n");
+                
+                // Force immediate redraw
+                terminal.draw(|f| ui::draw(f, &mut self.app))?;
+                
+                self.app.append_output("UI refreshed and tests reloaded.\n");
             }
             KeyCode::PageDown => {
                 match self.app.focused_pane {
@@ -488,6 +553,46 @@ impl TuiRunner {
             KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
                 // Cancel deletion
                 self.app.cancel_delete();
+            }
+            _ => {}
+        }
+        Ok(true)
+    }
+
+    fn handle_edit_expected_input(&mut self, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc => {
+                // Cancel editing
+                self.app.cancel_edit_expected();
+            }
+            KeyCode::Enter => {
+                // Save expected output
+                if let Err(e) = self.app.save_expected_output() {
+                    self.app.append_output(&format!("Failed to save expected output: {}\n", e));
+                }
+            }
+            KeyCode::Char(c) => {
+                // Handle special escape sequences
+                if c == '\\' && !self.app.editing_expected.ends_with('\\') {
+                    self.app.editing_expected.push('\\');
+                } else if self.app.editing_expected.ends_with('\\') {
+                    let _ = self.app.editing_expected.pop();
+                    match c {
+                        'n' => self.app.editing_expected.push('\n'),
+                        't' => self.app.editing_expected.push('\t'),
+                        'r' => self.app.editing_expected.push('\r'),
+                        '\\' => self.app.editing_expected.push('\\'),
+                        _ => {
+                            self.app.editing_expected.push('\\');
+                            self.app.editing_expected.push(c);
+                        }
+                    }
+                } else {
+                    self.app.editing_expected.push(c);
+                }
+            }
+            KeyCode::Backspace => {
+                self.app.editing_expected.pop();
             }
             _ => {}
         }
@@ -1061,5 +1166,107 @@ impl TuiRunner {
         }
 
         Ok(result.stdout)
+    }
+    
+    fn handle_rename_test_input(&mut self, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc => {
+                // Cancel renaming
+                self.app.cancel_rename();
+            }
+            KeyCode::Enter => {
+                // Save new name
+                if let Err(e) = self.app.save_rename_test() {
+                    self.app.append_output(&format!("Failed to rename test: {}\n", e));
+                }
+            }
+            KeyCode::Char(c) => {
+                // Only allow alphanumeric, underscore, and hyphen in test names
+                if c.is_alphanumeric() || c == '_' || c == '-' {
+                    self.app.rename_new_name.push(c);
+                }
+            }
+            KeyCode::Backspace => {
+                self.app.rename_new_name.pop();
+            }
+            _ => {}
+        }
+        Ok(true)
+    }
+    
+    fn handle_move_test_input(&mut self, key: KeyEvent) -> Result<bool> {
+        // In move mode, we show the category selector
+        // So we delegate to the category input handler
+        match key.code {
+            KeyCode::Esc => {
+                // Cancel moving
+                self.app.cancel_move();
+            }
+            KeyCode::Up => {
+                self.app.move_category_selection_up();
+            }
+            KeyCode::Down => {
+                self.app.move_category_selection_down();
+            }
+            KeyCode::Enter => {
+                // Get selected category
+                let target_category = if self.app.selected_category_index == 0 {
+                    // "All Tests" option - use Uncategorized
+                    "Uncategorized".to_string()
+                } else {
+                    // Get the category at the current index
+                    let category_names: Vec<String> = self.app.categories.keys().cloned().collect();
+                    category_names.get(self.app.selected_category_index - 1)
+                        .cloned()
+                        .unwrap_or_else(|| "Uncategorized".to_string())
+                };
+                
+                // Save the move with the selected category
+                if let Err(e) = self.app.save_move_test(target_category) {
+                    self.app.append_output(&format!("Failed to move test: {}\n", e));
+                }
+            }
+            _ => {}
+        }
+        Ok(true)
+    }
+    
+    fn handle_create_test_input(&mut self, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc => {
+                // Cancel creating
+                self.app.cancel_create_test();
+            }
+            KeyCode::Enter => {
+                // Save new test
+                if let Err(e) = self.app.save_new_test() {
+                    self.app.append_output(&format!("Failed to create test: {}\n", e));
+                }
+            }
+            KeyCode::Tab => {
+                // Switch between name and description fields
+                self.app.new_test_focused_field = !self.app.new_test_focused_field;
+            }
+            KeyCode::Char(c) => {
+                if !self.app.new_test_focused_field {
+                    // Editing name field - only allow alphanumeric, underscore, and hyphen
+                    if c.is_alphanumeric() || c == '_' || c == '-' {
+                        self.app.new_test_name.push(c);
+                    }
+                } else {
+                    // Editing description field
+                    self.app.new_test_description.push(c);
+                }
+            }
+            KeyCode::Backspace => {
+                if !self.app.new_test_focused_field {
+                    self.app.new_test_name.pop();
+                } else {
+                    self.app.new_test_description.pop();
+                }
+            }
+            _ => {}
+        }
+        Ok(true)
     }
 }

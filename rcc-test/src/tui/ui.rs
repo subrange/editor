@@ -37,7 +37,7 @@ pub fn draw(f: &mut Frame, app: &mut TuiApp) {
         draw_help_modal(f, size, app);
     }
 
-    // Draw category selector modal if visible
+    // Draw category selector modal if visible (for both category selection and move mode)
     if app.show_categories {
         draw_category_selector(f, size, app);
     }
@@ -55,6 +55,21 @@ pub fn draw(f: &mut Frame, app: &mut TuiApp) {
     // Draw delete confirmation modal if confirming deletion
     if app.mode == AppMode::ConfirmDelete {
         draw_delete_confirmation_modal(f, size, app);
+    }
+
+    // Draw edit expected output modal if editing
+    if app.mode == AppMode::EditingExpected {
+        draw_edit_expected_modal(f, size, app);
+    }
+    
+    // Draw rename test modal if renaming
+    if app.mode == AppMode::RenamingTest {
+        draw_rename_test_modal(f, size, app);
+    }
+    
+    // Draw create test modal if creating
+    if app.mode == AppMode::CreatingTest {
+        draw_create_test_modal(f, size, app);
     }
 
     // Draw status bar at bottom
@@ -98,11 +113,18 @@ fn draw_category_selector(f: &mut Frame, area: Rect, app: &TuiApp) {
         modal_height,
     );
 
+    // Different title based on mode
+    let title = if app.mode == AppMode::MovingTest {
+        format!(" Move Test to Category (↑/↓: Navigate | Enter: Move | Esc: Cancel) ")
+    } else {
+        " Select Category (↑/↓: Navigate | Enter: Select | Esc: Cancel) ".to_string()
+    };
+    
     let list = List::new(items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Select Category (↑/↓: Navigate | Enter: Select | Esc: Cancel) ")
+                .title(title)
                 .title_alignment(Alignment::Center)
                 .border_style(Style::default().fg(Color::Cyan))
         )
@@ -598,6 +620,76 @@ fn draw_delete_confirmation_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
     f.render_widget(paragraph, modal_area);
 }
 
+fn draw_edit_expected_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
+    let test_name = app.editing_test_file.as_ref()
+        .and_then(|f| f.file_stem())
+        .and_then(|s| s.to_str())
+        .unwrap_or("unknown");
+    
+    // Calculate modal dimensions
+    let modal_width = 80;
+    let modal_height = 15;
+    let modal_area = Rect::new(
+        (area.width.saturating_sub(modal_width)) / 2,
+        (area.height.saturating_sub(modal_height)) / 2,
+        modal_width,
+        modal_height,
+    );
+    
+    // Clear background
+    f.render_widget(Clear, modal_area);
+    
+    // Create layout
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),  // Title
+            Constraint::Min(5),     // Expected output
+            Constraint::Length(3),  // Help text
+        ])
+        .split(modal_area);
+    
+    // Draw title
+    let title = Paragraph::new(format!("Edit Expected Output for: {}", test_name))
+        .block(Block::default()
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Yellow));
+    f.render_widget(title, chunks[0]);
+    
+    // Draw expected output field
+    let expected_text = if app.editing_expected.is_empty() {
+        "(enter expected output, use \\n for newlines)".to_string()
+    } else {
+        // Show the raw string with escape sequences visible
+        app.editing_expected
+            .replace('\n', "\\n")
+            .replace('\t', "\\t")
+            .replace('\r', "\\r")
+    };
+    
+    let expected = Paragraph::new(expected_text)
+        .block(Block::default()
+            .title("Expected Output")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Yellow)))
+        .wrap(Wrap { trim: false });
+    f.render_widget(expected, chunks[1]);
+    
+    // Draw help text
+    let help = Paragraph::new(vec![
+        Line::from("Enter: Save | Esc: Cancel | Backspace: Delete char"),
+        Line::from("Use \\n for newlines, \\t for tabs"),
+    ])
+        .block(Block::default()
+            .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(Alignment::Center);
+    f.render_widget(help, chunks[2]);
+}
+
 fn draw_metadata_input_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
     // Calculate modal dimensions
     let modal_width = 80;
@@ -712,7 +804,7 @@ fn draw_metadata_input_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
     // Draw help text
     let help = Paragraph::new(vec![
         Line::from("Tab: Next field | Shift+Tab: Previous field | Space: Toggle checkbox"),
-        Line::from("Enter: Save metadata | Esc: Cancel | m: Add metadata to orphan test"),
+        Line::from("Enter: Save metadata | Esc: Cancel | A: Quick add with current output"),
     ])
         .block(Block::default()
             .borders(Borders::ALL)
@@ -897,13 +989,20 @@ fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         Line::from("  [F]     Known failure"),
         Line::from(""),
         Line::from(Span::styled("── Test Management ──", Style::default().fg(Color::Yellow))),
+        Line::from("  a       Add new test from template"),
         Line::from("  e       Edit selected test in vim"),
+        Line::from("  E       Edit expected output (Shift+E)"),
+        Line::from("  g       Golden update (apply actual as expected)"),
+        Line::from("  n       Rename selected test"),
+        Line::from("  M       Move test to category (uses selector)"),
         Line::from("  x       Delete selected test"),
         Line::from("  o       Jump to first orphan test"),
-        Line::from("  m       Add metadata to orphan test"),
+        Line::from("  m       Add metadata to orphan test (with modal)"),
+        Line::from("  A       Quick add orphan metadata (Shift+A)"),
+        Line::from("          Uses current output as expected"),
         Line::from(""),
         Line::from(Span::styled("── Other Commands ──", Style::default().fg(Color::Yellow))),
-        Line::from("  F5      Reload all tests from filesystem"),
+        Line::from("  F5      Force UI refresh & reload tests"),
         Line::from("  ?       Toggle this help"),
         Line::from("  q       Quit application"),
         Line::from("  Ctrl+C  Force quit"),
@@ -976,6 +1075,153 @@ fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
     f.render_widget(paragraph, help_area);
 }
 
+fn draw_rename_test_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
+    let test_name = app.editing_test_file.as_ref()
+        .and_then(|f| f.file_stem())
+        .and_then(|s| s.to_str())
+        .unwrap_or("unknown");
+    
+    // Calculate modal dimensions
+    let modal_width = 60;
+    let modal_height = 10;
+    let modal_area = Rect::new(
+        (area.width.saturating_sub(modal_width)) / 2,
+        (area.height.saturating_sub(modal_height)) / 2,
+        modal_width,
+        modal_height,
+    );
+    
+    // Clear background
+    f.render_widget(Clear, modal_area);
+    
+    // Create layout
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),  // Title
+            Constraint::Length(3),  // New name input
+            Constraint::Length(3),  // Help text
+        ])
+        .split(modal_area);
+    
+    // Draw title
+    let title = Paragraph::new(format!("Rename Test: {}", test_name))
+        .block(Block::default()
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Yellow));
+    f.render_widget(title, chunks[0]);
+    
+    // Draw new name input field
+    let new_name_text = if app.rename_new_name.is_empty() {
+        "(enter new test name)".to_string()
+    } else {
+        app.rename_new_name.clone()
+    };
+    
+    let new_name = Paragraph::new(new_name_text)
+        .block(Block::default()
+            .borders(Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .style(if app.rename_new_name.is_empty() {
+            Style::default().fg(Color::DarkGray)
+        } else {
+            Style::default().fg(Color::White)
+        });
+    f.render_widget(new_name, chunks[1]);
+    
+    // Draw help text
+    let help = Paragraph::new("Enter: Save | Esc: Cancel")
+        .block(Block::default()
+            .borders(Borders::BOTTOM | Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Green));
+    f.render_widget(help, chunks[2]);
+}
+
+fn draw_create_test_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
+    let current_category = app.get_current_category_name()
+        .unwrap_or_else(|| "Uncategorized".to_string());
+    
+    // Calculate modal dimensions
+    let modal_width = 70;
+    let modal_height = 12;
+    let modal_area = Rect::new(
+        (area.width.saturating_sub(modal_width)) / 2,
+        (area.height.saturating_sub(modal_height)) / 2,
+        modal_width,
+        modal_height,
+    );
+    
+    // Clear background
+    f.render_widget(Clear, modal_area);
+    
+    // Create layout
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),  // Title
+            Constraint::Length(3),  // Test name input
+            Constraint::Length(3),  // Description input
+            Constraint::Length(3),  // Help text
+        ])
+        .split(modal_area);
+    
+    // Draw title
+    let title = Paragraph::new(format!("Create New Test in: {}", current_category))
+        .block(Block::default()
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Yellow));
+    f.render_widget(title, chunks[0]);
+    
+    // Draw test name input field
+    let name_text = if app.new_test_name.is_empty() {
+        "(enter test name)".to_string()
+    } else {
+        app.new_test_name.clone()
+    };
+    
+    let name_prefix = if !app.new_test_focused_field { "▶ Name: " } else { "  Name: " };
+    let name_field = Paragraph::new(format!("{}{}", name_prefix, name_text))
+        .block(Block::default()
+            .borders(Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .style(if app.new_test_name.is_empty() {
+            Style::default().fg(Color::DarkGray)
+        } else if !app.new_test_focused_field {
+            Style::default().fg(Color::Yellow)
+        } else {
+            Style::default().fg(Color::White)
+        });
+    f.render_widget(name_field, chunks[1]);
+    
+    // Draw description field
+    let desc_prefix = if app.new_test_focused_field { "▶ Description: " } else { "  Description: " };
+    let desc_field = Paragraph::new(format!("{}{}", desc_prefix, app.new_test_description))
+        .block(Block::default()
+            .borders(Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .style(if app.new_test_focused_field {
+            Style::default().fg(Color::Yellow)
+        } else {
+            Style::default().fg(Color::White)
+        });
+    f.render_widget(desc_field, chunks[2]);
+    
+    // Draw help text
+    let help = Paragraph::new("Tab: Switch fields | Enter: Create | Esc: Cancel")
+        .block(Block::default()
+            .borders(Borders::BOTTOM | Borders::LEFT | Borders::RIGHT)
+            .border_style(Style::default().fg(Color::Cyan)))
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Green));
+    f.render_widget(help, chunks[3]);
+}
+
 fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
     let status_chunks = Layout::default()
         .direction(Direction::Horizontal)
@@ -994,6 +1240,10 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
         AppMode::SelectCategory => ("CATEGORY", Style::default().bg(Color::Cyan).fg(Color::Black)),
         AppMode::AddingMetadata => ("METADATA", Style::default().bg(Color::Yellow).fg(Color::Black)),
         AppMode::ConfirmDelete => ("DELETE", Style::default().bg(Color::Red).fg(Color::Black)),
+        AppMode::EditingExpected => ("EDIT EXP", Style::default().bg(Color::Magenta).fg(Color::Black)),
+        AppMode::RenamingTest => ("RENAME", Style::default().bg(Color::Yellow).fg(Color::Black)),
+        AppMode::MovingTest => ("MOVE", Style::default().bg(Color::Cyan).fg(Color::Black)),
+        AppMode::CreatingTest => ("CREATE", Style::default().bg(Color::Green).fg(Color::Black)),
     };
     
     let mode_spans = vec![

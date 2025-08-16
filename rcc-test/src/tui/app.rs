@@ -43,6 +43,10 @@ pub enum AppMode {
     SelectCategory,
     AddingMetadata,  // Adding metadata to an orphan test
     ConfirmDelete,   // Confirming deletion of orphan test
+    EditingExpected, // Editing expected output for a test
+    RenamingTest,    // Renaming a test file
+    MovingTest,      // Moving test to different category
+    CreatingTest,    // Creating a new test from template
 }
 
 #[derive(Debug, Clone)]
@@ -89,9 +93,12 @@ impl CategoryView {
             categories.insert("Known Failures".to_string(), failure_tests);
         }
         
-        // Convert to CategoryView
+        // Convert to CategoryView and sort tests within each category
         let mut result = BTreeMap::new();
-        for (name, tests) in categories {
+        for (name, mut tests) in categories {
+            // Sort tests alphabetically within the category
+            tests.sort_by(|a, b| a.file.cmp(&b.file));
+            
             result.insert(name.clone(), CategoryView {
                 name: name.clone(),
                 test_count: tests.len(),
@@ -232,6 +239,19 @@ pub struct TuiApp {
     
     // Delete confirmation
     pub delete_target: Option<PathBuf>,
+    
+    // Expected output editing
+    pub editing_test_file: Option<PathBuf>,
+    pub editing_expected: String,
+    
+    // Rename/move operations
+    pub rename_new_name: String,
+    pub move_target_category: String,
+    
+    // Create new test
+    pub new_test_name: String,
+    pub new_test_description: String,
+    pub new_test_focused_field: bool, // false = name, true = description
 
     // Settings
     pub bank_size: usize,
@@ -316,6 +336,13 @@ impl TuiApp {
 
             metadata_input: MetadataInput::default(),
             delete_target: None,
+            editing_test_file: None,
+            editing_expected: String::new(),
+            rename_new_name: String::new(),
+            move_target_category: String::new(),
+            new_test_name: String::new(),
+            new_test_description: String::new(),
+            new_test_focused_field: false,
 
             bank_size,
             timeout_secs,
@@ -777,6 +804,57 @@ impl TuiApp {
             }
         }
     }
+    
+    pub fn quick_add_orphan_metadata(&mut self) -> anyhow::Result<()> {
+        // Check if current test is an orphan
+        if !self.is_current_test_orphan() {
+            self.append_output("Current test is not an orphan test.\n");
+            return Ok(());
+        }
+        
+        // Get the test details
+        let test = match self.get_selected_test_details() {
+            Some(t) => t,
+            None => {
+                self.append_output("No test selected.\n");
+                return Ok(());
+            }
+        };
+        
+        // Get the test name for looking up the result
+        let test_name = test.file.file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown");
+        
+        // Get the last test result output
+        let output = self.test_results.get(test_name)
+            .map(|r| r.output.clone())
+            .unwrap_or_else(String::new);
+        
+        if output.is_empty() {
+            self.append_output("No test output available. Run the test first.\n");
+            return Ok(());
+        }
+        
+        // Set up metadata with current output as expected
+        self.metadata_input = MetadataInput {
+            test_file: Some(test.file.clone()),
+            expected_output: output.clone(),
+            use_runtime: true,  // Default to true
+            is_known_failure: false,
+            description: String::new(),
+            focused_field: MetadataField::ExpectedOutput,
+        };
+        
+        // Save the metadata immediately
+        self.save_metadata()?;
+        
+        // Clear the metadata input state
+        self.metadata_input = MetadataInput::default();
+        
+        self.append_output(&format!("Added metadata for {} with current output as expected.\n", test_name));
+        Ok(())
+    }
 
     pub fn start_delete_test(&mut self) {
         if let Some(test) = self.get_selected_test_details() {
@@ -841,6 +919,116 @@ impl TuiApp {
         self.mode = AppMode::Normal;
     }
     
+    pub fn start_edit_expected(&mut self) {
+        if let Some(test) = self.get_selected_test_details() {
+            self.editing_test_file = Some(test.file.clone());
+            self.editing_expected = test.expected.clone().unwrap_or_default();
+            self.mode = AppMode::EditingExpected;
+        }
+    }
+    
+    pub fn save_expected_output(&mut self) -> anyhow::Result<()> {
+        if let Some(test_file) = &self.editing_test_file {
+            // Load existing metadata or create new
+            let full_path = if test_file.is_relative() && !test_file.starts_with("c-test") {
+                PathBuf::from("c-test").join(test_file)
+            } else {
+                test_file.clone()
+            };
+            
+            let meta_path = full_path.with_extension("meta.json");
+            
+            let mut metadata = if meta_path.exists() {
+                let content = std::fs::read_to_string(&meta_path)?;
+                serde_json::from_str::<crate::config::TestMetadata>(&content)?
+            } else {
+                // Create new metadata for orphan test
+                crate::config::TestMetadata {
+                    expected: None,
+                    use_runtime: true,
+                    description: None,
+                    known_failure: false,
+                    category: None,
+                }
+            };
+            
+            // Update expected output
+            metadata.expected = if self.editing_expected.is_empty() {
+                None
+            } else {
+                Some(self.editing_expected.clone())
+            };
+            
+            // Save metadata
+            let content = serde_json::to_string_pretty(&metadata)?;
+            std::fs::write(&meta_path, content)?;
+            
+            // Update the test in our config
+            if let Some(test) = self.test_config.tests.iter_mut()
+                .find(|t| t.file == *test_file) {
+                test.expected = metadata.expected.clone();
+            }
+            
+            // If this was an orphan, it's no longer one
+            if let Some(idx) = self.orphan_tests.iter().position(|t| t.file == *test_file) {
+                let orphan = self.orphan_tests.remove(idx);
+                self.test_config.tests.push(TestCase {
+                    file: orphan.file,
+                    expected: metadata.expected,
+                    use_runtime: metadata.use_runtime,
+                    description: metadata.description,
+                });
+                
+                // Rebuild categories
+                self.categories = CategoryView::from_tests(
+                    &self.test_config.tests,
+                    &self.test_config.known_failures,
+                    &self.orphan_tests
+                );
+            }
+            
+            // Clear editing state
+            self.editing_test_file = None;
+            self.editing_expected.clear();
+            self.mode = AppMode::Normal;
+            
+            self.append_output("Expected output updated successfully.\n");
+        }
+        
+        Ok(())
+    }
+    
+    pub fn cancel_edit_expected(&mut self) {
+        self.editing_test_file = None;
+        self.editing_expected.clear();
+        self.mode = AppMode::Normal;
+    }
+    
+    pub fn apply_golden_output(&mut self) -> anyhow::Result<()> {
+        // Get the current test's actual output from the last run
+        if let Some(test_name) = self.get_selected_test_name() {
+            // Clone the values we need before mutating self
+            let result_info = self.test_results.get(&test_name).map(|r| (r.passed, r.output.clone()));
+            
+            if let Some((passed, output)) = result_info {
+                if !passed {
+                    // Start editing with the actual output
+                    self.start_edit_expected();
+                    self.editing_expected = output;
+                    
+                    // Auto-save immediately for golden update
+                    self.save_expected_output()?;
+                    self.append_output(&format!("Updated expected output for {} to match actual output.\n", test_name));
+                } else {
+                    self.append_output("Test is already passing, no need to update expected output.\n");
+                }
+            } else {
+                self.append_output("No test result available. Run the test first.\n");
+            }
+        }
+        Ok(())
+    }
+    
     pub fn get_selected_test_path_for_edit(&self) -> Option<PathBuf> {
         if let Some(test) = self.get_selected_test_details() {
             // Construct full path
@@ -903,12 +1091,366 @@ impl TuiApp {
     }
     
 
+    pub fn start_rename_test(&mut self) {
+        if let Some(test) = self.get_selected_test_details() {
+            // Get the test file name without extension
+            let current_name = test.file.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+            self.rename_new_name = current_name;
+            self.editing_test_file = Some(test.file.clone());
+            self.mode = AppMode::RenamingTest;
+        }
+    }
+    
+    pub fn save_rename_test(&mut self) -> anyhow::Result<()> {
+        if let Some(old_file) = &self.editing_test_file {
+            if self.rename_new_name.is_empty() {
+                return Err(anyhow::anyhow!("New name cannot be empty"));
+            }
+            
+            // Construct full old path
+            let old_full_path = if old_file.is_relative() && !old_file.starts_with("c-test") {
+                PathBuf::from("c-test").join(old_file)
+            } else {
+                old_file.clone()
+            };
+            
+            // Create new path with new name
+            let new_name_with_ext = format!("{}.c", self.rename_new_name);
+            let new_full_path = old_full_path.parent()
+                .ok_or_else(|| anyhow::anyhow!("Cannot get parent directory"))?
+                .join(new_name_with_ext);
+            
+            // Check if new file already exists
+            if new_full_path.exists() && new_full_path != old_full_path {
+                return Err(anyhow::anyhow!("A test with this name already exists"));
+            }
+            
+            // Rename the C file
+            if old_full_path != new_full_path {
+                std::fs::rename(&old_full_path, &new_full_path)?;
+                
+                // Also rename the .meta.json file if it exists
+                let old_meta_path = old_full_path.with_extension("meta.json");
+                if old_meta_path.exists() {
+                    let new_meta_path = new_full_path.with_extension("meta.json");
+                    std::fs::rename(&old_meta_path, &new_meta_path)?;
+                }
+                
+                // Update the test in our config
+                let new_relative_path = if new_full_path.starts_with("c-test/") {
+                    new_full_path.strip_prefix("c-test/")?.to_path_buf()
+                } else if let Ok(rel) = new_full_path.strip_prefix(std::env::current_dir()?.join("c-test")) {
+                    rel.to_path_buf()
+                } else {
+                    // Try to make it relative to c-test
+                    let path_str = new_full_path.to_string_lossy();
+                    if let Some(idx) = path_str.find("c-test/") {
+                        PathBuf::from(&path_str[idx + 7..])
+                    } else {
+                        new_full_path.clone()
+                    }
+                };
+                
+                // Update in test config
+                if let Some(test) = self.test_config.tests.iter_mut()
+                    .find(|t| t.file == *old_file) {
+                    test.file = new_relative_path.clone();
+                }
+                
+                // Update in orphan tests if applicable
+                if let Some(test) = self.orphan_tests.iter_mut()
+                    .find(|t| t.file == *old_file) {
+                    test.file = new_relative_path;
+                }
+                
+                // Rebuild categories
+                self.categories = CategoryView::from_tests(
+                    &self.test_config.tests,
+                    &self.test_config.known_failures,
+                    &self.orphan_tests
+                );
+                
+                self.append_output(&format!("Test renamed successfully to {}\n", self.rename_new_name));
+            }
+            
+            // Clear rename state
+            self.editing_test_file = None;
+            self.rename_new_name.clear();
+            self.mode = AppMode::Normal;
+        }
+        
+        Ok(())
+    }
+    
+    pub fn cancel_rename(&mut self) {
+        self.editing_test_file = None;
+        self.rename_new_name.clear();
+        self.mode = AppMode::Normal;
+    }
+    
+    pub fn start_move_test(&mut self) {
+        if let Some(test) = self.get_selected_test_details() {
+            self.editing_test_file = Some(test.file.clone());
+            // Show category selector for choosing destination
+            self.show_categories = true;
+            self.mode = AppMode::MovingTest;
+            // Reset category selection to first item
+            self.selected_category_index = 0;
+        }
+    }
+    
+    pub fn save_move_test(&mut self, target_category: String) -> anyhow::Result<()> {
+        if let Some(old_file) = &self.editing_test_file {
+            // Parse target category to determine directory
+            let target_dir = self.get_directory_for_category(&target_category)?;
+            
+            // Construct full old path
+            let old_full_path = if old_file.is_relative() && !old_file.starts_with("c-test") {
+                PathBuf::from("c-test").join(old_file)
+            } else {
+                old_file.clone()
+            };
+            
+            // Create new path in target directory
+            let file_name = old_full_path.file_name()
+                .ok_or_else(|| anyhow::anyhow!("Cannot get file name"))?;
+            let new_full_path = PathBuf::from("c-test").join(&target_dir).join(file_name);
+            
+            // Create target directory if it doesn't exist
+            if let Some(parent) = new_full_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            
+            // Check if new file already exists
+            if new_full_path.exists() && new_full_path != old_full_path {
+                return Err(anyhow::anyhow!("A test with this name already exists in the target category"));
+            }
+            
+            // Move the C file
+            if old_full_path != new_full_path {
+                std::fs::rename(&old_full_path, &new_full_path)?;
+                
+                // Also move the .meta.json file if it exists
+                let old_meta_path = old_full_path.with_extension("meta.json");
+                if old_meta_path.exists() {
+                    let new_meta_path = new_full_path.with_extension("meta.json");
+                    std::fs::rename(&old_meta_path, &new_meta_path)?;
+                }
+                
+                // Update the test in our config
+                let new_relative_path = if new_full_path.starts_with("c-test/") {
+                    new_full_path.strip_prefix("c-test/")?.to_path_buf()
+                } else if let Ok(rel) = new_full_path.strip_prefix(std::env::current_dir()?.join("c-test")) {
+                    rel.to_path_buf()
+                } else {
+                    // Try to make it relative to c-test
+                    let path_str = new_full_path.to_string_lossy();
+                    if let Some(idx) = path_str.find("c-test/") {
+                        PathBuf::from(&path_str[idx + 7..])
+                    } else {
+                        new_full_path.clone()
+                    }
+                };
+                
+                // Update in test config
+                if let Some(test) = self.test_config.tests.iter_mut()
+                    .find(|t| t.file == *old_file) {
+                    test.file = new_relative_path.clone();
+                }
+                
+                // Update in orphan tests if applicable
+                if let Some(test) = self.orphan_tests.iter_mut()
+                    .find(|t| t.file == *old_file) {
+                    test.file = new_relative_path;
+                }
+                
+                // Rebuild categories
+                self.categories = CategoryView::from_tests(
+                    &self.test_config.tests,
+                    &self.test_config.known_failures,
+                    &self.orphan_tests
+                );
+                
+                self.append_output(&format!("Test moved to category: {}\n", target_category));
+            }
+            
+            // Clear move state
+            self.editing_test_file = None;
+            self.move_target_category.clear();
+            self.mode = AppMode::Normal;
+            self.show_categories = false;
+        }
+        
+        Ok(())
+    }
+    
+    pub fn cancel_move(&mut self) {
+        self.editing_test_file = None;
+        self.move_target_category.clear();
+        self.mode = AppMode::Normal;
+        self.show_categories = false;
+    }
+    
+    pub fn start_create_test(&mut self) {
+        // Clear the input fields
+        self.new_test_name.clear();
+        self.new_test_description = "New test".to_string();
+        self.new_test_focused_field = false; // Start with name field focused
+        self.mode = AppMode::CreatingTest;
+    }
+    
+    pub fn save_new_test(&mut self) -> anyhow::Result<()> {
+        if self.new_test_name.is_empty() {
+            return Err(anyhow::anyhow!("Test name cannot be empty"));
+        }
+        
+        // Get the current category to determine where to create the test
+        let category = self.get_current_category_name()
+            .unwrap_or_else(|| "Uncategorized".to_string());
+        let dir = self.get_directory_for_category(&category)?;
+        
+        // Create the full path for the new test
+        let test_name_with_ext = format!("{}.c", self.new_test_name);
+        let test_path = PathBuf::from("c-test").join(&dir).join(&test_name_with_ext);
+        
+        // Check if test already exists
+        if test_path.exists() {
+            return Err(anyhow::anyhow!("A test with this name already exists"));
+        }
+        
+        // Ensure directory exists
+        if let Some(parent) = test_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        
+        // Read template file
+        let template_path = PathBuf::from("c-test/test-template.txt");
+        if !template_path.exists() {
+            return Err(anyhow::anyhow!("Template file c-test/test-template.txt not found"));
+        }
+        let template_content = std::fs::read_to_string(&template_path)?;
+        
+        // Replace placeholders in template
+        let content = template_content
+            .replace("{{TEST_NAME}}", &self.new_test_name)
+            .replace("{{DESCRIPTION}}", &self.new_test_description);
+        
+        // Write the test file
+        std::fs::write(&test_path, content)?;
+        
+        // Create metadata file
+        let meta_path = test_path.with_extension("meta.json");
+        let metadata = crate::config::TestMetadata {
+            expected: Some("Y\n".to_string()), // Default expected output from template (test passes)
+            use_runtime: true,
+            description: Some(self.new_test_description.clone()),
+            known_failure: false,
+            category: None,
+        };
+        
+        let meta_content = serde_json::to_string_pretty(&metadata)?;
+        std::fs::write(&meta_path, meta_content)?;
+        
+        // Make the path relative for adding to config
+        let relative_path = if test_path.starts_with("c-test/") {
+            test_path.strip_prefix("c-test/")?.to_path_buf()
+        } else if let Ok(rel) = test_path.strip_prefix(std::env::current_dir()?.join("c-test")) {
+            rel.to_path_buf()
+        } else {
+            // Try to make it relative to c-test
+            let path_str = test_path.to_string_lossy();
+            if let Some(idx) = path_str.find("c-test/") {
+                PathBuf::from(&path_str[idx + 7..])
+            } else {
+                test_path.clone()
+            }
+        };
+        
+        // Add to test config in alphabetically sorted position
+        let new_test = TestCase {
+            file: relative_path.clone(),
+            expected: metadata.expected,
+            use_runtime: metadata.use_runtime,
+            description: metadata.description,
+        };
+        
+        // Find the correct position to insert (alphabetically by file path)
+        let insert_pos = self.test_config.tests
+            .iter()
+            .position(|t| t.file > new_test.file)
+            .unwrap_or(self.test_config.tests.len());
+        
+        self.test_config.tests.insert(insert_pos, new_test);
+        
+        // Rebuild categories
+        self.categories = CategoryView::from_tests(
+            &self.test_config.tests,
+            &self.test_config.known_failures,
+            &self.orphan_tests
+        );
+        
+        // Jump to the new test
+        let new_test = TestCase {
+            file: relative_path,
+            expected: Some("Y\n".to_string()),
+            use_runtime: true,
+            description: Some(self.new_test_description.clone()),
+        };
+        self.jump_to_test(&new_test);
+        
+        // Clear input and return to normal mode
+        self.new_test_name.clear();
+        self.new_test_description.clear();
+        self.mode = AppMode::Normal;
+        
+        self.append_output(&format!("Created new test: {}\n", test_name_with_ext));
+        Ok(())
+    }
+    
+    pub fn cancel_create_test(&mut self) {
+        self.new_test_name.clear();
+        self.new_test_description.clear();
+        self.new_test_focused_field = false;
+        self.mode = AppMode::Normal;
+    }
+    
+    fn get_directory_for_category(&self, category: &str) -> anyhow::Result<String> {
+        // Map category names to directory paths
+        match category {
+            "Runtime" => Ok("tests-runtime".to_string()),
+            "Examples" => Ok("examples".to_string()),
+            "Known Failures" => Ok("known-failures".to_string()),
+            "Uncategorized" => Ok("tests".to_string()),
+            cat if cat.starts_with("Known Failures › ") => {
+                let subdir = cat.strip_prefix("Known Failures › ")
+                    .unwrap_or("")
+                    .to_lowercase()
+                    .replace(' ', "-");
+                Ok(format!("known-failures/{}", subdir))
+            },
+            cat if cat.starts_with("Orphan › ") => {
+                // Extract the original category from orphan category
+                let original = cat.strip_prefix("Orphan › ").unwrap_or("tests");
+                self.get_directory_for_category(original)
+            },
+            cat => {
+                // For nested categories like "Foo › Bar"
+                let parts: Vec<&str> = cat.split(" › ").collect();
+                let path = parts.join("/").to_lowercase().replace(' ', "-");
+                Ok(format!("tests/{}", path))
+            }
+        }
+    }
+
     pub fn save_metadata(&mut self) -> anyhow::Result<()> {
         if let Some(test_file) = &self.metadata_input.test_file {
             // Create metadata
             let metadata = crate::config::TestMetadata {
-                expected: if self.metadata_input.is_known_failure {
-                    None
+                expected: if self.metadata_input.is_known_failure || self.metadata_input.expected_output.is_empty() {
+                    None  // Don't set expected if it's empty or a known failure
                 } else {
                     Some(self.metadata_input.expected_output.clone())
                 },
@@ -946,7 +1488,7 @@ impl TuiApp {
                 } else {
                     self.test_config.tests.push(TestCase {
                         file: orphan.file,
-                        expected: metadata.expected,
+                        expected: metadata.expected.clone(),  // Use the properly set expected value
                         use_runtime: metadata.use_runtime,
                         description: metadata.description,
                     });

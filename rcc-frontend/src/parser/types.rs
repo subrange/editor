@@ -63,8 +63,8 @@ impl Parser {
                 self.advance();
                 self.parse_enum_type()
             }
-            Some(TokenType::Identifier(name)) => {
-                // Could be a typedef name
+            Some(TokenType::Identifier(name)) if self.typedef_names.contains(name) => {
+                // This is a typedef name being used as a type specifier
                 let name = name.clone();
                 self.advance();
                 Ok(Type::Typedef(name))
@@ -458,24 +458,42 @@ impl Parser {
     
     /// Check if the current position starts a declaration
     pub fn is_declaration_start(&self) -> bool {
-        matches!(self.peek().map(|t| &t.token_type), Some(
+        // Check for storage class or type keywords
+        if matches!(self.peek().map(|t| &t.token_type), Some(
             TokenType::Auto | TokenType::Static | TokenType::Extern | TokenType::Register |
             TokenType::Typedef |
             TokenType::Void | TokenType::Char | TokenType::Short | TokenType::Int | 
             TokenType::Long | TokenType::Signed | TokenType::Unsigned |
             TokenType::Struct | TokenType::Union | TokenType::Enum
-        ))
+        )) {
+            return true;
+        }
+        
+        // Check if it's a typedef name
+        if let Some(TokenType::Identifier(name)) = self.peek().map(|t| &t.token_type) {
+            return self.typedef_names.contains(name);
+        }
+        
+        false
     }
     
     /// Check if the current position starts a type
     pub fn is_type_start(&self) -> bool {
-        matches!(self.peek().map(|t| &t.token_type), Some(
+        // Check for type keywords
+        if matches!(self.peek().map(|t| &t.token_type), Some(
             TokenType::Void | TokenType::Char | TokenType::Short | TokenType::Int | 
             TokenType::Long | TokenType::Signed | TokenType::Unsigned |
             TokenType::Struct | TokenType::Union | TokenType::Enum
-        ))
-        // Note: We don't include Identifier here because it could be a typedef name or a variable
-        // The caller needs to handle typedef names specially
+        )) {
+            return true;
+        }
+        
+        // Check if it's a typedef name
+        if let Some(TokenType::Identifier(name)) = self.peek().map(|t| &t.token_type) {
+            return self.typedef_names.contains(name);
+        }
+        
+        false
     }
     
     /// Parse a type name (used in cast expressions)

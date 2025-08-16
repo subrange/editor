@@ -170,8 +170,10 @@ fn compile_c99_file(
                         rcc_frontend::TopLevelItem::Function(func) => {
                             println!("  Function: {} -> {}", func.name, func.return_type);
                         }
-                        rcc_frontend::TopLevelItem::Declaration(decl) => {
-                            println!("  Global variable: {} : {}", decl.name, decl.decl_type);
+                        rcc_frontend::TopLevelItem::Declarations(decls) => {
+                            for decl in decls {
+                                println!("  Global variable: {} : {}", decl.name, decl.decl_type);
+                            }
                         }
                         rcc_frontend::TopLevelItem::TypeDefinition { name, .. } => {
                             println!("  Type definition: {name}");

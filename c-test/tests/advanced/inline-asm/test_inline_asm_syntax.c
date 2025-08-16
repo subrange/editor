@@ -9,13 +9,13 @@ int main() {
     asm(
         "LI T3, 3; "
         "LI T4, 4; "
-        "ADD T5, T3, T4"
+        "ADD T1, T3, T4"
     );
     
     // Test 3: Multiple asm statements
-    asm("LI T6, 5");
-    asm("LI T7, 6");
-    asm("ADD T8, T6, T7");
+    asm("LI T1, 5");
+    asm("LI T2, 6");
+    asm("ADD T3, T1, T2");
     
     // If we get here, the syntax parsing worked
     putchar('O');

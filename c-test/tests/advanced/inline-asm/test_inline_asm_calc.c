@@ -32,8 +32,8 @@ int main() {
     // Calculate 10 - 5 = 5
     asm(
         "LI T6, 10; "
-        "LI T7, 5; "
-        "SUB T8, T6, T7"
+        "LI T1, 5; "
+        "SUB T2, T6, T1"
     );
     result3 = 5;
     

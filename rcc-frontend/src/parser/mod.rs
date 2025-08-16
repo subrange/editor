@@ -22,6 +22,7 @@ pub struct Parser {
     pub(crate) tokens: VecDeque<Token>,
     pub(crate) node_id_gen: NodeIdGenerator,
     pub(crate) last_function_params: Option<Vec<(Option<String>, Type, SourceSpan)>>, // Temporary storage for function parameters
+    pub(crate) typedef_names: std::collections::HashSet<String>, // Track typedef names for parsing
 }
 
 impl Parser {
@@ -41,6 +42,7 @@ impl Parser {
             tokens: filtered_tokens.into(),
             node_id_gen: NodeIdGenerator::new(),
             last_function_params: None,
+            typedef_names: std::collections::HashSet::new(),
         }
     }
     

@@ -1,4 +1,5 @@
 // Test that globals are initialized
+
 int g1 = 65;  // 'A'
 int g2 = 66;  // 'B'
 
@@ -9,3 +10,5 @@ int main() {
     putchar(g2);
     putchar('\n');
     return 0;
+}
+

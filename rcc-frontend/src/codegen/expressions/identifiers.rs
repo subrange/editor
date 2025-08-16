@@ -49,8 +49,11 @@ pub fn generate_identifier(
         }
     } else {
         // Check if it's a function
-        // TODO: Add has_function method to Module or track functions differently
-        // For now, assume it's a global function if not a variable
-        Ok(Value::Global(name.to_string()))
+        if gen.module.get_function(name).is_some() {
+            Ok(Value::Function(name.to_string()))
+        } else {
+            // Otherwise, assume it's a global variable
+            Ok(Value::Global(name.to_string()))
+        }
     }
 }

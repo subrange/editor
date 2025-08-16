@@ -630,27 +630,34 @@ pub fn type_translation_unit(
                 typed_items.push(TypedTopLevelItem::Function(typed_func));
             }
             
-            crate::ast::TopLevelItem::Declaration(decl) => {
-                // Skip function declarations (like extern void putchar(int))
-                // These are function declarations, not global variables
-                if matches!(decl.decl_type, Type::Function { .. }) {
-                    // Function declarations don't generate code or variables
-                    // They're just forward declarations that will be resolved at link time
-                    continue;
+            crate::ast::TopLevelItem::Declarations(decls) => {
+                for decl in decls {
+                    // Skip function declarations (like extern void putchar(int))
+                    // These are function declarations, not global variables
+                    if matches!(decl.decl_type, Type::Function { .. }) {
+                        // Function declarations don't generate code or variables
+                        // They're just forward declarations that will be resolved at link time
+                        continue;
+                    }
+                    
+                    // Skip typedef declarations - they don't generate code
+                    if decl.storage_class == crate::StorageClass::Typedef {
+                        continue;
+                    }
+                    
+                    let init = match decl.initializer.as_ref() {
+                        Some(init) => {
+                            Some(type_initializer(init, &decl.decl_type, &type_env)?)
+                        },
+                        None => None,
+                    };
+                    
+                    typed_items.push(TypedTopLevelItem::GlobalVariable {
+                        name: decl.name.clone(),
+                        var_type: decl.decl_type.clone(),
+                        initializer: init,
+                    });
                 }
-                
-                let init = match decl.initializer.as_ref() {
-                    Some(init) => {
-                        Some(type_initializer(init, &decl.decl_type, &type_env)?)
-                    },
-                    None => None,
-                };
-                
-                typed_items.push(TypedTopLevelItem::GlobalVariable {
-                    name: decl.name.clone(),
-                    var_type: decl.decl_type.clone(),
-                    initializer: init,
-                });
             }
             
             crate::ast::TopLevelItem::TypeDefinition { .. } => {
