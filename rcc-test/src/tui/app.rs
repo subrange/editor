@@ -4,6 +4,23 @@ use std::sync::mpsc;
 use crate::config::{TestConfig, TestCase, KnownFailure};
 use crate::compiler::ToolPaths;
 
+fn fuzzy_match(text: &str, pattern: &str) -> bool {
+    let mut pattern_chars = pattern.chars();
+    let mut current_char = pattern_chars.next();
+    
+    for text_char in text.chars() {
+        if let Some(pc) = current_char {
+            if text_char == pc {
+                current_char = pattern_chars.next();
+            }
+        } else {
+            return true; // All pattern chars found
+        }
+    }
+    
+    current_char.is_none() // True if all pattern chars were found
+}
+
 #[derive(Debug, Clone)]
 pub enum SelectedItemType {
     None,
@@ -21,7 +38,7 @@ pub enum FocusedPane {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppMode {
     Normal,
-    Filter,
+    FindTest,  // Fuzzy finder mode
     Running,
     SelectCategory,
 }
@@ -178,8 +195,12 @@ pub struct TuiApp {
     pub categories: BTreeMap<String, CategoryView>,
     pub selected_category: Option<String>,
     pub selected_category_index: usize,
-    pub filter_text: String,
     pub show_categories: bool,
+    
+    // Fuzzy finder
+    pub search_query: String,
+    pub search_results: Vec<TestCase>,
+    pub search_selected_index: usize,
 
     // Test execution
     pub test_results: HashMap<String, TestResult>,
@@ -224,8 +245,11 @@ impl TuiApp {
             categories,
             selected_category: None,
             selected_category_index: 0,
-            filter_text: String::new(),
             show_categories: false,
+            
+            search_query: String::new(),
+            search_results: Vec::new(),
+            search_selected_index: 0,
 
             test_results: HashMap::new(),
             running_test: None,
@@ -263,25 +287,78 @@ impl TuiApp {
             self.filtered_failures = self.test_config.known_failures.clone();
         }
 
-        // Apply text filter if present
-        if !self.filter_text.is_empty() {
-            let filter_lower = self.filter_text.to_lowercase();
-            
-            self.filtered_tests.retain(|test| {
-                test.file.to_string_lossy().to_lowercase().contains(&filter_lower) ||
-                test.description.as_ref().map(|d| d.to_lowercase().contains(&filter_lower)).unwrap_or(false)
-            });
-
-            self.filtered_failures.retain(|failure| {
-                failure.file.to_string_lossy().to_lowercase().contains(&filter_lower) ||
-                failure.description.as_ref().map(|d| d.to_lowercase().contains(&filter_lower)).unwrap_or(false)
-            });
-        }
-
         // Reset selection if out of bounds
         let total_items = self.filtered_tests.len() + self.filtered_failures.len();
         if self.selected_test >= total_items && total_items > 0 {
             self.selected_test = total_items - 1;
+        }
+    }
+    
+    pub fn update_search_results(&mut self) {
+        if self.search_query.is_empty() {
+            self.search_results.clear();
+            return;
+        }
+        
+        let query_lower = self.search_query.to_lowercase();
+        self.search_results.clear();
+        
+        // Search through all tests
+        for test in &self.test_config.tests {
+            let test_name = test.file.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            let test_path = test.file.to_string_lossy();
+            
+            // Fuzzy matching: check if query chars appear in order
+            if fuzzy_match(&test_name.to_lowercase(), &query_lower) ||
+               fuzzy_match(&test_path.to_lowercase(), &query_lower) ||
+               test.description.as_ref()
+                   .map(|d| fuzzy_match(&d.to_lowercase(), &query_lower))
+                   .unwrap_or(false) {
+                self.search_results.push(test.clone());
+            }
+        }
+        
+        // Sort by relevance (prefer matches in test name over path)
+        self.search_results.sort_by(|a, b| {
+            let a_name = a.file.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+            let b_name = b.file.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+            
+            let a_score = if a_name.to_lowercase().contains(&query_lower) { 0 } else { 1 };
+            let b_score = if b_name.to_lowercase().contains(&query_lower) { 0 } else { 1 };
+            
+            a_score.cmp(&b_score).then_with(|| a_name.cmp(b_name))
+        });
+        
+        // Reset selection
+        self.search_selected_index = 0;
+    }
+    
+    pub fn jump_to_selected_search_result(&mut self) {
+        if let Some(selected_test) = self.search_results.get(self.search_selected_index).cloned() {
+            // Find the test in the main list and set selection to it
+            self.jump_to_test(&selected_test);
+        }
+    }
+    
+    pub fn jump_to_test(&mut self, target_test: &TestCase) {
+        let mut current_idx = 0;
+        
+        // Search through all visible items
+        for (_name, category) in &self.categories {
+            current_idx += 1; // Category header
+            
+            if category.expanded {
+                for test in &category.tests {
+                    if test.file == target_test.file {
+                        self.selected_item = current_idx;
+                        self.ensure_selection_visible();
+                        return;
+                    }
+                    current_idx += 1;
+                }
+            }
         }
     }
 
@@ -449,16 +526,16 @@ impl TuiApp {
         self.apply_filters();
     }
 
-    pub fn start_filter(&mut self) {
-        self.mode = AppMode::Filter;
-        self.focused_pane = FocusedPane::Filter;
+    pub fn start_find_test(&mut self) {
+        self.mode = AppMode::FindTest;
+        self.search_query.clear();
+        self.search_results.clear();
+        self.search_selected_index = 0;
     }
 
-    pub fn clear_filter(&mut self) {
-        self.filter_text.clear();
-        self.apply_filters();
+    pub fn close_find_test(&mut self) {
         self.mode = AppMode::Normal;
-        self.focused_pane = FocusedPane::TestList;
+        // Keep search query for next time
     }
 
     pub fn append_output(&mut self, text: &str) {

@@ -180,7 +180,7 @@ impl TuiRunner {
 
         match self.app.mode {
             AppMode::Normal => self.handle_normal_input(key, terminal),
-            AppMode::Filter => self.handle_filter_input(key),
+            AppMode::FindTest => self.handle_find_test_input(key),
             AppMode::Running => self.handle_running_input(key),
             AppMode::SelectCategory => self.handle_category_input(key),
         }
@@ -260,7 +260,7 @@ impl TuiRunner {
                 self.app.toggle_category_selection();
             }
             KeyCode::Char('/') => {
-                self.app.start_filter();
+                self.app.start_find_test();
             }
             KeyCode::Tab => {
                 self.app.focused_pane = match self.app.focused_pane {
@@ -370,28 +370,38 @@ impl TuiRunner {
         Ok(true)
     }
 
-    fn handle_filter_input(&mut self, key: KeyEvent) -> Result<bool> {
+    fn handle_find_test_input(&mut self, key: KeyEvent) -> Result<bool> {
         match key.code {
             KeyCode::Esc => {
-                // Close help if open, otherwise clear filter
-                if self.app.show_help {
-                    self.app.show_help = false;
-                } else {
-                    self.app.clear_filter();
-                }
+                self.app.close_find_test();
             }
             KeyCode::Enter => {
-                self.app.apply_filters();
-                self.app.mode = AppMode::Normal;
-                self.app.focused_pane = FocusedPane::TestList;
+                // Jump to selected test and close finder
+                self.app.jump_to_selected_search_result();
+                self.app.close_find_test();
+            }
+            KeyCode::Down | KeyCode::Char('j') | KeyCode::Tab => {
+                if !self.app.search_results.is_empty() {
+                    self.app.search_selected_index = 
+                        (self.app.search_selected_index + 1) % self.app.search_results.len();
+                }
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if !self.app.search_results.is_empty() {
+                    if self.app.search_selected_index > 0 {
+                        self.app.search_selected_index -= 1;
+                    } else {
+                        self.app.search_selected_index = self.app.search_results.len() - 1;
+                    }
+                }
             }
             KeyCode::Char(c) => {
-                self.app.filter_text.push(c);
-                self.app.apply_filters();
+                self.app.search_query.push(c);
+                self.app.update_search_results();
             }
             KeyCode::Backspace => {
-                self.app.filter_text.pop();
-                self.app.apply_filters();
+                self.app.search_query.pop();
+                self.app.update_search_results();
             }
             _ => {}
         }
