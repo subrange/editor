@@ -1,10 +1,11 @@
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 use anyhow::Result;
 use crossterm::{
+    cursor,
     event::KeyCode,
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -91,7 +92,7 @@ impl TuiRunner {
 
             match self.events.next()? {
                 Event::Input(key) => {
-                    if !self.handle_input(key)? {
+                    if !self.handle_input(key, terminal)? {
                         return Ok(());
                     }
                 }
@@ -148,16 +149,16 @@ impl TuiRunner {
         }
     }
 
-    fn handle_input(&mut self, key: KeyEvent) -> Result<bool> {
+    fn handle_input<B: Backend>(&mut self, key: KeyEvent, terminal: &mut Terminal<B>) -> Result<bool> {
         match self.app.mode {
-            AppMode::Normal => self.handle_normal_input(key),
+            AppMode::Normal => self.handle_normal_input(key, terminal),
             AppMode::Filter => self.handle_filter_input(key),
             AppMode::Running => self.handle_running_input(key),
             AppMode::SelectCategory => self.handle_category_input(key),
         }
     }
 
-    fn handle_normal_input(&mut self, key: KeyEvent) -> Result<bool> {
+    fn handle_normal_input<B: Backend>(&mut self, key: KeyEvent, terminal: &mut Terminal<B>) -> Result<bool> {
         match key.code {
             KeyCode::Char('q') => return Ok(false),
             KeyCode::Char('?') => {
@@ -205,7 +206,7 @@ impl TuiRunner {
                 self.run_selected_test()?;
             }
             KeyCode::Char('d') => {
-                self.debug_selected_test()?;
+                self.debug_selected_test(terminal)?;
             }
             KeyCode::Char('r') => {
                 self.run_all_visible_tests()?;
@@ -457,7 +458,7 @@ impl TuiRunner {
         Ok(())
     }
 
-    fn debug_selected_test(&mut self) -> Result<()> {
+    fn debug_selected_test<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         if let Some(test_name) = self.app.get_selected_test_name() {
             if let Some(test_path) = self.app.get_selected_test_path() {
                 // Temporarily exit TUI to run debugger
@@ -523,12 +524,15 @@ impl TuiRunner {
                 }
 
                 // Now run with debugger - need to exit TUI temporarily
-                // Save terminal state
+                // Properly suspend the terminal
+                terminal.show_cursor()?;
                 disable_raw_mode()?;
                 execute!(
                     io::stdout(),
                     LeaveAlternateScreen,
+                    cursor::Show,
                 )?;
+                io::stdout().flush()?;
 
                 // Run debugger
                 let status = std::process::Command::new(&self.app.tools.rvm)
@@ -536,12 +540,21 @@ impl TuiRunner {
                     .arg("-t")
                     .status()?;
 
-                // Restore terminal
+                // Properly restore the terminal
+                // Small delay to ensure terminal processes the mode change
+                std::thread::sleep(Duration::from_millis(100));
+                
                 enable_raw_mode()?;
                 execute!(
                     io::stdout(),
                     EnterAlternateScreen,
+                    cursor::Hide,
                 )?;
+                terminal.hide_cursor()?;
+                
+                // Clear and force complete redraw
+                terminal.clear()?;
+                terminal.draw(|f| ui::draw(f, &mut self.app))?;
 
                 if !status.success() {
                     self.app.append_output("Debugger exited with error\n");
