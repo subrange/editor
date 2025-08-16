@@ -50,7 +50,7 @@ impl TestStatus {
 }
 
 /// Test result for reporting
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestResult {
     pub name: String,
     pub status: TestStatus,

@@ -128,6 +128,17 @@ pub enum Command {
         #[arg(short, long)]
         verbose: bool,
     },
+    
+    /// Launch interactive TUI for test management
+    Tui {
+        /// Initial filter pattern
+        #[arg(short, long)]
+        filter: Option<String>,
+        
+        /// Start with a specific category selected
+        #[arg(short, long)]
+        category: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

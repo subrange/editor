@@ -6,6 +6,7 @@ use rcc_test::command::run_command_sync;
 use rcc_test::compiler::{build_runtime, ToolPaths};
 use rcc_test::config::{self, RunConfig};
 use rcc_test::runner::{cleanup_build_dir, TestRunner};
+use rcc_test::tui::runner::TuiRunner;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -75,6 +76,11 @@ fn run() -> Result<()> {
 
         Some(Command::Debug { ref test }) => {
             debug_test(&test, &cli, &tools)?;
+            return Ok(());
+        }
+
+        Some(Command::Tui { ref filter, ref category }) => {
+            run_tui(&cli, &tools, filter.clone(), category.clone())?;
             return Ok(());
         }
 
@@ -751,6 +757,33 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> 
             anyhow::bail!("Program exited with error");
         }
     }
+    
+    Ok(())
+}
+
+fn run_tui(cli: &Cli, tools: &ToolPaths, filter: Option<String>, category: Option<String>) -> Result<()> {
+    // Load test configuration
+    let test_config = config::load_tests(&cli.tests_file)?;
+    
+    // Create and run TUI
+    let mut tui_runner = TuiRunner::new(
+        test_config,
+        tools.clone(),
+        cli.bank_size,
+        cli.timeout,
+    );
+    
+    // Apply initial filter if provided
+    if let Some(_filter) = filter {
+        // TODO: Set initial filter in TUI app
+    }
+    
+    // Set initial category if provided
+    if let Some(_category) = category {
+        // TODO: Set initial category in TUI app
+    }
+    
+    tui_runner.run()?;
     
     Ok(())
 }

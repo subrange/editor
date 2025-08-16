@@ -4,6 +4,7 @@ pub mod compiler;
 pub mod config;
 pub mod reporter;
 pub mod runner;
+pub mod tui;
 
 // Re-export commonly used types
 pub use config::{Backend, RunConfig, TestConfig};

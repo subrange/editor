@@ -169,7 +169,7 @@ impl TestRunner {
     }
 
     /// Run a batch of tests (potentially in parallel)
-    fn run_test_batch(&self, tests: &[&TestCase]) -> Vec<TestResult> {
+    pub fn run_test_batch(&self, tests: &[&TestCase]) -> Vec<TestResult> {
         if self.config.parallel && tests.len() > 1 {
             // Run tests in parallel with progress bar
             let progress = ProgressReporter::new(tests.len());
@@ -192,7 +192,7 @@ impl TestRunner {
     }
 
     /// Run a single test
-    fn run_single_test(&self, test: &TestCase) -> TestResult {
+    pub fn run_single_test(&self, test: &TestCase) -> TestResult {
         let start = Instant::now();
         let test_name = test.file.display().to_string();
         
