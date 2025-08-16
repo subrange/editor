@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use crossterm::{
     cursor,
-    event::KeyCode,
+    event::{self, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -284,6 +284,10 @@ impl TuiRunner {
             KeyCode::Char('o') => {
                 // Jump to first orphan test
                 self.app.jump_to_first_orphan();
+            }
+            KeyCode::Char('e') => {
+                // Edit selected test in vim
+                self.edit_selected_test(terminal)?;
             }
             KeyCode::Tab => {
                 self.app.focused_pane = match self.app.focused_pane {
@@ -654,6 +658,79 @@ impl TuiRunner {
         Ok(())
     }
 
+    fn edit_selected_test<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
+        if let Some(test_path) = self.app.get_selected_test_path_for_edit() {
+            let test_name = test_path.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown");
+            
+            // Notify user
+            self.app.append_output(&format!("\nOpening {} in vim...\n", test_name));
+            self.app.append_output("(TUI will resume after vim exits)\n");
+            
+            // Properly suspend the terminal
+            terminal.show_cursor()?;
+            disable_raw_mode()?;
+            execute!(
+                io::stdout(),
+                LeaveAlternateScreen,
+                cursor::Show,
+            )?;
+            io::stdout().flush()?;
+            
+            // Clear any pending events before launching vim
+            while event::poll(Duration::from_millis(0))? {
+                let _ = event::read()?;
+            }
+            
+            // Open vim to edit the file
+            let status = std::process::Command::new("vim")
+                .arg(&test_path)
+                .status()?;
+            
+            // Properly restore the terminal
+            // Small delay to ensure terminal processes the mode change
+            std::thread::sleep(Duration::from_millis(100));
+            
+            enable_raw_mode()?;
+            execute!(
+                io::stdout(),
+                EnterAlternateScreen,
+                cursor::Hide,
+            )?;
+            terminal.hide_cursor()?;
+            
+            // Clear any events that were queued while vim was running
+            // This prevents any keypresses from vim from being processed by our TUI
+            while event::poll(Duration::from_millis(0))? {
+                let _ = event::read()?;
+            }
+            
+            // Also drain our event handler's queue
+            while let Ok(_) = self.events.rx.try_recv() {
+                // Discard any queued events
+            }
+            
+            // Clear and force complete redraw
+            terminal.clear()?;
+            
+            // Refresh the test content in the app
+            self.app.refresh_test_content();
+            
+            // Force redraw with refreshed content
+            terminal.draw(|f| ui::draw(f, &mut self.app))?;
+            
+            if !status.success() {
+                self.app.append_output("Vim exited with error\n");
+            } else {
+                self.app.append_output(&format!("Finished editing {}\n", test_name));
+            }
+        } else {
+            self.app.append_output("No test selected for editing.\n");
+        }
+        Ok(())
+    }
+
     fn debug_selected_test<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         if let Some(test_name) = self.app.get_selected_test_name() {
             if let Some(test_path) = self.app.get_selected_test_path() {
@@ -729,6 +806,11 @@ impl TuiRunner {
                     cursor::Show,
                 )?;
                 io::stdout().flush()?;
+                
+                // Clear any pending events before launching debugger
+                while event::poll(Duration::from_millis(0))? {
+                    let _ = event::read()?;
+                }
 
                 // Run debugger
                 let status = std::process::Command::new(&self.app.tools.rvm)
@@ -747,6 +829,16 @@ impl TuiRunner {
                     cursor::Hide,
                 )?;
                 terminal.hide_cursor()?;
+                
+                // Clear any events that were queued while debugger was running
+                while event::poll(Duration::from_millis(0))? {
+                    let _ = event::read()?;
+                }
+                
+                // Also drain our event handler's queue
+                while let Ok(_) = self.events.rx.try_recv() {
+                    // Discard any queued events
+                }
                 
                 // Clear and force complete redraw
                 terminal.clear()?;

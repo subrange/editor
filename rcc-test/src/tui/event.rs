@@ -17,7 +17,7 @@ pub struct MouseEvent {
 }
 
 pub struct EventHandler {
-    rx: mpsc::Receiver<Event<KeyEvent>>,
+    pub rx: mpsc::Receiver<Event<KeyEvent>>,
     _tx: mpsc::Sender<Event<KeyEvent>>,
 }
 

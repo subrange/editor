@@ -840,6 +840,27 @@ impl TuiApp {
         self.delete_target = None;
         self.mode = AppMode::Normal;
     }
+    
+    pub fn get_selected_test_path_for_edit(&self) -> Option<PathBuf> {
+        if let Some(test) = self.get_selected_test_details() {
+            // Construct full path
+            let full_path = if test.file.is_relative() && !test.file.starts_with("c-test") {
+                PathBuf::from("c-test").join(&test.file)
+            } else {
+                test.file.clone()
+            };
+            Some(full_path)
+        } else {
+            None
+        }
+    }
+    
+    pub fn refresh_test_content(&mut self) {
+        // Mark that we should refresh the source view
+        // Reset scroll position to see the beginning of the file
+        self.source_scroll = 0;
+        self.selected_tab = 0; // Switch to source tab to show the edited content
+    }
 
     pub fn save_metadata(&mut self) -> anyhow::Result<()> {
         if let Some(test_file) = &self.metadata_input.test_file {
