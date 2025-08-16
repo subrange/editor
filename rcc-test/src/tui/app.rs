@@ -140,6 +140,8 @@ pub struct TuiApp {
     
     // Batch execution progress
     pub test_receiver: Option<mpsc::Receiver<TestMessage>>,
+    pub tests_total: usize,
+    pub tests_completed: usize,
 
     // Settings
     pub bank_size: usize,
@@ -172,6 +174,8 @@ impl TuiApp {
             running_test: None,
             output_buffer: String::new(),
             test_receiver: None,
+            tests_total: 0,
+            tests_completed: 0,
 
             bank_size,
             timeout_secs,

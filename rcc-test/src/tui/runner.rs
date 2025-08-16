@@ -1,6 +1,6 @@
 use std::io;
 use std::path::Path;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::{Duration, Instant};
 use anyhow::Result;
@@ -539,8 +539,13 @@ impl TuiRunner {
             // Prepare test references for batch execution
             let test_refs: Vec<&crate::config::TestCase> = tests_to_run.iter().collect();
             
-            // Run ALL tests in parallel using the EXACT SAME method as CLI
-            let results = runner.run_test_batch(&test_refs);
+            // Send a single progress message at the start
+            let _ = tx.send(crate::tui::app::TestMessage::Progress(
+                format!("Running {} tests in parallel...", test_refs.len())
+            ));
+            
+            // Run ALL tests in parallel with hidden progress bar (doesn't corrupt TUI)
+            let results = runner.run_test_batch_with_tui(&test_refs, true);
             
             // Convert all results at once
             let mut all_results = Vec::new();

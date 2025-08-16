@@ -170,9 +170,18 @@ impl TestRunner {
 
     /// Run a batch of tests (potentially in parallel)
     pub fn run_test_batch(&self, tests: &[&TestCase]) -> Vec<TestResult> {
+        self.run_test_batch_with_tui(tests, false)
+    }
+    
+    /// Run a batch of tests with TUI mode support
+    pub fn run_test_batch_with_tui(&self, tests: &[&TestCase], tui_mode: bool) -> Vec<TestResult> {
         if self.config.parallel && tests.len() > 1 {
-            // Run tests in parallel with progress bar
-            let progress = ProgressReporter::new(tests.len());
+            // Create appropriate progress reporter based on mode
+            let progress = if tui_mode {
+                ProgressReporter::hidden()  // Hidden progress bar for TUI
+            } else {
+                ProgressReporter::new(tests.len())  // Normal progress bar for CLI
+            };
             
             let results: Vec<TestResult> = tests
                 .par_iter()

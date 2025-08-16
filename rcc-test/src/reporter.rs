@@ -233,7 +233,7 @@ impl TestSummary {
 
 /// Progress reporter for parallel execution
 pub struct ProgressReporter {
-    progress_bar: indicatif::ProgressBar,
+    progress_bar: Option<indicatif::ProgressBar>,
 }
 
 impl ProgressReporter {
@@ -246,16 +246,27 @@ impl ProgressReporter {
                 .progress_chars("#>-"),
         );
         
-        Self { progress_bar }
+        Self { progress_bar: Some(progress_bar) }
+    }
+    
+    /// Create a hidden progress reporter (for TUI mode)
+    pub fn hidden() -> Self {
+        // Use hidden() to prevent output to terminal
+        let progress_bar = indicatif::ProgressBar::hidden();
+        Self { progress_bar: Some(progress_bar) }
     }
 
     pub fn update(&self, message: &str) {
-        self.progress_bar.set_message(message.to_string());
-        self.progress_bar.inc(1);
+        if let Some(ref bar) = self.progress_bar {
+            bar.set_message(message.to_string());
+            bar.inc(1);
+        }
     }
 
     pub fn finish(&self) {
-        self.progress_bar.finish_and_clear();
+        if let Some(ref bar) = self.progress_bar {
+            bar.finish_and_clear();
+        }
     }
 }
 
