@@ -3,6 +3,14 @@ name = "rvm"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "rvm"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rvm"
+path = "src/main.rs"
+
 [dependencies]
 ripple-asm = { path = "../src/ripple-asm" }
 colored = "2.1"

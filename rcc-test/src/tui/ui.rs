@@ -278,37 +278,57 @@ fn draw_asm_code(f: &mut Frame, area: Rect, app: &TuiApp) {
     if let Some(test_name) = app.get_selected_test_name() {
         let asm_path = app.tools.build_dir.join(format!("{}.asm", test_name));
         
-        let content = if asm_path.exists() {
+        if asm_path.exists() {
             match std::fs::read_to_string(&asm_path) {
                 Ok(code) => {
-                    // Add line numbers
-                    code.lines()
-                        .enumerate()
-                        .map(|(i, line)| format!("{:4} | {}", i + 1, line))
-                        .collect::<Vec<_>>()
-                        .join("\n")
+                    // Create colored lines with line numbers
+                    let mut lines: Vec<Line> = Vec::new();
+                    
+                    for (i, line) in code.lines().enumerate() {
+                        let mut spans = vec![
+                            // Line number in dark gray
+                            Span::styled(
+                                format!("{:4} | ", i + 1),
+                                Style::default().fg(Color::DarkGray)
+                            ),
+                        ];
+                        
+                        // Format the assembly line with colors
+                        let colored_spans = rvm::format_asm_line(line);
+                        spans.extend(colored_spans);
+                        
+                        lines.push(Line::from(spans));
+                    }
+                    
+                    let paragraph = Paragraph::new(lines)
+                        .block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .title(format!(" ASM: {}.asm ", test_name))
+                                .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 1 {
+                                    Style::default().fg(Color::Cyan)
+                                } else {
+                                    Style::default().fg(Color::Gray)
+                                })
+                        )
+                        .scroll((app.asm_scroll as u16, 0))
+                        .wrap(Wrap { trim: false });
+
+                    f.render_widget(paragraph, area);
                 }
-                Err(e) => format!("Error reading ASM file: {}", e),
+                Err(e) => {
+                    let paragraph = Paragraph::new(format!("Error reading ASM file: {}", e))
+                        .block(Block::default().borders(Borders::ALL).title(format!(" ASM: {}.asm ", test_name))
+                            .border_style(Style::default().fg(Color::Gray)));
+                    f.render_widget(paragraph, area);
+                }
             }
         } else {
-            "ASM file not found. Run the test first to generate it.".to_string()
-        };
-
-        let paragraph = Paragraph::new(content)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(format!(" ASM: {}.asm ", test_name))
-                    .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 1 {
-                        Style::default().fg(Color::Cyan)
-                    } else {
-                        Style::default().fg(Color::Gray)
-                    })
-            )
-            .scroll((app.asm_scroll as u16, 0))
-            .wrap(Wrap { trim: false });
-
-        f.render_widget(paragraph, area);
+            let paragraph = Paragraph::new("ASM file not found. Run the test first to generate it.")
+                .block(Block::default().borders(Borders::ALL).title(format!(" ASM: {}.asm ", test_name))
+                    .border_style(Style::default().fg(Color::Gray)));
+            f.render_widget(paragraph, area);
+        }
     } else {
         let paragraph = Paragraph::new("No test selected")
             .block(Block::default().borders(Borders::ALL).title(" ASM ")
