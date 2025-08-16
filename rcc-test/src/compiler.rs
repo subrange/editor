@@ -3,10 +3,88 @@ use crate::config::{Backend, RunConfig};
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
+/// Clean up compiler error messages for TUI display
+fn clean_compiler_error(stderr: &str) -> String {
+    // If it's a compiler panic, extract just the important message
+    if stderr.contains("COMPILER BUG:") {
+        // Extract the COMPILER BUG message line
+        for line in stderr.lines() {
+            if line.contains("COMPILER BUG:") {
+                // Remove ANSI escape codes and clean up
+                let cleaned = strip_ansi_escapes(line);
+                return cleaned;
+            }
+        }
+    }
+    
+    // For other errors, take the first few meaningful lines
+    let mut result = Vec::new();
+    let mut in_backtrace = false;
+    
+    for line in stderr.lines() {
+        // Skip backtrace lines
+        if line.contains("stack backtrace:") || line.contains("note: run with") {
+            in_backtrace = true;
+            continue;
+        }
+        if in_backtrace {
+            continue;
+        }
+        
+        // Skip thread panic location details
+        if line.starts_with("thread '") && line.contains("panicked at") {
+            // Extract just the panic message
+            if let Some(msg_start) = line.find("panicked at ") {
+                let msg = &line[msg_start + 12..];
+                if let Some(comma_pos) = msg.find(", ") {
+                    result.push(msg[..comma_pos].to_string());
+                } else {
+                    result.push(msg.to_string());
+                }
+            }
+            continue;
+        }
+        
+        // Add meaningful error lines (limit to prevent overflow)
+        if !line.trim().is_empty() && result.len() < 3 {
+            result.push(strip_ansi_escapes(line));
+        }
+    }
+    
+    if result.is_empty() {
+        // Fallback: just take first line or a truncated version
+        stderr.lines().next().map(strip_ansi_escapes).unwrap_or_else(|| "Unknown error".to_string())
+    } else {
+        result.join(" ")
+    }
+}
+
+/// Strip ANSI escape codes from a string
+fn strip_ansi_escapes(s: &str) -> String {
+    // Remove ANSI escape sequences (colors, formatting, etc.)
+    let mut result = String::new();
+    let mut in_escape = false;
+    
+    for ch in s.chars() {
+        if ch == '\x1b' {
+            in_escape = true;
+        } else if in_escape {
+            if ch.is_alphabetic() {
+                in_escape = false;
+            }
+        } else {
+            result.push(ch);
+        }
+    }
+    
+    result
+}
+
 /// Paths to various tools
 #[derive(Debug, Clone)]
 pub struct ToolPaths {
     pub rcc: PathBuf,
+    pub rcpp: PathBuf,
     pub rasm: PathBuf,
     pub rlink: PathBuf,
     pub rvm: PathBuf,
@@ -19,6 +97,7 @@ impl ToolPaths {
     pub fn new(project_root: &Path, build_dir: &Path) -> Self {
         Self {
             rcc: project_root.join("target/release/rcc"),
+            rcpp: project_root.join("target/release/rcpp"),
             rasm: project_root.join("src/ripple-asm/target/release/rasm"),
             rlink: project_root.join("src/ripple-asm/target/release/rlink"),
             rvm: project_root.join("target/release/rvm"),
@@ -86,22 +165,24 @@ pub fn compile_c_file(
         .to_str()
         .context("Non-UTF8 filename")?;
 
+    let preprocessed_file = tools.build_dir.join(format!("{basename}.pp.c"));
     let asm_file = tools.build_dir.join(format!("{basename}.asm"));
     let ir_file = tools.build_dir.join(format!("{basename}.ir"));
     let pobj_file = tools.build_dir.join(format!("{basename}.pobj"));
 
     // Clean up previous files
+    let _ = std::fs::remove_file(&preprocessed_file);
     let _ = std::fs::remove_file(&asm_file);
     let _ = std::fs::remove_file(&ir_file);
     let _ = std::fs::remove_file(&pobj_file);
 
-    // Step 1: Compile C to assembly
+    // Step 1: Preprocess the C file (with runtime include directory)
     let cmd = format!(
-        "{} compile {} -o {} --save-ir --ir-output {}",
-        tools.rcc.display(),
+        "{} {} -o {} -I {}",
+        tools.rcpp.display(),
         c_file.display(),
-        asm_file.display(),
-        ir_file.display()
+        preprocessed_file.display(),
+        tools.runtime_dir.join("include").display()
     );
 
     let result = run_command_sync(&cmd, config.timeout_secs)?;
@@ -110,7 +191,28 @@ pub fn compile_c_file(
             success: false,
             output: String::new(),
             has_provenance_warning: false,
-            error_message: Some(format!("Compilation failed: {}", result.stderr)),
+            error_message: Some(format!("Preprocessing failed: {}", result.stderr)),
+        });
+    }
+
+    // Step 2: Compile preprocessed C to assembly (with --no-preprocess since we already preprocessed)
+    let cmd = format!(
+        "{} compile {} -o {} --save-ir --ir-output {} --no-preprocess",
+        tools.rcc.display(),
+        preprocessed_file.display(),
+        asm_file.display(),
+        ir_file.display()
+    );
+
+    let result = run_command_sync(&cmd, config.timeout_secs)?;
+    if result.exit_code != 0 {
+        // Clean up the error message to be TUI-friendly
+        let error_msg = clean_compiler_error(&result.stderr);
+        return Ok(CompilationResult {
+            success: false,
+            output: String::new(),
+            has_provenance_warning: false,
+            error_message: Some(format!("Compilation failed: {}", error_msg)),
         });
     }
 
@@ -122,7 +224,7 @@ pub fn compile_c_file(
         false
     };
 
-    // Step 2: Assemble to object
+    // Step 3: Assemble to object
     let cmd = format!(
         "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
         tools.rasm.display(),
@@ -141,7 +243,7 @@ pub fn compile_c_file(
         });
     }
 
-    // Step 3: Link and run
+    // Step 4: Link and run
     match config.backend {
         Backend::Rvm => {
             compile_and_run_rvm(

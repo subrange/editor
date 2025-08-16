@@ -1,7 +1,5 @@
 {
   "expected": "YY\n",
   "use_runtime": true,
-  "description": "Added via command line",
-  "known_failure": false,
-  "category": null
+  "description": "Added via command line"
 }

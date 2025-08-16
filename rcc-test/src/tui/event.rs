@@ -49,15 +49,34 @@ impl EventHandler {
                     .checked_sub(last_tick.elapsed())
                     .unwrap_or_else(|| Duration::from_secs(0));
 
-                if event::poll(timeout).unwrap() {
-                    if let CEvent::Key(key) = event::read().unwrap() {
+                // Use safe error handling for event polling
+                match event::poll(timeout) {
+                    Ok(true) => {
+                        // Event is available, try to read it
+                        match event::read() {
+                            Ok(CEvent::Key(key)) => {
                         let key_event = KeyEvent {
                             code: key.code,
                             modifiers: key.modifiers,
                         };
-                        if event_tx.send(Event::Input(key_event)).is_err() {
-                            return;
+                                if event_tx.send(Event::Input(key_event)).is_err() {
+                                    return;
+                                }
+                            }
+                            Ok(_) => {
+                                // Other event types (mouse, resize, etc.) - ignore for now
+                            }
+                            Err(_) => {
+                                // Error reading event - continue
+                            }
                         }
+                    }
+                    Ok(false) => {
+                        // No event available - continue to check timeout
+                    }
+                    Err(_) => {
+                        // Error polling - sleep briefly and continue
+                        thread::sleep(Duration::from_millis(10));
                     }
                 }
 

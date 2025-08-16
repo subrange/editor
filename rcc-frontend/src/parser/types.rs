@@ -2,6 +2,7 @@
 //! 
 //! This module handles parsing of type specifiers, declarators, and type-related constructs.
 
+use log::warn;
 use crate::ast::*;
 use crate::lexer::{Token, TokenType};
 use crate::parser::errors::ParseError;
@@ -25,6 +26,17 @@ impl Parser {
     /// Parse type specifier
     pub fn parse_type_specifier(&mut self) -> Result<Type, CompilerError> {
         let location = self.current_location();
+        
+        // Skip type qualifiers (const, volatile) - we ignore them for now
+        while let Some(token) = self.peek() {
+            match &token.token_type {
+                TokenType::Const | TokenType::Volatile => {
+                    warn!("Ignoring type qualifier: {:?}", token.token_type);
+                    self.advance();
+                }
+                _ => break,
+            }
+        }
         
         match self.peek().map(|t| &t.token_type) {
             Some(TokenType::Void) => { self.advance(); Ok(Type::Void) }

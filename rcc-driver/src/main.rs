@@ -7,8 +7,36 @@ use clap::{Parser, Subcommand};
 // use rcc_codegen::generate_assembly; // Not used currently
 use rcc_backend::{lower_module_to_assembly_with_options, LoweringOptions};
 use rcc_frontend::Frontend;
+use rcc_preprocessor::Preprocessor;
 use std::fs;
 use std::path::PathBuf;
+
+/// Configuration for compilation
+#[derive(Debug, Clone)]
+struct CompileConfig {
+    /// Input file path
+    input_path: PathBuf,
+    /// Optional output file path
+    output_path: Option<PathBuf>,
+    /// Emit IR to stdout and exit
+    emit_ir: bool,
+    /// Print IR before lowering
+    print_ir: bool,
+    /// Save IR to file
+    save_ir: bool,
+    /// Custom IR output path
+    ir_output_path: Option<PathBuf>,
+    /// Bank size for target architecture
+    bank_size: u16,
+    /// Enable spill/reload tracing
+    trace_spills: bool,
+    /// Skip preprocessing
+    no_preprocess: bool,
+    /// Include directories for preprocessor
+    include_dirs: Vec<PathBuf>,
+    /// Preprocessor defines
+    defines: Vec<String>,
+}
 
 #[derive(Parser)]
 #[command(name = "rcc")]
@@ -79,6 +107,18 @@ enum Commands {
         /// Enable spill/reload tracing for debugging register allocation
         #[arg(long)]
         trace_spills: bool,
+        
+        /// Skip preprocessing (treat input as already preprocessed)
+        #[arg(long)]
+        no_preprocess: bool,
+        
+        /// Include directories for preprocessor
+        #[arg(short = 'I', long = "include", value_name = "DIR")]
+        include_dirs: Vec<PathBuf>,
+        
+        /// Define macro for preprocessor
+        #[arg(short = 'D', long = "define", value_name = "NAME[=VALUE]")]
+        defines: Vec<String>,
     },
 }
 
@@ -98,7 +138,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Compile { input, output, emit_ir, print_ir, save_ir, ir_output, debug, bank_size, trace_spills } => {
+        Commands::Compile { input, output, emit_ir, print_ir, save_ir, ir_output, debug, bank_size, trace_spills, no_preprocess, include_dirs, defines } => {
             // Initialize logger based on debug level
             let log_level = match debug {
                 0 => "error",
@@ -114,7 +154,21 @@ fn main() {
                 .format_target(false)
                 .init();
             
-            if let Err(e) = compile_c99_file(&input, output.as_deref(), emit_ir, print_ir, save_ir, ir_output.as_deref(), bank_size, trace_spills) {
+            let config = CompileConfig {
+                input_path: input,
+                output_path: output,
+                emit_ir,
+                print_ir,
+                save_ir,
+                ir_output_path: ir_output,
+                bank_size,
+                trace_spills,
+                no_preprocess,
+                include_dirs,
+                defines,
+            };
+            
+            if let Err(e) = compile_c99_file(config) {
                 eprintln!("Error compiling C99 file: {e}");
                 std::process::exit(1);
             }
@@ -140,28 +194,45 @@ fn generate_asm_command(
     Ok(())
 }
 
-fn compile_c99_file(
-    input_path: &std::path::Path,
-    output_path: Option<&std::path::Path>,
-    emit_ir: bool,
-    print_ir: bool,
-    save_ir: bool,
-    ir_output_path: Option<&std::path::Path>,
-    bank_size: u16,
-    trace_spills: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn compile_c99_file(config: CompileConfig) -> Result<(), Box<dyn std::error::Error>> {
     // Don't print compilation message if we're just emitting IR
-    if !emit_ir {
-        println!("Compiling C99 file: {} (bank_size: {})", input_path.display(), bank_size);
+    if !config.emit_ir {
+        println!("Compiling C99 file: {} (bank_size: {})", config.input_path.display(), config.bank_size);
     }
     
     // Read source file
-    let source = fs::read_to_string(input_path)?;
+    let mut source = fs::read_to_string(&config.input_path)?;
+    
+    // Preprocess unless explicitly disabled
+    if !config.no_preprocess {
+        let mut preprocessor = Preprocessor::new();
+        
+        // Add include directories
+        for dir in config.include_dirs {
+            preprocessor.add_include_dir(dir);
+        }
+        
+        // Process defines
+        for define in config.defines {
+            if let Some((name, value)) = define.split_once('=') {
+                preprocessor.define(name.to_string(), Some(value.to_string()));
+            } else {
+                preprocessor.define(define, None);
+            }
+        }
+        
+        // Preprocess the source
+        source = preprocessor.process(&source, config.input_path.clone())?;
+        
+        if !config.emit_ir {
+            println!("Successfully preprocessed source");
+        }
+    }
     
     // Parse the source
     let ast = match Frontend::parse_source(&source) {
         Ok(ast) => {
-            if !emit_ir {
+            if !config.emit_ir {
                 println!("Successfully parsed C99 source...");
                 println!("Found {} top-level items", ast.items.len());
                 
@@ -190,12 +261,12 @@ fn compile_c99_file(
     };
     
     // Try to compile to IR - if it fails, return an error
-    if !emit_ir {
+    if !config.emit_ir {
         println!("\n💀 Attempting full compilation pipeline");
     }
-    match Frontend::compile_to_ir(&source, input_path.file_stem().unwrap().to_str().unwrap()) {
+    match Frontend::compile_to_ir(&source, config.input_path.file_stem().unwrap().to_str().unwrap()) {
         Ok(ir_module) => {
-            if !emit_ir {
+            if !config.emit_ir {
                 println!("💫 Successfully generated IR");
                 println!("🦄 Module contains {} functions", ir_module.functions.len());
             }
@@ -253,26 +324,26 @@ fn compile_c99_file(
             }
             
             // If --emit-ir is set, just print IR and exit
-            if emit_ir {
+            if config.emit_ir {
                 print!("{ir_output}");
                 return Ok(());
             }
             
             // Print IR if requested (when not using --emit-ir)
-            if print_ir {
+            if config.print_ir {
                 println!("\n=== IR Output ===");
                 print!("{ir_output}");
                 println!("=== End IR ===\n");
             }
             
             // Save IR to file if requested
-            if save_ir {
-                let ir_path = if let Some(path) = ir_output_path {
+            if config.save_ir {
+                let ir_path = if let Some(path) = config.ir_output_path {
                     // Use the specified IR output path
-                    path.to_path_buf()
+                    path
                 } else {
                     // Default: save next to input file with .ir extension
-                    let mut path = input_path.to_path_buf();
+                    let mut path = config.input_path.clone();
                     path.set_extension("ir");
                     path
                 };
@@ -285,9 +356,9 @@ fn compile_c99_file(
             
             // Lower Module to assembly with bank_size parameter
             let options = LoweringOptions {
-                bank_size,
+                bank_size: config.bank_size,
                 use_v2: true,
-                trace_spills,
+                trace_spills: config.trace_spills,
             };
             match lower_module_to_assembly_with_options(&ir_module, options) {
                 Ok(asm_instructions) => {
@@ -297,10 +368,10 @@ fn compile_c99_file(
                     let asm_text = rcc_codegen::emit::emit_complete_program(asm_instructions, has_main)?;
                     
                     // Write to output file
-                    let final_output_path = if let Some(path) = output_path {
-                        path.to_path_buf()
+                    let final_output_path = if let Some(path) = config.output_path {
+                        path
                     } else {
-                        let mut path = input_path.to_path_buf();
+                        let mut path = config.input_path.clone();
                         path.set_extension("asm");
                         path
                     };

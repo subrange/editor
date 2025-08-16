@@ -1,7 +1,3 @@
 {
-  "expected": null,
-  "use_runtime": true,
-  "description": null,
-  "known_failure": false,
-  "category": null
+  "use_runtime": true
 }

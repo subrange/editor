@@ -1,7 +1,4 @@
 {
-  "expected": "YYY\n",
   "use_runtime": true,
-  "description": null,
-  "known_failure": false,
-  "category": null
+  "expected": "YYY\n"
 }

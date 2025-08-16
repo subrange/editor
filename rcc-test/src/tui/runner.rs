@@ -16,7 +16,6 @@ use ratatui::{
 };
 
 use crate::compiler::{build_runtime, ToolPaths};
-use crate::command::run_command_sync;
 use crate::config::TestConfig;
 use crate::tui::{
     app::{TuiApp, AppMode, FocusedPane, TestResult, MetadataField},
@@ -122,7 +121,7 @@ impl TuiRunner {
                 self.app.record_test_result(test_name, result);
             }
             TestMessage::BatchCompleted(results) => {
-                // Process all results at once
+                // Simple version - just process results without fancy output
                 let mut passed = 0;
                 let mut failed = 0;
                 
@@ -137,17 +136,29 @@ impl TuiRunner {
                     self.app.record_test_result(test_name, result);
                 }
                 
-                // Show summary
+                // Show simple summary
                 self.app.append_output(&format!("\n{}\n", "=".repeat(60)));
                 self.app.append_output(&format!("Results: {} passed, {} failed, {} total\n", 
                     passed, failed, passed + failed));
             }
             TestMessage::Progress(msg) => {
                 self.app.append_output(&format!("{msg}\n"));
+                
+                // Auto-scroll to show the latest progress
+                let total_lines = self.app.output_buffer.lines().count();
+                let visible_lines = 20; // Approximate visible lines
+                if total_lines > visible_lines {
+                    self.app.output_scroll = total_lines.saturating_sub(visible_lines);
+                }
             }
             TestMessage::Finished => {
                 self.app.test_receiver = None;
                 self.app.mode = AppMode::Normal;
+                
+                // Ensure we're in a valid state
+                if self.app.output_buffer.contains("ERROR:") {
+                    self.app.append_output("\n⚠️  Test execution encountered errors. Check output above.\n");
+                }
             }
         }
     }
@@ -250,7 +261,9 @@ impl TuiRunner {
                     }
                     SelectedItemType::Test(_) => {
                         // Run the test
-                        self.run_selected_test()?;
+                        if let Err(e) = self.run_selected_test() {
+                            self.app.append_output(&format!("Error running test: {}\n", e));
+                        }
                     }
                     SelectedItemType::None => {}
                 }
@@ -260,14 +273,20 @@ impl TuiRunner {
                 self.app.toggle_current_category();
             }
             KeyCode::Char('d') => {
-                self.debug_selected_test(terminal)?;
+                if let Err(e) = self.debug_selected_test(terminal) {
+                    self.app.append_output(&format!("Error debugging test: {}\n", e));
+                }
             }
             KeyCode::Char('r') => {
-                self.run_all_visible_tests()?;
+                if let Err(e) = self.run_all_visible_tests() {
+                    self.app.append_output(&format!("Error running tests: {}\n", e));
+                }
             }
             KeyCode::Char('R') => {
                 // Shift+R - run all tests in current category
-                self.run_category_tests()?;
+                if let Err(e) = self.run_category_tests() {
+                    self.app.append_output(&format!("Error running category tests: {}\n", e));
+                }
             }
             KeyCode::Char('c') => {
                 self.app.toggle_category_selection();
@@ -324,6 +343,23 @@ impl TuiRunner {
                 // Golden update - apply actual output as expected for failing test
                 if let Err(e) = self.app.apply_golden_output() {
                     self.app.append_output(&format!("Failed to apply golden output: {e}\n"));
+                }
+            }
+            KeyCode::Char('G') => {
+                // Shift+G - Jump to end in output view
+                if self.app.focused_pane == FocusedPane::RightPanel && self.app.selected_tab == 3 {
+                    let total_lines = self.app.output_buffer.lines().count();
+                    let visible_lines = 20; // Approximate visible lines
+                    if total_lines > visible_lines {
+                        self.app.output_scroll = total_lines.saturating_sub(visible_lines);
+                    }
+                } else if self.app.focused_pane == FocusedPane::TestList {
+                    // In test list, go to last test
+                    let total_items = self.app.get_total_visible_items();
+                    if total_items > 0 {
+                        self.app.selected_item = total_items - 1;
+                        self.app.ensure_selection_visible();
+                    }
                 }
             }
             KeyCode::Char('n') => {
@@ -847,56 +883,47 @@ impl TuiRunner {
                     test_path.clone()
                 };
 
-                // Compile the test
-                let basename = test_name;
-                let asm_file = self.app.tools.build_dir.join(format!("{basename}.asm"));
-                let ir_file = self.app.tools.build_dir.join(format!("{basename}.ir"));
-                let pobj_file = self.app.tools.build_dir.join(format!("{basename}.pobj"));
-                let bin_file = self.app.tools.build_dir.join(format!("{basename}.bin"));
-
-                // Compile C to assembly
-                let cmd = format!(
-                    "{} compile {} -o {} --save-ir --ir-output {}",
-                    self.app.tools.rcc.display(),
-                    actual_test_path.display(),
-                    asm_file.display(),
-                    ir_file.display()
+                // Use the proper compile_c_file function to handle compilation
+                use crate::compiler::compile_c_file;
+                use crate::config::{RunConfig, Backend as CompilerBackend};
+                
+                let run_config = RunConfig {
+                    backend: CompilerBackend::Rvm,
+                    timeout_secs: 30,
+                    bank_size: self.app.bank_size,
+                    verbose: false,
+                    no_cleanup: true,
+                    parallel: false,
+                    debug_mode: false,
+                };
+                
+                // Get test details to determine if runtime is needed
+                let test = self.app.get_selected_test_details();
+                let use_runtime = test.as_ref().map(|t| t.use_runtime).unwrap_or(true);
+                
+                // Compile the test using the same function as the test runner
+                let compilation_result = compile_c_file(
+                    &actual_test_path,
+                    &self.app.tools,
+                    &run_config,
+                    use_runtime,
                 );
-
-                if let Err(e) = run_command_sync(&cmd, 30) {
-                    self.app.append_output(&format!("Compilation failed: {e}\n"));
-                    return Ok(());
+                
+                match compilation_result {
+                    Ok(result) if !result.success => {
+                        self.app.append_output(&format!("Compilation failed: {}\n", 
+                            result.error_message.unwrap_or_else(|| "Unknown error".to_string())));
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        self.app.append_output(&format!("Compilation error: {e}\n"));
+                        return Ok(());
+                    }
+                    _ => {} // Success, continue
                 }
-
-                // Assemble
-                let cmd = format!(
-                    "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
-                    self.app.tools.rasm.display(),
-                    asm_file.display(),
-                    pobj_file.display(),
-                    self.app.bank_size
-                );
-
-                if let Err(e) = run_command_sync(&cmd, 30) {
-                    self.app.append_output(&format!("Assembly failed: {e}\n"));
-                    return Ok(());
-                }
-
-                // Link
-                let cmd = format!(
-                    "{} {} {} {} -f binary --bank-size {} -o {}",
-                    self.app.tools.rlink.display(),
-                    self.app.tools.crt0().display(),
-                    self.app.tools.libruntime().display(),
-                    pobj_file.display(),
-                    self.app.bank_size,
-                    bin_file.display()
-                );
-
-                if let Err(e) = run_command_sync(&cmd, 30) {
-                    self.app.append_output(&format!("Linking failed: {e}\n"));
-                    return Ok(());
-                }
+                
+                // The binary should now exist at the expected location
+                let bin_file = self.app.tools.build_dir.join(format!("{test_name}.bin"));
 
                 // Now run with debugger - need to exit TUI temporarily
                 // Pause the event handler FIRST
@@ -912,7 +939,7 @@ impl TuiRunner {
                 )?;
                 io::stdout().flush()?;
 
-                // Run debugger
+                // Run debugger (bin_file should exist now from compilation)
                 let status = std::process::Command::new(&self.app.tools.rvm)
                     .arg(&bin_file)
                     .arg("-t")
@@ -971,24 +998,25 @@ impl TuiRunner {
         }
         
         self.app.clear_output();
-        self.app.append_output(&format!("Running all tests in category '{category_name}'...\n"));
-        self.app.append_output(&("-".repeat(60)));
-        self.app.append_output("\n");
+        let test_count = tests_to_run.len();
+        self.app.append_output(&format!("📁 Running {} test{} in category '{}'...\n", 
+            test_count,
+            if test_count == 1 { "" } else { "s" },
+            category_name
+        ));
+        self.app.append_output(&("=".repeat(60)));
+        self.app.append_output("\n\n");
         
         // Auto-switch to Output tab when running tests
         self.app.selected_tab = 3;
+        // Reset scroll to top to see the start of the test run
+        self.app.output_scroll = 0;
         
         self.run_test_batch(tests_to_run)
     }
 
     fn run_all_visible_tests(&mut self) -> Result<()> {
         self.app.clear_output();
-        self.app.append_output("Running tests...\n");
-        self.app.append_output(&("-".repeat(60)));
-        self.app.append_output("\n");
-        
-        // Auto-switch to Output tab when running tests
-        self.app.selected_tab = 3;
         
         let tests_to_run: Vec<_> = self.app.filtered_tests.clone();
         
@@ -996,6 +1024,19 @@ impl TuiRunner {
             self.app.append_output("No tests to run.\n");
             return Ok(());
         }
+        
+        let test_count = tests_to_run.len();
+        self.app.append_output(&format!("🚀 Running {} test{}...\n", 
+            test_count, 
+            if test_count == 1 { "" } else { "s" }
+        ));
+        self.app.append_output(&("=".repeat(60)));
+        self.app.append_output("\n\n");
+        
+        // Auto-switch to Output tab when running tests
+        self.app.selected_tab = 3;
+        // Reset scroll to top to see the start of the test run
+        self.app.output_scroll = 0;
 
         self.run_test_batch(tests_to_run)
     }
@@ -1013,60 +1054,72 @@ impl TuiRunner {
         let bank_size = self.app.bank_size;
         let timeout_secs = self.app.timeout_secs;
         
-        // Spawn thread to run tests using the EXACT SAME TestRunner as CLI
+        // Spawn thread to run tests with panic handling
         thread::spawn(move || {
-            // Create run config - EXACT SAME as CLI
-            let run_config = RunConfig {
-                backend: Backend::Rvm,
-                timeout_secs,
-                bank_size,
-                verbose: false,
-                no_cleanup: true,
-                parallel: true,  // Use parallel execution like CLI
-                debug_mode: false,
-            };
-            
-            // Create the same TestRunner that CLI uses
-            let runner = TestRunner::new(run_config, tools);
-            
-            // Prepare test references for batch execution
-            let test_refs: Vec<&crate::config::TestCase> = tests_to_run.iter().collect();
-            
-            // Send a single progress message at the start
-            let _ = tx.send(crate::tui::app::TestMessage::Progress(
-                format!("Running {} tests in parallel...", test_refs.len())
-            ));
-            
-            // Run ALL tests in parallel with hidden progress bar (doesn't corrupt TUI)
-            let results = runner.run_test_batch_with_tui(&test_refs, true);
-            
-            // Convert all results at once
-            let mut all_results = Vec::new();
-            for (test, result) in tests_to_run.iter().zip(results.iter()) {
-                let test_name = test.file.file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-                
-                // Convert TestRunner's TestResult to our TestResult
-                let passed = result.status.is_success();
-                let output = result.actual_output.clone().unwrap_or_default();
-                
-                let ui_result = TestResult {
-                    passed,
-                    output,
-                    expected: test.expected.clone(),
-                    duration_ms: result.duration_ms as u128,
+            // Wrap the test execution in a catch_unwind to handle panics gracefully
+            let tx_panic = tx.clone();
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                // Create run config - EXACT SAME as CLI
+                let run_config = RunConfig {
+                    backend: Backend::Rvm,
+                    timeout_secs,
+                    bank_size,
+                    verbose: false,
+                    no_cleanup: true,
+                    parallel: true,  // Use parallel execution like CLI
+                    debug_mode: false,
                 };
                 
-                all_results.push((test_name, ui_result));
+                // Create the same TestRunner that CLI uses
+                let runner = TestRunner::new(run_config, tools);
+                
+                // Prepare test references for batch execution
+                let test_refs: Vec<&crate::config::TestCase> = tests_to_run.iter().collect();
+                
+                // Send a single progress message at the start
+                let _ = tx.send(crate::tui::app::TestMessage::Progress(
+                    format!("Running {} tests in parallel...", test_refs.len())
+                ));
+                
+                // Run ALL tests in parallel with hidden progress bar (doesn't corrupt TUI)
+                let results = runner.run_test_batch_with_tui(&test_refs, true);
+                
+                // Convert all results at once
+                let mut all_results = Vec::new();
+                for (test, result) in tests_to_run.iter().zip(results.iter()) {
+                    let test_name = test.file.file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    
+                    // Convert TestRunner's TestResult to our TestResult
+                    let passed = result.status.is_success();
+                    let output = result.actual_output.clone().unwrap_or_default();
+                    
+                    let ui_result = TestResult {
+                        passed,
+                        output,
+                        expected: test.expected.clone(),
+                        duration_ms: result.duration_ms as u128,
+                    };
+                    
+                    all_results.push((test_name, ui_result));
+                }
+                
+                // Send ALL results as a batch
+                let _ = tx.send(crate::tui::app::TestMessage::BatchCompleted(all_results));
+                
+                // Send finished message
+                let _ = tx.send(crate::tui::app::TestMessage::Finished);
+            }));
+            
+            // If the test runner panicked, send an error message
+            if result.is_err() {
+                let _ = tx_panic.send(crate::tui::app::TestMessage::Progress(
+                    "ERROR: Test runner crashed unexpectedly".to_string()
+                ));
+                let _ = tx_panic.send(crate::tui::app::TestMessage::Finished);
             }
-            
-            // Send ALL results as a batch
-            let _ = tx.send(crate::tui::app::TestMessage::BatchCompleted(all_results));
-            
-            // Send finished message
-            let _ = tx.send(crate::tui::app::TestMessage::Finished);
         });
         
         self.app.mode = AppMode::Running;
@@ -1074,6 +1127,9 @@ impl TuiRunner {
     }
 
     fn compile_and_run_test(&self, test_name: &str, test: Option<&crate::config::TestCase>) -> Result<String> {
+        use crate::compiler::compile_c_file;
+        use crate::config::{RunConfig, Backend};
+        
         // Find test file path
         let test_path = if let Some(test) = test {
             test.file.clone()
@@ -1089,80 +1145,47 @@ impl TuiRunner {
         let actual_test_path = if test_path.is_relative() && !test_path.starts_with("c-test") {
             Path::new("c-test").join(&test_path)
         } else {
-            test_path
+            test_path.clone()
         };
 
-        // Compile the test
-        let basename = test_name;
-        let asm_file = self.app.tools.build_dir.join(format!("{basename}.asm"));
-        let ir_file = self.app.tools.build_dir.join(format!("{basename}.ir"));
-        let pobj_file = self.app.tools.build_dir.join(format!("{basename}.pobj"));
-        let bin_file = self.app.tools.build_dir.join(format!("{basename}.bin"));
-
-        // Compile C to assembly
-        let cmd = format!(
-            "{} compile {} -o {} --save-ir --ir-output {}",
-            self.app.tools.rcc.display(),
-            actual_test_path.display(),
-            asm_file.display(),
-            ir_file.display()
-        );
-
-        let result = run_command_sync(&cmd, 30)?;
-        if result.exit_code != 0 {
-            return Err(anyhow::anyhow!("Compilation failed: {}", result.stderr));
-        }
-
-        // Assemble
-        let cmd = format!(
-            "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
-            self.app.tools.rasm.display(),
-            asm_file.display(),
-            pobj_file.display(),
-            self.app.bank_size
-        );
-
-        let result = run_command_sync(&cmd, 30)?;
-        if result.exit_code != 0 {
-            return Err(anyhow::anyhow!("Assembly failed: {}", result.stderr));
-        }
-
-        // Link (with runtime if needed)
-        let use_runtime = test.map(|t| t.use_runtime).unwrap_or(true);
-        let cmd = if use_runtime {
-            format!(
-                "{} {} {} {} -f binary --bank-size {} -o {}",
-                self.app.tools.rlink.display(),
-                self.app.tools.crt0().display(),
-                self.app.tools.libruntime().display(),
-                pobj_file.display(),
-                self.app.bank_size,
-                bin_file.display()
-            )
-        } else {
-            format!(
-                "{} {} -f binary --bank-size {} -o {}",
-                self.app.tools.rlink.display(),
-                pobj_file.display(),
-                self.app.bank_size,
-                bin_file.display()
-            )
+        // Use the same compile_c_file function that the main test runner uses
+        // This properly handles preprocessing and compiler errors/panics
+        let run_config = RunConfig {
+            backend: Backend::Rvm,
+            timeout_secs: self.app.timeout_secs,
+            bank_size: self.app.bank_size,
+            verbose: false,
+            no_cleanup: true,
+            parallel: false,
+            debug_mode: false,
         };
-
-        let result = run_command_sync(&cmd, 30)?;
-        if result.exit_code != 0 {
-            return Err(anyhow::anyhow!("Linking failed: {}", result.stderr));
-        }
-
-        // Run the test
-        let cmd = format!("{} {}", self.app.tools.rvm.display(), bin_file.display());
-        let result = run_command_sync(&cmd, self.app.timeout_secs)?;
         
-        if result.exit_code != 0 && result.stdout.is_empty() {
-            return Err(anyhow::anyhow!("Execution failed: {}", result.stderr));
+        let use_runtime = test.map(|t| t.use_runtime).unwrap_or(true);
+        
+        // This function properly handles compiler panics/errors
+        let compilation_result = match compile_c_file(
+            &actual_test_path,
+            &self.app.tools,
+            &run_config,
+            use_runtime,
+        ) {
+            Ok(result) => result,
+            Err(e) => {
+                // Handle errors (like file not found) without propagating
+                return Err(anyhow::anyhow!("Failed to compile: {}", e));
+            }
+        };
+        
+        if !compilation_result.success {
+            // Return the error message from compilation
+            if let Some(error_msg) = compilation_result.error_message {
+                return Err(anyhow::anyhow!("{}", error_msg));
+            } else {
+                return Err(anyhow::anyhow!("Compilation failed"));
+            }
         }
-
-        Ok(result.stdout)
+        
+        Ok(compilation_result.output)
     }
     
     fn handle_rename_test_input(&mut self, key: KeyEvent) -> Result<bool> {
