@@ -515,15 +515,15 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
         .split(Rect::new(0, area.height - 1, area.width, 1));
 
     // Mode indicator
-    let mode_text = match app.mode {
-        AppMode::Normal => "NORMAL",
-        AppMode::Filter => "FILTER",
-        AppMode::Running => "RUNNING",
-        AppMode::SelectCategory => "CATEGORY",
+    let (mode_text, mode_style) = match app.mode {
+        AppMode::Normal => ("NORMAL", Style::default().bg(Color::Blue).fg(Color::White)),
+        AppMode::Filter => ("FILTER", Style::default().bg(Color::Magenta).fg(Color::White)),
+        AppMode::Running => ("RUNNING", Style::default().bg(Color::Green).fg(Color::Black)),
+        AppMode::SelectCategory => ("CATEGORY", Style::default().bg(Color::Cyan).fg(Color::Black)),
     };
     
     let mode = Paragraph::new(format!(" {} ", mode_text))
-        .style(Style::default().bg(Color::Blue).fg(Color::White));
+        .style(mode_style);
     f.render_widget(mode, status_chunks[0]);
 
     // Current action or info
