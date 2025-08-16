@@ -903,6 +903,7 @@ fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         Line::from("  m       Add metadata to orphan test"),
         Line::from(""),
         Line::from(Span::styled("── Other Commands ──", Style::default().fg(Color::Yellow))),
+        Line::from("  F5      Reload all tests from filesystem"),
         Line::from("  ?       Toggle this help"),
         Line::from("  q       Quit application"),
         Line::from("  Ctrl+C  Force quit"),

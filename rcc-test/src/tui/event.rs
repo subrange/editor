@@ -1,5 +1,5 @@
 use crossterm::event::{self, Event as CEvent, KeyCode, KeyModifiers, MouseEventKind};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, atomic::{AtomicBool, Ordering}};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -19,6 +19,7 @@ pub struct MouseEvent {
 pub struct EventHandler {
     pub rx: mpsc::Receiver<Event<KeyEvent>>,
     _tx: mpsc::Sender<Event<KeyEvent>>,
+    paused: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -31,10 +32,19 @@ impl EventHandler {
     pub fn new(tick_rate: Duration) -> Self {
         let (tx, rx) = mpsc::channel();
         let event_tx = tx.clone();
+        let paused = Arc::new(AtomicBool::new(false));
+        let paused_clone = paused.clone();
         
         thread::spawn(move || {
             let mut last_tick = Instant::now();
             loop {
+                // If paused, just sleep and continue
+                if paused_clone.load(Ordering::Relaxed) {
+                    thread::sleep(Duration::from_millis(100));
+                    last_tick = Instant::now(); // Reset tick timer
+                    continue;
+                }
+                
                 let timeout = tick_rate
                     .checked_sub(last_tick.elapsed())
                     .unwrap_or_else(|| Duration::from_secs(0));
@@ -60,7 +70,17 @@ impl EventHandler {
             }
         });
 
-        EventHandler { rx, _tx: tx }
+        EventHandler { rx, _tx: tx, paused }
+    }
+    
+    pub fn pause(&self) {
+        self.paused.store(true, Ordering::Relaxed);
+        // Give the thread time to pause
+        thread::sleep(Duration::from_millis(50));
+    }
+    
+    pub fn resume(&self) {
+        self.paused.store(false, Ordering::Relaxed);
     }
 
     pub fn next(&self) -> Result<Event<KeyEvent>, mpsc::RecvError> {

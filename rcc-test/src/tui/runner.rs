@@ -311,6 +311,11 @@ impl TuiRunner {
             KeyCode::Char('5') => {
                 self.app.selected_tab = 4;  // Details
             }
+            KeyCode::F(5) => {
+                // Reload all tests from filesystem
+                self.app.reload_all_tests();
+                self.app.append_output("Refreshing test list...\n");
+            }
             KeyCode::PageDown => {
                 match self.app.focused_pane {
                     FocusedPane::RightPanel => {
@@ -668,6 +673,9 @@ impl TuiRunner {
             self.app.append_output(&format!("\nOpening {} in vim...\n", test_name));
             self.app.append_output("(TUI will resume after vim exits)\n");
             
+            // Pause the event handler FIRST
+            self.events.pause();
+            
             // Properly suspend the terminal
             terminal.show_cursor()?;
             disable_raw_mode()?;
@@ -677,11 +685,6 @@ impl TuiRunner {
                 cursor::Show,
             )?;
             io::stdout().flush()?;
-            
-            // Clear any pending events before launching vim
-            while event::poll(Duration::from_millis(0))? {
-                let _ = event::read()?;
-            }
             
             // Open vim to edit the file
             let status = std::process::Command::new("vim")
@@ -700,16 +703,13 @@ impl TuiRunner {
             )?;
             terminal.hide_cursor()?;
             
-            // Clear any events that were queued while vim was running
-            // This prevents any keypresses from vim from being processed by our TUI
-            while event::poll(Duration::from_millis(0))? {
-                let _ = event::read()?;
-            }
-            
-            // Also drain our event handler's queue
+            // Clear any events that might have been queued
             while let Ok(_) = self.events.rx.try_recv() {
                 // Discard any queued events
             }
+            
+            // Resume the event handler
+            self.events.resume();
             
             // Clear and force complete redraw
             terminal.clear()?;
@@ -797,6 +797,9 @@ impl TuiRunner {
                 }
 
                 // Now run with debugger - need to exit TUI temporarily
+                // Pause the event handler FIRST
+                self.events.pause();
+                
                 // Properly suspend the terminal
                 terminal.show_cursor()?;
                 disable_raw_mode()?;
@@ -806,11 +809,6 @@ impl TuiRunner {
                     cursor::Show,
                 )?;
                 io::stdout().flush()?;
-                
-                // Clear any pending events before launching debugger
-                while event::poll(Duration::from_millis(0))? {
-                    let _ = event::read()?;
-                }
 
                 // Run debugger
                 let status = std::process::Command::new(&self.app.tools.rvm)
@@ -830,15 +828,13 @@ impl TuiRunner {
                 )?;
                 terminal.hide_cursor()?;
                 
-                // Clear any events that were queued while debugger was running
-                while event::poll(Duration::from_millis(0))? {
-                    let _ = event::read()?;
-                }
-                
-                // Also drain our event handler's queue
+                // Clear any events that might have been queued
                 while let Ok(_) = self.events.rx.try_recv() {
                     // Discard any queued events
                 }
+                
+                // Resume the event handler
+                self.events.resume();
                 
                 // Clear and force complete redraw
                 terminal.clear()?;

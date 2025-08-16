@@ -861,6 +861,47 @@ impl TuiApp {
         self.source_scroll = 0;
         self.selected_tab = 0; // Switch to source tab to show the edited content
     }
+    
+    pub fn reload_all_tests(&mut self) {
+        // Re-discover all tests from filesystem
+        match crate::config::discover_tests() {
+            Ok(new_config) => {
+                self.test_config = new_config;
+                
+                // Re-discover orphan tests
+                self.orphan_tests = discover_orphan_tests().unwrap_or_else(|_| Vec::new());
+                
+                // Update filtered lists
+                self.filtered_tests = self.test_config.tests.clone();
+                self.filtered_failures = self.test_config.known_failures.clone();
+                
+                // Rebuild categories
+                self.categories = CategoryView::from_tests(
+                    &self.test_config.tests,
+                    &self.test_config.known_failures,
+                    &self.orphan_tests
+                );
+                
+                // Clear test results as they may be stale
+                self.test_results.clear();
+                
+                // Reset selection if it's out of bounds
+                let total_items = self.get_total_visible_items();
+                if self.selected_item >= total_items && total_items > 0 {
+                    self.selected_item = total_items - 1;
+                }
+                
+                // Apply any existing filters
+                self.apply_filters();
+                
+                self.append_output("Tests reloaded successfully.\n");
+            }
+            Err(e) => {
+                self.append_output(&format!("Failed to reload tests: {}\n", e));
+            }
+        }
+    }
+    
 
     pub fn save_metadata(&mut self) -> anyhow::Result<()> {
         if let Some(test_file) = &self.metadata_input.test_file {
