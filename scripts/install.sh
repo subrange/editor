@@ -13,6 +13,7 @@ binaries=(
   "rbt/target/release/rbt"
   "target/release/rcc"
   "target/release/rvm"
+  "target/release/rct"
   "src/bf-macro-expander/target/release/bfm"
 )
 

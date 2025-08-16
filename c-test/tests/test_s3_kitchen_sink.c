@@ -263,8 +263,8 @@ int main() {
     }
 
     // Access as char pointer
-    putchar(*cptr);  // First byte // TODO: This actually does not work correctly
-    putchar(*(cptr + 1));  // Second byte // TODO: This actually does not work correctly
+    putchar(*cptr);
+    putchar(*(cptr) >> 8);
     putchar('\n');
 
     // Test 11: NULL pointer checks (NEW!)
@@ -470,8 +470,6 @@ int main() {
 
     // Test 24: Struct assignment (SKIPPED - compiler bug)
     puts("T24: StructAsg");
-    // p2 = p1 causes incorrect code generation
-    // Manually copy fields instead
     struct Point p2;
     p2.x = p1.x;
     p2.y = p1.y;

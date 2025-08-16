@@ -5,6 +5,7 @@ members = [
     "rcc-backend",
     "rcc-driver",
     "rcc-frontend",
+    "rcc-test",
     "rvm",
 ]
 exclude = [

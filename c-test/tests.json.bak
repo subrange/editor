@@ -577,8 +577,8 @@
       "description": "Struct assignment bug - copies incorrectly"
     },
     {
-      "file": "tests/test_packed_char.c",
-      "expected": "BDAC\n",
+      "file": "tests/test_simple_ptr_cast.c",
+      "expected": "BADC\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
@@ -605,6 +605,30 @@
       "expected": "AB\nC",
       "use_runtime": true,
       "description": "Added via command line"
+    },
+    {
+      "file": "tests/test_new_example.c",
+      "expected": "Updated Output\n",
+      "use_runtime": true,
+      "description": "Updated description"
+    },
+    {
+      "file": "tests/test_minimal_no_runtime.c",
+      "expected": "OK",
+      "use_runtime": false,
+      "description": "Test without runtime"
+    },
+    {
+      "file": "tests/test_with_escapes.c",
+      "expected": "Line1\\\nLine2\\\tTabbed\\\n",
+      "use_runtime": true,
+      "description": "Test with escape sequences"
+    },
+    {
+      "file": "tests/test_with_escapes2.c",
+      "expected": "Line1\nLine2\tTabbed\n",
+      "use_runtime": true,
+      "description": "Test with escape sequences v2"
     }
   ],
   "known_failures": [

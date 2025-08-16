@@ -1,7 +1,7 @@
 void putchar(int c);
 
 int main() {
-    char *msg = "Please, ASCII art, my Ripple!\n";
+    char *msg = "Hi!\n";  // Simple string with newline
     
     // Print string character by character
     putchar(msg[0]);  // 'H'

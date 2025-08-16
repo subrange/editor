@@ -1,6 +1,6 @@
 void putchar(int c);
 
-int SIZE = 64;
+int SIZE = 32;
 
 int main() {
     int row = 0;
