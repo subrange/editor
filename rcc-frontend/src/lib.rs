@@ -14,6 +14,7 @@ pub mod semantic;
 pub mod codegen;
 pub mod ir;
 pub mod typed_ast;
+pub mod c_formatter;
 mod codegen_tests;
 mod type_environment_tests;
 mod cast_tests;

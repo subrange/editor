@@ -6,6 +6,7 @@ use ratatui::{
     Frame,
 };
 use crate::tui::app::{TuiApp, AppMode, FocusedPane, TestCategory};
+use rcc_frontend::c_formatter;
 
 pub fn draw(f: &mut Frame, app: &mut TuiApp) {
     let size = f.size();
@@ -235,37 +236,44 @@ fn draw_source_code(f: &mut Frame, area: Rect, app: &TuiApp) {
             test_path.clone()
         };
 
-        let content = if full_path.exists() {
+        if full_path.exists() {
             match std::fs::read_to_string(&full_path) {
                 Ok(code) => {
-                    // Add line numbers
-                    code.lines()
-                        .enumerate()
-                        .map(|(i, line)| format!("{:4} | {}", i + 1, line))
-                        .collect::<Vec<_>>()
-                        .join("\n")
+                    // Create colored lines with line numbers
+                    let lines: Vec<Line> = c_formatter::format_c_code_with_line_numbers(&code)
+                        .into_iter()
+                        .map(Line::from)
+                        .collect();
+                    
+                    let paragraph = Paragraph::new(lines)
+                        .block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .title(format!(" Source: {} ", test_path.display()))
+                                .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 0 {
+                                    Style::default().fg(Color::Cyan)
+                                } else {
+                                    Style::default().fg(Color::Gray)
+                                })
+                        )
+                        .scroll((app.source_scroll as u16, 0))
+                        .wrap(Wrap { trim: false });
+
+                    f.render_widget(paragraph, area);
                 }
-                Err(e) => format!("Error reading file: {}", e),
+                Err(e) => {
+                    let paragraph = Paragraph::new(format!("Error reading file: {}", e))
+                        .block(Block::default().borders(Borders::ALL).title(format!(" Source: {} ", test_path.display()))
+                            .border_style(Style::default().fg(Color::Gray)));
+                    f.render_widget(paragraph, area);
+                }
             }
         } else {
-            format!("File not found: {}", full_path.display())
-        };
-
-        let paragraph = Paragraph::new(content)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(format!(" Source: {} ", test_path.display()))
-                    .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 0 {
-                        Style::default().fg(Color::Cyan)
-                    } else {
-                        Style::default().fg(Color::Gray)
-                    })
-            )
-            .scroll((app.source_scroll as u16, 0))
-            .wrap(Wrap { trim: false });
-
-        f.render_widget(paragraph, area);
+            let paragraph = Paragraph::new(format!("File not found: {}", full_path.display()))
+                .block(Block::default().borders(Borders::ALL).title(format!(" Source: {} ", test_path.display()))
+                    .border_style(Style::default().fg(Color::Gray)));
+            f.render_widget(paragraph, area);
+        }
     } else {
         let paragraph = Paragraph::new("No test selected")
             .block(Block::default().borders(Borders::ALL).title(" Source ")
