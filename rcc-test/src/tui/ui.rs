@@ -2,30 +2,20 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs, Wrap},
     Frame,
 };
-use crate::tui::app::{TuiApp, AppMode, FocusedPane, TestCategory};
+use crate::tui::app::{TuiApp, AppMode, FocusedPane, CategoryView};
 use rcc_frontend::c_formatter;
 
 pub fn draw(f: &mut Frame, app: &mut TuiApp) {
     let size = f.size();
 
-    // Main layout - vertical split for optional help
-    let main_chunks = if app.show_help {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Min(15),
-                Constraint::Length(12), // Help window
-            ])
-            .split(size)
-    } else {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(100)])
-            .split(size)
-    };
+    // Main layout - always use full screen, help will be a modal
+    let main_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(100)])
+        .split(size);
 
     // Top area layout - horizontal split
     let top_chunks = Layout::default()
@@ -36,36 +26,20 @@ pub fn draw(f: &mut Frame, app: &mut TuiApp) {
         ])
         .split(main_chunks[0]);
 
-    // Left side - test list with categories
-    let left_chunks = if app.show_categories {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(3),  // Category tabs
-                Constraint::Min(5),     // Test list
-            ])
-            .split(top_chunks[0])
-    } else {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(100)])
-            .split(top_chunks[0])
-    };
-
-    // Draw category tabs if visible
-    if app.show_categories {
-        draw_categories(f, left_chunks[0], app);
-        draw_test_list(f, left_chunks[1], app);
-    } else {
-        draw_test_list(f, left_chunks[0], app);
-    }
+    // Draw test list
+    draw_test_list(f, top_chunks[0], app);
 
     // Right side - tabbed view for different content
     draw_details_panel(f, top_chunks[1], app);
 
-    // Draw help if visible
-    if app.show_help && main_chunks.len() > 1 {
-        draw_help(f, main_chunks[1]);
+    // Draw help modal if visible
+    if app.show_help {
+        draw_help_modal(f, size, app);
+    }
+
+    // Draw category selector modal if visible
+    if app.show_categories {
+        draw_category_selector(f, size, app);
     }
 
     // Draw filter overlay if in filter mode
@@ -77,92 +51,136 @@ pub fn draw(f: &mut Frame, app: &mut TuiApp) {
     draw_status_bar(f, size, app);
 }
 
-fn draw_categories(f: &mut Frame, area: Rect, app: &TuiApp) {
-    let categories: Vec<String> = TestCategory::all()
-        .iter()
-        .map(|c| c.name().to_string())
-        .collect();
+fn draw_category_selector(f: &mut Frame, area: Rect, app: &TuiApp) {
+    // Create a list of categories with "All Tests" at the top
+    let mut items = vec![
+        ListItem::new(Line::from(vec![
+            Span::styled("All Tests", if app.selected_category_index == 0 {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            }),
+            Span::raw(format!(" ({})", app.test_config.tests.len() + app.test_config.known_failures.len())),
+        ]))
+    ];
+    
+    // Add all categories
+    for (idx, (name, category)) in app.categories.iter().enumerate() {
+        let style = if app.selected_category_index == idx + 1 {
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
+        
+        items.push(ListItem::new(Line::from(vec![
+            Span::styled(name.clone(), style),
+            Span::raw(format!(" ({})", category.test_count)),
+        ])));
+    }
 
-    let selected_idx = TestCategory::all()
-        .iter()
-        .position(|c| *c == app.selected_category)
-        .unwrap_or(0);
+    // Calculate modal dimensions
+    let modal_width = 50;
+    let modal_height = (items.len() + 4).min(20) as u16; // +4 for borders and title
+    let modal_area = Rect::new(
+        (area.width.saturating_sub(modal_width)) / 2,
+        (area.height.saturating_sub(modal_height)) / 2,
+        modal_width,
+        modal_height,
+    );
 
-    let tabs = Tabs::new(categories)
-        .block(Block::default().borders(Borders::ALL).title("Categories"))
-        .select(selected_idx)
-        .style(Style::default().fg(Color::Gray))
-        .highlight_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Select Category (↑/↓: Navigate | Enter: Select | Esc: Cancel) ")
+                .title_alignment(Alignment::Center)
+                .border_style(Style::default().fg(Color::Cyan))
+        )
+        .highlight_style(Style::default().bg(Color::Rgb(60, 60, 60)))
+        .highlight_symbol("> ");
 
-    f.render_widget(tabs, area);
+    let mut state = ListState::default();
+    state.select(Some(app.selected_category_index));
+
+    // Clear background and render modal
+    f.render_widget(Clear, modal_area);
+    f.render_stateful_widget(list, modal_area, &mut state);
+}
+
+fn create_test_item<'a>(test: &'a crate::config::TestCase, index: usize, app: &'a TuiApp) -> ListItem<'a> {
+    let test_name = test.file.file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("unknown");
+    
+    let mut spans = vec![
+        Span::raw("  "),  // Indent for tests under categories
+    ];
+
+    // Add test result indicator
+    if let Some(result) = app.test_results.get(test_name) {
+        if result.passed {
+            spans.push(Span::styled("✓ ", Style::default().fg(Color::Rgb(0, 200, 0))));
+        } else {
+            spans.push(Span::styled("✗ ", Style::default().fg(Color::Red)));
+        }
+    } else if app.running_test.as_deref() == Some(test_name) {
+        spans.push(Span::styled("⟳ ", Style::default().fg(Color::Yellow)));
+    } else {
+        spans.push(Span::raw("  "));
+    }
+    
+    spans.push(Span::raw(test_name));
+    
+    ListItem::new(Line::from(spans))
 }
 
 fn draw_test_list(f: &mut Frame, area: Rect, app: &mut TuiApp) {
     let mut items: Vec<ListItem> = Vec::new();
+    let mut test_index = 0;
     
-    // Add regular tests
-    for (idx, test) in app.filtered_tests.iter().enumerate() {
-        let test_name = test.file.file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown");
-        
-        let mut spans = vec![
-            Span::raw(format!("{:3} ", idx + 1)),
-        ];
-
-        // Add test result indicator
-        if let Some(result) = app.test_results.get(test_name) {
-            if result.passed {
-                spans.push(Span::styled("✓ ", Style::default().fg(Color::Rgb(0, 200, 0))));
-            } else {
-                spans.push(Span::styled("✗ ", Style::default().fg(Color::Red)));
+    // If a specific category is selected, show only that category
+    if let Some(ref selected_cat) = app.selected_category {
+        if let Some(category) = app.categories.get(selected_cat) {
+            // Add category header
+            items.push(ListItem::new(Line::from(vec![
+                Span::styled("▼ ", if category.expanded { 
+                    Style::default().fg(Color::Yellow) 
+                } else { 
+                    Style::default().fg(Color::DarkGray) 
+                }),
+                Span::styled(selected_cat.clone(), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(format!(" ({} tests)", category.test_count), Style::default().fg(Color::DarkGray)),
+            ])));
+            
+            // Add tests in this category
+            if category.expanded {
+                for test in &category.tests {
+                    items.push(create_test_item(test, test_index, app));
+                    test_index += 1;
+                }
             }
-        } else if app.running_test.as_deref() == Some(test_name) {
-            spans.push(Span::styled("⟳ ", Style::default().fg(Color::Yellow)));
-        } else {
-            spans.push(Span::raw("  "));
         }
-
-        // Add category indicator
-        let category_indicator = if test.file.to_string_lossy().contains("/core/") {
-            "C"
-        } else if test.file.to_string_lossy().contains("/advanced/") {
-            "A"
-        } else if test.file.to_string_lossy().contains("/memory/") {
-            "M"
-        } else if test.file.to_string_lossy().contains("/integration/") {
-            "I"
-        } else if test.file.to_string_lossy().contains("/runtime/") {
-            "R"
-        } else if test.file.to_string_lossy().contains("/experimental/") {
-            "E"
-        } else {
-            "?"
-        };
-        
-        spans.push(Span::styled(
-            format!("[{}] ", category_indicator),
-            Style::default().fg(Color::Cyan),
-        ));
-        
-        spans.push(Span::raw(test_name));
-        
-        items.push(ListItem::new(Line::from(spans)));
-    }
-
-    // Add known failures
-    for failure in &app.filtered_failures {
-        let test_name = failure.file.file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown");
-        
-        let spans = vec![
-            Span::raw("    "),
-            Span::styled("[F] ", Style::default().fg(Color::DarkGray)),
-            Span::styled(test_name, Style::default().fg(Color::DarkGray)),
-        ];
-        
-        items.push(ListItem::new(Line::from(spans)));
+    } else {
+        // Show all categories with their tests
+        for (category_name, category) in &app.categories {
+            // Add category header
+            items.push(ListItem::new(Line::from(vec![
+                Span::styled(if category.expanded { "▼ " } else { "▶ " }, 
+                    Style::default().fg(Color::Yellow)),
+                Span::styled(category_name.clone(), 
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(format!(" ({} tests)", category.test_count), 
+                    Style::default().fg(Color::DarkGray)),
+            ])));
+            
+            // Add tests if category is expanded
+            if category.expanded {
+                for test in &category.tests {
+                    items.push(create_test_item(test, test_index, app));
+                    test_index += 1;
+                }
+            }
+        }
     }
 
     let selected_style = if app.focused_pane == FocusedPane::TestList {
@@ -189,7 +207,7 @@ fn draw_test_list(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         .highlight_symbol("> ");
 
     let mut state = ListState::default();
-    state.select(Some(app.selected_test));
+    state.select(Some(app.selected_item));
     
     f.render_stateful_widget(list, area, &mut state);
 
@@ -522,37 +540,119 @@ fn draw_filter_overlay(f: &mut Frame, area: Rect, app: &TuiApp) {
 }
 
 
-fn draw_help(f: &mut Frame, area: Rect) {
-    let help_text = vec![
-        Line::from(vec![Span::styled("Test Navigation", Style::default().add_modifier(Modifier::BOLD))]),
-        Line::from("  j/↓     Move down"),
-        Line::from("  k/↑     Move up"),
+fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
+    let help_content = vec![
+        Line::from(""),
+        Line::from(Span::styled("── Test Navigation ──", Style::default().fg(Color::Yellow))),
+        Line::from("  j/↓     Move down in test list"),
+        Line::from("  k/↑     Move up in test list"),
+        Line::from("  g       Go to first test"),
+        Line::from("  G       Go to last test"),
         Line::from("  Enter   Run selected test"),
-        Line::from("  d       Debug selected test"),
+        Line::from("  Shift+R Run all tests in category"),
         Line::from("  r       Run all visible tests"),
+        Line::from("  d       Debug selected test (interactive)"),
         Line::from(""),
-        Line::from(vec![Span::styled("View Controls", Style::default().add_modifier(Modifier::BOLD))]),
+        Line::from(Span::styled("── View Controls ──", Style::default().fg(Color::Yellow))),
         Line::from("  Tab     Switch between panes"),
-        Line::from("  1-5     Switch tabs (Source/ASM/IR/Output/Details)"),
-        Line::from("  c       Toggle categories"),
-        Line::from("  /       Filter tests"),
-        Line::from("  Esc     Clear filter/Exit mode"),
+        Line::from("  1-5     Switch tabs:"),
+        Line::from("          1=Source 2=ASM 3=IR 4=Output 5=Details"),
+        Line::from("  h/←     Focus test list"),
+        Line::from("  l/→     Focus right panel"),
         Line::from(""),
-        Line::from(vec![Span::styled("Other", Style::default().add_modifier(Modifier::BOLD))]),
+        Line::from(Span::styled("── Categories & Filtering ──", Style::default().fg(Color::Yellow))),
+        Line::from("  c       Toggle category selector"),
+        Line::from("  /       Enter filter mode"),
+        Line::from("  Esc     Clear filter/Exit mode"),
+        Line::from("  Ctrl+L  Clear all filters"),
+        Line::from(""),
+        Line::from(Span::styled("── Scrolling ──", Style::default().fg(Color::Yellow))),
+        Line::from("  j/k     Scroll down/up in focused panel"),
+        Line::from("  Ctrl+D  Page down"),
+        Line::from("  Ctrl+U  Page up"),
+        Line::from(""),
+        Line::from(Span::styled("── Test Results ──", Style::default().fg(Color::Yellow))),
+        Line::from("  ✓       Test passed"),
+        Line::from("  ✗       Test failed"),
+        Line::from("  ⟳       Test running"),
+        Line::from("  [C]     Core category"),
+        Line::from("  [M]     Memory category"),
+        Line::from("  [A]     Advanced category"),
+        Line::from("  [I]     Integration category"),
+        Line::from("  [R]     Runtime category"),
+        Line::from("  [F]     Known failure"),
+        Line::from(""),
+        Line::from(Span::styled("── Other Commands ──", Style::default().fg(Color::Yellow))),
         Line::from("  ?       Toggle this help"),
-        Line::from("  q       Quit"),
+        Line::from("  q       Quit application"),
+        Line::from("  Ctrl+C  Force quit"),
     ];
 
-    let paragraph = Paragraph::new(help_text)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Help ")
-                .border_style(Style::default().fg(Color::Cyan))
-        )
+    // Calculate modal dimensions
+    let help_width = 60;
+    let help_height = area.height.min(35);
+    let help_area = Rect::new(
+        (area.width.saturating_sub(help_width)) / 2,
+        (area.height.saturating_sub(help_height)) / 2,
+        help_width,
+        help_height,
+    );
+
+    // Calculate scrolling
+    let visible_lines = help_height.saturating_sub(6) as usize; // Account for borders and header
+    let total_lines = help_content.len();
+    let max_scroll = total_lines.saturating_sub(visible_lines);
+    
+    // Ensure scroll is within bounds
+    if app.help_scroll > max_scroll {
+        app.help_scroll = max_scroll;
+    }
+
+    // Build display content
+    let mut display_lines = Vec::new();
+    
+    // Header
+    display_lines.push(Line::from(Span::styled(
+        "RCT Test Runner - Help", 
+        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+    )));
+    
+    // Scroll indicator
+    if total_lines > visible_lines {
+        display_lines.push(Line::from(vec![
+            Span::styled("[↑/↓ scroll] ", Style::default().fg(Color::Yellow)),
+            Span::styled(format!("Lines {}-{}/{}", 
+                app.help_scroll + 1, 
+                (app.help_scroll + visible_lines).min(total_lines),
+                total_lines
+            ), Style::default().fg(Color::DarkGray)),
+        ]));
+    } else {
+        display_lines.push(Line::from(""));
+    }
+    
+    display_lines.push(Line::from(Span::styled(
+        "Press ? or ESC to close", 
+        Style::default().fg(Color::Green)
+    )));
+    display_lines.push(Line::from(""));  // Separator
+    
+    // Add visible content
+    let end = (app.help_scroll + visible_lines).min(total_lines);
+    display_lines.extend(help_content[app.help_scroll..end].to_vec());
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan))
+        .title(" Help ");
+
+    let paragraph = Paragraph::new(display_lines)
+        .block(block)
         .alignment(Alignment::Left);
 
-    f.render_widget(paragraph, area);
+    // Clear background and render modal
+    f.render_widget(Clear, help_area);
+    f.render_widget(paragraph, help_area);
 }
 
 fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
@@ -573,8 +673,12 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
         AppMode::SelectCategory => ("CATEGORY", Style::default().bg(Color::Cyan).fg(Color::Black)),
     };
     
-    let mode = Paragraph::new(format!(" {} ", mode_text))
-        .style(mode_style);
+    let mode_spans = vec![
+        Span::styled(format!(" {} ", mode_text), mode_style),
+        Span::raw(" "),  // Add spacing after mode
+    ];
+    let mode = Paragraph::new(Line::from(mode_spans))
+        .style(Style::default().fg(Color::Gray));
     f.render_widget(mode, status_chunks[0]);
 
     // Current action or info

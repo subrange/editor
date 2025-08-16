@@ -19,7 +19,7 @@ use crate::compiler::{build_runtime, ToolPaths};
 use crate::command::run_command_sync;
 use crate::config::TestConfig;
 use crate::tui::{
-    app::{TuiApp, AppMode, FocusedPane, TestCategory, TestResult},
+    app::{TuiApp, AppMode, FocusedPane, TestResult},
     event::{Event, EventHandler, KeyEvent},
     ui,
 };
@@ -150,6 +150,34 @@ impl TuiRunner {
     }
 
     fn handle_input<B: Backend>(&mut self, key: KeyEvent, terminal: &mut Terminal<B>) -> Result<bool> {
+        // Handle help scrolling first if help is open
+        if self.app.show_help {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('?') => {
+                    self.app.show_help = false;
+                    self.app.help_scroll = 0;
+                    return Ok(true);
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.app.help_scroll = self.app.help_scroll.saturating_add(1);
+                    return Ok(true);
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.app.help_scroll = self.app.help_scroll.saturating_sub(1);
+                    return Ok(true);
+                }
+                KeyCode::PageDown => {
+                    self.app.help_scroll = self.app.help_scroll.saturating_add(10);
+                    return Ok(true);
+                }
+                KeyCode::PageUp => {
+                    self.app.help_scroll = self.app.help_scroll.saturating_sub(10);
+                    return Ok(true);
+                }
+                _ => return Ok(true), // Ignore other keys when help is open
+            }
+        }
+
         match self.app.mode {
             AppMode::Normal => self.handle_normal_input(key, terminal),
             AppMode::Filter => self.handle_filter_input(key),
@@ -162,7 +190,8 @@ impl TuiRunner {
         match key.code {
             KeyCode::Char('q') => return Ok(false),
             KeyCode::Char('?') => {
-                self.app.show_help = !self.app.show_help;
+                self.app.show_help = true;
+                self.app.help_scroll = 0;
             }
             KeyCode::Char('j') | KeyCode::Down => {
                 match self.app.focused_pane {
@@ -203,7 +232,23 @@ impl TuiRunner {
                 }
             }
             KeyCode::Enter => {
-                self.run_selected_test()?;
+                // Check what type of item is selected
+                use crate::tui::app::SelectedItemType;
+                match self.app.get_selected_item_type() {
+                    SelectedItemType::Category(_) => {
+                        // Toggle category expansion
+                        self.app.toggle_current_category();
+                    }
+                    SelectedItemType::Test(_) => {
+                        // Run the test
+                        self.run_selected_test()?;
+                    }
+                    SelectedItemType::None => {}
+                }
+            }
+            KeyCode::Char(' ') => {
+                // Space also toggles category expansion
+                self.app.toggle_current_category();
             }
             KeyCode::Char('d') => {
                 self.debug_selected_test(terminal)?;
@@ -328,7 +373,12 @@ impl TuiRunner {
     fn handle_filter_input(&mut self, key: KeyEvent) -> Result<bool> {
         match key.code {
             KeyCode::Esc => {
-                self.app.clear_filter();
+                // Close help if open, otherwise clear filter
+                if self.app.show_help {
+                    self.app.show_help = false;
+                } else {
+                    self.app.clear_filter();
+                }
             }
             KeyCode::Enter => {
                 self.app.apply_filters();
@@ -367,15 +417,17 @@ impl TuiRunner {
                 self.app.show_categories = false;
                 self.app.mode = AppMode::Normal;
             }
-            KeyCode::Char('1') => self.app.select_category(TestCategory::All),
-            KeyCode::Char('2') => self.app.select_category(TestCategory::Core),
-            KeyCode::Char('3') => self.app.select_category(TestCategory::Advanced),
-            KeyCode::Char('4') => self.app.select_category(TestCategory::Memory),
-            KeyCode::Char('5') => self.app.select_category(TestCategory::Integration),
-            KeyCode::Char('6') => self.app.select_category(TestCategory::Runtime),
-            KeyCode::Char('7') => self.app.select_category(TestCategory::Experimental),
-            KeyCode::Char('8') => self.app.select_category(TestCategory::KnownFailures),
-            KeyCode::Char('9') => self.app.select_category(TestCategory::Examples),
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.app.move_category_selection_down();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.app.move_category_selection_up();
+            }
+            KeyCode::Enter => {
+                self.app.select_current_category();
+                self.app.show_categories = false;
+                self.app.mode = AppMode::Normal;
+            }
             _ => {}
         }
         Ok(true)
