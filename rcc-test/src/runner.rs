@@ -25,18 +25,20 @@ impl TestRunner {
     pub fn run_all(&self, test_config: &TestConfig) -> Result<TestSummary> {
         let mut summary = TestSummary::default();
 
-        // Separate tests by runtime usage
-        let tests_without_runtime: Vec<_> = test_config
+        // Separate tests by runtime usage and sort alphabetically
+        let mut tests_without_runtime: Vec<_> = test_config
             .tests
             .iter()
             .filter(|t| !t.use_runtime)
             .collect();
+        tests_without_runtime.sort_by_key(|t| t.file.file_stem().and_then(|s| s.to_str()).unwrap_or(""));
         
-        let tests_with_runtime: Vec<_> = test_config
+        let mut tests_with_runtime: Vec<_> = test_config
             .tests
             .iter()
             .filter(|t| t.use_runtime)
             .collect();
+        tests_with_runtime.sort_by_key(|t| t.file.file_stem().and_then(|s| s.to_str()).unwrap_or(""));
 
         // Run tests without runtime
         if !tests_without_runtime.is_empty() {
@@ -67,7 +69,11 @@ impl TestRunner {
             println!("\nKnown failure tests:");
             println!("{}", "-".repeat(60));
             
-            let results = self.run_known_failures(&test_config.known_failures);
+            // Sort known failures alphabetically
+            let mut sorted_failures = test_config.known_failures.clone();
+            sorted_failures.sort_by_key(|f| f.file.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_string());
+            
+            let results = self.run_known_failures(&sorted_failures);
             for result in results {
                 result.print(self.config.verbose);
                 summary.add(&result);
@@ -102,9 +108,13 @@ impl TestRunner {
                 // Try to find the file directly
                 let possible_paths = [
                     format!("c-test/tests/{}.c", name),
+                    format!("c-test/examples/{}.c", name),
                     format!("c-test/tests-known-failures/{}.c", name),
+                    format!("c-test/known-failures/{}.c", name),
                     format!("tests/{}.c", name),
+                    format!("examples/{}.c", name),
                     format!("tests-known-failures/{}.c", name),
+                    format!("known-failures/{}.c", name),
                 ];
 
                 for path_str in &possible_paths {
@@ -146,6 +156,9 @@ impl TestRunner {
             anyhow::bail!("No tests found matching the given names");
         }
 
+        // Sort test cases alphabetically before running
+        test_cases.sort_by_key(|t| t.file.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_string());
+        
         let results = self.run_test_batch(&test_cases.iter().collect::<Vec<_>>());
         for result in results {
             result.print(self.config.verbose);

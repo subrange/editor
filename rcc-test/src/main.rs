@@ -67,20 +67,25 @@ fn run() -> Result<()> {
             rename_test(&cli.tests_file, old_name, new_name)?;
             return Ok(());
         }
+        
+        Some(Command::Check { verbose }) => {
+            check_untracked_tests(&cli.tests_file, verbose)?;
+            return Ok(());
+        }
 
         Some(Command::Debug { ref test }) => {
             debug_test(&test, &cli, &tools)?;
             return Ok(());
         }
 
-        Some(Command::Run { ref filter }) => {
-            // Check if debug mode is requested with specific tests
-            if cli.debug && !cli.tests.is_empty() {
-                // Run each test in debug mode
-                for test in &cli.tests {
-                    debug_test(test, &cli, &tools)?;
+        Some(Command::Run { ref programs, ref filter }) => {
+            if !programs.is_empty() {
+                // Run as programs without test expectations
+                for program in programs {
+                    exec_program(program, &cli, &tools)?;
                 }
             } else {
+                // Run as test suite
                 run_tests(&cli, &tools, filter.clone())?;
             }
         }
@@ -230,18 +235,22 @@ fn add_test(
     
     // Normalize the file path and determine if it's a known failure
     let (file, is_known_failure) = if file.is_relative() {
-        if file.starts_with("tests-known-failures") {
+        if file.starts_with("known-failures") {
+            (file, true)
+        } else if file.starts_with("examples") {
+            // Examples are tracked like known failures (no expected output)
             (file, true)
         } else if file.starts_with("tests") {
             (file, false)
         } else {
-            // Default to tests/ for regular tests
-            (PathBuf::from("tests").join(file.file_name().unwrap()), false)
+            // Try to find the file in the test directories
+            let test_file = find_test_file_in_hierarchy(&file)?;
+            (test_file, false)
         }
     } else {
-        // For absolute paths, check if it contains known-failures
+        // For absolute paths, check if it contains known-failures or examples
         let is_failure = file.to_str()
-            .map(|s| s.contains("known-failures"))
+            .map(|s| s.contains("known-failures") || s.contains("examples"))
             .unwrap_or(false);
         (file, is_failure)
     };
@@ -565,6 +574,293 @@ fn rename_test(tests_file: &Path, old_name: &str, new_name: &str) -> Result<()> 
     }
 }
 
+fn check_untracked_tests(tests_file: &Path, verbose: bool) -> Result<()> {
+    use std::collections::HashSet;
+    
+    // Load existing tests to get tracked files
+    let config = config::load_tests(tests_file)?;
+    
+    // Create a set of tracked file paths (normalized)
+    let mut tracked_files = HashSet::new();
+    
+    // Add regular tests
+    for test in &config.tests {
+        // Normalize the path - add c-test prefix if needed
+        let normalized_path = if test.file.is_relative() && !test.file.starts_with("c-test") {
+            PathBuf::from("c-test").join(&test.file)
+        } else {
+            test.file.clone()
+        };
+        tracked_files.insert(normalized_path);
+    }
+    
+    // Add known failures
+    for failure in &config.known_failures {
+        let normalized_path = if failure.file.is_relative() && !failure.file.starts_with("c-test") {
+            PathBuf::from("c-test").join(&failure.file)
+        } else {
+            failure.file.clone()
+        };
+        tracked_files.insert(normalized_path);
+    }
+    
+    // Scan test directories for .c files recursively
+    let untracked_files = TestFinder::find_untracked_c_files(&tracked_files)?;
+    
+    // Report results
+    if untracked_files.is_empty() {
+        println!("{}", "✓ All test files are tracked in tests.json".green());
+    } else {
+        println!("{}", format!("Found {} untracked test files:", untracked_files.len()).yellow().bold());
+        println!();
+        
+        for file in &untracked_files {
+            // Get relative path for cleaner display
+            let display_path = if file.starts_with("c-test/") {
+                file.strip_prefix("c-test/").unwrap_or(file)
+            } else {
+                file.as_path()
+            };
+            
+            println!("  {}", display_path.display());
+            
+            if verbose {
+                // Try to read first few lines to guess what the test does
+                if let Ok(content) = std::fs::read_to_string(file) {
+                    let lines: Vec<&str> = content.lines().take(10).collect();
+                    
+                    // Look for main function or comments
+                    for line in lines {
+                        if line.contains("main(") || line.starts_with("//") || line.starts_with("/*") {
+                            println!("    {}", line.trim().dimmed());
+                        }
+                    }
+                }
+            }
+        }
+        
+        println!();
+        println!("To add these tests, use:");
+        println!("  {} add <file> <expected_output>", "rct".cyan());
+        println!();
+        println!("Example:");
+        if let Some(first) = untracked_files.first() {
+            let path = if first.starts_with("c-test/") {
+                first.strip_prefix("c-test/").unwrap_or(first)
+            } else {
+                first.as_path()
+            };
+            println!("  {} add {} \"Y\\n\"", "rct".cyan(), path.display());
+        }
+    }
+    
+    Ok(())
+}
+
+fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> {
+    // Build runtime first
+    println!("Building runtime library...");
+    build_runtime(tools, cli.bank_size)?;
+    
+    // Find the program file
+    let program_path = find_program_file(program_name)?;
+    
+    // Fix the path - prepend c-test if needed
+    let actual_path = if program_path.is_relative() && !program_path.starts_with("c-test") {
+        Path::new("c-test").join(&program_path)
+    } else {
+        program_path.clone()
+    };
+    
+    println!("Compiling: {}", actual_path.display());
+    
+    // Compile the program
+    let basename = program_path.file_stem().unwrap().to_str().unwrap();
+    let asm_file = cli.build_dir.join(format!("{}.asm", basename));
+    let ir_file = cli.build_dir.join(format!("{}.ir", basename));
+    let pobj_file = cli.build_dir.join(format!("{}.pobj", basename));
+    let bin_file = cli.build_dir.join(format!("{}.bin", basename));
+    
+    // Compile C to assembly
+    let cmd = format!(
+        "{} compile {} -o {} --save-ir --ir-output {}",
+        tools.rcc.display(),
+        actual_path.display(),
+        asm_file.display(),
+        ir_file.display()
+    );
+    
+    let result = run_command_sync(&cmd, 30)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Compilation failed: {}", result.stderr);
+    }
+    
+    // Assemble
+    let cmd = format!(
+        "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
+        tools.rasm.display(),
+        asm_file.display(),
+        pobj_file.display(),
+        cli.bank_size
+    );
+    
+    let result = run_command_sync(&cmd, 30)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Assembly failed: {}", result.stderr);
+    }
+    
+    // Link (always with runtime for examples)
+    let cmd = format!(
+        "{} {} {} {} -f binary --bank-size {} -o {}",
+        tools.rlink.display(),
+        tools.crt0().display(),
+        tools.libruntime().display(),
+        pobj_file.display(),
+        cli.bank_size,
+        bin_file.display()
+    );
+    
+    let result = run_command_sync(&cmd, 30)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Linking failed: {}", result.stderr);
+    }
+    
+    println!("{}", format!("Successfully built {}", bin_file.display()).green());
+    
+    // Run the program
+    println!("\nRunning: {} {}", tools.rvm.display(), bin_file.display());
+    println!("{}", "-".repeat(60));
+    
+    if cli.debug {
+        // Run with debugger
+        let status = std::process::Command::new(&tools.rvm)
+            .arg(&bin_file)
+            .arg("-t")
+            .status()?;
+        
+        if !status.success() {
+            anyhow::bail!("Program exited with error");
+        }
+    } else {
+        // Run normally and just pass through output
+        let status = std::process::Command::new(&tools.rvm)
+            .arg(&bin_file)
+            .status()?;
+        
+        if !status.success() {
+            anyhow::bail!("Program exited with error");
+        }
+    }
+    
+    Ok(())
+}
+
+/// Central test file finder that searches recursively in c-test directory
+struct TestFinder;
+
+impl TestFinder {
+    const TEST_ROOT: &'static str = "c-test";
+    const BUILD_DIR: &'static str = "build";
+    
+    /// Find a C file by name in the test directories
+    fn find_c_file(name: &str) -> Result<PathBuf> {
+        // First check if it's a direct path
+        let direct_path = Path::new(name);
+        if direct_path.exists() && direct_path.is_file() {
+            return Ok(direct_path.to_path_buf());
+        }
+        
+        // Normalize the name
+        let name = name.strip_suffix(".c").unwrap_or(name);
+        let filename = format!("{}.c", name);
+        
+        // Search recursively
+        if let Ok(found) = Self::find_file_recursive(Path::new(Self::TEST_ROOT), &filename) {
+            // Return relative path from c-test/
+            if let Ok(relative) = found.strip_prefix(Self::TEST_ROOT) {
+                return Ok(relative.to_path_buf());
+            }
+            return Ok(found);
+        }
+        
+        anyhow::bail!("File '{}' not found", name)
+    }
+    
+    /// Recursively find a specific file in a directory tree
+    fn find_file_recursive(dir: &Path, filename: &str) -> Result<PathBuf> {
+        if !dir.exists() || !dir.is_dir() {
+            return Err(anyhow::anyhow!("Directory does not exist"));
+        }
+        
+        for entry in std::fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                // Skip build directory to avoid false positives
+                if path.file_name() == Some(std::ffi::OsStr::new(Self::BUILD_DIR)) {
+                    continue;
+                }
+                // Recursively search subdirectories
+                if let Ok(found) = Self::find_file_recursive(&path, filename) {
+                    return Ok(found);
+                }
+            } else if path.is_file() {
+                // Check if this is the file we're looking for
+                if path.file_name() == Some(std::ffi::OsStr::new(filename)) {
+                    return Ok(path);
+                }
+            }
+        }
+        
+        Err(anyhow::anyhow!("File not found"))
+    }
+    
+    /// Find all untracked C files in the test directories
+    fn find_untracked_c_files(tracked_files: &std::collections::HashSet<PathBuf>) -> Result<Vec<PathBuf>> {
+        let mut untracked = Vec::new();
+        Self::find_untracked_recursive(Path::new(Self::TEST_ROOT), tracked_files, &mut untracked)?;
+        untracked.sort();
+        Ok(untracked)
+    }
+    
+    fn find_untracked_recursive(
+        dir: &Path,
+        tracked_files: &std::collections::HashSet<PathBuf>,
+        untracked_files: &mut Vec<PathBuf>,
+    ) -> Result<()> {
+        if !dir.exists() || !dir.is_dir() {
+            return Ok(());
+        }
+        
+        for entry in std::fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                // Skip build directory
+                if path.file_name() == Some(std::ffi::OsStr::new(Self::BUILD_DIR)) {
+                    continue;
+                }
+                // Recursively search subdirectories
+                Self::find_untracked_recursive(&path, tracked_files, untracked_files)?;
+            } else if path.extension() == Some(std::ffi::OsStr::new("c")) {
+                // Check if this C file is tracked
+                if !tracked_files.contains(&path) {
+                    untracked_files.push(path);
+                }
+            }
+        }
+        
+        Ok(())
+    }
+}
+
+// Now update the functions to use TestFinder
+fn find_program_file(program_name: &str) -> Result<PathBuf> {
+    TestFinder::find_c_file(program_name)
+}
+
 fn find_test_file(test_name: &str, tests_file: &Path) -> Result<PathBuf> {
     // Try to load config and find test
     if let Ok(config) = config::load_tests(tests_file) {
@@ -573,22 +869,14 @@ fn find_test_file(test_name: &str, tests_file: &Path) -> Result<PathBuf> {
         }
     }
     
-    // Try direct paths
-    let name = test_name.strip_suffix(".c").unwrap_or(test_name);
-    let possible_paths = [
-        format!("c-test/tests/{}.c", name),
-        format!("c-test/tests-known-failures/{}.c", name),
-        format!("tests/{}.c", name),
-        format!("tests-known-failures/{}.c", name),
-        test_name.to_string(),
-    ];
+    // Fall back to file search
+    TestFinder::find_c_file(test_name)
+}
+
+fn find_test_file_in_hierarchy(file: &PathBuf) -> Result<PathBuf> {
+    let name = file.file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| anyhow::anyhow!("Invalid file name"))?;
     
-    for path_str in &possible_paths {
-        let path = Path::new(path_str);
-        if path.exists() {
-            return Ok(path.to_path_buf());
-        }
-    }
-    
-    anyhow::bail!("Test '{}' not found", test_name)
+    TestFinder::find_c_file(name)
 }

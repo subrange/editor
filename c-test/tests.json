@@ -1,632 +1,632 @@
 {
   "tests": [
     {
-      "file": "tests/test_inline_asm.c",
-      "expected": "Y\n",
-      "use_runtime": false,
-      "description": "Test inline assembly support"
-    },
-    {
-      "file": "tests/test_runtime_simple.c",
-      "expected": "RT\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_runtime_full.c",
-      "expected": "Hi!\nOK\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_external_putchar.c",
-      "expected": "Hi\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_puts_simple.c",
-      "expected": "ABC\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_minimal_insert.c",
-      "expected": "Pass: 1\nPass: 2\nPass: 3\nPass: 4\n0W\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_if_else_simple.c",
-      "expected": "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_loops.c",
-      "expected": "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_sizeof_simple.c",
-      "expected": "1 2 4 6\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_globals.c",
-      "expected": "*A\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_strings.c",
-      "expected": "Hi!\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_m3_comprehensive.c",
-      "expected": "M3: OK!\nABC\nGood!\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_add.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_array_decl.c",
-      "expected": "123\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_array_index_gep.c",
-      "expected": "YYY\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_array_bank_crossing.c",
-      "expected": "YYYYY\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_while_simple.c",
-      "expected": "YY\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_hello.c",
-      "expected": "Hello\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_simple_putchar.c",
-      "expected": "AB\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_address_of.c",
-      "expected": "OK\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_struct_basic.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_array_init.c",
-      "expected": "1234\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_sizeof_verify.c",
-      "expected": "1:Y\n2:Y\n3:Y\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_pointers_comprehensive.c",
-      "expected": "12345\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_while_debug.c",
-      "expected": "ABL0L1L2C\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_sizeof.c",
-      "expected": "123456\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_sizeof_final.c",
-      "expected": "YYYYYYYYY\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_strings_addr.c",
-      "expected": "A",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_pointer_arithmetic_basic.c",
-      "expected": "12345\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_pointer_bank_crossing.c",
-      "expected": "12345\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_if_else.c",
-      "expected": "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_list_sim.c",
-      "expected": "ABC\nAXBC\nABC\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_list_sim_functions.c",
-      "expected": "ABC\nAXBC\nABC\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_puts.c",
-      "expected": "Hello\nWorld\nTest!\n\nX\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_pointer_provenance.c",
-      "expected": "GSSS\n",
-      "use_runtime": true,
-      "description": "Test pointer provenance with fat pointers"
-    },
-    {
-      "file": "tests/test_pointer_phi.c",
-      "expected": "1234\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_pointer_swap_simple.c",
-      "expected": "21\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_inline_swap_debug.c",
-      "expected": "12 21\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_struct_inline.c",
-      "expected": "YY\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_struct_simple.c",
-      "expected": "12345\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_puts_debug.c",
-      "expected": "ABC\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_puts_string_literal.c",
-      "expected": "XYZ\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test-cond.c",
+      "file": "tests/core/control-flow/test-cond.c",
       "expected": "T",
       "use_runtime": true,
       "description": null
     },
     {
-      "file": "tests/test_pointer_gritty.c",
-      "expected": "7",
+      "file": "tests/core/functions/test___internals.c",
+      "expected": "AB\nC",
       "use_runtime": true,
-      "description": null
+      "description": "Added via command line"
     },
     {
-      "file": "tests/test_bool.c",
-      "expected": "12\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_bool_or.c",
+      "file": "tests/core/arithmetic/test_add.c",
       "expected": "Y\n",
       "use_runtime": true,
       "description": null
     },
     {
-      "file": "tests/test_complex_bool.c",
-      "expected": "12345\n",
+      "file": "tests/core/arithmetic/test_address_of.c",
+      "expected": "OK\n",
       "use_runtime": true,
       "description": null
     },
     {
-      "file": "tests/test_complex_simple.c",
+      "file": "tests/memory/arrays/test_array_bank_crossing.c",
+      "expected": "YYYYY\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/arrays/test_array_decl.c",
       "expected": "123\n",
       "use_runtime": true,
       "description": null
     },
     {
-      "file": "tests/test_mul.c",
-      "expected": "Y",
+      "file": "tests/memory/arrays/test_array_index_gep.c",
+      "expected": "YYY\n",
       "use_runtime": true,
       "description": null
     },
     {
-      "file": "tests/test_puts_string.c",
-      "expected": "ABC\nHello\n!\n",
+      "file": "tests/memory/arrays/test_array_init.c",
+      "expected": "1234\n",
       "use_runtime": true,
       "description": null
     },
     {
-      "file": "tests/test_pointer_swap.c",
-      "expected": "AB\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_strings_simple.c",
-      "expected": "Hello!\n",
-      "use_runtime": true,
-      "description": null
-    },
-    {
-      "file": "tests/test_real_while_loop.c",
-      "expected": "I3\nI2\nAXBC\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_minimal_bug.c",
-      "expected": "ABC\nAXBC\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_ultra_minimal.c",
-      "expected": "AXBC\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_pointer_param.c",
-      "expected": "C\nC\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_loop_issue.c",
-      "expected": "AXBC\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_loop_debug.c",
-      "expected": "S3\nB3:C>3\nA3=C\nB2:B>2\nA2=B\nF:AXBC\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_array_write_loop.c",
+      "file": "tests/memory/arrays/test_array_write_loop.c",
       "expected": "C\nB\nC\nL3:B>3\nL2:B>2\nF:ABBB\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_loop_condition.c",
-      "expected": "Y\nY\nN\nL:\n3\n2\nE\n",
+      "file": "tests/core/control-flow/test_bool.c",
+      "expected": "12\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/control-flow/test_bool_or.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/types/test_cast_basic.c",
+      "expected": "YYY\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_simple_param_loop.c",
-      "expected": "B\n",
+      "file": "tests/core/types/test_cast_pointer.c",
+      "expected": "Y\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_minimal_shift.c",
-      "expected": "AXBC\n",
+      "file": "tests/core/control-flow/test_complex_bool.c",
+      "expected": "12345\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/functions/test_complex_declarator.c",
+      "expected": "Y\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_shift_with_loop.c",
-      "expected": "S\n1:3\n2:2\nE\nAXBC\n",
+      "file": "tests/integration/test_complex_simple.c",
+      "expected": "123\n",
       "use_runtime": true,
-      "description": "Added via command line"
+      "description": null
     },
     {
-      "file": "tests/test_s2_kitchen_sink.c",
-      "expected": "=== S2 KITCHEN SINK TEST ===\nT1: Locals\nLOCAL\nT2: Globals\nG\nGLOBAL\n42\nT3: Evil ptrs\nP999\nT4: Arrays\nD\nT5: Shift\nXABC\nT6: Nested\n00 01 02 \n10 11 12 \nT7: Conds\nYYY\nT8: Math\n19\nT9: Recur\n120\nT10: Strings\nHELLO\nINIT\nT11: Complex\n3 123\nT12: For\n01234\nT13: Break\nB0B1B2\nT14: PtrPtr\n84\nT15: Mixed\nMIX\nT17: Unary\n1\nT18: Chars\nA\n\tTAB\nT19: DoWhile\nD0D1D2\nT20: IfElse\nTWO\n=== END KITCHEN SINK ===\n",
+      "file": "tests/runtime/test_external_putchar.c",
+      "expected": "Hi\n",
       "use_runtime": true,
-      "description": "Added via command line"
+      "description": null
     },
     {
-      "file": "tests/test_global_string_debug.c",
+      "file": "tests/advanced/globals/test_global_string_debug.c",
       "expected": "Testing global strings:\nT1: global_str1:\nHELLO\nT2: global_str2:\nWORLD\nT3: global_ptr:\n\n\u0001\nT4: Char by char:\nHELLO\nT5: Check null:\nYES - null terminated\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_pointers_evil.c",
-      "expected": "YYYYYYYYYYYYYYYY\n",
+      "file": "tests/advanced/globals/test_globals.c",
+      "expected": "*A\n",
       "use_runtime": true,
-      "description": "Test EVERYTHING that can go wrong with pointers. And it does."
+      "description": null
     },
     {
-      "file": "tests/test_increment_simple.c",
+      "file": "tests/core/functions/test_hello.c",
+      "expected": "Hello\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/control-flow/test_if_else.c",
+      "expected": "1:T 2:F 3:T 4:F 5:A 6:2 7:T 8:T 9:T Y\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/control-flow/test_if_else_simple.c",
+      "expected": "1:T\n2:F\n3:T\n4:F\n5:A\n6:2\n7:OK\n8:Y\n9:T\nA:T\nB:F\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/arithmetic/test_increment_all.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/core/arithmetic/test_increment_simple.c",
       "expected": "1234\n",
       "use_runtime": true,
       "description": "Simple test for increment operators"
     },
     {
-      "file": "tests/test_increment_values.c",
+      "file": "tests/core/arithmetic/test_increment_values.c",
       "expected": "YYYY\n",
       "use_runtime": true,
       "description": "Test increment and decrement operators with value checking"
     },
     {
-      "file": "tests/test_cast_pointer.c",
+      "file": "tests/advanced/inline-asm/test_inline_asm.c",
       "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
+      "use_runtime": false,
+      "description": "Test inline assembly support"
     },
     {
-      "file": "tests/test_cast_basic.c",
+      "file": "tests/advanced/inline-asm/test_inline_asm_multiline_simple.c",
       "expected": "YYY\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_struct_nested.c",
-      "expected": "123456\n",
+      "file": "tests/advanced/inline-asm/test_inline_asm_nolabels.c",
+      "expected": "OK\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_struct_pointer_members.c",
-      "expected": "1234567\n",
+      "file": "tests/advanced/inline-asm/test_inline_asm_syntax.c",
+      "expected": "OK\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_struct_array_fields.c",
-      "expected": "12345678\n",
+      "file": "tests/core/functions/test_inline_swap_debug.c",
+      "expected": "12 21\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/functions/test_list_sim.c",
+      "expected": "ABC\nAXBC\nABC\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/functions/test_list_sim_functions.c",
+      "expected": "ABC\nAXBC\nABC\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/control-flow/test_loop_condition.c",
+      "expected": "Y\nY\nN\nL:\n3\n2\nE\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_struct_evil.c",
-      "expected": "123456789ABC\n",
+      "file": "tests/core/control-flow/test_loop_debug.c",
+      "expected": "S3\nB3:C>3\nA3=C\nB2:B>2\nA2=B\nF:AXBC\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_struct_offsets.c",
-      "expected": "123456789\n",
+      "file": "tests/core/control-flow/test_loop_issue.c",
+      "expected": "AXBC\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_struct_basic_pointer.c",
-      "expected": "1234\n",
+      "file": "tests/core/control-flow/test_loops.c",
+      "expected": "W:012\nF:ABC\nD:XYZ\nN:00 01 10 11 \nB:01\nC:0134\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/integration/test_m3_comprehensive.c",
+      "expected": "M3: OK!\nABC\nGood!\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/functions/test_minimal_bug.c",
+      "expected": "ABC\nAXBC\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_struct_nested_minimal.c",
+      "file": "tests/core/functions/test_minimal_insert.c",
+      "expected": "Pass: 1\nPass: 2\nPass: 3\nPass: 4\n0W\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/functions/test_minimal_shift.c",
+      "expected": "AXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/core/arithmetic/test_mul.c",
+      "expected": "Y",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/pointers/test_null_pointer.c",
       "expected": "Y\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_struct_offset_debug.c",
-      "expected": "1234\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_struct_nested_address.c",
-      "expected": "123456\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_struct_evil_minimal.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_struct_evil_minimal2.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_struct_double_indirection.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_null_pointer_basic.c",
-      "expected": "123456\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_null_pointer_comparison.c",
-      "expected": "123456\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_null_pointer_arithmetic.c",
+      "file": "tests/memory/pointers/test_null_pointer_arithmetic.c",
       "expected": "12345\n",
       "use_runtime": true,
       "description": "NULL pointer arithmetic tests"
     },
     {
-      "file": "tests/test_null_pointer_cast.c",
+      "file": "tests/memory/pointers/test_null_pointer_basic.c",
+      "expected": "123456\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/pointers/test_null_pointer_cast.c",
       "expected": "12345\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_null_pointer_diff.c",
+      "file": "tests/memory/pointers/test_null_pointer_comparison.c",
+      "expected": "123456\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/pointers/test_null_pointer_diff.c",
       "expected": "Y\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_complex_declarator.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_null_pointer.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_return_ptr_deref.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_pointer_diff.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_increment_all.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_ptr_diff_context.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_s3_kitchen_sink.c",
-      "expected": "=== S3 KITCHEN SINK TEST ===\nT1: Locals\nLOCAL\nT2: Globals\nG\nGLOBAL\n42\nT3: Evil ptrs\nP999\nT4: Arrays\nD\nT5: Shift\nXABC\nT6: Structs\nY\nT7: Nested\nYTEST\nT8: StructArr\nY\nT9: Casts\nAY\nT10: PtrCast\nYBA\nT11: NULL\nYYY\nT12: PtrArith\nYY5\nT13: PtrCmp\nYYY\nT14: Conds\nYYY\nT15: Math\n119\nT16: Recur\n120\nT17: Strings\nHELLO\nINIT\nT18: For\n01234\nT19: Break\nB0B1B2\nT20: Unary\n1\nT21: DoWhile\nD0D1D2\nT22: Typedef\nOK\nT23: AddrOf\nYY\nT24: StructAsg\nY\nT25: Mixed\nYYY\n=== END S3 KITCHEN SINK ===\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_s3_essentials.c",
-      "expected": "=== S3 ESSENTIALS ===\nT1: Struct\n34\nT2: StructPtr\n56\nT3: Nested\n1278\nT4: Cast\nAY\nT5: PtrCast\nY\nT6: NULL\nYY\nT7: PtrArith\n323\nT8: PtrCmp\nYYY\nT9: StructArr\n3456\nT10: AddrOf\n98\n=== END S3 ESSENTIALS ===\n",
-      "use_runtime": true,
-      "description": "Added via command line"
-    },
-    {
-      "file": "tests/test_struct_assignment.c",
-      "expected": "Y\n",
-      "use_runtime": true,
-      "description": "Struct assignment bug - copies incorrectly"
-    },
-    {
-      "file": "tests/test_packed_char.c",
+      "file": "tests/core/types/test_packed_char.c",
       "expected": "BDAC\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_inline_asm_multiline_simple.c",
-      "expected": "YYY\n",
+      "file": "tests/memory/pointers/test_pointer_arithmetic_basic.c",
+      "expected": "12345\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/pointers/test_pointer_bank_crossing.c",
+      "expected": "12345\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/pointers/test_pointer_diff.c",
+      "expected": "Y\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_inline_asm_syntax.c",
-      "expected": "OK\n",
+      "file": "tests/memory/pointers/test_pointer_gritty.c",
+      "expected": "7",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/pointers/test_pointer_param.c",
+      "expected": "C\nC\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test_inline_asm_nolabels.c",
-      "expected": "OK\n",
+      "file": "tests/memory/pointers/test_pointer_phi.c",
+      "expected": "1234\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/pointers/test_pointer_provenance.c",
+      "expected": "GSSS\n",
+      "use_runtime": true,
+      "description": "Test pointer provenance with fat pointers"
+    },
+    {
+      "file": "tests/memory/pointers/test_pointer_swap.c",
+      "expected": "AB\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/pointers/test_pointer_swap_simple.c",
+      "expected": "21\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/pointers/test_pointers_comprehensive.c",
+      "expected": "12345\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/pointers/test_pointers_evil.c",
+      "expected": "YYYYYYYYYYYYYYYY\n",
+      "use_runtime": true,
+      "description": "Test EVERYTHING that can go wrong with pointers. And it does."
+    },
+    {
+      "file": "tests/memory/pointers/test_ptr_diff_context.c",
+      "expected": "Y\n",
       "use_runtime": true,
       "description": "Added via command line"
     },
     {
-      "file": "tests/test___internals.c",
-      "expected": "AB\nC",
+      "file": "tests/advanced/strings/test_puts.c",
+      "expected": "Hello\nWorld\nTest!\n\nX\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/advanced/strings/test_puts_debug.c",
+      "expected": "ABC\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/advanced/strings/test_puts_simple.c",
+      "expected": "ABC\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/advanced/strings/test_puts_string.c",
+      "expected": "ABC\nHello\n!\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/advanced/strings/test_puts_string_literal.c",
+      "expected": "XYZ\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/control-flow/test_real_while_loop.c",
+      "expected": "I3\nI2\nAXBC\n",
       "use_runtime": true,
       "description": "Added via command line"
+    },
+    {
+      "file": "tests/core/functions/test_return_ptr_deref.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/runtime/test_runtime_full.c",
+      "expected": "Hi!\nOK\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/runtime/test_runtime_simple.c",
+      "expected": "RT\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/integration/test_s2_kitchen_sink.c",
+      "expected": "=== S2 KITCHEN SINK TEST ===\nT1: Locals\nLOCAL\nT2: Globals\nG\nGLOBAL\n42\nT3: Evil ptrs\nP999\nT4: Arrays\nD\nT5: Shift\nXABC\nT6: Nested\n00 01 02 \n10 11 12 \nT7: Conds\nYYY\nT8: Math\n19\nT9: Recur\n120\nT10: Strings\nHELLO\nINIT\nT11: Complex\n3 123\nT12: For\n01234\nT13: Break\nB0B1B2\nT14: PtrPtr\n84\nT15: Mixed\nMIX\nT17: Unary\n1\nT18: Chars\nA\n\tTAB\nT19: DoWhile\nD0D1D2\nT20: IfElse\nTWO\n=== END KITCHEN SINK ===\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/integration/test_s3_essentials.c",
+      "expected": "=== S3 ESSENTIALS ===\nT1: Struct\n34\nT2: StructPtr\n56\nT3: Nested\n1278\nT4: Cast\nAY\nT5: PtrCast\nY\nT6: NULL\nYY\nT7: PtrArith\n323\nT8: PtrCmp\nYYY\nT9: StructArr\n3456\nT10: AddrOf\n98\n=== END S3 ESSENTIALS ===\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/integration/test_s3_kitchen_sink.c",
+      "expected": "=== S3 KITCHEN SINK TEST ===\nT1: Locals\nLOCAL\nT2: Globals\nG\nGLOBAL\n42\nT3: Evil ptrs\nP999\nT4: Arrays\nD\nT5: Shift\nXABC\nT6: Structs\nY\nT7: Nested\nYTEST\nT8: StructArr\nY\nT9: Casts\nAY\nT10: PtrCast\nYBA\nT11: NULL\nYYY\nT12: PtrArith\nYY5\nT13: PtrCmp\nYYY\nT14: Conds\nYYY\nT15: Math\n119\nT16: Recur\n120\nT17: Strings\nHELLO\nINIT\nT18: For\n01234\nT19: Break\nB0B1B2\nT20: Unary\n1\nT21: DoWhile\nD0D1D2\nT22: Typedef\nOK\nT23: AddrOf\nYY\nT24: StructAsg\nY\nT25: Mixed\nYYY\n=== END S3 KITCHEN SINK ===\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/core/functions/test_shift_with_loop.c",
+      "expected": "S\n1:3\n2:2\nE\nAXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/core/functions/test_simple_param_loop.c",
+      "expected": "B\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/core/functions/test_simple_putchar.c",
+      "expected": "AB\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/types/test_sizeof.c",
+      "expected": "123456\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/types/test_sizeof_final.c",
+      "expected": "YYYYYYYYY\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/types/test_sizeof_simple.c",
+      "expected": "1 2 4 6\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/types/test_sizeof_verify.c",
+      "expected": "1:Y\n2:Y\n3:Y\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/advanced/strings/test_strings.c",
+      "expected": "Hi!\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/advanced/strings/test_strings_addr.c",
+      "expected": "A",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/advanced/strings/test_strings_simple.c",
+      "expected": "Hello!\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/structs/test_struct_array_fields.c",
+      "expected": "12345678\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_assignment.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Struct assignment bug - copies incorrectly"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_basic.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/structs/test_struct_basic_pointer.c",
+      "expected": "1234\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_double_indirection.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_evil.c",
+      "expected": "123456789ABC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_evil_minimal.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_evil_minimal2.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_inline.c",
+      "expected": "YY\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/memory/structs/test_struct_nested.c",
+      "expected": "123456\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_nested_address.c",
+      "expected": "123456\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_nested_minimal.c",
+      "expected": "Y\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_offset_debug.c",
+      "expected": "1234\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_offsets.c",
+      "expected": "123456789\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_pointer_members.c",
+      "expected": "1234567\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/memory/structs/test_struct_simple.c",
+      "expected": "12345\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/functions/test_ultra_minimal.c",
+      "expected": "AXBC\n",
+      "use_runtime": true,
+      "description": "Added via command line"
+    },
+    {
+      "file": "tests/core/control-flow/test_while_debug.c",
+      "expected": "ABL0L1L2C\n",
+      "use_runtime": true,
+      "description": null
+    },
+    {
+      "file": "tests/core/control-flow/test_while_simple.c",
+      "expected": "YY\n",
+      "use_runtime": true,
+      "description": null
     }
   ],
   "known_failures": [
     {
-      "file": "tests-known-failures/test_typedef.c",
-      "description": "Typedef support not implemented"
+      "file": "examples/sierpinski.c",
+      "description": "Added via command line"
     },
     {
-      "file": "tests-known-failures/test_typedef_simple.c",
-      "description": "Typedef support not implemented"
-    },
-    {
-      "file": "tests-known-failures/test_struct_simple2.c",
-      "description": "Uses typedef struct"
-    },
-    {
-      "file": "tests-known-failures/test_struct_inline_simple.c",
+      "file": "known-failures/typedef/test_struct_inline_simple.c",
       "description": "Inline struct definitions not supported"
     },
     {
-      "file": "tests-known-failures/sierpinski.c",
-      "description": "Added via command line"
+      "file": "known-failures/typedef/test_struct_simple2.c",
+      "description": "Uses typedef struct"
+    },
+    {
+      "file": "known-failures/typedef/test_typedef.c",
+      "description": "Typedef support not implemented"
+    },
+    {
+      "file": "known-failures/typedef/test_typedef_simple.c",
+      "description": "Typedef support not implemented"
     }
   ]
 }

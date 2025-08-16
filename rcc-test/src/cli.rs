@@ -60,9 +60,12 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    /// Run tests (default if no command specified)
+    /// Run tests (default if no command specified) or execute programs
     Run {
-        /// Run tests matching a pattern
+        /// Programs to run (if provided, runs as programs not tests)
+        programs: Vec<String>,
+        
+        /// Run tests matching a pattern (only for test mode)
         #[arg(short, long)]
         filter: Option<String>,
     },
@@ -117,6 +120,13 @@ pub enum Command {
         
         /// New test name or path
         new_name: String,
+    },
+    
+    /// Check for test files not added to the test suite
+    Check {
+        /// Show detailed output
+        #[arg(short, long)]
+        verbose: bool,
     },
 }
 
