@@ -15,8 +15,8 @@ pub fn draw(f: &mut Frame, app: &mut TuiApp) {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(10),
-                Constraint::Length(15), // Help window
+                Constraint::Min(15),
+                Constraint::Length(12), // Help window
             ])
             .split(size)
     } else {
@@ -30,8 +30,8 @@ pub fn draw(f: &mut Frame, app: &mut TuiApp) {
     let top_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(30), // Test list
-            Constraint::Percentage(70), // Details/Output
+            Constraint::Percentage(35), // Test list
+            Constraint::Percentage(65), // Details/Output
         ])
         .split(main_chunks[0]);
 
@@ -91,7 +91,7 @@ fn draw_categories(f: &mut Frame, area: Rect, app: &TuiApp) {
         .block(Block::default().borders(Borders::ALL).title("Categories"))
         .select(selected_idx)
         .style(Style::default().fg(Color::Gray))
-        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+        .highlight_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
 
     f.render_widget(tabs, area);
 }
@@ -112,7 +112,7 @@ fn draw_test_list(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         // Add test result indicator
         if let Some(result) = app.test_results.get(test_name) {
             if result.passed {
-                spans.push(Span::styled("✓ ", Style::default().fg(Color::Green)));
+                spans.push(Span::styled("✓ ", Style::default().fg(Color::Rgb(0, 200, 0))));
             } else {
                 spans.push(Span::styled("✗ ", Style::default().fg(Color::Red)));
             }
@@ -165,7 +165,7 @@ fn draw_test_list(f: &mut Frame, area: Rect, app: &mut TuiApp) {
     }
 
     let selected_style = if app.focused_pane == FocusedPane::TestList {
-        Style::default().bg(Color::DarkGray).add_modifier(Modifier::BOLD)
+        Style::default().bg(Color::Rgb(60, 60, 60)).add_modifier(Modifier::BOLD)
     } else {
         Style::default().add_modifier(Modifier::DIM)
     };
@@ -179,9 +179,9 @@ fn draw_test_list(f: &mut Frame, area: Rect, app: &mut TuiApp) {
                     app.test_config.tests.len() + app.test_config.known_failures.len()
                 ))
                 .border_style(if app.focused_pane == FocusedPane::TestList {
-                    Style::default().fg(Color::Yellow)
+                    Style::default().fg(Color::Cyan)
                 } else {
-                    Style::default()
+                    Style::default().fg(Color::Gray)
                 })
         )
         .highlight_style(selected_style)
@@ -198,17 +198,12 @@ fn draw_test_list(f: &mut Frame, area: Rect, app: &mut TuiApp) {
 fn draw_details_panel(f: &mut Frame, area: Rect, app: &mut TuiApp) {
     // Tab headers for different views
     let tab_titles = vec!["Source", "ASM", "IR", "Output", "Details"];
-    
-    // Auto-switch to Output tab if we have output and it's not already selected
-    if !app.output_buffer.is_empty() && app.selected_tab != 3 && app.focused_pane != FocusedPane::TestDetails {
-        app.selected_tab = 3;
-    }
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),  // Tabs
-            Constraint::Min(1),     // Content
+            Constraint::Min(5),     // Content
         ])
         .split(area);
 
@@ -216,7 +211,7 @@ fn draw_details_panel(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         .block(Block::default().borders(Borders::ALL))
         .select(app.selected_tab)
         .style(Style::default().fg(Color::Gray))
-        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+        .highlight_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
 
     f.render_widget(tabs, chunks[0]);
 
@@ -261,13 +256,20 @@ fn draw_source_code(f: &mut Frame, area: Rect, app: &TuiApp) {
                 Block::default()
                     .borders(Borders::ALL)
                     .title(format!(" Source: {} ", test_path.display()))
+                    .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 0 {
+                        Style::default().fg(Color::Cyan)
+                    } else {
+                        Style::default().fg(Color::Gray)
+                    })
             )
+            .scroll((app.source_scroll as u16, 0))
             .wrap(Wrap { trim: false });
 
         f.render_widget(paragraph, area);
     } else {
         let paragraph = Paragraph::new("No test selected")
-            .block(Block::default().borders(Borders::ALL).title(" Source "));
+            .block(Block::default().borders(Borders::ALL).title(" Source ")
+                .border_style(Style::default().fg(Color::Gray)));
         f.render_widget(paragraph, area);
     }
 }
@@ -297,13 +299,20 @@ fn draw_asm_code(f: &mut Frame, area: Rect, app: &TuiApp) {
                 Block::default()
                     .borders(Borders::ALL)
                     .title(format!(" ASM: {}.asm ", test_name))
+                    .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 1 {
+                        Style::default().fg(Color::Cyan)
+                    } else {
+                        Style::default().fg(Color::Gray)
+                    })
             )
+            .scroll((app.asm_scroll as u16, 0))
             .wrap(Wrap { trim: false });
 
         f.render_widget(paragraph, area);
     } else {
         let paragraph = Paragraph::new("No test selected")
-            .block(Block::default().borders(Borders::ALL).title(" ASM "));
+            .block(Block::default().borders(Borders::ALL).title(" ASM ")
+                .border_style(Style::default().fg(Color::Gray)));
         f.render_widget(paragraph, area);
     }
 }
@@ -333,13 +342,20 @@ fn draw_ir_code(f: &mut Frame, area: Rect, app: &TuiApp) {
                 Block::default()
                     .borders(Borders::ALL)
                     .title(format!(" IR: {}.ir ", test_name))
+                    .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 2 {
+                        Style::default().fg(Color::Cyan)
+                    } else {
+                        Style::default().fg(Color::Gray)
+                    })
             )
+            .scroll((app.ir_scroll as u16, 0))
             .wrap(Wrap { trim: false });
 
         f.render_widget(paragraph, area);
     } else {
         let paragraph = Paragraph::new("No test selected")
-            .block(Block::default().borders(Borders::ALL).title(" IR "));
+            .block(Block::default().borders(Borders::ALL).title(" IR ")
+                .border_style(Style::default().fg(Color::Gray)));
         f.render_widget(paragraph, area);
     }
 }
@@ -369,10 +385,10 @@ fn draw_output(f: &mut Frame, area: Rect, app: &TuiApp) {
             Block::default()
                 .borders(Borders::ALL)
                 .title(title)
-                .border_style(if app.focused_pane == FocusedPane::Output {
-                    Style::default().fg(Color::Yellow)
+                .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 3 {
+                    Style::default().fg(Color::Cyan)
                 } else {
-                    Style::default()
+                    Style::default().fg(Color::Gray)
                 })
         )
         .scroll((app.output_scroll as u16, 0))
@@ -420,7 +436,7 @@ fn draw_test_details(f: &mut Frame, area: Rect, app: &TuiApp) {
                 lines.push(Line::from(vec![
                     Span::styled("Result: ", Style::default().add_modifier(Modifier::BOLD)),
                     if result.passed {
-                        Span::styled("PASSED", Style::default().fg(Color::Green))
+                        Span::styled("PASSED", Style::default().fg(Color::Rgb(0, 200, 0)))
                     } else {
                         Span::styled("FAILED", Style::default().fg(Color::Red))
                     },
@@ -444,13 +460,20 @@ fn draw_test_details(f: &mut Frame, area: Rect, app: &TuiApp) {
         }
 
         let paragraph = Paragraph::new(lines)
-            .block(Block::default().borders(Borders::ALL).title(" Test Details "))
+            .block(Block::default().borders(Borders::ALL).title(" Test Details ")
+                .border_style(if app.focused_pane == FocusedPane::RightPanel && app.selected_tab == 4 {
+                    Style::default().fg(Color::Cyan)
+                } else {
+                    Style::default().fg(Color::Gray)
+                }))
+            .scroll((app.details_scroll as u16, 0))
             .wrap(Wrap { trim: true });
 
         f.render_widget(paragraph, area);
     } else {
         let paragraph = Paragraph::new("No test selected")
-            .block(Block::default().borders(Borders::ALL).title(" Test Details "));
+            .block(Block::default().borders(Borders::ALL).title(" Test Details ")
+                .border_style(Style::default().fg(Color::Gray)));
         f.render_widget(paragraph, area);
     }
 }
@@ -461,7 +484,7 @@ fn draw_filter_overlay(f: &mut Frame, area: Rect, app: &TuiApp) {
     let block = Block::default()
         .title(" Filter Tests ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Yellow));
+        .border_style(Style::default().fg(Color::Cyan));
 
     let input = Paragraph::new(app.filter_text.as_str())
         .style(Style::default())
@@ -497,7 +520,7 @@ fn draw_help(f: &mut Frame, area: Rect) {
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Help ")
-                .border_style(Style::default().fg(Color::Green))
+                .border_style(Style::default().fg(Color::Cyan))
         )
         .alignment(Alignment::Left);
 
@@ -516,8 +539,8 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
 
     // Mode indicator
     let (mode_text, mode_style) = match app.mode {
-        AppMode::Normal => ("NORMAL", Style::default().bg(Color::Blue).fg(Color::White)),
-        AppMode::Filter => ("FILTER", Style::default().bg(Color::Magenta).fg(Color::White)),
+        AppMode::Normal => ("NORMAL", Style::default().bg(Color::Blue).fg(Color::Black)),
+        AppMode::Filter => ("FILTER", Style::default().bg(Color::Magenta).fg(Color::Black)),
         AppMode::Running => ("RUNNING", Style::default().bg(Color::Green).fg(Color::Black)),
         AppMode::SelectCategory => ("CATEGORY", Style::default().bg(Color::Cyan).fg(Color::Black)),
     };
@@ -541,7 +564,7 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
 
     // Quick help
     let help = Paragraph::new(" ? for help | q to quit ")
-        .style(Style::default().fg(Color::DarkGray))
+        .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Right);
     f.render_widget(help, status_chunks[2]);
 }

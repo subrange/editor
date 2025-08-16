@@ -7,8 +7,7 @@ use crate::compiler::ToolPaths;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FocusedPane {
     TestList,
-    TestDetails,
-    Output,
+    RightPanel,  // Contains all tabs: Source, ASM, IR, Output, Details
     Filter,
 }
 
@@ -126,6 +125,10 @@ pub struct TuiApp {
     pub selected_test: usize,
     pub test_scroll: usize,
     pub output_scroll: usize,
+    pub source_scroll: usize,
+    pub asm_scroll: usize,
+    pub ir_scroll: usize,
+    pub details_scroll: usize,
     pub category_scroll: usize,
 
     // Categories and filtering
@@ -164,6 +167,10 @@ impl TuiApp {
             selected_test: 0,
             test_scroll: 0,
             output_scroll: 0,
+            source_scroll: 0,
+            asm_scroll: 0,
+            ir_scroll: 0,
+            details_scroll: 0,
             category_scroll: 0,
 
             selected_category: TestCategory::All,

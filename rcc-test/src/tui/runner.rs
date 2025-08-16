@@ -1,6 +1,6 @@
 use std::io;
 use std::path::Path;
-use std::sync::{mpsc, Arc};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 use anyhow::Result;
@@ -164,19 +164,41 @@ impl TuiRunner {
                 self.app.show_help = !self.app.show_help;
             }
             KeyCode::Char('j') | KeyCode::Down => {
-                if self.app.focused_pane == FocusedPane::Output {
-                    // Scroll output down
-                    self.app.output_scroll = self.app.output_scroll.saturating_add(1);
-                } else {
-                    self.app.move_selection_down();
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        // Scroll the currently selected tab
+                        match self.app.selected_tab {
+                            0 => self.app.source_scroll = self.app.source_scroll.saturating_add(1),
+                            1 => self.app.asm_scroll = self.app.asm_scroll.saturating_add(1),
+                            2 => self.app.ir_scroll = self.app.ir_scroll.saturating_add(1),
+                            3 => self.app.output_scroll = self.app.output_scroll.saturating_add(1),
+                            4 => self.app.details_scroll = self.app.details_scroll.saturating_add(1),
+                            _ => {}
+                        }
+                    }
+                    FocusedPane::TestList => {
+                        self.app.move_selection_down();
+                    }
+                    _ => {}
                 }
             }
             KeyCode::Char('k') | KeyCode::Up => {
-                if self.app.focused_pane == FocusedPane::Output {
-                    // Scroll output up
-                    self.app.output_scroll = self.app.output_scroll.saturating_sub(1);
-                } else {
-                    self.app.move_selection_up();
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        // Scroll the currently selected tab
+                        match self.app.selected_tab {
+                            0 => self.app.source_scroll = self.app.source_scroll.saturating_sub(1),
+                            1 => self.app.asm_scroll = self.app.asm_scroll.saturating_sub(1),
+                            2 => self.app.ir_scroll = self.app.ir_scroll.saturating_sub(1),
+                            3 => self.app.output_scroll = self.app.output_scroll.saturating_sub(1),
+                            4 => self.app.details_scroll = self.app.details_scroll.saturating_sub(1),
+                            _ => {}
+                        }
+                    }
+                    FocusedPane::TestList => {
+                        self.app.move_selection_up();
+                    }
+                    _ => {}
                 }
             }
             KeyCode::Enter => {
@@ -196,72 +218,105 @@ impl TuiRunner {
             }
             KeyCode::Tab => {
                 self.app.focused_pane = match self.app.focused_pane {
-                    FocusedPane::TestList => FocusedPane::Output,  // Go directly to Output
-                    FocusedPane::TestDetails => FocusedPane::Output,
-                    FocusedPane::Output => FocusedPane::TestList,
+                    FocusedPane::TestList => FocusedPane::RightPanel,
+                    FocusedPane::RightPanel => FocusedPane::TestList,
                     FocusedPane::Filter => FocusedPane::TestList,
                 };
             }
             KeyCode::Char('1') => {
                 self.app.selected_tab = 0;  // Source
-                self.app.focused_pane = FocusedPane::TestDetails;
             }
             KeyCode::Char('2') => {
                 self.app.selected_tab = 1;  // ASM
-                self.app.focused_pane = FocusedPane::TestDetails;
             }
             KeyCode::Char('3') => {
                 self.app.selected_tab = 2;  // IR
-                self.app.focused_pane = FocusedPane::TestDetails;
             }
             KeyCode::Char('4') => {
                 self.app.selected_tab = 3;  // Output
-                self.app.focused_pane = FocusedPane::Output;
             }
             KeyCode::Char('5') => {
                 self.app.selected_tab = 4;  // Details
-                self.app.focused_pane = FocusedPane::TestDetails;
             }
             KeyCode::PageDown => {
-                if self.app.focused_pane == FocusedPane::Output {
-                    // Scroll output down by page
-                    self.app.output_scroll = self.app.output_scroll.saturating_add(20);
-                } else {
-                    for _ in 0..10 {
-                        self.app.move_selection_down();
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            0 => self.app.source_scroll = self.app.source_scroll.saturating_add(20),
+                            1 => self.app.asm_scroll = self.app.asm_scroll.saturating_add(20),
+                            2 => self.app.ir_scroll = self.app.ir_scroll.saturating_add(20),
+                            3 => self.app.output_scroll = self.app.output_scroll.saturating_add(20),
+                            4 => self.app.details_scroll = self.app.details_scroll.saturating_add(20),
+                            _ => {}
+                        }
                     }
+                    FocusedPane::TestList => {
+                        for _ in 0..10 {
+                            self.app.move_selection_down();
+                        }
+                    }
+                    _ => {}
                 }
             }
             KeyCode::PageUp => {
-                if self.app.focused_pane == FocusedPane::Output {
-                    // Scroll output up by page
-                    self.app.output_scroll = self.app.output_scroll.saturating_sub(20);
-                } else {
-                    for _ in 0..10 {
-                        self.app.move_selection_up();
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            0 => self.app.source_scroll = self.app.source_scroll.saturating_sub(20),
+                            1 => self.app.asm_scroll = self.app.asm_scroll.saturating_sub(20),
+                            2 => self.app.ir_scroll = self.app.ir_scroll.saturating_sub(20),
+                            3 => self.app.output_scroll = self.app.output_scroll.saturating_sub(20),
+                            4 => self.app.details_scroll = self.app.details_scroll.saturating_sub(20),
+                            _ => {}
+                        }
                     }
+                    FocusedPane::TestList => {
+                        for _ in 0..10 {
+                            self.app.move_selection_up();
+                        }
+                    }
+                    _ => {}
                 }
             }
             KeyCode::Home => {
-                if self.app.focused_pane == FocusedPane::Output {
-                    // Jump to beginning of output
-                    self.app.output_scroll = 0;
-                } else {
-                    self.app.selected_test = 0;
-                    self.app.ensure_selection_visible();
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            0 => self.app.source_scroll = 0,
+                            1 => self.app.asm_scroll = 0,
+                            2 => self.app.ir_scroll = 0,
+                            3 => self.app.output_scroll = 0,
+                            4 => self.app.details_scroll = 0,
+                            _ => {}
+                        }
+                    }
+                    FocusedPane::TestList => {
+                        self.app.selected_test = 0;
+                        self.app.ensure_selection_visible();
+                    }
+                    _ => {}
                 }
             }
             KeyCode::End => {
-                if self.app.focused_pane == FocusedPane::Output {
-                    // Jump to end of output
-                    let total_lines = self.app.output_buffer.lines().count();
-                    self.app.output_scroll = total_lines.saturating_sub(10);
-                } else {
-                    let total = self.app.filtered_tests.len() + self.app.filtered_failures.len();
-                    if total > 0 {
-                        self.app.selected_test = total - 1;
-                        self.app.ensure_selection_visible();
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        // Jump to end of current tab
+                        match self.app.selected_tab {
+                            3 => {
+                                let total_lines = self.app.output_buffer.lines().count();
+                                self.app.output_scroll = total_lines.saturating_sub(10);
+                            }
+                            _ => {}
+                        }
                     }
+                    FocusedPane::TestList => {
+                        let total = self.app.filtered_tests.len() + self.app.filtered_failures.len();
+                        if total > 0 {
+                            self.app.selected_test = total - 1;
+                            self.app.ensure_selection_visible();
+                        }
+                    }
+                    _ => {}
                 }
             }
             _ => {}
@@ -331,6 +386,9 @@ impl TuiRunner {
             self.app.append_output(&format!("Running test: {}\n", test_name));
             self.app.append_output(&("-".repeat(60)) );
             self.app.append_output("\n");
+            
+            // Auto-switch to Output tab when running a test
+            self.app.selected_tab = 3;
             
             self.app.running_test = Some(test_name.clone());
             self.app.mode = AppMode::Running;
@@ -503,6 +561,9 @@ impl TuiRunner {
         self.app.append_output("Running tests...\n");
         self.app.append_output(&("-".repeat(60)));
         self.app.append_output("\n");
+        
+        // Auto-switch to Output tab when running tests
+        self.app.selected_tab = 3;
         
         let tests_to_run: Vec<_> = self.app.filtered_tests.clone();
         
