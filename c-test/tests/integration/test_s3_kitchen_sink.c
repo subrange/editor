@@ -263,8 +263,8 @@ int main() {
     }
 
     // Access as char pointer
-    putchar(*cptr);
-    putchar(*(cptr) >> 8);
+    putchar(*cptr); // B
+    putchar(*(cptr) >> 8); // A. With *(cptr + 1) it would actually point out of data var
     putchar('\n');
 
     // Test 11: NULL pointer checks (NEW!)

@@ -67,6 +67,15 @@ impl SemanticAnalyzer {
                             type_definitions: &mut self.type_definitions,
                         };
                         symbol_manager.declare_global_variable(decl)?;
+                        
+                        // Analyze the initializer if present
+                        if let Some(init) = &mut decl.initializer {
+                            let expr_analyzer = expressions::ExpressionAnalyzer::new(
+                                &self.symbol_types,
+                                &self.type_definitions,
+                            );
+                            expr_analyzer.analyze_initializer(init, &decl.decl_type, &mut self.symbol_table)?;
+                        }
                     }
                 }
                 TopLevelItem::TypeDefinition { name, type_def, .. } => {

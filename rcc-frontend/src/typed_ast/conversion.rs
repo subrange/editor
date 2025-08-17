@@ -181,12 +181,21 @@ pub fn type_expression(
         ExpressionKind::Binary { op, left, right } => {
             // Trust the type that semantic analysis computed
             let result_type = expr.expr_type.clone()
-                .ok_or_else(|| TypeError::TypeMismatch("Binary expression has no type".to_string()))?;
+                .ok_or_else(|| TypeError::TypeMismatch(format!(
+                    "Binary expression has no type at {}:{} (operator: {:?})",
+                    expr.span.start.line, expr.span.start.column, op
+                )))?;
             
             let left_typed = type_expression(left, type_env)?;
             let right_typed = type_expression(right, type_env)?;
-            let left_type = left.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch("Left operand has no type".to_string()))?;
-            let right_type = right.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch("Right operand has no type".to_string()))?;
+            let left_type = left.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch(format!(
+                "Left operand has no type at {}:{} in binary expression",
+                left.span.start.line, left.span.start.column
+            )))?;
+            let right_type = right.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch(format!(
+                "Right operand has no type at {}:{} in binary expression", 
+                right.span.start.line, right.span.start.column
+            )))?;
             
             // Classify the operation based on types
             match op {
@@ -308,7 +317,10 @@ pub fn type_expression(
         ExpressionKind::Unary { op, operand } => {
             let operand_typed = type_expression(operand, type_env)?;
             let result_type = expr.expr_type.clone()
-                .ok_or_else(|| TypeError::TypeMismatch("Unary expression has no type".to_string()))?;
+                .ok_or_else(|| TypeError::TypeMismatch(format!(
+                    "Unary expression has no type at {}:{} (operator: {:?})",
+                    expr.span.start.line, expr.span.start.column, op
+                )))?;
             
             Ok(TypedExpr::Unary {
                 op: *op,

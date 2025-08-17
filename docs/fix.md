@@ -1,3 +1,4 @@
 - 2D array indexing
 - Struct initializers
+- Compiler warnings
 - 

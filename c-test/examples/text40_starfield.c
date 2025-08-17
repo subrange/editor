@@ -5,10 +5,6 @@
 #include <mmio.h>
 #include <mmio_constants.h>
 
-// Additional color that's not in the standard PICO-8 palette
-// Using light blue/cyan approximation
-#define COLOR_BLUE COLOR_BLUE
-
 #define MAX_STARS 50
 #define SCREEN_WIDTH 40
 #define SCREEN_HEIGHT 25
