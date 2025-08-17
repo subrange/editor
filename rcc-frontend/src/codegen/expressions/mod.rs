@@ -271,12 +271,92 @@ impl<'a> TypedExpressionGenerator<'a> {
                 }
             }
             
-            TypedExpr::Conditional { .. } => {
-                Err(CodegenError::UnsupportedConstruct {
-                    construct: "conditional expression (? :)".to_string(),
-                    location: rcc_common::SourceLocation::new_simple(0, 0),
+            TypedExpr::Conditional { condition, then_expr, else_expr, expr_type } => {
+                // Evaluate condition
+                let cond_value = self.generate(condition)?;
+                
+                // Convert type to IR type
+                let ir_type = convert_type_default(expr_type)?;
+                
+                // We need to transform the ternary into if-else with a temporary variable
+                // This is done by creating a temporary variable to hold the result
+                
+                // Allocate space for the result value
+                let result_ptr = self.builder.build_alloca(ir_type.clone(), None)
+                    .map_err(|e| CodegenError::InternalError {
+                        message: format!("Failed to allocate temporary for ternary: {}", e),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                
+                // Create labels for control flow
+                let then_label = self.builder.new_label();
+                let else_label = self.builder.new_label();
+                let end_label = self.builder.new_label();
+                
+                // Branch based on condition
+                self.builder.build_branch_cond(cond_value, then_label, else_label)
+                    .map_err(|e| CodegenError::InternalError {
+                        message: format!("Failed to generate conditional branch: {}", e),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                
+                // Generate then branch
+                self.builder.create_block(then_label)
+                    .map_err(|e| CodegenError::InternalError {
+                        message: format!("Failed to create then block: {}", e),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                let then_value = self.generate(then_expr)?;
+                self.builder.build_store(then_value, result_ptr.clone())
+                    .map_err(|e| CodegenError::InternalError {
+                        message: format!("Failed to store then value: {}", e),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                // Only create branch if block doesn't already have a terminator
+                if !self.builder.current_block_has_terminator() {
+                    self.builder.build_branch(end_label)
+                        .map_err(|e| CodegenError::InternalError {
+                            message: format!("Failed to branch to end: {}", e),
+                            location: rcc_common::SourceLocation::new_simple(0, 0),
+                        })?;
                 }
-                .into())
+                
+                // Generate else branch
+                self.builder.create_block(else_label)
+                    .map_err(|e| CodegenError::InternalError {
+                        message: format!("Failed to create else block: {}", e),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                let else_value = self.generate(else_expr)?;
+                self.builder.build_store(else_value, result_ptr.clone())
+                    .map_err(|e| CodegenError::InternalError {
+                        message: format!("Failed to store else value: {}", e),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                // Only create branch if block doesn't already have a terminator
+                if !self.builder.current_block_has_terminator() {
+                    self.builder.build_branch(end_label)
+                        .map_err(|e| CodegenError::InternalError {
+                            message: format!("Failed to branch to end: {}", e),
+                            location: rcc_common::SourceLocation::new_simple(0, 0),
+                        })?;
+                }
+                
+                // Create end block and load the result
+                self.builder.create_block(end_label)
+                    .map_err(|e| CodegenError::InternalError {
+                        message: format!("Failed to create end block: {}", e),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                
+                // Load the value from the temporary
+                let result = self.builder.build_load(result_ptr, ir_type)
+                    .map_err(|e| CodegenError::InternalError {
+                        message: format!("Failed to load result: {}", e),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    })?;
+                
+                Ok(Value::Temp(result))
             }
         }
     }

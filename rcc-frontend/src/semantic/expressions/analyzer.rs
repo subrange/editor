@@ -254,7 +254,10 @@ impl<'a> ExpressionAnalyzer<'a> {
         member: &str,
         location: &rcc_common::SourceLocation,
     ) -> Result<Type, CompilerError> {
-        match struct_type {
+        // First resolve the type if it's a struct reference
+        let resolved_type = self.type_analyzer.resolve_type(struct_type);
+        
+        match &resolved_type {
             Type::Struct { fields, name, .. } => {
                 // Find the field by name
                 if let Some(field) = fields.iter().find(|f| f.name == member) {

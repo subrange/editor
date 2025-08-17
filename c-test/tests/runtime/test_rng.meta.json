@@ -1,5 +1,5 @@
 {
-  "description": "Test that basic output still works with new MMIO",
   "expected": "RNG: 0x1234\nDEC: 4660\n",
+  "description": "Test that basic output still works with new MMIO",
   "use_runtime": true
 }

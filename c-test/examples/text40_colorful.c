@@ -29,13 +29,11 @@ void draw_rainbow_bar(int y) {
     };
     
     // Draw rainbow with 4 chars per color to fit in 32 chars (8 colors * 4 = 32)
-    // Using a single loop to avoid nested loop bug
-    int pos = 0;
-    while (pos < 32) {
-        int color_index = pos / 4;
-        text40_putchar_color(4 + pos, y, ' ',
-                            COLOR_BLACK, rainbow_colors[color_index]);
-        pos++;
+    for (int color = 0; color < 8; color++) {
+        for (int i = 0; i < 4; i++) {
+            text40_putchar_color(4 + color * 4 + i, y, ' ',
+                                COLOR_BLACK, rainbow_colors[color]);
+        }
     }
 }
 

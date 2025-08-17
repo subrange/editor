@@ -181,17 +181,23 @@ impl Type {
             // Exact match
             (a, b) if a == b => true,
             
+            // Struct types with same name are compatible (handle references vs definitions)
+            (Type::Struct { name: Some(name1), .. }, Type::Struct { name: Some(name2), .. }) 
+                if name1 == name2 => true,
+            
             // Integer conversions
             (a, b) if a.is_integer() && b.is_integer() => true,
             
             // Pointer conversions
             (Type::Pointer { target: a, .. }, Type::Pointer { target: b, .. }) => {
                 // void* is compatible with any pointer
-                matches!(a.as_ref(), Type::Void) || matches!(b.as_ref(), Type::Void) || a == b
+                matches!(a.as_ref(), Type::Void) || matches!(b.as_ref(), Type::Void) 
+                    || a.as_ref() == b.as_ref()
+                    || a.is_assignable_from(b)  // Recursively check pointed-to types
             }
             
             // Array to pointer decay
-            (Type::Pointer { target, .. }, Type::Array { element_type, .. }) => target == element_type,
+            (Type::Pointer { target, .. }, Type::Array { element_type, .. }) => target.as_ref() == element_type.as_ref(),
             
             // Function to function pointer decay
             (Type::Pointer { target, .. }, func @ Type::Function { .. }) => {
