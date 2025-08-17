@@ -1,0 +1,5 @@
+{
+  "use_runtime": true,
+  "expected": "Hi\nOK\n",
+  "description": "Simple test of new MMIO functionality"
+}

@@ -155,9 +155,46 @@ impl<'a> StatementAnalyzer<'a> {
                 // No semantic analysis needed
             }
             
-            StatementKind::InlineAsm { assembly: _ } => {
-                // Inline assembly - no semantic analysis needed for now
-                // The assembly code will be passed through directly to the backend
+            StatementKind::InlineAsm { assembly: _, outputs, inputs, clobbers: _ } => {
+                // Analyze inline assembly operands
+                let analyzer = ExpressionAnalyzer::new(
+                    self.symbol_types,
+                    self.type_definitions,
+                );
+                
+                // For output operands, we need special handling
+                // They are lvalues (write destinations), not values to read
+                for op in outputs {
+                    // For output operands, we just need to ensure they're valid lvalues
+                    // and get their types, but we don't evaluate them as expressions
+                    match &mut op.expr.kind {
+                        ExpressionKind::Identifier { name, symbol_id } => {
+                            // Look up the symbol to verify it exists and get its type
+                            if let Some(id) = symbol_table.lookup(name) {
+                                *symbol_id = Some(id);
+                                if let Some(var_type) = self.symbol_types.get(&id) {
+                                    op.expr.expr_type = Some(var_type.clone());
+                                }
+                            } else {
+                                // Variable doesn't exist
+                                return Err(SemanticError::UndefinedVariable {
+                                    name: name.clone(),
+                                    location: op.expr.span.start.clone(),
+                                }.into());
+                            }
+                        }
+                        _ => {
+                            // For other lvalue expressions (array elements, struct fields, etc.)
+                            // we still need to analyze them normally
+                            analyzer.analyze(&mut op.expr, symbol_table)?;
+                        }
+                    }
+                }
+                
+                // Input operands are regular expressions that need to be evaluated
+                for op in inputs {
+                    analyzer.analyze(&mut op.expr, symbol_table)?;
+                }
             }
             
             // TODO: Handle other statement types

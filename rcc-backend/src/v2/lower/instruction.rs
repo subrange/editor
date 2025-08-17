@@ -17,6 +17,7 @@ use crate::v2::function::{FunctionBuilder, CallArg, CallTarget};
 use crate::v2::instr::{
     lower_load, lower_store, lower_gep,
     lower_binary_op, lower_unary_op,
+    lower_inline_asm_extended,
     helpers::{get_bank_register_with_mgr, resolve_global_to_fatptr, canonicalize_value, get_value_register}
 };
 
@@ -388,14 +389,16 @@ pub fn lower_instruction(
             // Debug info - no code generated
         }
 
-        Instruction::InlineAsm { assembly } => {
-            // Split by semicolons or newlines to handle both styles
-            // This allows "inst1; inst2; inst3" or multiline assembly
-            for part in assembly.split([';', '\n']) {
-                let trimmed = part.trim();
-                if !trimmed.is_empty() {
-                    // Pass through as raw assembly
-                    insts.push(AsmInst::Raw(trimmed.to_string()));
+        Instruction::InlineAsm { assembly, outputs, inputs, clobbers } => {
+            debug!("V2: InlineAsm with {} outputs, {} inputs, {} clobbers", 
+                   outputs.len(), inputs.len(), clobbers.len());
+            
+            // Always use the extended handler - it handles both cases
+            match lower_inline_asm_extended(mgr, naming, assembly, outputs, inputs, clobbers) {
+                Ok(asm_insts) => insts.extend(asm_insts),
+                Err(e) => {
+                    // This is a compilation error - we cannot continue
+                    return Err(e.to_string());
                 }
             }
         }

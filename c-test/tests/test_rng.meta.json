@@ -1,0 +1,5 @@
+{
+  "description": "Test that basic output still works with new MMIO",
+  "expected": "RNG:OK\n",
+  "use_runtime": true
+}

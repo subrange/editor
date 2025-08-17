@@ -31,7 +31,9 @@ int main() {
     );
     
     // Test 4: Complex multiline with multiple operations
-    int a = 3, b = 4, c = 0;
+    int a = 3;
+    int b = 4;
+    int c = 0;
     asm(
         "MUL T5, %1, %1; "   // a * a
         "MUL T6, %2, %2; "   // b * b  

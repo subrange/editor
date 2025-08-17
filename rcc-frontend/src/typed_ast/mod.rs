@@ -12,7 +12,7 @@ mod errors;
 
 // Re-export main types
 pub use expressions::TypedExpr;
-pub use statements::TypedStmt;
+pub use statements::{TypedStmt, TypedAsmOperand};
 pub use translation_unit::{TypedFunction, TypedTopLevelItem, TypedTranslationUnit};
 pub use conversion::{type_expression, type_statement, type_translation_unit, TypeEnvironment};
 pub use errors::TypeError;

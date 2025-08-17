@@ -10,6 +10,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::process;
+use std::time::{Duration, Instant};
 use vm::VM;
 use constants::{DEFAULT_BANK_SIZE, DEFAULT_MEMORY_SIZE};
 use debug::Debugger;
@@ -23,6 +24,7 @@ fn print_usage() {
     eprintln!("OPTIONS:");
     eprintln!("  -b, --bank-size <size>   Set bank size (default: {DEFAULT_BANK_SIZE})");
     eprintln!("  -m, --memory <size>      Set memory size in words (default: {DEFAULT_MEMORY_SIZE})");
+    eprintln!("  -f, --frequency <hz>     Set virtual CPU frequency (e.g., 1MHz, 500KHz, 2.5GHz)");
     eprintln!("  -d, --debug              Enable debug mode (step through execution)");
     eprintln!("  -t, --tui                Enable TUI debugger_ui mode");
     eprintln!("  -v, --verbose            Show VM state during execution");
@@ -45,7 +47,7 @@ fn print_usage() {
     eprintln!("  • Press '?' in TUI for complete keyboard shortcuts");
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 2 {
@@ -55,6 +57,7 @@ fn main() {
     
     let mut bank_size = DEFAULT_BANK_SIZE;
     let mut memory_size: Option<usize> = None;
+    let mut frequency: Option<u64> = None;
     let mut debug_mode = false;
     let mut tui_mode = false;
     let mut verbose = false;
@@ -86,6 +89,17 @@ fn main() {
                 i += 1;
                 memory_size = Some(args[i].parse().unwrap_or_else(|_| {
                     eprintln!("Error: Invalid memory size: {}", args[i]);
+                    process::exit(1);
+                }));
+            },
+            "-f" | "--frequency" => {
+                if i + 1 >= args.len() {
+                    eprintln!("Error: --frequency requires an argument");
+                    process::exit(1);
+                }
+                i += 1;
+                frequency = Some(parse_frequency(&args[i]).unwrap_or_else(|e| {
+                    eprintln!("Error: Invalid frequency '{}': {}", args[i], e);
                     process::exit(1);
                 }));
             },
@@ -227,23 +241,100 @@ fn main() {
             }
         }
     } else {
-        // Run normally
-        if let Err(e) = vm.run() {
-            eprintln!("Runtime error: {e}");
-            process::exit(1);
+        // Run normally with optional frequency limiting
+        if let Some(freq) = frequency {
+            if verbose {
+                println!("Running at {} Hz", freq);
+            }
+            run_with_frequency(&mut vm, freq)?;
+        } else {
+            if let Err(e) = vm.run() {
+                eprintln!("Runtime error: {e}");
+                process::exit(1);
+            }
         }
     }
     
-    // Get and print output
-    let output = vm.get_output();
-    if !output.is_empty() {
-        io::stdout().write_all(&output).unwrap();
-        io::stdout().flush().unwrap();
-    }
+    // Output is now printed in real-time during execution
+    // Only get remaining buffered output if needed (for compatibility)
+    // but don't print it again since it was already printed
+    let _output = vm.get_output(); // Clear the buffer
     
     if verbose {
         println!();
         println!("Execution completed");
         println!("Final state: {:?}", vm.state);
     }
+    
+    Ok(())
+}
+
+/// Parse frequency from string (e.g., "1MHz", "500KHz", "1000000", "2.5MHz")
+fn parse_frequency(s: &str) -> Result<u64, String> {
+    let s = s.trim();
+    
+    // Check for suffix
+    if let Some(num_str) = s.strip_suffix("GHz") {
+        parse_float_with_multiplier(num_str, 1_000_000_000)
+    } else if let Some(num_str) = s.strip_suffix("MHz") {
+        parse_float_with_multiplier(num_str, 1_000_000)
+    } else if let Some(num_str) = s.strip_suffix("KHz") {
+        parse_float_with_multiplier(num_str, 1_000)
+    } else if let Some(num_str) = s.strip_suffix("kHz") {
+        parse_float_with_multiplier(num_str, 1_000)
+    } else if let Some(num_str) = s.strip_suffix("Hz") {
+        parse_float_with_multiplier(num_str, 1)
+    } else {
+        // Try to parse as plain number (assumed to be Hz)
+        s.parse::<u64>().map_err(|_| format!("Invalid frequency value: {}", s))
+    }
+}
+
+fn parse_float_with_multiplier(s: &str, multiplier: u64) -> Result<u64, String> {
+    let s = s.trim();
+    if let Ok(f) = s.parse::<f64>() {
+        Ok((f * multiplier as f64) as u64)
+    } else {
+        Err(format!("Invalid numeric value: {}", s))
+    }
+}
+
+/// Run VM with frequency limiting
+fn run_with_frequency(vm: &mut VM, frequency: u64) -> Result<(), String> {
+    // Target 60 FPS for smooth animation
+    const TARGET_FPS: u64 = 60;
+    const NANOS_PER_SECOND: u64 = 1_000_000_000;
+    
+    // Calculate instructions per frame
+    let instructions_per_frame = frequency / TARGET_FPS;
+    let frame_duration = Duration::from_nanos(NANOS_PER_SECOND / TARGET_FPS);
+    
+    let mut last_frame_time = Instant::now();
+    let mut instructions_in_frame = 0;
+    
+    while matches!(vm.state, vm::VMState::Running) {
+        // Execute one instruction
+        vm.step()?;
+        instructions_in_frame += 1;
+        
+        // Check if we've executed enough instructions for this frame
+        if instructions_in_frame >= instructions_per_frame {
+            // Wait for the rest of the frame duration
+            let elapsed = last_frame_time.elapsed();
+            if elapsed < frame_duration {
+                std::thread::sleep(frame_duration - elapsed);
+            }
+            
+            // Reset for next frame
+            last_frame_time = Instant::now();
+            instructions_in_frame = 0;
+        }
+        
+        // Stop if we hit a breakpoint in debug mode
+        if matches!(vm.state, vm::VMState::Breakpoint) {
+            break;
+        }
+    }
+    
+    Ok(())
 }

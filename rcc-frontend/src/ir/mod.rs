@@ -19,7 +19,7 @@
 pub use self::types::{IrType, FatPointer};
 pub use self::values::Value;
 pub use self::ops::{IrBinaryOp, IrUnaryOp};
-pub use self::instructions::Instruction;
+pub use self::instructions::{Instruction, AsmOperandIR};
 pub use self::blocks::BasicBlock;
 pub use self::function::Function;
 pub use self::module::{Module, GlobalVariable, Linkage};

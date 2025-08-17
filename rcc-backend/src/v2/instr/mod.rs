@@ -10,6 +10,7 @@ pub mod gep;
 pub mod binary;
 pub mod unary;
 pub mod branch;
+pub mod inline_asm;
 
 pub use helpers::get_value_register;
 pub use load::lower_load;
@@ -18,6 +19,7 @@ pub use gep::lower_gep;
 pub use binary::{lower_binary_op, lower_binary_op_immediate};
 pub use unary::lower_unary_op;
 pub use branch::{lower_branch, lower_branch_cond, lower_compare_and_branch, ComparisonType};
+pub use inline_asm::{lower_inline_asm_basic, lower_inline_asm_extended};
 
 // Test modules
 #[cfg(test)]

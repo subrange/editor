@@ -188,7 +188,29 @@ impl IrBuilder {
     }
     
     pub fn build_inline_asm(&mut self, assembly: String) -> Result<(), String> {
-        let instr = Instruction::InlineAsm { assembly };
+        // Simple version - no operands
+        let instr = Instruction::InlineAsm { 
+            assembly,
+            outputs: Vec::new(),
+            inputs: Vec::new(),
+            clobbers: Vec::new(),
+        };
+        self.add_instruction(instr)
+    }
+    
+    pub fn build_inline_asm_extended(
+        &mut self, 
+        assembly: String,
+        outputs: Vec<crate::ir::instructions::AsmOperandIR>,
+        inputs: Vec<crate::ir::instructions::AsmOperandIR>,
+        clobbers: Vec<String>,
+    ) -> Result<(), String> {
+        let instr = Instruction::InlineAsm {
+            assembly,
+            outputs,
+            inputs,
+            clobbers,
+        };
         self.add_instruction(instr)
     }
     

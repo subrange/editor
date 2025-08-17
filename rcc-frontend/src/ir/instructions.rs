@@ -7,6 +7,14 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use crate::ir::{Value, IrType, IrBinaryOp, IrUnaryOp};
 
+/// IR representation of an inline assembly operand
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AsmOperandIR {
+    pub constraint: String,     // e.g., "=r", "r", "+r", "m"
+    pub value: Value,           // The IR value for this operand
+    pub tied_to: Option<usize>, // For "+r" constraints, which input it's tied to
+}
+
 /// IR Instruction
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Instruction {
@@ -118,6 +126,9 @@ pub enum Instruction {
     /// Inline assembly
     InlineAsm {
         assembly: String,
+        outputs: Vec<AsmOperandIR>,
+        inputs: Vec<AsmOperandIR>,
+        clobbers: Vec<String>,
     },
     
     /// Comment (for debugging)
@@ -203,7 +214,31 @@ impl fmt::Display for Instruction {
             Instruction::DebugLoc { location } => {
                 write!(f, "!dbg !{}", location.line)
             }
-            Instruction::InlineAsm { assembly } => write!(f, "asm \"{assembly}\""),
+            Instruction::InlineAsm { assembly, outputs, inputs, clobbers } => {
+                write!(f, "asm \"{assembly}\"")?;
+                if !outputs.is_empty() || !inputs.is_empty() || !clobbers.is_empty() {
+                    write!(f, " : ")?;
+                    // Outputs
+                    for (i, op) in outputs.iter().enumerate() {
+                        if i > 0 { write!(f, ", ")?; }
+                        write!(f, "\"{}\"({})", op.constraint, op.value)?;
+                    }
+                    write!(f, " : ")?;
+                    // Inputs
+                    for (i, op) in inputs.iter().enumerate() {
+                        if i > 0 { write!(f, ", ")?; }
+                        write!(f, "\"{}\"({})", op.constraint, op.value)?;
+                    }
+                    if !clobbers.is_empty() {
+                        write!(f, " : ")?;
+                        for (i, clob) in clobbers.iter().enumerate() {
+                            if i > 0 { write!(f, ", ")?; }
+                            write!(f, "\"{}\"", clob)?;
+                        }
+                    }
+                }
+                Ok(())
+            },
             Instruction::Comment(text) => write!(f, "; {text}"),
         }
     }

@@ -6,6 +6,13 @@ use super::expressions::TypedExpr;
 use crate::types::Type;
 use rcc_common::SymbolId;
 
+/// Typed inline assembly operand
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedAsmOperand {
+    pub constraint: String,
+    pub expr: TypedExpr,
+}
+
 /// Typed statement - produced by semantic analysis
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypedStmt {
@@ -56,6 +63,9 @@ pub enum TypedStmt {
     /// Inline assembly
     InlineAsm {
         assembly: String,
+        outputs: Vec<TypedAsmOperand>,
+        inputs: Vec<TypedAsmOperand>,
+        clobbers: Vec<String>,
     },
     
     /// Empty statement

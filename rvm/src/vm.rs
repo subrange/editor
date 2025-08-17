@@ -75,6 +75,17 @@ pub struct VM {
     pub output_buffer: VecDeque<u8>,
     output_ready: bool,
     
+    // Input buffer for TTY_IN
+    pub input_buffer: VecDeque<u8>,
+    
+    // RNG state (simple LCG)
+    rng_state: u32,
+    
+    // Display state
+    display_mode: u16,
+    display_enabled: bool,
+    display_flush_done: bool,
+    
     // Debug information: maps instruction indices to function names
     pub debug_symbols: std::collections::HashMap<usize, String>,
 }
@@ -98,6 +109,11 @@ impl VM {
             skip_pc_increment: false,
             output_buffer: VecDeque::new(),
             output_ready: true,
+            input_buffer: VecDeque::new(),
+            rng_state: 0x12345678,  // Fixed seed for reproducibility
+            display_mode: DISP_OFF,
+            display_enabled: false,
+            display_flush_done: true,
             debug_symbols: HashMap::new(),
         }
     }
@@ -176,9 +192,9 @@ impl VM {
             return Err("Invalid binary: incomplete data section".to_string());
         }
         
-        // Load data into memory starting at address 2 (after I/O registers)
+        // Load data into memory starting after VRAM (word 1032)
         for (i, &byte) in binary[pos..pos + data_size].iter().enumerate() {
-            if i < self.memory.len() - DATA_SECTION_OFFSET {
+            if i + DATA_SECTION_OFFSET < self.memory.len() {
                 self.memory[i + DATA_SECTION_OFFSET] = byte as u16;
             }
         }
@@ -237,9 +253,11 @@ impl VM {
         self.registers[Register::Pcb as usize] = entry_bank;
         self.registers[Register::Pc as usize] = entry_offset;
         
-        // Initialize memory-mapped I/O
-        self.memory[MMIO_OUT] = 0;
-        self.memory[MMIO_OUT_FLAG] = OUTPUT_READY;
+        // Initialize MMIO state (memory is handled via MMIO read/write handlers)
+        self.output_ready = true;
+        self.display_mode = DISP_OFF;
+        self.display_enabled = false;
+        self.display_flush_done = true;
         
         self.state = VMState::Running;
         Ok(())
@@ -295,6 +313,143 @@ impl VM {
         }
         
         Ok(())
+    }
+    
+    // Handle MMIO reads for special addresses in bank 0
+    fn handle_mmio_read(&mut self, addr: usize) -> Option<u16> {
+        // Only handle bank 0 MMIO addresses
+        if addr >= TEXT40_BASE_WORD {
+            return None; // Regular memory access for VRAM and beyond
+        }
+        
+        match addr {
+            HDR_TTY_OUT => Some(0), // Write-only, return 0
+            HDR_TTY_STATUS => Some(if self.output_ready { TTY_READY } else { 0 }),
+            HDR_TTY_IN_POP => {
+                // Pop a byte from input buffer
+                if let Some(byte) = self.input_buffer.pop_front() {
+                    Some(byte as u16)
+                } else {
+                    Some(0) // Return 0 if buffer is empty
+                }
+            },
+            HDR_TTY_IN_STATUS => {
+                Some(if !self.input_buffer.is_empty() { TTY_HAS_BYTE } else { 0 })
+            },
+            HDR_RNG => {
+                // Simple LCG: next = (a * prev + c) mod m
+                self.rng_state = self.rng_state.wrapping_mul(1664525).wrapping_add(1013904223);
+                Some((self.rng_state >> 16) as u16) // Return high 16 bits
+            },
+            HDR_DISP_MODE => Some(self.display_mode),
+            HDR_DISP_STATUS => {
+                let mut status = 0;
+                if self.output_ready { status |= DISP_READY; }
+                if self.display_flush_done { status |= DISP_FLUSH_DONE; }
+                Some(status)
+            },
+            HDR_DISP_CTL => {
+                Some(if self.display_enabled { DISP_ENABLE } else { 0 })
+            },
+            HDR_DISP_FLUSH => Some(0), // Write-only, return 0
+            9..=31 => Some(0), // Reserved addresses return 0
+            _ => None, // Not an MMIO address
+        }
+    }
+    
+    // Handle MMIO writes for special addresses in bank 0
+    fn handle_mmio_write(&mut self, addr: usize, value: u16) -> bool {
+        // Only handle bank 0 MMIO addresses
+        if addr >= TEXT40_BASE_WORD {
+            return false; // Regular memory write for VRAM and beyond
+        }
+        
+        match addr {
+            HDR_TTY_OUT => {
+                // Output low byte to stdout
+                let byte = (value & 0xFF) as u8;
+                
+                // Print immediately to stdout for real-time effect
+                use std::io::{self, Write};
+                let _ = io::stdout().write_all(&[byte]);
+                let _ = io::stdout().flush();
+                
+                // Also store in buffer for compatibility
+                self.output_buffer.push_back(byte);
+                self.output_ready = false;
+                // Simulate output delay (will be set ready in next cycle)
+                true
+            },
+            HDR_TTY_STATUS => true, // Read-only, ignore write
+            HDR_TTY_IN_POP => true, // Read-only, ignore write
+            HDR_TTY_IN_STATUS => true, // Read-only, ignore write
+            HDR_RNG => true, // Read-only, ignore write
+            HDR_DISP_MODE => {
+                self.display_mode = value & 0x3; // Only keep lower 2 bits
+                true
+            },
+            HDR_DISP_STATUS => true, // Read-only, ignore write
+            HDR_DISP_CTL => {
+                // Handle control bits
+                if value & DISP_ENABLE != 0 {
+                    self.display_enabled = true;
+                }
+                if value & DISP_CLEAR != 0 {
+                    // Clear VRAM (edge-triggered)
+                    for i in TEXT40_BASE_WORD..=TEXT40_LAST_WORD {
+                        if i < self.memory.len() {
+                            self.memory[i] = 0;
+                        }
+                    }
+                    // Auto-clear the CLEAR bit (edge-triggered)
+                }
+                true
+            },
+            HDR_DISP_FLUSH => {
+                if value != 0 {
+                    self.display_flush_done = false;
+                    // In a real implementation, this would trigger display rendering
+                    // For now, we just simulate completion
+                    self.flush_text40_display();
+                    self.display_flush_done = true;
+                }
+                true
+            },
+            9..=31 => true, // Reserved addresses, ignore writes
+            _ => false, // Not an MMIO address
+        }
+    }
+    
+    // Simulate TEXT40 display flush (prints to stderr for debugging)
+    fn flush_text40_display(&self) {
+        if self.display_mode != DISP_TEXT40 || !self.display_enabled {
+            return; // Display not in TEXT40 mode or not enabled
+        }
+        
+        // In verbose mode, dump the TEXT40 display to stderr
+        if self.verbose {
+            eprintln!("\n=== TEXT40 Display (40x25) ===");
+            for row in 0..25 {
+                eprint!("  ");
+                for col in 0..40 {
+                    let addr = TEXT40_BASE_WORD + row * 40 + col;
+                    if addr < self.memory.len() {
+                        let cell = self.memory[addr];
+                        let ch = (cell & 0xFF) as u8;
+                        // Print ASCII character or '.' for non-printable
+                        if ch >= 32 && ch < 127 {
+                            eprint!("{}", ch as char);
+                        } else if ch == 0 {
+                            eprint!(" ");
+                        } else {
+                            eprint!(".");
+                        }
+                    }
+                }
+                eprintln!();
+            }
+            eprintln!("==============================\n");
+        }
     }
     
     fn execute_instruction(&mut self, instr: Instr) -> Result<(), String> {
@@ -455,13 +610,23 @@ impl VM {
                     let bank_val = self.registers[bank_reg];
                     let addr_val = self.registers[addr_reg];
                     
-                    // Memory is separate from instructions
-                    // BANK_SIZE refers to memory cells, not instructions
-                    let mem_addr = (bank_val as usize * self.bank_size as usize) + addr_val as usize;
-                    if mem_addr < self.memory.len() {
-                        self.registers[rd] = self.memory[mem_addr];
+                    // Check if this is a bank 0 MMIO access
+                    if bank_val == 0 && addr_val < TEXT40_LAST_WORD as u16 + 1 {
+                        // Try MMIO read first
+                        if let Some(value) = self.handle_mmio_read(addr_val as usize) {
+                            self.registers[rd] = value;
+                        } else {
+                            // Regular memory read for VRAM and other bank 0 addresses
+                            self.registers[rd] = self.memory[addr_val as usize];
+                        }
                     } else {
-                        return Err(format!("LOAD: memory address out of bounds: {mem_addr}"));
+                        // Regular memory access for non-bank-0
+                        let mem_addr = (bank_val as usize * self.bank_size as usize) + addr_val as usize;
+                        if mem_addr < self.memory.len() {
+                            self.registers[rd] = self.memory[mem_addr];
+                        } else {
+                            return Err(format!("LOAD: memory address out of bounds: {mem_addr}"));
+                        }
                     }
                 }
             },
@@ -472,24 +637,23 @@ impl VM {
                 if rs < 32 && bank_reg < 32 && addr_reg < 32 {
                     let bank_val = self.registers[bank_reg];
                     let addr_val = self.registers[addr_reg];
+                    let value = self.registers[rs];
                     
-                    // Memory is separate from instructions
-                    // BANK_SIZE refers to memory cells, not instructions
-                    let mem_addr = (bank_val as usize * self.bank_size as usize) + addr_val as usize;
-                    if mem_addr < self.memory.len() {
-                        let value = self.registers[rs];
-                        self.memory[mem_addr] = value;
-                        
-                        // Handle memory-mapped I/O
-                        if mem_addr == MMIO_OUT {
-                            // Output register
-                            self.output_buffer.push_back((value & 0xFF) as u8);
-                            self.output_ready = false;
-                            // Simulate output delay
-                            self.memory[MMIO_OUT_FLAG] = OUTPUT_BUSY;
+                    // Check if this is a bank 0 MMIO access
+                    if bank_val == 0 && addr_val < TEXT40_LAST_WORD as u16 + 1 {
+                        // Try MMIO write first
+                        if !self.handle_mmio_write(addr_val as usize, value) {
+                            // Regular memory write for VRAM and other bank 0 addresses
+                            self.memory[addr_val as usize] = value;
                         }
                     } else {
-                        return Err(format!("STORE: memory address out of bounds: {mem_addr}"));
+                        // Regular memory access for non-bank-0
+                        let mem_addr = (bank_val as usize * self.bank_size as usize) + addr_val as usize;
+                        if mem_addr < self.memory.len() {
+                            self.memory[mem_addr] = value;
+                        } else {
+                            return Err(format!("STORE: memory address out of bounds: {mem_addr}"));
+                        }
                     }
                 }
             },
@@ -723,7 +887,6 @@ impl VM {
         // Simulate output ready after some cycles (instant for now)
         if !self.output_ready {
             self.output_ready = true;
-            self.memory[1] = 1;
         }
         
         Ok(())
@@ -742,6 +905,16 @@ impl VM {
     
     pub fn get_output(&mut self) -> Vec<u8> {
         self.output_buffer.drain(..).collect()
+    }
+    
+    pub fn push_input(&mut self, byte: u8) {
+        self.input_buffer.push_back(byte);
+    }
+    
+    pub fn push_input_string(&mut self, input: &str) {
+        for byte in input.bytes() {
+            self.input_buffer.push_back(byte);
+        }
     }
     
     pub fn get_current_instruction(&self) -> Option<Instr> {
@@ -768,16 +941,18 @@ impl VM {
         self.state = VMState::Running;
         self.skip_pc_increment = false;
         
-        // Clear output
+        // Clear I/O buffers
         self.output_buffer.clear();
+        self.input_buffer.clear();
         self.output_ready = true;
+        
+        // Reset display state
+        self.display_mode = DISP_OFF;
+        self.display_enabled = false;
+        self.display_flush_done = true;
         
         // Clear all memory (reset to zeros)
         self.memory.fill(0);
-        
-        // Reset memory I/O registers
-        self.memory[0] = 0;
-        self.memory[1] = 1;
         
         // Note: We keep the loaded instructions, data, and debug symbols intact
     }

@@ -596,9 +596,68 @@ pub fn type_statement(
             ))
         }
         
-        StatementKind::InlineAsm { assembly } => {
+        StatementKind::InlineAsm { assembly, outputs, inputs, clobbers } => {
+            use crate::typed_ast::statements::TypedAsmOperand;
+            
+            // Type check output operands
+            // For outputs, we need to handle them as lvalues (write destinations)
+            let mut typed_outputs = Vec::new();
+            for op in outputs {
+                // For output operands, we need to ensure the expression is an lvalue
+                // For now, we'll create a typed expression that represents the lvalue
+                // without evaluating it (which would require the variable to be initialized)
+                
+                // Check if it's a simple identifier (most common case)
+                let typed_expr = match &op.expr.kind {
+                    crate::ast::ExpressionKind::Identifier { name, symbol_id } => {
+                        // For output operands, we just need to verify the variable exists
+                        // and get its type, but not evaluate it (no initialization required)
+                        let var_type = if let Some(id) = symbol_id {
+                            type_env.lookup_type(*id)
+                                .cloned()
+                                .or_else(|| op.expr.expr_type.clone())
+                                .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?
+                        } else {
+                            // Fallback to expr_type if no symbol_id
+                            op.expr.expr_type.clone()
+                                .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?
+                        };
+                        
+                        // Create a typed variable expression (represents the lvalue)
+                        TypedExpr::Variable {
+                            name: name.clone(),
+                            symbol_id: *symbol_id,
+                            expr_type: var_type,
+                        }
+                    }
+                    _ => {
+                        // For other expressions (like array elements, struct fields),
+                        // we still need to type them normally
+                        type_expression(&op.expr, type_env)?
+                    }
+                };
+                
+                typed_outputs.push(TypedAsmOperand {
+                    constraint: op.constraint.clone(),
+                    expr: typed_expr,
+                });
+            }
+            
+            // Type check input operands (these are read, so normal evaluation)
+            let mut typed_inputs = Vec::new();
+            for op in inputs {
+                let typed_expr = type_expression(&op.expr, type_env)?;
+                typed_inputs.push(TypedAsmOperand {
+                    constraint: op.constraint.clone(),
+                    expr: typed_expr,
+                });
+            }
+            
             Ok(TypedStmt::InlineAsm {
                 assembly: assembly.clone(),
+                outputs: typed_outputs,
+                inputs: typed_inputs,
+                clobbers: clobbers.clone(),
             })
         }
     }

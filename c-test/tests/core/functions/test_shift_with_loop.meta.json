@@ -1,5 +1,5 @@
 {
+  "expected": "S\n1:3\n2:2\nE\nAXBC\n",
   "description": "Added via command line",
-  "use_runtime": true,
-  "expected": "S\n1:3\n2:2\nE\nAXBC\n"
+  "use_runtime": true
 }

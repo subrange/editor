@@ -8,6 +8,13 @@ use crate::ast::NodeId;
 use rcc_common::{SourceSpan, SymbolId};
 use serde::{Deserialize, Serialize};
 
+/// Inline assembly operand
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AsmOperand {
+    pub constraint: String,  // e.g., "=r" for output, "r" for input, "+r" for input/output
+    pub expr: Expression,    // The C expression tied to this operand
+}
+
 /// AST Statement nodes
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Statement {
@@ -93,8 +100,10 @@ pub enum StatementKind {
     
     /// Inline assembly
     InlineAsm {
-        assembly: String,  // Raw assembly code
-        // TODO: Add support for constraints, clobbers, etc.
+        assembly: String,           // Raw assembly code
+        outputs: Vec<AsmOperand>,   // Output operands
+        inputs: Vec<AsmOperand>,    // Input operands  
+        clobbers: Vec<String>,      // Clobbered registers
     },
     
     /// Empty statement (just semicolon)

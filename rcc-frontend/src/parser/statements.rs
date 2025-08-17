@@ -206,11 +206,13 @@ impl Parser {
     
     /// Parse inline assembly statement
     pub fn parse_inline_asm_statement(&mut self) -> Result<StatementKind, CompilerError> {
-        // Basic syntax: asm("assembly code");
-        // TODO: Support extended syntax with constraints
+        // Extended syntax: asm("code" : outputs : inputs : clobbers);
+        // Basic syntax: asm("code");
+        use crate::ast::statements::AsmOperand;
+        
         self.expect(TokenType::LeftParen, "inline assembly")?;
         
-        // Expect a string literal containing the assembly code (with adjacent string concatenation)
+        // Parse assembly code string (with adjacent string concatenation)
         let assembly = match self.peek().map(|t| &t.token_type) {
             Some(TokenType::StringLiteral(s)) => {
                 let mut code = s.clone();
@@ -230,9 +232,119 @@ impl Parser {
             }
         };
         
+        let mut outputs = Vec::new();
+        let mut inputs = Vec::new();
+        let mut clobbers = Vec::new();
+        
+        // Check for extended syntax (colon after assembly string)
+        if self.peek().map(|t| &t.token_type) == Some(&TokenType::Colon) {
+            self.advance(); // consume first colon
+            
+            // Parse output operands
+            outputs = self.parse_asm_operands()?;
+            
+            // Check for input operands
+            if self.peek().map(|t| &t.token_type) == Some(&TokenType::Colon) {
+                self.advance(); // consume second colon
+                inputs = self.parse_asm_operands()?;
+                
+                // Check for clobbers
+                if self.peek().map(|t| &t.token_type) == Some(&TokenType::Colon) {
+                    self.advance(); // consume third colon
+                    clobbers = self.parse_asm_clobbers()?;
+                }
+            }
+        }
+        
         self.expect(TokenType::RightParen, "inline assembly")?;
         self.expect(TokenType::Semicolon, "inline assembly")?;
         
-        Ok(StatementKind::InlineAsm { assembly })
+        Ok(StatementKind::InlineAsm { 
+            assembly,
+            outputs,
+            inputs,
+            clobbers,
+        })
+    }
+    
+    /// Parse assembly operands (outputs or inputs)
+    fn parse_asm_operands(&mut self) -> Result<Vec<crate::ast::statements::AsmOperand>, CompilerError> {
+        use crate::ast::statements::AsmOperand;
+        let mut operands = Vec::new();
+        
+        // Empty operand list is valid
+        if self.peek().map(|t| &t.token_type) == Some(&TokenType::Colon) ||
+           self.peek().map(|t| &t.token_type) == Some(&TokenType::RightParen) {
+            return Ok(operands);
+        }
+        
+        loop {
+            // Parse constraint string
+            let constraint = match self.peek().map(|t| &t.token_type) {
+                Some(TokenType::StringLiteral(s)) => {
+                    let c = s.clone();
+                    self.advance();
+                    c
+                }
+                _ => {
+                    return Err(CompilerError::parse_error(
+                        "Expected constraint string for assembly operand".to_string(),
+                        self.current_location(),
+                    ));
+                }
+            };
+            
+            // Expect parenthesized expression
+            self.expect(TokenType::LeftParen, "assembly operand expression")?;
+            let expr = self.parse_expression()?;
+            self.expect(TokenType::RightParen, "assembly operand expression")?;
+            
+            operands.push(AsmOperand {
+                constraint,
+                expr,
+            });
+            
+            // Check for more operands
+            if self.peek().map(|t| &t.token_type) != Some(&TokenType::Comma) {
+                break;
+            }
+            self.advance(); // consume comma
+        }
+        
+        Ok(operands)
+    }
+    
+    /// Parse clobber list (register names)
+    fn parse_asm_clobbers(&mut self) -> Result<Vec<String>, CompilerError> {
+        let mut clobbers = Vec::new();
+        
+        // Empty clobber list is valid
+        if self.peek().map(|t| &t.token_type) == Some(&TokenType::RightParen) {
+            return Ok(clobbers);
+        }
+        
+        loop {
+            // Parse clobber string (register name)
+            match self.peek().map(|t| &t.token_type) {
+                Some(TokenType::StringLiteral(s)) => {
+                    clobbers.push(s.clone());
+                    self.advance();
+                }
+                _ => {
+                    return Err(CompilerError::parse_error(
+                        "Expected register name string for clobber".to_string(),
+                        self.current_location(),
+                    ));
+                }
+            };
+            
+            // Check for more clobbers
+            if self.peek().map(|t| &t.token_type) != Some(&TokenType::Comma) {
+                break;
+            }
+            self.advance(); // consume comma
+        }
+        
+        Ok(clobbers)
     }
 }

@@ -77,8 +77,9 @@ impl<'a> TypedStatementGenerator<'a> {
                 jumps::generate_continue(self)
             }
             
-            TypedStmt::InlineAsm { assembly } => {
-                misc::generate_inline_asm(self, assembly)
+            TypedStmt::InlineAsm { assembly, outputs, inputs, clobbers } => {
+                // Generate extended inline assembly with operands and clobbers
+                misc::generate_inline_asm_extended(self, assembly, outputs, inputs, clobbers)
             }
             
             TypedStmt::Empty => Ok(()),
