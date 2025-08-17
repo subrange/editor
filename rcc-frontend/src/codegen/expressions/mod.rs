@@ -212,29 +212,121 @@ impl<'a> TypedExpressionGenerator<'a> {
             TypedExpr::ArrayInitializer { elements, .. } => misc_ops::generate_array_initializer(self, elements),
             
             TypedExpr::CompoundLiteral { initializer, expr_type } => {
-                // Compound literals create anonymous temporary objects
-                // For structs: allocate space and initialize fields
-                // For arrays: similar to array initializer
+                // Compound literals create anonymous temporary objects with automatic storage duration
+                // They should:
+                // 1. Allocate temporary space
+                // 2. Initialize that space
+                // 3. Return a pointer to the allocated space
                 
                 match expr_type {
-                    Type::Struct { .. } => {
-                        // For structs, we need to allocate temporary space and initialize
-                        // For now, we'll treat it like an array initializer
-                        // This is a simplified implementation
-                        misc_ops::generate_array_initializer(self, initializer)
+                    Type::Array { element_type, size } => {
+                        // Allocate space for the array
+                        let array_size = size.unwrap_or(initializer.len() as u64);
+                        let elem_ir_type = convert_type_default(element_type)?;
+                        let array_ir_type = crate::ir::IrType::Array {
+                            size: array_size,
+                            element_type: Box::new(elem_ir_type.clone()),
+                        };
+                        
+                        // Allocate temporary space for the array
+                        let array_ptr = self.builder.build_alloca(array_ir_type, None)
+                            .map_err(|e| CodegenError::InternalError {
+                                message: format!("Failed to allocate space for compound literal: {}", e),
+                                location: rcc_common::SourceLocation::new_simple(0, 0),
+                            })?;
+                        
+                        // Initialize each element
+                        for (i, elem) in initializer.iter().enumerate() {
+                            let elem_value = self.generate(elem)?;
+                            
+                            // Calculate pointer to element i
+                            let offset = Value::Constant(i as i64);
+                            let elem_ptr = self.builder.build_pointer_offset(
+                                array_ptr.clone(),
+                                offset,
+                                elem_ir_type.clone()
+                            )?;
+                            
+                            // Store the element value
+                            self.builder.build_store(elem_value, elem_ptr)
+                                .map_err(|e| CodegenError::InternalError {
+                                    message: format!("Failed to store array element: {}", e),
+                                    location: rcc_common::SourceLocation::new_simple(0, 0),
+                                })?;
+                        }
+                        
+                        // Return pointer to the array
+                        // array_ptr is already a proper pointer value from build_alloca
+                        Ok(array_ptr)
                     }
-                    Type::Array { .. } => {
-                        // For arrays, compound literals work like array initializers
-                        misc_ops::generate_array_initializer(self, initializer)
+                    Type::Struct { fields, .. } => {
+                        // For structs, allocate space and initialize fields
+                        // Calculate total size
+                        let struct_size = expr_type.size_in_words()
+                            .ok_or_else(|| CodegenError::InternalError {
+                                message: "Cannot determine struct size".to_string(),
+                                location: rcc_common::SourceLocation::new_simple(0, 0),
+                            })?;
+                        
+                        let struct_ir_type = crate::ir::IrType::Array {
+                            size: struct_size,
+                            element_type: Box::new(crate::ir::IrType::I16),
+                        };
+                        
+                        // Allocate temporary space
+                        let struct_ptr = self.builder.build_alloca(struct_ir_type, None)
+                            .map_err(|e| CodegenError::InternalError {
+                                message: format!("Failed to allocate space for struct compound literal: {}", e),
+                                location: rcc_common::SourceLocation::new_simple(0, 0),
+                            })?;
+                        
+                        // Initialize fields (assuming initializer elements correspond to fields in order)
+                        let mut offset = 0;
+                        for (i, field) in fields.iter().enumerate() {
+                            if i < initializer.len() {
+                                let field_value = self.generate(&initializer[i])?;
+                                let field_offset = Value::Constant(offset as i64);
+                                let field_ptr = self.builder.build_pointer_offset(
+                                    struct_ptr.clone(),
+                                    field_offset,
+                                    convert_type_default(&field.field_type)?
+                                )?;
+                                
+                                self.builder.build_store(field_value, field_ptr)
+                                    .map_err(|e| CodegenError::InternalError {
+                                        message: format!("Failed to store struct field: {}", e),
+                                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                                    })?;
+                            }
+                            offset += field.field_type.size_in_words().unwrap_or(1);
+                        }
+                        
+                        // Return pointer to the struct
+                        // struct_ptr is already a proper pointer value from build_alloca
+                        Ok(struct_ptr)
                     }
                     _ => {
-                        // For scalar types, just use the first element
+                        // For scalar types, allocate space and store the value
+                        let scalar_ir_type = convert_type_default(expr_type)?;
+                        let scalar_ptr = self.builder.build_alloca(scalar_ir_type.clone(), None)
+                            .map_err(|e| CodegenError::InternalError {
+                                message: format!("Failed to allocate space for scalar compound literal: {}", e),
+                                location: rcc_common::SourceLocation::new_simple(0, 0),
+                            })?;
+                        
+                        // Store the value
                         if let Some(first) = initializer.first() {
-                            self.generate(first)
-                        } else {
-                            // Empty initializer - return zero
-                            Ok(Value::Constant(0))
+                            let value = self.generate(first)?;
+                            self.builder.build_store(value, scalar_ptr.clone())
+                                .map_err(|e| CodegenError::InternalError {
+                                    message: format!("Failed to store scalar value: {}", e),
+                                    location: rcc_common::SourceLocation::new_simple(0, 0),
+                                })?;
                         }
+                        
+                        // Return pointer to the scalar
+                        // scalar_ptr is already a proper pointer value from build_alloca
+                        Ok(scalar_ptr)
                     }
                 }
             }
