@@ -251,6 +251,11 @@ pub fn generate_lvalue_address(
                 field_type_ir
             )?)
         }
+        TypedExpr::CompoundLiteral { .. } => {
+            // Compound literals are lvalues - they have addresses
+            // Our implementation already returns a pointer to the allocated space
+            gen.generate(expr)
+        }
         _ => Err(CodegenError::UnsupportedConstruct {
             construct: format!("lvalue: {expr:?}"),
             location: rcc_common::SourceLocation::new_simple(0, 0),

@@ -224,6 +224,7 @@ impl TypeAnalyzer {
             ExpressionKind::Unary { op: UnaryOp::Dereference, .. } => true,
             ExpressionKind::Binary { op: BinaryOp::Index, .. } => true,
             ExpressionKind::Member { .. } => true,
+            ExpressionKind::CompoundLiteral { .. } => true, // Compound literals are lvalues in C
             _ => false,
         }
     }
