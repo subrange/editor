@@ -4,7 +4,7 @@ use super::TypedStatementGenerator;
 use crate::ir::{IrType, Value};
 use crate::typed_ast::{TypedExpr};
 use crate::types::{Type, BankTag};
-use crate::codegen::{VarInfo, types::convert_type};
+use crate::codegen::{VarInfo, types::{convert_type, complete_type_from_initializer}};
 use crate::CompilerError;
 
 // Helper function for convert_type with default location
@@ -18,24 +18,9 @@ pub fn generate_declaration(
     var_type: &Type,
     initializer: Option<&TypedExpr>,
 ) -> Result<(), CompilerError> {
-    // Handle incomplete arrays with initializers
-    // If we have arr[] = {1,2,3}, we need to infer the size from the initializer
-    let actual_type = if let Type::Array { element_type, size: None } = var_type {
-        if let Some(TypedExpr::ArrayInitializer { elements, .. }) = initializer {
-            // Create a complete array type with the size from the initializer
-            Type::Array {
-                element_type: element_type.clone(),
-                size: Some(elements.len() as u64),
-            }
-        } else {
-            // No initializer for incomplete array - keep it as is
-            var_type.clone()
-        }
-    } else {
-        var_type.clone()
-    };
-    
-    let ir_type = convert_type_default(&actual_type)?;
+    // Use the general helper to complete incomplete types
+    let completed_type = complete_type_from_initializer(var_type, initializer);
+    let ir_type = convert_type_default(&completed_type)?;
     
     // Allocate stack space for the variable
     // For arrays, we need to pass the array size as the count

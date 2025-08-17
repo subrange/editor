@@ -1,10 +1,42 @@
 //! Type conversion utilities
 
 use crate::types::Type;
+use crate::typed_ast::TypedExpr;
 use crate::ir::IrType;
 use rcc_common::SourceLocation;
 use crate::CompilerError;
 use super::errors::CodegenError;
+
+/// Complete an incomplete type using information from its initializer
+/// 
+/// This function handles cases where a type is declared without full information
+/// (e.g., `int arr[] = {1,2,3}`) and completes it using the initializer.
+/// 
+/// # Examples
+/// - `int arr[]` with `{1,2,3}` -> `int arr[3]`
+/// - Future: struct with flexible array member
+pub fn complete_type_from_initializer(
+    incomplete_type: &Type,
+    initializer: Option<&TypedExpr>,
+) -> Type {
+    match (incomplete_type, initializer) {
+        // Incomplete array with array initializer - infer size from elements
+        (Type::Array { element_type, size: None }, Some(TypedExpr::ArrayInitializer { elements, .. })) => {
+            Type::Array {
+                element_type: element_type.clone(),
+                size: Some(elements.len() as u64),
+            }
+        }
+        
+        // Future: Handle structs with flexible array members
+        // (Type::Struct { fields, .. }, Some(TypedExpr::StructInitializer { .. })) => {
+            // Complete the flexible array member size
+        // }
+        
+        // No completion needed or possible
+        _ => incomplete_type.clone(),
+    }
+}
 
 /// Convert AST type to IR type
 pub fn convert_type(ast_type: &Type, location: SourceLocation) -> Result<IrType, CompilerError> {

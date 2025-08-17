@@ -5,7 +5,7 @@ use crate::ir::{Value, IrType, IrBuilder, Module, GlobalVariable, Linkage};
 use crate::typed_ast::TypedExpr;
 use crate::types::{Type, BankTag};
 use crate::CompilerError;
-use super::super::{VarInfo, expressions::TypedExpressionGenerator};
+use super::super::{VarInfo, expressions::TypedExpressionGenerator, types::complete_type_from_initializer};
 use super::utils::convert_type_default;
 
 /// Generate IR for a global variable
@@ -46,23 +46,9 @@ pub fn generate_global_variable(
         None
     };
     
-    // Convert type, but handle incomplete arrays specially
-    let ir_type = if let Type::Array { element_type, size: None } = var_type {
-        // Incomplete array type - if we have an initializer, use its size
-        if let Some(Value::ConstantArray(ref values)) = init_value {
-            // We have the actual array size from the initializer
-            let elem_type = convert_type_default(element_type)?;
-            IrType::Array { 
-                size: values.len() as u64, 
-                element_type: Box::new(elem_type) 
-            }
-        } else {
-            // No initializer or non-array initializer, fall back to default conversion
-            convert_type_default(var_type)?
-        }
-    } else {
-        convert_type_default(var_type)?
-    };
+    // Use the general helper to complete incomplete types
+    let completed_type = complete_type_from_initializer(var_type, initializer);
+    let ir_type = convert_type_default(&completed_type)?;
     
     let global = GlobalVariable {
         name: name.to_string(),
