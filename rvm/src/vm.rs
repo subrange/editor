@@ -555,8 +555,27 @@ impl VM {
                         let ch = (cell & 0xFF) as u8;
                         let attr = ((cell >> 8) & 0xFF) as u8;
                         
-                        // Set colors based on attributes (if needed in future)
-                        // For now, just use default colors
+                        // Extract foreground and background colors from attribute byte
+                        // Lower 4 bits: foreground color (0-15)
+                        // Upper 4 bits: background color (0-15)
+                        let fg_color = (attr & 0x0F) as usize;
+                        let bg_color = ((attr >> 4) & 0x0F) as usize;
+                        
+                        // Convert theme color index to terminal Color
+                        let theme_to_terminal = |color_idx: usize| -> Color {
+                            if color_idx < THEME_COLORS.len() {
+                                let (r, g, b) = THEME_COLORS[color_idx];
+                                Color::Rgb { r, g, b }
+                            } else {
+                                // Default to light gray for invalid indices
+                                let (r, g, b) = THEME_COLORS[6];
+                                Color::Rgb { r, g, b }
+                            }
+                        };
+                        
+                        // Set colors
+                        let _ = stderr.execute(SetForegroundColor(theme_to_terminal(fg_color)));
+                        let _ = stderr.execute(SetBackgroundColor(theme_to_terminal(bg_color)));
                         
                         // Print character
                         if ch >= 32 && ch < 127 {
@@ -566,6 +585,9 @@ impl VM {
                         } else {
                             let _ = stderr.write(b".");
                         }
+                        
+                        // Reset colors after each character to prevent color bleeding
+                        let _ = stderr.execute(ResetColor);
                     } else {
                         let _ = stderr.write(b" ");
                     }

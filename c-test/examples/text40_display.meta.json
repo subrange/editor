@@ -1,0 +1,4 @@
+{
+  "description": "TEXT40 display mode with raw terminal rendering",
+  "use_runtime": true
+}

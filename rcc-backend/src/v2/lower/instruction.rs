@@ -49,16 +49,21 @@ pub fn lower_instruction(
         Instruction::Load { result, ptr, result_type } => {
             debug!("V2: Load: t{result} = load {ptr:?}");
             
+            insts.push(AsmInst::Comment(format!("Load instruction: t{result} = load {ptr:?}")));
+            
             // Handle global variable loads specially
             let load_insts = if let Value::Global(name) = ptr {
                 // Resolve global to fat pointer
+                insts.push(AsmInst::Comment(format!("Canonicalizing global variable: {name}")));
                 let global_ptr = resolve_global_to_fatptr(name, global_manager)?;
                 lower_load(mgr, naming, &global_ptr, result_type, *result)
             } else if let Value::FatPtr(_) = ptr {
                 // Canonicalize to resolve any global references
+                insts.push(AsmInst::Comment(format!("Canonicalizing fat pointer: {ptr:?}")));
                 let canonical_ptr = canonicalize_value(ptr, global_manager)?;
                 lower_load(mgr, naming, &canonical_ptr, result_type, *result)
             } else {
+                insts.push(AsmInst::Comment(format!("Canonicalizing pointer: {ptr:?}")));
                 lower_load(mgr, naming, ptr, result_type, *result)
             };
             insts.extend(load_insts);

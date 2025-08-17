@@ -30,10 +30,18 @@ srand:
     STORE S3, SB, S2
     ADD S1, FP, R0
     ADDI S1, S1, 1
+; Load instruction: t3 = load FatPtr(FatPointer { addr: Temp(1), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(1), bank: Stack })
+; LOAD: Pointer load_src_ptr_f0_op1_t3 has bank info: Stack
+; LOAD: Using bank register Sb for load
     LOAD S0, SB, S2
     LI T7, -1
     AND S0, S0, T7
     STORE S0, SB, S1
+; Load instruction: t5 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(2), bank: Stack })
+; LOAD: Pointer load_src_ptr_f0_op2_t5 has bank info: Stack
+; LOAD: Using bank register Sb for load
     LOAD T6, SB, S1
 ; Spill live registers before call
 ; Spill t0 to slot 0
@@ -104,7 +112,11 @@ rand:
 ; Reserve 20 spill slots above locals
     ADDI SP, SP, 20
 L_rand_1:
+; Load instruction: t0 = load Global("rand_initialized")
+; Canonicalizing global variable: rand_initialized
     LI S3, 0
+; LOAD: Pointer load_src_ptr_f2_op1_t0 has bank info: Global
+; LOAD: Using bank register Gp for load
     LOAD S2, GP, S3
     LI S1, 0
     XOR S0, S2, S1
@@ -141,6 +153,10 @@ L_rand_4:
 ; Recompute alloca t2 at FP+0
     ADD T4, FP, R0
     STORE RV0, SB, T4
+; Load instruction: t4 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(2), bank: Stack })
+; LOAD: Pointer load_src_ptr_f2_op5_t4 has bank info: Stack
+; LOAD: Using bank register Sb for load
     LOAD T3, SB, T4
     LI T2, 32767
     AND T3, T3, T2

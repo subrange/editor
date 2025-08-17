@@ -46,11 +46,20 @@ memset:
     STORE T3, SB, T4
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
+; Invalidated 4 alloca bindings
 L_memset_1:
+; Load instruction: t7 = load FatPtr(FatPointer { addr: Temp(6), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Stack })
+; LOAD: Pointer load_src_ptr_f0_op6_t7 has bank info: Stack
+; LOAD: Using bank register Sb for load
 ; Recompute alloca t6 at FP+4
     ADD T2, FP, R0
     ADDI T2, T2, 4
     LOAD T1, SB, T2
+; Load instruction: t8 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(5), bank: Stack })
+; LOAD: Pointer load_src_ptr_f0_op7_t8 has bank info: Stack
+; LOAD: Using bank register Sb for load
 ; Recompute alloca t5 at FP+3
     ADD T0, FP, R0
     ADDI T0, T0, 3
@@ -60,12 +69,21 @@ L_memset_1:
 ; Branch to L_memset_4 if condition is false
     BEQ R0, R0, L_memset_2
 ; Unconditional branch to L_memset_2 (condition was true)
+; Invalidated 2 alloca bindings
 L_memset_2:
+; Load instruction: t10 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(3), bank: Stack })
+; LOAD: Pointer load_src_ptr_f0_op8_t10 has bank info: Stack
+; LOAD: Using bank register Sb for load
 ; Recompute alloca t3 at FP+0
     ADD T3, FP, R0
     LOAD T4, SB, T3
     ADDI T5, T3, 1
     LOAD T6, SB, T5
+; Load instruction: t11 = load FatPtr(FatPointer { addr: Temp(6), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Stack })
+; LOAD: Pointer load_src_ptr_f0_op11_t11 has bank info: Stack
+; LOAD: Using bank register Sb for load
 ; Recompute alloca t6 at FP+4
     ADD S0, FP, R0
     ADDI S0, S0, 4
@@ -80,12 +98,21 @@ L_memset_2:
     ADDI SC, SC, 13
     STORE S3, SB, SC
     MOD S3, T1, T5
+; Base bank info: NamedValue("load_f0_op10_t10_bank_val")
+; Clearing binding for 'gep_new_bank_f0_op16_t12'
 ; Spill t1 to slot 1
     ADD SC, FP, R0
     ADDI SC, SC, 14
     STORE S2, SB, SC
+; Computing new bank gep_new_bank_f0_op16_t12 = load_f0_op10_t10_bank_val + bank_delta
     ADD S2, T6, T2
+; Result bank tracked as NamedValue(gep_new_bank_f0_op16_t12)
     ADD T1, S3, R0
+; GEP: Setting bank info for t12 to NamedValue("gep_new_bank_f0_op16_t12")
+; Load instruction: t13 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
+; LOAD: Pointer load_src_ptr_f0_op17_t13 has bank info: Stack
+; LOAD: Using bank register Sb for load
 ; Recompute alloca t4 at FP+2
     ADD T0, FP, R0
     ADDI T0, T0, 2
@@ -93,7 +120,14 @@ L_memset_2:
     STORE T2, S2, T1
     BEQ R0, R0, L_memset_3
 ; Unconditional branch to L_memset_3
+; Invalidated 3 alloca bindings
+; Invalidating GEP bank gep_new_bank_f0_op16_t12 in S2
+; Invalidated 1 GEP bank bindings
 L_memset_3:
+; Load instruction: t14 = load FatPtr(FatPointer { addr: Temp(6), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Stack })
+; LOAD: Pointer load_src_ptr_f0_op18_t14 has bank info: Stack
+; LOAD: Using bank register Sb for load
 ; Recompute alloca t6 at FP+4
     ADD T5, FP, R0
     ADDI T5, T5, 4
@@ -103,6 +137,7 @@ L_memset_3:
     STORE S3, SB, T5
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
+; Invalidated 1 alloca bindings
 L_memset_4:
 ; Jump to epilogue
     BEQ R0, R0, L_memset_99999

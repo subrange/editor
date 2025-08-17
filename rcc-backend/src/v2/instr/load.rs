@@ -101,9 +101,11 @@ pub fn lower_load(
         });
     
     debug!("  Pointer {ptr_name} has bank info: {bank_info:?}");
+    insts.push(AsmInst::Comment(format!("LOAD: Pointer {} has bank info: {:?}", ptr_name, bank_info)));
     
     // Use the new function that can handle NamedValue and reload if necessary
     let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
+    insts.push(AsmInst::Comment(format!("LOAD: Using bank register {:?} for load", bank_reg)));
     trace!("  Using {bank_reg:?} for bank");
     
     // Step 3: Allocate destination register and generate LOAD instruction

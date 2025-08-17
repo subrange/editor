@@ -449,6 +449,12 @@ impl RegisterPressureManager {
     pub fn bind_value_to_register(&mut self, value: String, reg: Reg) {
         debug!("Binding '{value}' to {reg:?}");
         
+        // CRITICAL: Clear any existing spill slot for this value
+        // This prevents reload of stale values when a value is recomputed
+        if self.value_to_slot.remove(&value).is_some() {
+            debug!("  Cleared existing spill slot for '{value}' to prevent stale reload");
+        }
+        
         // First, if the register contains something else, we need to handle that
         if let Some(old_value) = self.reg_contents.get(&reg).cloned() {
             if old_value != value {
@@ -472,6 +478,36 @@ impl RegisterPressureManager {
         // Update contents
         self.reg_contents.insert(reg, value);
         trace!("  {reg:?} now contains bound value");
+    }
+    
+    /// Clear any existing binding for a value
+    /// This is used when we need to force recomputation of a value
+    /// (e.g., GEP bank values in loops)
+    pub fn clear_value_binding(&mut self, value: &str) {
+        self.instructions.push(AsmInst::Comment(format!("Clearing binding for '{}'", value)));
+        
+        // Find if this value is in any register
+        if let Some((&reg, _)) = self.reg_contents.iter().find(|(_, v)| v.as_str() == value) {
+            debug!("Clearing binding for '{value}' from {reg:?}");
+            self.instructions.push(AsmInst::Comment(format!("  Found in register {:?}, clearing", reg)));
+            self.reg_contents.remove(&reg);
+            
+            // Remove from LRU queue
+            if let Some(pos) = self.lru_queue.iter().position(|&r| r == reg) {
+                self.lru_queue.remove(pos);
+            }
+            
+            // Add back to free list
+            if !self.free_list.contains(&reg) {
+                self.free_list.push_back(reg);
+            }
+        }
+        
+        // ALSO clear from spill slots to prevent reload
+        if self.value_to_slot.remove(value).is_some() {
+            debug!("Also cleared '{value}' from spill slots");
+            self.instructions.push(AsmInst::Comment(format!("  Also cleared from spill slots")));
+        }
     }
     
     /// Spill all registers (e.g., before a call)
@@ -709,5 +745,46 @@ impl RegisterPressureManager {
         }
         
         debug!("  Invalidated {count} alloca bindings");
+        if count > 0 {
+            self.instructions.push(AsmInst::Comment(format!("Invalidated {} alloca bindings", count)));
+        }
+    }
+    
+    /// Invalidate GEP bank register bindings
+    /// This is called at basic block boundaries to ensure GEP-computed bank registers
+    /// are reloaded from spill slots when needed in loops, preventing stale register issues.
+    pub fn invalidate_gep_bank_bindings(&mut self) {
+        debug!("Invalidating GEP bank register bindings at block boundary");
+        
+        // Find all registers that contain GEP bank values (NamedValues starting with "gep_")
+        let mut gep_banks_to_remove = Vec::new();
+        for (reg, value) in self.reg_contents.iter() {
+            if value.starts_with("gep_new_bank_") || value.starts_with("gep_bank_") {
+                trace!("  Invalidating GEP bank '{value}' in {reg:?}");
+                gep_banks_to_remove.push((*reg, value.clone()));
+            }
+        }
+        
+        // Count how many we're removing before consuming the vector
+        let count = gep_banks_to_remove.len();
+        
+        // Remove GEP banks from registers (but keep them in spill slots)
+        for (reg, value) in gep_banks_to_remove {
+            self.instructions.push(AsmInst::Comment(format!("Invalidating GEP bank {} in {:?}", value, reg)));
+            self.reg_contents.remove(&reg);
+            // Remove from LRU queue
+            if let Some(pos) = self.lru_queue.iter().position(|&r| r == reg) {
+                self.lru_queue.remove(pos);
+            }
+            // Add back to free list if not already there
+            if !self.free_list.contains(&reg) {
+                self.free_list.push_back(reg);
+            }
+        }
+        
+        debug!("  Invalidated {count} GEP bank bindings");
+        if count > 0 {
+            self.instructions.push(AsmInst::Comment(format!("Invalidated {} GEP bank bindings", count)));
+        }
     }
 }

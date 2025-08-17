@@ -28,4 +28,15 @@ void display_flush(void);
 void text40_putchar(int x, int y, unsigned char c);
 void text40_puts(int x, int y, const char* s);
 
+// TEXT40 colored character functions
+void text40_putchar_color(int x, int y, unsigned char c, unsigned char fg, unsigned char bg);
+void text40_putchar_attr(int x, int y, unsigned char c, unsigned char attr);
+void text40_puts_color(int x, int y, const char* s, unsigned char fg, unsigned char bg);
+void text40_puts_attr(int x, int y, const char* s, unsigned char attr);
+
+// TEXT40 attribute functions
+void text40_set_attr(int x, int y, unsigned char attr);
+unsigned char text40_get_char(int x, int y);
+unsigned char text40_get_attr(int x, int y);
+
 #endif // MMIO_H

@@ -143,6 +143,13 @@ impl IrBuilder {
             return Err(format!("Pointer must be a fat pointer in function '{func_name}', got: {ptr:?}"));
         };
         
+        // CRITICAL FIX: For dynamic offsets, the result bank is Mixed
+        // because we don't know at compile time if we'll cross a bank boundary
+        let result_bank = match offset {
+            Value::Constant(_) => bank,  // Static offset keeps the same bank tag
+            _ => BankTag::Mixed,         // Dynamic offset results in Mixed bank
+        };
+        
         let instr = Instruction::GetElementPtr { 
             result, 
             ptr: ptr.clone(), 
@@ -152,10 +159,10 @@ impl IrBuilder {
         
         self.add_instruction(instr)?;
         
-        // Return a fat pointer
+        // Return a fat pointer with the correct bank tag
         Ok(Value::FatPtr(FatPointer {
             addr: Box::new(Value::Temp(result)),
-            bank,
+            bank: result_bank,
         }))
     }
     

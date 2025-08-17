@@ -36,4 +36,25 @@
 #define TEXT40_HEIGHT 25
 #define TEXT40_SIZE   1000
 
+// Theme color indices (PICO-8 palette)
+#define COLOR_BLACK        0
+#define COLOR_DARK_BLUE    1
+#define COLOR_DARK_PURPLE  2
+#define COLOR_DARK_GREEN   3
+#define COLOR_BROWN        4
+#define COLOR_DARK_GRAY    5
+#define COLOR_LIGHT_GRAY   6
+#define COLOR_WHITE        7
+#define COLOR_RED          8
+#define COLOR_ORANGE       9
+#define COLOR_YELLOW       10
+#define COLOR_GREEN        11
+#define COLOR_BLUE         12
+#define COLOR_INDIGO       13
+#define COLOR_PINK         14
+#define COLOR_PEACH        15
+
+// Helper macro to create attribute byte from foreground and background colors
+#define MAKE_ATTR(fg, bg) (((bg) << 4) | (fg))
+
 #endif // MMIO_CONSTANTS_H

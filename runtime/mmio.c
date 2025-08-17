@@ -80,3 +80,84 @@ void text40_puts(int x, int y, const char* s) {
         i += 1;
     }
 }
+
+// TEXT40 colored character functions
+void text40_putchar_color(int x, int y, unsigned char c, unsigned char fg, unsigned char bg) {
+    if (x >= 0 && x < TEXT40_WIDTH && y >= 0 && y < TEXT40_HEIGHT) {
+        unsigned short addr = TEXT40_BASE + y * TEXT40_WIDTH + x;
+        // Create attribute byte from foreground and background colors
+        unsigned char attr = MAKE_ATTR(fg & 0x0F, bg & 0x0F);
+        // Combine character and attribute into a single 16-bit value
+        unsigned short value = ((attr & 0xFF) << 8) | (c & 0xFF);
+        mmio_write(addr, value);
+    }
+}
+
+void text40_putchar_attr(int x, int y, unsigned char c, unsigned char attr) {
+    if (x >= 0 && x < TEXT40_WIDTH && y >= 0 && y < TEXT40_HEIGHT) {
+        unsigned short addr = TEXT40_BASE + y * TEXT40_WIDTH + x;
+        // Combine character and attribute into a single 16-bit value
+        unsigned short value = ((attr & 0xFF) << 8) | (c & 0xFF);
+        mmio_write(addr, value);
+    }
+}
+
+void text40_puts_color(int x, int y, const char* s, unsigned char fg, unsigned char bg) {
+    int pos = x;
+    int i = 0;
+    char ch;
+    
+    // Use index-based access instead of pointer arithmetic
+    while ((ch = s[i]) != 0 && pos < TEXT40_WIDTH) {
+        // Mask the character to 8 bits since char is 16-bit in our architecture
+        text40_putchar_color(pos, y, ch & 0xFF, fg, bg);
+        pos += 1;
+        i += 1;
+    }
+}
+
+void text40_puts_attr(int x, int y, const char* s, unsigned char attr) {
+    int pos = x;
+    int i = 0;
+    char ch;
+    
+    // Use index-based access instead of pointer arithmetic
+    while ((ch = s[i]) != 0 && pos < TEXT40_WIDTH) {
+        // Mask the character to 8 bits since char is 16-bit in our architecture
+        text40_putchar_attr(pos, y, ch & 0xFF, attr);
+        pos += 1;
+        i += 1;
+    }
+}
+
+// TEXT40 attribute functions
+void text40_set_attr(int x, int y, unsigned char attr) {
+    if (x >= 0 && x < TEXT40_WIDTH && y >= 0 && y < TEXT40_HEIGHT) {
+        unsigned short addr = TEXT40_BASE + y * TEXT40_WIDTH + x;
+        // Read current value
+        unsigned short current = mmio_read(addr);
+        // Keep character, update attribute
+        unsigned short value = ((attr & 0xFF) << 8) | (current & 0xFF);
+        mmio_write(addr, value);
+    }
+}
+
+unsigned char text40_get_char(int x, int y) {
+    if (x >= 0 && x < TEXT40_WIDTH && y >= 0 && y < TEXT40_HEIGHT) {
+        unsigned short addr = TEXT40_BASE + y * TEXT40_WIDTH + x;
+        unsigned short value = mmio_read(addr);
+        // Return the low byte (character)
+        return value & 0xFF;
+    }
+    return 0;
+}
+
+unsigned char text40_get_attr(int x, int y) {
+    if (x >= 0 && x < TEXT40_WIDTH && y >= 0 && y < TEXT40_HEIGHT) {
+        unsigned short addr = TEXT40_BASE + y * TEXT40_WIDTH + x;
+        unsigned short value = mmio_read(addr);
+        // Return the high byte (attribute)
+        return (value >> 8) & 0xFF;
+    }
+    return 0;
+}

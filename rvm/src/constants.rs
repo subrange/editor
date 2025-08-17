@@ -63,3 +63,23 @@ pub const MIN_MEMORY_SIZE: usize = 256; // Minimum reasonable memory size
 // Output flags
 pub const OUTPUT_READY: u16 = 1;
 pub const OUTPUT_BUSY: u16 = 0;
+
+// Theme Colors - PICO-8 Color Palette RGB values
+pub const THEME_COLORS: [(u8, u8, u8); 16] = [
+    (0, 0, 0),          // 0: Black
+    (29, 43, 83),       // 1: Dark Blue
+    (126, 37, 83),      // 2: Dark Purple
+    (0, 135, 81),       // 3: Dark Green
+    (171, 82, 54),      // 4: Brown
+    (95, 87, 79),       // 5: Dark Gray
+    (194, 195, 199),    // 6: Light Gray
+    (255, 241, 232),    // 7: White
+    (255, 0, 77),       // 8: Red
+    (255, 163, 0),      // 9: Orange
+    (255, 236, 39),     // 10: Yellow
+    (0, 228, 54),       // 11: Green
+    (41, 173, 255),     // 12: Blue
+    (131, 118, 156),    // 13: Indigo
+    (255, 119, 168),    // 14: Pink
+    (255, 204, 170),    // 15: Peach
+];

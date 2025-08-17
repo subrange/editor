@@ -277,24 +277,48 @@ pub fn lower_gep(
         trace!("  Calculated address within new bank");
 
         // Now update the bank based on the original bank info
+        insts.push(AsmInst::Comment(format!("Base bank info: {:?}", base_bank_info)));
         match base_bank_info {
             BankInfo::NamedValue(name) => {
                 // Get the current bank register for the named value
                 let current_bank = mgr.get_register(name.clone());
                 insts.extend(mgr.take_instructions());
-                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
+                let new_bank_name = naming.gep_new_bank(result_temp);
+                
+                // CRITICAL FIX: Clear any existing binding for this bank name
+                mgr.clear_value_binding(&new_bank_name);
+                insts.extend(mgr.take_instructions());  // Take clearing instructions
+                
+                let new_bank_reg = mgr.get_register(new_bank_name.clone());
                 insts.extend(mgr.take_instructions());
+                insts.push(AsmInst::Comment(format!("Computing new bank {} = {} + bank_delta", 
+                    new_bank_name, name)));
                 insts.push(AsmInst::Add(new_bank_reg, current_bank, bank_delta_reg));
-                result_bank_info = BankInfo::Register(new_bank_reg);
-                debug!("  Updated named value pointer bank to dynamic register");
+                // Bind the bank value to its register so it can be tracked/reloaded
+                mgr.bind_value_to_register(new_bank_name.clone(), new_bank_reg);
+                // CRITICAL: Use NamedValue so the bank can be reloaded if spilled
+                result_bank_info = BankInfo::NamedValue(new_bank_name.clone());
+                insts.push(AsmInst::Comment(format!("Result bank tracked as NamedValue({})", new_bank_name)));
+                debug!("  Updated named value pointer bank to trackable named value");
             }
             BankInfo::Global => {
                 // Global bank: new_bank = GP + bank_delta
-                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
+                let new_bank_name = naming.gep_new_bank(result_temp);
+                
+                // CRITICAL FIX: Clear any existing binding for this bank name
+                mgr.clear_value_binding(&new_bank_name);
+                insts.extend(mgr.take_instructions());  // Take clearing instructions
+                
+                let new_bank_reg = mgr.get_register(new_bank_name.clone());
                 insts.extend(mgr.take_instructions());
+                insts.push(AsmInst::Comment(format!("Computing new bank {} = GP + bank_delta", new_bank_name)));
                 insts.push(AsmInst::Add(new_bank_reg, Reg::Gp, bank_delta_reg));
-                result_bank_info = BankInfo::Register(new_bank_reg);
-                debug!("  Updated global-based pointer bank to dynamic register");
+                // Bind the bank value to its register so it can be tracked/reloaded
+                mgr.bind_value_to_register(new_bank_name.clone(), new_bank_reg);
+                // CRITICAL: Use NamedValue so the bank can be reloaded if spilled
+                result_bank_info = BankInfo::NamedValue(new_bank_name.clone());
+                insts.push(AsmInst::Comment(format!("Result bank tracked as NamedValue({})", new_bank_name)));
+                debug!("  Updated global-based pointer bank to trackable named value");
             }
             BankInfo::Register(existing_bank_reg) => {
                 // Already dynamic: update in place
@@ -307,11 +331,24 @@ pub fn lower_gep(
             }
             BankInfo::Stack => {
                 // Stack bank: new_bank = SB + bank_delta  
-                let new_bank_reg = mgr.get_register(naming.gep_new_bank(result_temp));
+                let new_bank_name = naming.gep_new_bank(result_temp);
+                
+                // CRITICAL FIX: Clear any existing binding for this bank name
+                // This ensures we recompute the bank value in loops rather than
+                // reusing a stale value from a previous iteration
+                mgr.clear_value_binding(&new_bank_name);
+                insts.extend(mgr.take_instructions());  // Take clearing instructions
+                
+                let new_bank_reg = mgr.get_register(new_bank_name.clone());
                 insts.extend(mgr.take_instructions());
+                insts.push(AsmInst::Comment(format!("Computing new bank {} = SB + bank_delta", new_bank_name)));
                 insts.push(AsmInst::Add(new_bank_reg, Reg::Sb, bank_delta_reg));
-                result_bank_info = BankInfo::Register(new_bank_reg);
-                debug!("  Updated stack-based pointer bank to dynamic register");
+                // Bind the bank value to its register so it can be tracked/reloaded
+                mgr.bind_value_to_register(new_bank_name.clone(), new_bank_reg);
+                // CRITICAL: Use NamedValue so the bank can be reloaded if spilled
+                result_bank_info = BankInfo::NamedValue(new_bank_name.clone());
+                insts.push(AsmInst::Comment(format!("Result bank tracked as NamedValue({})", new_bank_name)));
+                debug!("  Updated stack-based pointer bank to trackable named value");
             }
         }
 
@@ -326,6 +363,7 @@ pub fn lower_gep(
     }
 
     // Step 5: Store bank info for the result pointer
+    insts.push(AsmInst::Comment(format!("GEP: Setting bank info for {} to {:?}", result_name, result_bank_info)));
     mgr.set_pointer_bank(result_name.clone(), result_bank_info.clone());
     debug!(
         "  Result pointer '{result_name}' has bank info: {result_bank_info:?}"
