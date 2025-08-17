@@ -448,6 +448,53 @@ impl TuiApp {
         }
     }
     
+    pub fn jump_to_test_by_name(&mut self, test_name: &str) {
+        // Strip .c extension if provided
+        let test_name = test_name.strip_suffix(".c").unwrap_or(test_name);
+        
+        let mut current_idx = 0;
+        
+        // Search through all visible items
+        for category in self.categories.values() {
+            current_idx += 1; // Category header
+            
+            if category.expanded {
+                for test in &category.tests {
+                    // Check if the file name matches
+                    if let Some(file_stem) = test.file.file_stem() {
+                        if file_stem.to_str() == Some(test_name) {
+                            self.selected_item = current_idx;
+                            self.ensure_selection_visible();
+                            return;
+                        }
+                    }
+                    current_idx += 1;
+                }
+            }
+        }
+        
+        // If not found, try to expand categories and search again
+        for category in self.categories.values_mut() {
+            category.expanded = true;
+        }
+        
+        current_idx = 0;
+        for category in self.categories.values() {
+            current_idx += 1; // Category header
+            
+            for test in &category.tests {
+                if let Some(file_stem) = test.file.file_stem() {
+                    if file_stem.to_str() == Some(test_name) {
+                        self.selected_item = current_idx;
+                        self.ensure_selection_visible();
+                        return;
+                    }
+                }
+                current_idx += 1;
+            }
+        }
+    }
+    
     pub fn jump_to_first_orphan(&mut self) {
         // First, find if there's an orphan test and its location
         let mut found_orphan: Option<(String, usize)> = None;

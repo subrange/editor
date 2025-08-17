@@ -54,6 +54,7 @@ pub struct RunConfig {
     pub no_cleanup: bool,
     pub parallel: bool,
     pub debug_mode: bool,
+    pub frequency: Option<String>,
 }
 
 impl Default for RunConfig {
@@ -66,6 +67,7 @@ impl Default for RunConfig {
             no_cleanup: false,
             parallel: true,
             debug_mode: false,
+            frequency: None,
         }
     }
 }

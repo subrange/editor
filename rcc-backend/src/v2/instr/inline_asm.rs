@@ -244,40 +244,45 @@ fn generate_setup_code(
     allocated_inputs: &[AllocatedOperand],
 ) -> Vec<AsmInst> {
     let mut insts = Vec::new();
-    
+
     for op in allocated_inputs {
-        // Load the value into the allocated register
+        let constraint = &op.constraint;
+        if constraint.constraint_type != 'r' {
+            // keep 'i'/'m' for later extension if you want
+            continue;
+        }
+
         match &op.operand.value {
             Value::Temp(t) => {
                 let temp_name = naming.temp_name(*t);
-                let src_reg = mgr.get_register(temp_name);
+                let src_reg = mgr.get_register(temp_name.clone());
                 insts.extend(mgr.take_instructions());
-                
+
                 if src_reg != op.register {
-                    insts.push(AsmInst::Comment(format!("Load input {} into {:?}", op.value_name, op.register)));
+                    insts.push(AsmInst::Comment(format!(
+                        "Load input {} into {:?}", op.value_name, op.register
+                    )));
                     insts.push(AsmInst::Move(op.register, src_reg));
                 }
-                mgr.free_register(src_reg);
+                // CRUCIAL: Don’t free src_reg; this temp may still be live.
+                // Also, tell the manager that op.register now ALSO contains that value.
+                mgr.bind_value_to_register(temp_name, op.register);
             }
             Value::Constant(c) => {
-                insts.push(AsmInst::Comment(format!("Load constant {} into {:?}", c, op.register)));
+                insts.push(AsmInst::Comment(format!(
+                    "Load constant {} into {:?}", c, op.register
+                )));
                 insts.push(AsmInst::Li(op.register, *c as i16));
+                // Bind the constant pseudo-name so the allocator knows
+                let cname = naming.const_value(*c);
+                mgr.bind_value_to_register(cname, op.register);
             }
             _ => {
                 warn!("Unsupported input value type: {:?}", op.operand.value);
             }
         }
     }
-    
-    // For read-write outputs, load initial values
-    for op in allocated_inputs.iter() {
-        if let Some(output_idx) = op.operand.tied_to {
-            // This input is tied to an output, meaning it's read-write
-            // The value should already be loaded from the input processing above
-            trace!("Input tied to output {}: already loaded", output_idx);
-        }
-    }
-    
+
     insts
 }
 
@@ -288,36 +293,31 @@ fn generate_teardown_code(
     allocated_outputs: &[AllocatedOperand],
 ) -> Result<Vec<AsmInst>, CompilerError> {
     let mut insts = Vec::new();
-    
+
     for op in allocated_outputs {
-        // For output operands, the result is now in the allocated register
-        // We need to store it back to the original variable's location
+        if op.constraint.constraint_type != 'r' {
+            return Err(CompilerError::codegen_error(
+                format!("Output constraint '{}' not yet supported", op.constraint.constraint_type),
+                SourceLocation::new_simple(0, 0),
+            ));
+        }
+
         match &op.operand.value {
             Value::Temp(t) => {
                 let temp_name = naming.temp_name(*t);
-                
-                // Bind the value to the register
+                // Tell the allocator: temp is in op.register now.
                 mgr.bind_value_to_register(temp_name.clone(), op.register);
-                insts.push(AsmInst::Comment(format!("Output {} now in {:?}", temp_name, op.register)));
-
-                return Err(format!("inline_asm: Short circuit on a hack").into());
-
-                // TODO: FIX THE FUCK OUT OF IT!! HACK: For now, just store to a hardcoded location
-                // We know result is at FP+1 from the assembly
-                insts.push(AsmInst::Comment(format!("Store output to memory")));
-                let addr_reg = mgr.get_register(format!("asm_store_addr"));
-                insts.extend(mgr.take_instructions());
-                insts.push(AsmInst::Add(addr_reg, Reg::Fp, Reg::R0));
-                insts.push(AsmInst::AddI(addr_reg, addr_reg, 1)); // FP+1 is where result is
-                insts.push(AsmInst::Store(op.register, Reg::Sb, addr_reg));
-                mgr.free_register(addr_reg);
+                insts.push(AsmInst::Comment(format!(
+                    "Output {} now in {:?}", temp_name, op.register
+                )));
+                // No stores here. Normal codegen will use this binding.
             }
-            _ => {
-                warn!("Unsupported output value type: {:?}", op.operand.value);
+            other => {
+                warn!("Unsupported output value target: {:?}", other);
             }
         }
     }
-    
+
     Ok(insts)
 }
 
@@ -335,50 +335,46 @@ pub fn lower_inline_asm_extended(
     debug!("  Outputs: {:?}", outputs);
     debug!("  Inputs: {:?}", inputs);
     debug!("  Clobbers: {:?}", clobbers);
-    
+
     let mut insts = Vec::new();
-    
-    // If no operands, fall back to simple inline assembly
+
     if outputs.is_empty() && inputs.is_empty() {
-        trace!("No operands, using simple inline assembly");
         for part in assembly.split([';', '\n']) {
-            let trimmed = part.trim();
-            if !trimmed.is_empty() {
-                insts.push(AsmInst::Raw(trimmed.to_string()));
-            }
+            let t = part.trim();
+            if !t.is_empty() { insts.push(AsmInst::Raw(t.to_string())); }
         }
         return Ok(insts);
     }
-    
-    // Save registers that will be clobbered
-    // Don't spill all - just spill what's needed for the operands
+
     insts.push(AsmInst::Comment("=== Begin inline assembly ===".to_string()));
-    
-    // Allocate registers for operands
-    let (allocated_outputs, allocated_inputs) = 
+
+    // Conservative but correct baseline:
+    mgr.spill_all();
+    insts.extend(mgr.take_instructions());
+
+    // Allocate regs for operands (keep only 'r' for now)
+    let (allocated_outputs, allocated_inputs) =
         allocate_operand_registers(mgr, naming, outputs, inputs, clobbers)?;
-    
-    // Generate setup code (load inputs)
+
+    // Load/move inputs into their assigned regs
     insts.push(AsmInst::Comment("Setup: Load inputs".to_string()));
     insts.extend(generate_setup_code(mgr, naming, &allocated_inputs));
-    
-    // Process and emit the assembly code with substitutions
+    insts.extend(mgr.take_instructions());
+
+    // Substitute placeholders and emit raw asm
     let substituted = substitute_placeholders(assembly, &allocated_outputs, &allocated_inputs);
-    
     insts.push(AsmInst::Comment("Inline assembly code".to_string()));
     for part in substituted.split([';', '\n']) {
-        let trimmed = part.trim();
-        if !trimmed.is_empty() {
-            insts.push(AsmInst::Raw(trimmed.to_string()));
-        }
+        let t = part.trim();
+        if !t.is_empty() { insts.push(AsmInst::Raw(t.to_string())); }
     }
-    
-    // Generate teardown code (store outputs)
-    insts.push(AsmInst::Comment("Teardown: Store outputs".to_string()));
+
+    // Bind outputs to temps (no stores)
+    insts.push(AsmInst::Comment("Teardown: Bind outputs".to_string()));
     insts.extend(generate_teardown_code(mgr, naming, &allocated_outputs)?);
-    
+    insts.extend(mgr.take_instructions());
+
     insts.push(AsmInst::Comment("=== End inline assembly ===".to_string()));
-    
     Ok(insts)
 }
 

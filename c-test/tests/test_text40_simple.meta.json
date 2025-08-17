@@ -1,0 +1,5 @@
+{
+  "description": "Simple TEXT40 display test",
+  "use_runtime": true,
+  "expected": "Simple TEXT40 test completed\n"
+}

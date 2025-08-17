@@ -10,7 +10,7 @@ BANK_SIZE ?= 16384  # Default: 16KB (doubled from 8192 to handle larger programs
 MAX_IMMEDIATE = 65535
 
 # Source files
-C_SOURCES = __char_patch.c putchar.c puts.c memset.c memcpy.c mmio.c
+C_SOURCES = __char_patch.c putchar.c puts.c memset.c memcpy.c mmio.c rand.c
 ASM_SOURCES = crt0.asm
 
 # Generated files
@@ -27,7 +27,7 @@ all: $(RUNTIME_LIB)
 # Compile C files to assembly
 %.asm: %.c
 	@echo "Compiling $< to assembly..."
-	@$(RCC) compile $< -o $@
+	@$(RCC) compile $< -o $@ -I./include
 
 # Assemble C-generated assembly to object files
 $(C_OBJ_FILES): %.pobj: %.asm

@@ -68,6 +68,10 @@ pub enum Command {
         /// Run tests matching a pattern (only for test mode)
         #[arg(short, long)]
         filter: Option<String>,
+        
+        /// Set virtual CPU frequency (e.g., 1MHz, 500KHz, 60Hz)
+        #[arg(long)]
+        frequency: Option<String>,
     },
     
     /// Add a new test (creates .meta.json file)
@@ -138,6 +142,10 @@ pub enum Command {
         /// Start with a specific category selected
         #[arg(short, long)]
         category: Option<String>,
+        
+        /// Test name to scroll to initially (without path or .c extension)
+        #[arg(value_name = "TEST")]
+        test_name: Option<String>,
     },
 }
 

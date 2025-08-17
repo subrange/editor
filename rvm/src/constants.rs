@@ -10,11 +10,12 @@ pub const HDR_TTY_STATUS: usize    = 1;  // Read: bit0=ready
 pub const HDR_TTY_IN_POP: usize    = 2;  // Read: pop next input byte
 pub const HDR_TTY_IN_STATUS: usize = 3;  // Read: bit0=has_byte
 pub const HDR_RNG: usize           = 4;  // Read: next PRNG value
-pub const HDR_DISP_MODE: usize     = 5;  // R/W: 0=OFF, 1=TTY, 2=TEXT40
-pub const HDR_DISP_STATUS: usize   = 6;  // Read: bit0=ready, bit1=flush_done
-pub const HDR_DISP_CTL: usize      = 7;  // R/W: bit0=ENABLE, bit1=CLEAR
-pub const HDR_DISP_FLUSH: usize    = 8;  // Write: trigger display flush
-// Words 9..31 are reserved for future use
+pub const HDR_RNG_SEED: usize      = 5;  // R/W: RNG seed (low 16 bits)
+pub const HDR_DISP_MODE: usize     = 6;  // R/W: 0=OFF, 1=TTY, 2=TEXT40
+pub const HDR_DISP_STATUS: usize   = 7;  // Read: bit0=ready, bit1=flush_done
+pub const HDR_DISP_CTL: usize      = 8;  // R/W: bit0=ENABLE, bit1=CLEAR
+pub const HDR_DISP_FLUSH: usize    = 9;  // Write: trigger display flush
+// Words 10..31 are reserved for future use
 
 // TEXT40 display constants
 pub const TEXT40_BASE_WORD: usize  = 32;         // Start of VRAM

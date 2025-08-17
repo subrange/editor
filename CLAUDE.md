@@ -139,13 +139,14 @@ Create a `.c` file in the appropriate directory:
 
 ### 2. Write Test Code
 
-Tests should output predictable text that can be verified. Use `putchar()` for output:
+Tests should output predictable text that can be verified. Use `putchar()` for single char output, puts for strings.
 
 ```c
 // tests/test_example.c
-void putchar(int c);
+#include <stdio.h>
 
 int main() {
+    puts("Hello, World!");  // Expected output: "Hello, World!\n"
     if (2 + 2 == 4) {
         putchar('Y');  // Yes, test passed
     } else {

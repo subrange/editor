@@ -1,0 +1,5 @@
+{
+  "use_runtime": true,
+  "expected": "TEXT40 test completed\n",
+  "description": "Test TEXT40 display mode with raw terminal rendering"
+}

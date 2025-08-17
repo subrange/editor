@@ -1,6 +1,12 @@
 use std::collections::{VecDeque, HashMap};
 use ripple_asm::Register;
 use crate::constants::*;
+use crossterm::{
+    terminal::{self, ClearType},
+    cursor,
+    style::{Color, SetForegroundColor, SetBackgroundColor, ResetColor},
+    ExecutableCommand,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instr {
@@ -86,6 +92,10 @@ pub struct VM {
     display_enabled: bool,
     display_flush_done: bool,
     
+    // Terminal state for TEXT40 mode
+    terminal_raw_mode: bool,
+    terminal_saved_screen: bool,
+    
     // Debug information: maps instruction indices to function names
     pub debug_symbols: std::collections::HashMap<usize, String>,
 }
@@ -114,6 +124,8 @@ impl VM {
             display_mode: DISP_OFF,
             display_enabled: false,
             display_flush_done: true,
+            terminal_raw_mode: false,
+            terminal_saved_screen: false,
             debug_symbols: HashMap::new(),
         }
     }
@@ -121,6 +133,10 @@ impl VM {
     #[allow(dead_code)]
     pub fn new_default() -> Self {
         Self::new(DEFAULT_BANK_SIZE)
+    }
+    
+    pub fn set_rng_seed(&mut self, seed: u32) {
+        self.rng_state = seed;
     }
     
     pub fn load_binary(&mut self, binary: &[u8]) -> Result<(), String> {
@@ -324,32 +340,56 @@ impl VM {
         
         match addr {
             HDR_TTY_OUT => Some(0), // Write-only, return 0
-            HDR_TTY_STATUS => Some(if self.output_ready { TTY_READY } else { 0 }),
+            HDR_TTY_STATUS => {
+                let value = if self.output_ready { TTY_READY } else { 0 };
+                self.memory[HDR_TTY_STATUS] = value;
+                Some(value)
+            },
             HDR_TTY_IN_POP => {
                 // Pop a byte from input buffer
-                if let Some(byte) = self.input_buffer.pop_front() {
-                    Some(byte as u16)
+                let value = if let Some(byte) = self.input_buffer.pop_front() {
+                    byte as u16
                 } else {
-                    Some(0) // Return 0 if buffer is empty
-                }
+                    0 // Return 0 if buffer is empty
+                };
+                // Store the popped value in memory
+                self.memory[HDR_TTY_IN_POP] = value;
+                Some(value)
             },
             HDR_TTY_IN_STATUS => {
-                Some(if !self.input_buffer.is_empty() { TTY_HAS_BYTE } else { 0 })
+                let value = if !self.input_buffer.is_empty() { TTY_HAS_BYTE } else { 0 };
+                self.memory[HDR_TTY_IN_STATUS] = value;
+                Some(value)
             },
             HDR_RNG => {
                 // Simple LCG: next = (a * prev + c) mod m
                 self.rng_state = self.rng_state.wrapping_mul(1664525).wrapping_add(1013904223);
-                Some((self.rng_state >> 16) as u16) // Return high 16 bits
+                let value = (self.rng_state >> 16) as u16;
+                // Store the generated value in memory
+                self.memory[HDR_RNG] = value;
+                Some(value) // Return the value
             },
-            HDR_DISP_MODE => Some(self.display_mode),
+            HDR_RNG_SEED => {
+                // Return the low 16 bits of current seed
+                let value = (self.rng_state & 0xFFFF) as u16;
+                self.memory[HDR_RNG_SEED] = value;
+                Some(value)
+            },
+            HDR_DISP_MODE => {
+                self.memory[HDR_DISP_MODE] = self.display_mode;
+                Some(self.display_mode)
+            },
             HDR_DISP_STATUS => {
                 let mut status = 0;
                 if self.output_ready { status |= DISP_READY; }
                 if self.display_flush_done { status |= DISP_FLUSH_DONE; }
+                self.memory[HDR_DISP_STATUS] = status;
                 Some(status)
             },
             HDR_DISP_CTL => {
-                Some(if self.display_enabled { DISP_ENABLE } else { 0 })
+                let value = if self.display_enabled { DISP_ENABLE } else { 0 };
+                self.memory[HDR_DISP_CTL] = value;
+                Some(value)
             },
             HDR_DISP_FLUSH => Some(0), // Write-only, return 0
             9..=31 => Some(0), // Reserved addresses return 0
@@ -384,8 +424,21 @@ impl VM {
             HDR_TTY_IN_POP => true, // Read-only, ignore write
             HDR_TTY_IN_STATUS => true, // Read-only, ignore write
             HDR_RNG => true, // Read-only, ignore write
+            HDR_RNG_SEED => {
+                // Set the low 16 bits of the RNG seed
+                // Keep high 16 bits unchanged to maintain some state
+                self.rng_state = (self.rng_state & 0xFFFF0000) | (value as u32);
+                // Store the value in memory for read-back
+                self.memory[HDR_RNG_SEED] = value;
+                true
+            },
             HDR_DISP_MODE => {
-                self.display_mode = value & 0x3; // Only keep lower 2 bits
+                let new_mode = value & 0x3; // Only keep lower 2 bits
+                if new_mode != self.display_mode {
+                    // Mode change - handle terminal setup/teardown
+                    self.handle_display_mode_change(new_mode);
+                }
+                self.display_mode = new_mode;
                 true
             },
             HDR_DISP_STATUS => true, // Read-only, ignore write
@@ -420,14 +473,112 @@ impl VM {
         }
     }
     
-    // Simulate TEXT40 display flush (prints to stderr for debugging)
-    fn flush_text40_display(&self) {
+    // Handle display mode changes (entering/exiting TEXT40 mode)
+    fn handle_display_mode_change(&mut self, new_mode: u16) {
+        use std::io::{self, Write};
+        
+        // Exit current mode
+        if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
+            // Restore terminal
+            self.exit_text40_mode();
+        }
+        
+        // Enter new mode
+        if new_mode == DISP_TEXT40 && !self.terminal_raw_mode {
+            // Setup terminal for TEXT40
+            self.enter_text40_mode();
+        }
+    }
+    
+    // Enter TEXT40 terminal mode
+    fn enter_text40_mode(&mut self) {
+        use std::io::{self, Write};
+        
+        // Only enter raw mode if not in verbose/debug mode
+        if self.verbose || self.debug_mode {
+            return; // Keep normal mode for debugging
+        }
+        
+        // Save current screen and enter alternate screen
+        let _ = io::stderr().execute(terminal::EnterAlternateScreen);
+        let _ = io::stderr().execute(cursor::Hide);
+        let _ = terminal::enable_raw_mode();
+        
+        self.terminal_raw_mode = true;
+        self.terminal_saved_screen = true;
+        
+        // Clear the screen
+        let _ = io::stderr().execute(terminal::Clear(ClearType::All));
+        let _ = io::stderr().execute(cursor::MoveTo(0, 0));
+        let _ = io::stderr().flush();
+    }
+    
+    // Exit TEXT40 terminal mode
+    fn exit_text40_mode(&mut self) {
+        use std::io::{self, Write};
+        
+        if !self.terminal_raw_mode {
+            return;
+        }
+        
+        // Restore terminal
+        let _ = terminal::disable_raw_mode();
+        let _ = io::stderr().execute(cursor::Show);
+        let _ = io::stderr().execute(terminal::LeaveAlternateScreen);
+        let _ = io::stderr().flush();
+        
+        self.terminal_raw_mode = false;
+        self.terminal_saved_screen = false;
+    }
+    
+    // Render TEXT40 display to terminal
+    fn flush_text40_display(&mut self) {
         if self.display_mode != DISP_TEXT40 || !self.display_enabled {
             return; // Display not in TEXT40 mode or not enabled
         }
         
-        // In verbose mode, dump the TEXT40 display to stderr
-        if self.verbose {
+        use std::io::{self, Write};
+        
+        if self.terminal_raw_mode {
+            // Render to actual terminal in TEXT40 mode
+            let mut stderr = io::stderr();
+            
+            // Move to top-left
+            let _ = stderr.execute(cursor::MoveTo(0, 0));
+            
+            // Render the 40x25 display
+            for row in 0..25 {
+                for col in 0..40 {
+                    let addr = TEXT40_BASE_WORD + row * 40 + col;
+                    if addr < self.memory.len() {
+                        let cell = self.memory[addr];
+                        let ch = (cell & 0xFF) as u8;
+                        let attr = ((cell >> 8) & 0xFF) as u8;
+                        
+                        // Set colors based on attributes (if needed in future)
+                        // For now, just use default colors
+                        
+                        // Print character
+                        if ch >= 32 && ch < 127 {
+                            let _ = stderr.write(&[ch]);
+                        } else if ch == 0 {
+                            let _ = stderr.write(b" ");
+                        } else {
+                            let _ = stderr.write(b".");
+                        }
+                    } else {
+                        let _ = stderr.write(b" ");
+                    }
+                }
+                // Move to next line
+                if row < 24 {
+                    let _ = stderr.write(b"\r\n");
+                }
+            }
+            
+            let _ = stderr.flush();
+        } else if self.verbose {
+            // Fallback to debug output
             eprintln!("\n=== TEXT40 Display (40x25) ===");
             for row in 0..25 {
                 eprint!("  ");
@@ -946,7 +1097,10 @@ impl VM {
         self.input_buffer.clear();
         self.output_ready = true;
         
-        // Reset display state
+        // Reset display state (and exit TEXT40 mode if active)
+        if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
+            self.exit_text40_mode();
+        }
         self.display_mode = DISP_OFF;
         self.display_enabled = false;
         self.display_flush_done = true;
@@ -1026,6 +1180,15 @@ impl VM {
             0x1E => eprintln!("DIVI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
             0x1F => eprintln!("MODI R{}, R{}, {}", instr.word1, instr.word2, instr.word3),
             _ => eprintln!("UNKNOWN 0x{:02X}", instr.opcode),
+        }
+    }
+}
+
+impl Drop for VM {
+    fn drop(&mut self) {
+        // Ensure terminal is restored when VM is dropped
+        if self.terminal_raw_mode {
+            self.exit_text40_mode();
         }
     }
 }

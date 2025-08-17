@@ -25,6 +25,7 @@ fn print_usage() {
     eprintln!("  -b, --bank-size <size>   Set bank size (default: {DEFAULT_BANK_SIZE})");
     eprintln!("  -m, --memory <size>      Set memory size in words (default: {DEFAULT_MEMORY_SIZE})");
     eprintln!("  -f, --frequency <hz>     Set virtual CPU frequency (e.g., 1MHz, 500KHz, 2.5GHz)");
+    eprintln!("  -s, --seed <value>       Set RNG seed (default: 0x12345678)");
     eprintln!("  -d, --debug              Enable debug mode (step through execution)");
     eprintln!("  -t, --tui                Enable TUI debugger_ui mode");
     eprintln!("  -v, --verbose            Show VM state during execution");
@@ -58,6 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut bank_size = DEFAULT_BANK_SIZE;
     let mut memory_size: Option<usize> = None;
     let mut frequency: Option<u64> = None;
+    let mut rng_seed: Option<u32> = None;
     let mut debug_mode = false;
     let mut tui_mode = false;
     let mut verbose = false;
@@ -103,6 +105,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     process::exit(1);
                 }));
             },
+            "-s" | "--seed" => {
+                if i + 1 >= args.len() {
+                    eprintln!("Error: --seed requires an argument");
+                    process::exit(1);
+                }
+                i += 1;
+                // Parse as hex if it starts with 0x, otherwise decimal
+                let seed_str = &args[i];
+                rng_seed = Some(if seed_str.starts_with("0x") || seed_str.starts_with("0X") {
+                    u32::from_str_radix(&seed_str[2..], 16).unwrap_or_else(|_| {
+                        eprintln!("Error: Invalid hex seed: {}", args[i]);
+                        process::exit(1);
+                    })
+                } else {
+                    seed_str.parse().unwrap_or_else(|_| {
+                        eprintln!("Error: Invalid seed: {}", args[i]);
+                        process::exit(1);
+                    })
+                });
+            },
             "-d" | "--debug" => {
                 debug_mode = true;
             },
@@ -141,6 +163,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         VM::new(bank_size) // Default 64K memory
     };
+    
+    // Set RNG seed if specified
+    if let Some(seed) = rng_seed {
+        vm.set_rng_seed(seed);
+        if verbose {
+            println!("RNG seed set to: 0x{:08X}", seed);
+        }
+    }
     
     // Set verbose mode if requested
     vm.verbose = verbose;

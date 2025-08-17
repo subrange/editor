@@ -78,20 +78,20 @@ fn run() -> Result<()> {
             return Ok(());
         }
 
-        Some(Command::Tui { ref filter, ref category }) => {
-            run_tui(&cli, &tools, filter.clone(), category.clone())?;
+        Some(Command::Tui { ref filter, ref category, ref test_name }) => {
+            run_tui(&cli, &tools, filter.clone(), category.clone(), test_name.clone())?;
             return Ok(());
         }
 
-        Some(Command::Run { ref programs, ref filter }) => {
+        Some(Command::Run { ref programs, ref filter, ref frequency }) => {
             if !programs.is_empty() {
                 // Run as programs without test expectations
                 for program in programs {
-                    exec_program(program, &cli, &tools)?;
+                    exec_program(program, &cli, &tools, frequency.clone())?;
                 }
             } else {
-                // Run as test suite
-                run_tests(&cli, &tools, filter.clone())?;
+                // Run as test suite with frequency if provided
+                run_tests_with_frequency(&cli, &tools, filter.clone(), frequency.clone())?;
             }
         }
         None => {
@@ -144,6 +144,10 @@ fn detect_project_root() -> Result<PathBuf> {
 }
 
 fn run_tests(cli: &Cli, tools: &ToolPaths, filter: Option<String>) -> Result<()> {
+    run_tests_with_frequency(cli, tools, filter, None)
+}
+
+fn run_tests_with_frequency(cli: &Cli, tools: &ToolPaths, filter: Option<String>, frequency: Option<String>) -> Result<()> {
     // Build runtime first
     println!("Building runtime library (bank_size: {})...", cli.bank_size);
     build_runtime(tools, cli.bank_size)?;
@@ -160,6 +164,7 @@ fn run_tests(cli: &Cli, tools: &ToolPaths, filter: Option<String>) -> Result<()>
         no_cleanup: cli.no_cleanup,
         parallel: !cli.no_parallel,
         debug_mode: cli.debug,
+        frequency,
     };
     
     // Create test runner
@@ -623,7 +628,7 @@ fn check_untracked_tests(tests_file: &Path, verbose: bool) -> Result<()> {
     Ok(())
 }
 
-fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> {
+fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Option<String>) -> Result<()> {
     // Build runtime first
     println!("Building runtime library...");
     build_runtime(tools, cli.bank_size)?;
@@ -667,9 +672,15 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> 
         }
     } else {
         // Run normally and just pass through output
-        let status = std::process::Command::new(&tools.rvm)
-            .arg(&bin_file)
-            .status()?;
+        let mut cmd = std::process::Command::new(&tools.rvm);
+        cmd.arg(&bin_file);
+        
+        // Add frequency parameter if provided
+        if let Some(freq) = frequency {
+            cmd.arg("--frequency").arg(freq);
+        }
+        
+        let status = cmd.status()?;
         
         if !status.success() {
             anyhow::bail!("Program exited with error");
@@ -679,7 +690,7 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> 
     Ok(())
 }
 
-fn run_tui(cli: &Cli, tools: &ToolPaths, filter: Option<String>, category: Option<String>) -> Result<()> {
+fn run_tui(cli: &Cli, tools: &ToolPaths, filter: Option<String>, category: Option<String>, test_name: Option<String>) -> Result<()> {
     // Load test configuration
     let test_config = config::load_tests(&cli.tests_file)?;
     
@@ -699,6 +710,11 @@ fn run_tui(cli: &Cli, tools: &ToolPaths, filter: Option<String>, category: Optio
     // Set initial category if provided
     if let Some(_category) = category {
         // TODO: Set initial category in TUI app
+    }
+    
+    // Jump to specific test if provided
+    if let Some(test_name) = test_name {
+        tui_runner.jump_to_test(&test_name);
     }
     
     tui_runner.run()?;

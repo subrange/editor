@@ -35,6 +35,10 @@ impl TuiRunner {
         
         Self { app, events }
     }
+    
+    pub fn jump_to_test(&mut self, test_name: &str) {
+        self.app.jump_to_test_by_name(test_name);
+    }
 
     pub fn run(&mut self) -> Result<()> {
         // Setup terminal
@@ -895,6 +899,7 @@ impl TuiRunner {
                     no_cleanup: true,
                     parallel: false,
                     debug_mode: false,
+                    frequency: None,
                 };
                 
                 // Get test details to determine if runtime is needed
@@ -1068,6 +1073,7 @@ impl TuiRunner {
                     no_cleanup: true,
                     parallel: true,  // Use parallel execution like CLI
                     debug_mode: false,
+                    frequency: None,
                 };
                 
                 // Create the same TestRunner that CLI uses
@@ -1158,6 +1164,7 @@ impl TuiRunner {
             no_cleanup: true,
             parallel: false,
             debug_mode: false,
+            frequency: None,
         };
         
         let use_runtime = test.map(|t| t.use_runtime).unwrap_or(true);

@@ -10,6 +10,12 @@
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
 
+// Random number generation
+#define RAND_MAX 0x7FFF  // Maximum value returned by rand() (32767)
+
+int rand(void);
+void srand(unsigned int seed);
+
 // TODO: Future additions
 // void *malloc(int size);
 // void free(void *ptr);
@@ -17,7 +23,5 @@
 // void *realloc(void *ptr, int size);
 // void exit(int status);
 // int abs(int j);
-// int rand(void);
-// void srand(unsigned int seed);
 
 #endif // STDLIB_H

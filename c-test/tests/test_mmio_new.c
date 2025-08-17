@@ -1,36 +1,11 @@
 // Test new MMIO layout with TTY, RNG, and TEXT40 display
 
-// MMIO addresses
-#define TTY_OUT       (*((unsigned short*)0))
-#define TTY_STATUS    (*((unsigned short*)1))
-#define TTY_IN_POP    (*((unsigned short*)2))
-#define TTY_IN_STATUS (*((unsigned short*)3))
-#define RNG           (*((unsigned short*)4))
-#define DISP_MODE     (*((unsigned short*)5))
-#define DISP_STATUS   (*((unsigned short*)6))
-#define DISP_CTL      (*((unsigned short*)7))
-#define DISP_FLUSH    (*((unsigned short*)8))
-
-// Display modes
-#define DISP_OFF    0
-#define DISP_TTY    1
-#define DISP_TEXT40 2
-
-// Display control bits
-#define DISP_ENABLE (1 << 0)
-#define DISP_CLEAR  (1 << 1)
-
-// TEXT40 VRAM starts at word 32
-#define VRAM ((unsigned short*)32)
-
-void putchar(int c) {
-    // Wait for TTY ready
-    while (!(TTY_STATUS & 1)) {}
-    TTY_OUT = c;
-}
+#include <stdio.h>
+#include <mmio.h>
+#include <mmio_constants.h>
 
 int main() {
-    // Test 1: Basic TTY output
+    // Test 1: Basic TTY output using stdio putchar
     putchar('T');
     putchar('T');
     putchar('Y');
@@ -39,61 +14,54 @@ int main() {
     putchar('K');
     putchar('\n');
     
-    // Test 2: Read RNG values
-    unsigned short rng1 = RNG;
-    unsigned short rng2 = RNG;
-    unsigned short rng3 = RNG;
+    // Test 2: Read RNG values using mmio functions
+    unsigned short rng1 = rng_get();
+    unsigned short rng2 = rng_get();
+    unsigned short rng3 = rng_get();
     
     // RNG values should be different
     if (rng1 != rng2 && rng2 != rng3) {
-        putchar('R');
-        putchar('N');
-        putchar('G');
-        putchar(':');
-        putchar('O');
-        putchar('K');
-        putchar('\n');
+        puts("RNG:OK");
     } else {
-        putchar('R');
-        putchar('N');
-        putchar('G');
-        putchar(':');
-        putchar('N');
-        putchar('O');
-        putchar('\n');
+        puts("RNG:NO");
     }
     
-    // Test 3: TEXT40 display mode
-    DISP_MODE = DISP_TEXT40;
-    DISP_CTL = DISP_ENABLE | DISP_CLEAR;  // Enable and clear
+    // Test 3: TEXT40 display mode using display functions
+    display_set_mode(DISP_MODE_TEXT40);
+    display_clear();
+    display_enable();
     
-    // Write "HELLO" to VRAM at position 0
-    VRAM[0] = 'H';
-    VRAM[1] = 'E';
-    VRAM[2] = 'L';
-    VRAM[3] = 'L';
-    VRAM[4] = 'O';
+    // Write "HELLO" to first line using text40 functions
+    text40_puts(0, 0, "HELLO");
     
-    // Write "WORLD" at position 40 (second line)
-    VRAM[40] = 'W';
-    VRAM[41] = 'O';
-    VRAM[42] = 'R';
-    VRAM[43] = 'L';
-    VRAM[44] = 'D';
+    // Write "WORLD" to second line
+    text40_puts(0, 1, "WORLD");
+    
+    // Write individual characters to test text40_putchar
+    text40_putchar(0, 3, 'T');
+    text40_putchar(1, 3, 'E');
+    text40_putchar(2, 3, 'S');
+    text40_putchar(3, 3, 'T');
     
     // Flush display
-    DISP_FLUSH = 1;
+    display_flush();
     
-    // Check display status
-    if (DISP_STATUS & 2) { // Check flush_done bit
-        putchar('D');
-        putchar('I');
-        putchar('S');
-        putchar('P');
-        putchar(':');
-        putchar('O');
-        putchar('K');
-        putchar('\n');
+    // Check display status using mmio_read
+    unsigned short status = mmio_read(MMIO_DISP_STATUS);
+    if (status & DISP_STATUS_FLUSH_DONE) {
+        puts("DISP:OK");
+    } else {
+        puts("DISP:NO");
+    }
+    
+    // Test direct MMIO access for completeness
+    // Write a test pattern to verify mmio_write works
+    mmio_write(MMIO_RNG_SEED, 0x1234);
+    unsigned short seed = rng_get_seed();
+    if (seed == 0x1234) {
+        puts("MMIO:OK");
+    } else {
+        puts("MMIO:NO");
     }
     
     return 0;

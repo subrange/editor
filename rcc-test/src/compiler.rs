@@ -404,12 +404,23 @@ fn compile_and_run_rvm(
     }
 
     // Run on RVM
-    let rvm_flags = if config.debug_mode { "-t" } else { "" };
+    let mut rvm_args = vec![bin_file.display().to_string(), "--memory".to_string(), "4294967296".to_string()];
+    
+    // Add frequency if provided
+    if let Some(ref freq) = config.frequency {
+        rvm_args.push("--frequency".to_string());
+        rvm_args.push(freq.clone());
+    }
+    
+    // Add debug flag if needed
+    if config.debug_mode {
+        rvm_args.push("-t".to_string());
+    }
+    
     let run_cmd = format!(
-        "{} {} --memory 4294967296 {}",
+        "{} {}",
         tools.rvm.display(),
-        bin_file.display(),
-        rvm_flags
+        rvm_args.join(" ")
     );
 
     let result = run_command_sync(&run_cmd, config.timeout_secs)?;
