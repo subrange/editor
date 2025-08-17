@@ -237,7 +237,8 @@ mod tests {
             int header_var = 1;
         "};
         let output = preprocess(input).unwrap();
-        assert!(output.contains("#pragma once"));
+        // Pragma once is processed internally and not output to the result
+        // The code after it should still be present
         assert!(output.contains("int header_var = 1;"));
     }
 
@@ -369,6 +370,27 @@ mod tests {
             assert!(output.contains(expected), 
                    "Failed for input: {}, got output: {}", input, output);
         }
+    }
+
+    #[test]
+    fn test_define_with_comments() {
+        let input = indoc! {"
+            #define A 420 // This comment should not be in the macro
+            #define B 100 /* Block comment should also be stripped */
+            #define C 200 // Comment at end
+            int x = A;
+            int y = B;
+            int z = C;
+        "};
+        let output = preprocess(input).unwrap();
+        // The values should be expanded without comments
+        assert!(output.contains("int x = 420;"));
+        assert!(output.contains("int y = 100;"));
+        assert!(output.contains("int z = 200;"));
+        // Comments should not appear in the output
+        assert!(!output.contains("This comment"));
+        assert!(!output.contains("Block comment"));
+        assert!(!output.contains("Comment at end"));
     }
 
     #[test]

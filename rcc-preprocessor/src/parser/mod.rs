@@ -271,7 +271,17 @@ impl Parser {
                     break;
                 }
             } else {
-                body.push_str(&self.advance().text);
+                // Skip comments but include everything else
+                let token = self.peek();
+                match &token.token_type {
+                    TokenType::Comment(_) => {
+                        // Skip comments - they should not be part of macro body
+                        self.advance();
+                    }
+                    _ => {
+                        body.push_str(&self.advance().text);
+                    }
+                }
             }
         }
         
