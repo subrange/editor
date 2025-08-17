@@ -461,9 +461,14 @@ pub fn type_statement(
         }
         
         StatementKind::Declaration { declarations } => {
-            // For now, handle only the first declaration
-            // TODO: Handle multiple declarations properly
-            if let Some(decl) = declarations.first() {
+            // Handle multiple declarations by creating a compound statement
+            if declarations.is_empty() {
+                return Ok(TypedStmt::Empty);
+            }
+            
+            if declarations.len() == 1 {
+                // Single declaration - handle directly
+                let decl = &declarations[0];
                 let init = match decl.initializer.as_ref() {
                     Some(init) => {
                         Some(type_initializer(init, &decl.decl_type, type_env)?)
@@ -475,10 +480,28 @@ pub fn type_statement(
                     name: decl.name.clone(),
                     decl_type: decl.decl_type.clone(),
                     initializer: init,
-                    symbol_id: None,
+                    symbol_id: decl.symbol_id,
                 })
             } else {
-                Ok(TypedStmt::Empty)
+                // Multiple declarations - create a compound statement
+                let mut typed_decls = Vec::new();
+                for decl in declarations {
+                    let init = match decl.initializer.as_ref() {
+                        Some(init) => {
+                            Some(type_initializer(init, &decl.decl_type, type_env)?)
+                        },
+                        None => None,
+                    };
+                    
+                    typed_decls.push(TypedStmt::Declaration {
+                        name: decl.name.clone(),
+                        decl_type: decl.decl_type.clone(),
+                        initializer: init,
+                        symbol_id: decl.symbol_id,
+                    });
+                }
+                
+                Ok(TypedStmt::Compound(typed_decls))
             }
         }
         

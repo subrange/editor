@@ -7,7 +7,7 @@
 
 // Additional color that's not in the standard PICO-8 palette
 // Using light blue/cyan approximation
-#define COLOR_CYAN COLOR_BLUE
+#define COLOR_BLUE COLOR_BLUE
 
 #define MAX_STARS 50
 #define SCREEN_WIDTH 40
@@ -144,9 +144,9 @@ void draw_spaceship() {
     //   /|\
     //  / | \
     
-    text40_putchar_color(center_x, center_y - 1, '^', COLOR_CYAN, COLOR_BLACK);
+    text40_putchar_color(center_x, center_y - 1, '^', COLOR_BLUE, COLOR_BLACK);
     text40_putchar_color(center_x - 1, center_y, '/', COLOR_BLUE, COLOR_BLACK);
-    text40_putchar_color(center_x, center_y, '|', COLOR_CYAN, COLOR_BLACK);
+    text40_putchar_color(center_x, center_y, '|', COLOR_BLUE, COLOR_BLACK);
     text40_putchar_color(center_x + 1, center_y, '\\', COLOR_BLUE, COLOR_BLACK);
     text40_putchar_color(center_x - 2, center_y + 1, '/', COLOR_DARK_BLUE, COLOR_BLACK);
     text40_putchar_color(center_x - 1, center_y + 1, ' ', COLOR_BLACK, COLOR_DARK_BLUE);
@@ -169,7 +169,7 @@ void draw_hud() {
     
     // Bottom status
     text40_puts_color(1, 24, "Sector:", COLOR_LIGHT_GRAY, COLOR_DARK_GRAY);
-    text40_puts_color(9, 24, "ALPHA-7", COLOR_CYAN, COLOR_DARK_GRAY);
+    text40_puts_color(9, 24, "ALPHA-7", COLOR_BLUE, COLOR_DARK_GRAY);
     text40_puts_color(25, 24, "System: SOL", COLOR_GREEN, COLOR_DARK_GRAY);
     
     // Side decorations
@@ -277,7 +277,7 @@ int main() {
                     
                     if (x - dx >= 0 && x - dx < SCREEN_WIDTH &&
                         y - dy >= 0 && y - dy < SCREEN_HEIGHT) {
-                        text40_putchar_color(x - dx, y - dy, '-', COLOR_CYAN, COLOR_BLACK);
+                        text40_putchar_color(x - dx, y - dy, '-', COLOR_BLUE, COLOR_BLACK);
                     }
                 }
             }

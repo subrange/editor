@@ -5,8 +5,6 @@
 #include <mmio.h>
 #include <mmio_constants.h>
 
-#define COLOR_CYAN COLOR_BLUE
-
 #define SCREEN_WIDTH 40
 #define SCREEN_HEIGHT 25
 #define VIEW_DISTANCE 5
@@ -447,11 +445,11 @@ void draw_hud() {
     
     // Position
     text40_puts_color(10, SCREEN_HEIGHT - 1, "POS:", COLOR_WHITE, COLOR_DARK_GRAY);
-    text40_putchar_color(14, SCREEN_HEIGHT - 1, '0' + (player_x / 10), COLOR_CYAN, COLOR_DARK_GRAY);
-    text40_putchar_color(15, SCREEN_HEIGHT - 1, '0' + (player_x % 10), COLOR_CYAN, COLOR_DARK_GRAY);
+    text40_putchar_color(14, SCREEN_HEIGHT - 1, '0' + (player_x / 10), COLOR_BLUE, COLOR_DARK_GRAY);
+    text40_putchar_color(15, SCREEN_HEIGHT - 1, '0' + (player_x % 10), COLOR_BLUE, COLOR_DARK_GRAY);
     text40_putchar_color(16, SCREEN_HEIGHT - 1, ',', COLOR_WHITE, COLOR_DARK_GRAY);
-    text40_putchar_color(17, SCREEN_HEIGHT - 1, '0' + (player_y / 10), COLOR_CYAN, COLOR_DARK_GRAY);
-    text40_putchar_color(18, SCREEN_HEIGHT - 1, '0' + (player_y % 10), COLOR_CYAN, COLOR_DARK_GRAY);
+    text40_putchar_color(17, SCREEN_HEIGHT - 1, '0' + (player_y / 10), COLOR_BLUE, COLOR_DARK_GRAY);
+    text40_putchar_color(18, SCREEN_HEIGHT - 1, '0' + (player_y % 10), COLOR_BLUE, COLOR_DARK_GRAY);
 }
 
 // Move player forward if possible
