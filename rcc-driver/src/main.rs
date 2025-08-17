@@ -243,7 +243,11 @@ fn compile_c99_file(config: CompileConfig) -> Result<(), Box<dyn std::error::Err
                         }
                         rcc_frontend::TopLevelItem::Declarations(decls) => {
                             for decl in decls {
-                                println!("  Global variable: {} : {}", decl.name, decl.decl_type);
+                                if decl.storage_class == rcc_frontend::StorageClass::Typedef {
+                                    println!("  Typedef: {} = {}", decl.name, decl.decl_type);
+                                } else {
+                                    println!("  Global variable: {} : {}", decl.name, decl.decl_type);
+                                }
                             }
                         }
                         rcc_frontend::TopLevelItem::TypeDefinition { name, .. } => {

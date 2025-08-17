@@ -1,0 +1,5 @@
+{
+  "use_runtime": true,
+  "expected": "YYYY",
+  "description": "Basic compound literal tests for arrays"
+}

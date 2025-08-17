@@ -100,7 +100,22 @@ pub fn convert_type(ast_type: &Type, location: SourceLocation) -> Result<IrType,
             // When used directly (e.g., in parameter types), treat as a pointer
             Ok(IrType::FatPtr(Box::new(IrType::I16)))
         }
-        _ => Err(CodegenError::InvalidType {
+        Type::Enum { .. } => {
+            // Enums are treated as integers
+            Ok(IrType::I16)
+        }
+        Type::Typedef(name) => {
+            // Typedefs should have been resolved during typed_ast conversion
+            // This is an internal error if we reach here
+            eprintln!("ERROR: Typedef '{}' reached codegen at {}:{}", name, location.line, location.column);
+            eprintln!("Stack trace:");
+            eprintln!("{:?}", std::backtrace::Backtrace::capture());
+            Err(CodegenError::InvalidType {
+                ast_type: ast_type.clone(),
+                location,
+            }.into())
+        }
+        Type::Error => Err(CodegenError::InvalidType {
             ast_type: ast_type.clone(),
             location,
         }.into()),

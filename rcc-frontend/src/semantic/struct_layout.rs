@@ -138,7 +138,7 @@ pub fn check_recursive_struct(
             // Check each field
             for field in fields {
                 // Direct containment (not via pointer) is recursive
-                if !field.field_type.is_pointer() {
+                if !matches!(field.field_type, Type::Pointer { .. }) {
                     if let Type::Struct { name: Some(field_name), .. } = &field.field_type {
                         if field_name == name {
                             seen_types.insert(name.clone(), true);

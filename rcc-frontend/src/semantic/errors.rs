@@ -68,6 +68,10 @@ pub enum SemanticError {
         name: String,
         location: SourceLocation,
     },
+    NotImplemented {
+        feature: String,
+        location: SourceLocation,
+    },
 }
 
 impl From<SemanticError> for CompilerError {
@@ -154,6 +158,12 @@ impl From<SemanticError> for CompilerError {
             SemanticError::UndefinedType { name, location } => {
                 CompilerError::semantic_error(
                     format!("Undefined type: '{name}'"),
+                    location,
+                )
+            }
+            SemanticError::NotImplemented { feature, location } => {
+                CompilerError::semantic_error(
+                    format!("Feature not implemented: {feature}"),
                     location,
                 )
             }

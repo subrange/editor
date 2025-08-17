@@ -53,7 +53,7 @@ pub fn generate_unary_operation(
             let current_val = gen.builder.build_load(addr.clone(), ir_type.clone())?;
             
             // 3. Calculate the increment/decrement amount
-            let amount = if operand.get_type().is_pointer() {
+            let amount = if matches!(operand.get_type(), Type::Pointer { .. }) {
                 // For pointers, increment by the size of the pointed-to type
                 if let Type::Pointer { target, .. } = operand.get_type() {
                     Value::Constant(target.size_in_words().unwrap_or(1) as i64)
@@ -97,7 +97,7 @@ pub fn generate_unary_operation(
             )?;
             
             // 4. Calculate the increment/decrement amount
-            let amount = if operand.get_type().is_pointer() {
+            let amount = if matches!(operand.get_type(), Type::Pointer { .. }) {
                 // For pointers, increment by the size of the pointed-to type
                 if let Type::Pointer { target, .. } = operand.get_type() {
                     Value::Constant(target.size_in_words().unwrap_or(1) as i64)

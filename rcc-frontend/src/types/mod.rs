@@ -130,82 +130,12 @@ impl Type {
         }
     }
     
-    /// Check if type is void
-    pub fn is_void(&self) -> bool {
-        matches!(self, Type::Void)
-    }
-    
-    /// Check if type is integer
-    pub fn is_integer(&self) -> bool {
-        matches!(self, 
-            Type::Bool | Type::Char | Type::SignedChar | Type::UnsignedChar |
-            Type::Short | Type::UnsignedShort | Type::Int | Type::UnsignedInt |
-            Type::Long | Type::UnsignedLong | Type::Enum { .. }
-        )
-    }
-    
-    /// Check if type is signed integer
-    pub fn is_signed_integer(&self) -> bool {
-        matches!(self, 
-            Type::Char | Type::SignedChar | Type::Short | Type::Int | Type::Long
-        )
-    }
-    
-    /// Check if type is pointer
-    pub fn is_pointer(&self) -> bool {
-        matches!(self, Type::Pointer { .. } | Type::Array { .. })
-    }
-    
     /// Get pointer target type
     pub fn pointer_target(&self) -> Option<&Type> {
         match self {
             Type::Pointer { target, .. } => Some(target),
             Type::Array { element_type, .. } => Some(element_type),
             _ => None,
-        }
-    }
-    
-    /// Get pointer bank tag
-    pub fn pointer_bank(&self) -> Option<BankTag> {
-        match self {
-            Type::Pointer { bank, .. } => *bank,
-            Type::Array { .. } => None, // Arrays don't have explicit bank (context-dependent)
-            _ => None,
-        }
-    }
-    
-    /// Check if this type is compatible with another for assignment
-    pub fn is_assignable_from(&self, other: &Type) -> bool {
-        // Simplified compatibility rules for MVP
-        match (self, other) {
-            // Exact match
-            (a, b) if a == b => true,
-            
-            // Struct types with same name are compatible (handle references vs definitions)
-            (Type::Struct { name: Some(name1), .. }, Type::Struct { name: Some(name2), .. }) 
-                if name1 == name2 => true,
-            
-            // Integer conversions
-            (a, b) if a.is_integer() && b.is_integer() => true,
-            
-            // Pointer conversions
-            (Type::Pointer { target: a, .. }, Type::Pointer { target: b, .. }) => {
-                // void* is compatible with any pointer
-                matches!(a.as_ref(), Type::Void) || matches!(b.as_ref(), Type::Void) 
-                    || a.as_ref() == b.as_ref()
-                    || a.is_assignable_from(b)  // Recursively check pointed-to types
-            }
-            
-            // Array to pointer decay
-            (Type::Pointer { target, .. }, Type::Array { element_type, .. }) => target.as_ref() == element_type.as_ref(),
-            
-            // Function to function pointer decay
-            (Type::Pointer { target, .. }, func @ Type::Function { .. }) => {
-                // The pointer must point to the same function type
-                target.as_ref() == func
-            }
-            
-            _ => false,
         }
     }
 }

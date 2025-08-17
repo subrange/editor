@@ -2,6 +2,7 @@
 //!
 //! This module implements the conversion from the untyped AST to the typed AST.
 
+use std::cell::RefCell;
 use super::expressions::TypedExpr;
 use super::statements::TypedStmt;
 use super::translation_unit::{TypedFunction, TypedTopLevelItem, TypedTranslationUnit};
@@ -9,41 +10,39 @@ use super::errors::TypeError;
 use crate::types::{Type, BankTag};
 use crate::ast::{Initializer, InitializerKind, BinaryOp};
 use rcc_common::SymbolId;
-use std::collections::HashMap;
+use std::rc::Rc;
+use crate::semantic::types::TypeAnalyzer;
 
 /// Type environment for looking up variable types
 pub struct TypeEnvironment {
-    /// Maps symbol IDs to their types (from semantic analysis)
-    pub symbol_types: HashMap<SymbolId, Type>,
-    /// Maps typedef names to their underlying types
-    pub type_definitions: HashMap<String, Type>,
+    type_analyzer: Rc<RefCell<TypeAnalyzer>>,
 }
 
 impl TypeEnvironment {
     /// Create a new type environment with symbol and type information
     pub fn new(
-        symbol_types: HashMap<SymbolId, Type>,
-        type_definitions: HashMap<String, Type>,
+        type_analyzer: Rc<RefCell<TypeAnalyzer>>,
     ) -> Self {
         Self {
-            symbol_types,
-            type_definitions,
+            type_analyzer,
         }
     }
     
-    /// Look up the type of a symbol by its ID
-    pub fn lookup_type(&self, symbol_id: SymbolId) -> Option<&Type> {
-        self.symbol_types.get(&symbol_id)
+    /// Look up the type of a symbol by its ID and resolve it
+    pub fn lookup_type(&self, symbol_id: SymbolId) -> Option<Type> {
+        let type_opt = self.type_analyzer.borrow().symbol_types.borrow().get(&symbol_id).cloned();
+        // Resolve the type to handle typedefs
+        type_opt.map(|ty| self.type_analyzer.borrow().resolve_type(&ty))
     }
     
     /// Resolve a typedef name to its underlying type
-    pub fn resolve_typedef(&self, name: &str) -> Option<&Type> {
-        self.type_definitions.get(name)
+    pub fn resolve_typedef(&self, name: &str) -> Option<Type> {
+        self.type_analyzer.borrow().type_definitions.borrow().get(name).cloned()
     }
     
     /// Check if a name is a typedef
     pub fn is_typedef(&self, name: &str) -> bool {
-        self.type_definitions.contains_key(name)
+        self.type_analyzer.borrow().type_definitions.borrow().contains_key(name)
     }
 }
 
@@ -162,7 +161,6 @@ pub fn type_expression(
             // First try to look up the type using the symbol_id from semantic analysis
             let var_type = if let Some(id) = symbol_id {
                 type_env.lookup_type(*id)
-                    .cloned()
                     .or_else(|| expr.expr_type.clone())
                     .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?
             } else {
@@ -179,31 +177,35 @@ pub fn type_expression(
         }
         
         ExpressionKind::Binary { op, left, right } => {
-            // Trust the type that semantic analysis computed
+            // Trust the type that semantic analysis computed, but resolve it
             let result_type = expr.expr_type.clone()
                 .ok_or_else(|| TypeError::TypeMismatch(format!(
                     "Binary expression has no type at {}:{} (operator: {:?})",
                     expr.span.start.line, expr.span.start.column, op
                 )))?;
+            let result_type = type_env.type_analyzer.borrow().resolve_type(&result_type);
             
             let left_typed = type_expression(left, type_env)?;
             let right_typed = type_expression(right, type_env)?;
-            let left_type = left.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch(format!(
+            let left_type_unresolved = left.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch(format!(
                 "Left operand has no type at {}:{} in binary expression",
                 left.span.start.line, left.span.start.column
             )))?;
-            let right_type = right.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch(format!(
+            let right_type_unresolved = right.expr_type.as_ref().ok_or_else(|| TypeError::TypeMismatch(format!(
                 "Right operand has no type at {}:{} in binary expression", 
                 right.span.start.line, right.span.start.column
             )))?;
+            // Resolve types to handle typedefs
+            let left_type = &type_env.type_analyzer.borrow().resolve_type(left_type_unresolved);
+            let right_type = &type_env.type_analyzer.borrow().resolve_type(right_type_unresolved);
             
             // Classify the operation based on types
             match op {
                 // Special handling for pointer arithmetic operations
-                BinaryOp::Add | BinaryOp::Sub if left_type.is_pointer() || right_type.is_pointer() => {
+                BinaryOp::Add | BinaryOp::Sub if type_env.type_analyzer.borrow().is_pointer(left_type) || type_env.type_analyzer.borrow().is_pointer(right_type) => {
                     // Pointer - Pointer = integer (ptrdiff_t)
-                    if left_type.is_pointer() && right_type.is_pointer() && matches!(op, BinaryOp::Sub) {
-                        let elem_type = left_type.pointer_target()
+                    if type_env.type_analyzer.borrow().is_pointer(left_type) && type_env.type_analyzer.borrow().is_pointer(right_type) && matches!(op, BinaryOp::Sub) {
+                        let elem_type = type_env.type_analyzer.borrow().pointer_target(left_type)
                             .ok_or_else(|| TypeError::TypeMismatch("Invalid pointer type".to_string()))?;
                         
                         Ok(TypedExpr::PointerDifference {
@@ -214,8 +216,8 @@ pub fn type_expression(
                         })
                     }
                     // Pointer +/- Integer
-                    else if left_type.is_pointer() && right_type.is_integer() {
-                        let elem_type = left_type.pointer_target()
+                    else if type_env.type_analyzer.borrow().is_pointer(left_type) && type_env.type_analyzer.borrow().is_integer(right_type) {
+                        let elem_type = type_env.type_analyzer.borrow().pointer_target(left_type)
                             .ok_or_else(|| TypeError::TypeMismatch("Invalid pointer type".to_string()))?;
                         
                         Ok(TypedExpr::PointerArithmetic {
@@ -227,8 +229,8 @@ pub fn type_expression(
                         })
                     }
                     // Integer + Pointer (commutative)
-                    else if left_type.is_integer() && right_type.is_pointer() && matches!(op, BinaryOp::Add) {
-                        let elem_type = right_type.pointer_target()
+                    else if type_env.type_analyzer.borrow().is_integer(left_type) && type_env.type_analyzer.borrow().is_pointer(right_type) && matches!(op, BinaryOp::Add) {
+                        let elem_type = type_env.type_analyzer.borrow().pointer_target(right_type)
                             .ok_or_else(|| TypeError::TypeMismatch("Invalid pointer type".to_string()))?;
                         
                         Ok(TypedExpr::PointerArithmetic {
@@ -254,8 +256,8 @@ pub fn type_expression(
                 BinaryOp::Index => {
                     // Arrays decay to pointers
                     let array_type = if let Type::Array { element_type, .. } = left_type {
-                        element_type.as_ref()
-                    } else if let Some(elem) = left_type.pointer_target() {
+                        element_type.as_ref().clone()
+                    } else if let Some(elem) = type_env.type_analyzer.borrow().pointer_target(left_type) {
                         elem
                     } else {
                         return Err(TypeError::TypeMismatch("Cannot index non-array/pointer type".to_string()));
@@ -279,7 +281,7 @@ pub fn type_expression(
                 }
                 
                 // Compound assignments
-                BinaryOp::AddAssign | BinaryOp::SubAssign if left_type.is_pointer() => {
+                BinaryOp::AddAssign | BinaryOp::SubAssign if type_env.type_analyzer.borrow().is_pointer(left_type) => {
                     Ok(TypedExpr::CompoundAssignment {
                         op: *op,
                         lhs: Box::new(left_typed),
@@ -321,6 +323,7 @@ pub fn type_expression(
                     "Unary expression has no type at {}:{} (operator: {:?})",
                     expr.span.start.line, expr.span.start.column, op
                 )))?;
+            let result_type = type_env.type_analyzer.borrow().resolve_type(&result_type);
             
             Ok(TypedExpr::Unary {
                 op: *op,
@@ -347,11 +350,13 @@ pub fn type_expression(
         
         ExpressionKind::Cast { target_type, operand } => {
             let operand_typed = type_expression(operand, type_env)?;
+            // Resolve typedef in target type
+            let resolved_target = type_env.type_analyzer.borrow().resolve_type(target_type);
             
             Ok(TypedExpr::Cast {
                 operand: Box::new(operand_typed),
-                target_type: target_type.clone(),
-                expr_type: target_type.clone(),
+                target_type: resolved_target.clone(),
+                expr_type: resolved_target,
             })
         }
         
@@ -365,8 +370,10 @@ pub fn type_expression(
         }
         
         ExpressionKind::SizeofType(target_type) => {
+            // Resolve typedef in target type
+            let resolved_target = type_env.type_analyzer.borrow().resolve_type(target_type);
             Ok(TypedExpr::SizeofType {
-                target_type: target_type.clone(),
+                target_type: resolved_target,
                 expr_type: Type::Int,
             })
         }
@@ -389,33 +396,24 @@ pub fn type_expression(
                 object_typed.get_type()
             };
             
-            // Extract struct fields
-            let fields = match struct_type {
-                Type::Struct { fields, name, .. } => {
-                    if fields.is_empty() && name.is_some() {
-                        // This is a reference to a named struct, look it up
-                        if let Some(Type::Struct { fields, .. }) = type_env.type_definitions.get(name.as_ref().unwrap()) {
-                            fields
-                        } else {
-                            return Err(TypeError::UndefinedType(
-                                format!("Struct type '{}' not found", name.as_ref().unwrap())
-                            ));
-                        }
-                    } else {
-                        fields
-                    }
+            // Extract struct fields - need to resolve typedef if necessary
+            let resolved_struct_type = type_env.type_analyzer.borrow().resolve_type(struct_type);
+            
+            let fields = match &resolved_struct_type {
+                Type::Struct { fields, .. } => {
+                    fields.clone()
                 }
                 _ => return Err(TypeError::TypeMismatch(
-                    format!("Member access requires struct type, got {struct_type:?}")
+                    format!("Member access requires struct type, got {:?}", resolved_struct_type)
                 ))
             };
             
             // Calculate struct layout to get field offset
             // Pass type_definitions to resolve nested struct sizes
             let layout = crate::semantic::struct_layout::calculate_struct_layout_with_defs(
-                fields,
+                &fields,
                 rcc_common::SourceLocation::new_simple(0, 0), // TODO: Use actual location
-                Some(&type_env.type_definitions)
+                Some(&type_env.type_analyzer.borrow().type_definitions.borrow())
             ).map_err(|e| TypeError::TypeMismatch(format!("Failed to calculate struct layout: {e}")))?;
             
             // Find the field and get its offset
@@ -450,11 +448,48 @@ pub fn type_expression(
             })
         }
         
-        ExpressionKind::CompoundLiteral { .. } => {
-            // TODO: Implement compound literals (C99 feature)
-            Err(TypeError::UnsupportedConstruct(
-                "Compound literals not yet implemented".to_string()
-            ))
+        ExpressionKind::CompoundLiteral { type_name, initializer } => {
+            // Compound literal creates a temporary object of the specified type
+            // initialized with the given initializer
+            
+            // Process the initializer to get typed expressions
+            let typed_elements = match &initializer.kind {
+                crate::ast::InitializerKind::Expression(expr) => {
+                    // Single expression initializer
+                    vec![type_expression(expr, type_env)?]
+                }
+                crate::ast::InitializerKind::List(init_list) => {
+                    // List initializer - convert each element
+                    let mut elements = Vec::new();
+                    for init in init_list {
+                        match &init.kind {
+                            crate::ast::InitializerKind::Expression(expr) => {
+                                elements.push(type_expression(expr, type_env)?);
+                            }
+                            _ => {
+                                // Designated initializers in compound literals not yet supported
+                                return Err(TypeError::UnsupportedConstruct(
+                                    "Designated initializers in compound literals not yet implemented".to_string()
+                                ));
+                            }
+                        }
+                    }
+                    elements
+                }
+                crate::ast::InitializerKind::Designated { .. } => {
+                    return Err(TypeError::UnsupportedConstruct(
+                        "Designated initializers in compound literals not yet implemented".to_string()
+                    ));
+                }
+            };
+            
+            // Resolve typedef in type name
+            let resolved_type = type_env.type_analyzer.borrow().resolve_type(type_name);
+            // Return the typed compound literal
+            Ok(TypedExpr::CompoundLiteral {
+                initializer: typed_elements,
+                expr_type: resolved_type,
+            })
         }
     }
 }
@@ -488,9 +523,11 @@ pub fn type_statement(
                     None => None,
                 };
                 
+                // Resolve the type to handle typedefs
+                let resolved_type = type_env.type_analyzer.borrow().resolve_type(&decl.decl_type);
                 Ok(TypedStmt::Declaration {
                     name: decl.name.clone(),
-                    decl_type: decl.decl_type.clone(),
+                    decl_type: resolved_type,
                     initializer: init,
                     symbol_id: decl.symbol_id,
                 })
@@ -505,9 +542,11 @@ pub fn type_statement(
                         None => None,
                     };
                     
+                    // Resolve the type to handle typedefs
+                    let resolved_type = type_env.type_analyzer.borrow().resolve_type(&decl.decl_type);
                     typed_decls.push(TypedStmt::Declaration {
                         name: decl.name.clone(),
-                        decl_type: decl.decl_type.clone(),
+                        decl_type: resolved_type,
                         initializer: init,
                         symbol_id: decl.symbol_id,
                     });
@@ -649,7 +688,6 @@ pub fn type_statement(
                         // and get its type, but not evaluate it (no initialization required)
                         let var_type = if let Some(id) = symbol_id {
                             type_env.lookup_type(*id)
-                                .cloned()
                                 .or_else(|| op.expr.expr_type.clone())
                                 .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?
                         } else {
@@ -701,10 +739,9 @@ pub fn type_statement(
 /// Convert an untyped translation unit to a typed one
 pub fn type_translation_unit(
     ast: &crate::ast::TranslationUnit,
-    symbol_types: HashMap<SymbolId, Type>,
-    type_definitions: HashMap<String, Type>,
+    type_analyzer: Rc<RefCell<TypeAnalyzer>>,
 ) -> Result<TypedTranslationUnit, TypeError> {
-    let type_env = TypeEnvironment::new(symbol_types, type_definitions);
+    let type_env = TypeEnvironment::new(Rc::clone(&type_analyzer));
     let mut typed_items = Vec::new();
     
     for item in &ast.items {
@@ -712,12 +749,20 @@ pub fn type_translation_unit(
             crate::ast::TopLevelItem::Function(func) => {
                 let typed_body = type_statement(&func.body, &type_env)?;
                 
+                // Resolve return type and parameter types to handle typedefs
+                let resolved_return_type = type_env.type_analyzer.borrow().resolve_type(&func.return_type);
+                let resolved_parameters: Vec<(String, Type)> = func.parameters.iter()
+                    .map(|p| {
+                        let name = p.name.clone().unwrap_or_else(|| "unnamed".to_string());
+                        let resolved_type = type_env.type_analyzer.borrow().resolve_type(&p.param_type);
+                        (name, resolved_type)
+                    })
+                    .collect();
+                
                 let typed_func = TypedFunction {
                     name: func.name.clone(),
-                    return_type: func.return_type.clone(),
-                    parameters: func.parameters.iter()
-                        .map(|p| (p.name.clone().unwrap_or_else(|| "unnamed".to_string()), p.param_type.clone()))
-                        .collect(),
+                    return_type: resolved_return_type,
+                    parameters: resolved_parameters,
                     body: typed_body,
                 };
                 
@@ -746,9 +791,11 @@ pub fn type_translation_unit(
                         None => None,
                     };
                     
+                    // Resolve the type to handle typedefs
+                    let resolved_type = type_env.type_analyzer.borrow().resolve_type(&decl.decl_type);
                     typed_items.push(TypedTopLevelItem::GlobalVariable {
                         name: decl.name.clone(),
-                        var_type: decl.decl_type.clone(),
+                        var_type: resolved_type,
                         initializer: init,
                     });
                 }

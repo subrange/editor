@@ -4,7 +4,7 @@
 
 mod analyzer;
 mod binary;
-mod initializers;
+pub(crate) mod initializers;
 mod unary;
 
 // Re-export the main analyzer

@@ -245,6 +245,11 @@ impl CompilerError {
     pub fn codegen_error(message: String, location: SourceLocation) -> Self {
         CompilerError::CodegenError { location, message }
     }
+    
+    /// Create an internal error
+    pub fn internal_error(message: String) -> Self {
+        CompilerError::InternalError { message }
+    }
 }
 
 /// Convert from std::io::Error

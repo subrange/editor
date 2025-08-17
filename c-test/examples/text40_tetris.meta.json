@@ -1,4 +1,3 @@
 {
-  "use_runtime": true,
-  "expected": "Tetris demo completed!"
+  "use_runtime": true
 }

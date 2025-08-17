@@ -31,10 +31,10 @@ impl Parser {
                 ExpressionKind::Identifier { name, symbol_id: None }
             }
             Some(Token { token_type: TokenType::LeftParen, .. }) => {
-                // Could be cast expression or parenthesized expression
-                // Look ahead to determine if this is a cast
+                // Could be cast expression, compound literal, or parenthesized expression
+                // Look ahead to determine if this is a cast or compound literal
                 if self.is_type_start() {
-                    // Try to parse as cast expression
+                    // Try to parse as cast expression or compound literal
                     // We need to be careful here - could still be parenthesized expression with typedef name
                     // Save state for potential backtracking
                     let saved_tokens = self.tokens.clone();
@@ -45,21 +45,39 @@ impl Parser {
                             // Check if we have a closing paren
                             if self.peek().map(|t| &t.token_type) == Some(&TokenType::RightParen) {
                                 self.advance(); // consume ')'
-                                // Now we need a unary expression after the cast
-                                let operand = self.parse_unary_expression()?;
-                                let end_location = operand.span.end.clone();
                                 
-                                return Ok(Expression {
-                                    node_id: self.node_id_gen.next(),
-                                    kind: ExpressionKind::Cast {
-                                        target_type,
-                                        operand: Box::new(operand),
-                                    },
-                                    span: SourceSpan::new(start_location, end_location),
-                                    expr_type: None,
-                                });
+                                // Check if this is a compound literal (next token is '{')
+                                if self.peek().map(|t| &t.token_type) == Some(&TokenType::LeftBrace) {
+                                    // Parse compound literal
+                                    let initializer = self.parse_initializer()?;
+                                    let end_location = self.current_location();
+                                    
+                                    return Ok(Expression {
+                                        node_id: self.node_id_gen.next(),
+                                        kind: ExpressionKind::CompoundLiteral {
+                                            type_name: target_type,
+                                            initializer: Box::new(initializer),
+                                        },
+                                        span: SourceSpan::new(start_location, end_location),
+                                        expr_type: None,
+                                    });
+                                } else {
+                                    // Cast expression - need a unary expression after the cast
+                                    let operand = self.parse_unary_expression()?;
+                                    let end_location = operand.span.end.clone();
+                                    
+                                    return Ok(Expression {
+                                        node_id: self.node_id_gen.next(),
+                                        kind: ExpressionKind::Cast {
+                                            target_type,
+                                            operand: Box::new(operand),
+                                        },
+                                        span: SourceSpan::new(start_location, end_location),
+                                        expr_type: None,
+                                    });
+                                }
                             } else {
-                                // Not a cast, restore and parse as parenthesized expression
+                                // Not a cast or compound literal, restore and parse as parenthesized expression
                                 self.tokens = saved_tokens;
                             }
                         }

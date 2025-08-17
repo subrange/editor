@@ -7,23 +7,33 @@ pub mod errors;
 pub mod types;
 pub mod expressions;
 pub mod statements;
-pub mod symbols;
 pub mod struct_layout;
 
 use crate::ast::*;
-use rcc_common::{CompilerError, SymbolTable, SymbolId, SourceLocation};
+use rcc_common::{CompilerError, SymbolTable, SymbolId, SourceLocation, SourceSpan};
 use std::collections::HashMap;
-
+use std::cell::{Ref, RefCell};
+use std::rc::Rc;
 pub use errors::SemanticError;
+use crate::semantic::expressions::ExpressionAnalyzer;
+use crate::semantic::statements::StatementAnalyzer;
+use crate::semantic::expressions::initializers::InitializerAnalyzer;
+use crate::semantic::types::TypeAnalyzer;
 use crate::Type;
 
 /// Semantic analyzer context
 pub struct SemanticAnalyzer {
-    symbol_table: SymbolTable,
-    current_function: Option<Type>, // Current function's return type
-    symbol_locations: HashMap<SymbolId, SourceLocation>, // For error reporting
-    symbol_types: HashMap<SymbolId, Type>, // Type information for each symbol
-    type_definitions: HashMap<String, Type>, // Named type definitions (structs, unions, enums)
+    symbol_table: Rc<RefCell<SymbolTable>>,
+    current_function: Option<Type>,
+    symbol_locations: Rc<RefCell<HashMap<SymbolId, SourceLocation>>>,
+    symbol_types: Rc<RefCell<HashMap<SymbolId, Type>>>,
+    type_definitions: Rc<RefCell<HashMap<String, Type>>>,
+    
+    type_analyzer: Rc<RefCell<TypeAnalyzer>>,
+    
+    statement_analyzer: Rc<RefCell<StatementAnalyzer>>,
+    expression_analyzer: Rc<RefCell<ExpressionAnalyzer>>,
+    initializer_analyzer: Rc<RefCell<InitializerAnalyzer>>,
 }
 
 impl Default for SemanticAnalyzer {
@@ -35,12 +45,45 @@ impl Default for SemanticAnalyzer {
 impl SemanticAnalyzer {
     /// Create a new semantic analyzer
     pub fn new() -> Self {
+
+        let symbol_table = Rc::new(RefCell::new(SymbolTable::new()));
+        let symbol_locations = Rc::new(RefCell::new(HashMap::new()));
+        let symbol_types = Rc::new(RefCell::new(HashMap::new()));
+        let type_definitions = Rc::new(RefCell::new(HashMap::new()));
+        
+        let type_analyzer = Rc::new(RefCell::new(TypeAnalyzer::new(
+            Rc::clone(&symbol_table),
+            Rc::clone(&symbol_locations),
+            Rc::clone(&symbol_types),
+            Rc::clone(&type_definitions),
+        )));
+
+        
+        let expression_analyzer = Rc::new(RefCell::new(ExpressionAnalyzer::new(
+            Rc::clone(&type_analyzer),
+        )));
+        
+        let initializer_analyzer =  Rc::new(RefCell::new(InitializerAnalyzer::new(
+            Rc::clone(&expression_analyzer),
+            Rc::clone(&type_analyzer),
+        )));
+        
+        let statement_analyzer = Rc::new(RefCell::new(StatementAnalyzer::new(
+            None, // No current function initially
+            Rc::clone(&expression_analyzer),
+            Rc::clone(&initializer_analyzer)
+        )));
+        
         Self {
-            symbol_table: SymbolTable::new(),
+            symbol_table,
             current_function: None,
-            symbol_locations: HashMap::new(),
-            symbol_types: HashMap::new(),
-            type_definitions: HashMap::new(),
+            symbol_locations,
+            symbol_types,
+            type_definitions,
+            type_analyzer,
+            statement_analyzer,
+            expression_analyzer,
+            initializer_analyzer,
         }
     }
     
@@ -50,42 +93,33 @@ impl SemanticAnalyzer {
         for item in &mut ast.items {
             match item {
                 TopLevelItem::Function(func) => {
-                    let mut symbol_manager = symbols::SymbolManager {
-                        symbol_table: &mut self.symbol_table,
-                        symbol_locations: &mut self.symbol_locations,
-                        symbol_types: &mut self.symbol_types,
-                        type_definitions: &mut self.type_definitions,
-                    };
-                    symbol_manager.declare_function(func)?;
+                    self.type_analyzer.borrow_mut().declare_function(func)?;
                 }
                 TopLevelItem::Declarations(decls) => {
                     for decl in decls {
-                        let mut symbol_manager = symbols::SymbolManager {
-                            symbol_table: &mut self.symbol_table,
-                            symbol_locations: &mut self.symbol_locations,
-                            symbol_types: &mut self.symbol_types,
-                            type_definitions: &mut self.type_definitions,
-                        };
-                        symbol_manager.declare_global_variable(decl)?;
-                        
-                        // Analyze the initializer if present
-                        if let Some(init) = &mut decl.initializer {
-                            let expr_analyzer = expressions::ExpressionAnalyzer::new(
-                                &self.symbol_types,
-                                &self.type_definitions,
-                            );
-                            expr_analyzer.analyze_initializer(init, &decl.decl_type, &mut self.symbol_table)?;
+                        // Handle different types of declarations explicitly
+                        match decl.storage_class {
+                            crate::StorageClass::Typedef => {
+                                // Typedef defines a type alias
+                                self.type_analyzer.borrow_mut().register_typedef(decl)?;
+                            }
+                            crate::StorageClass::Auto | 
+                            crate::StorageClass::Static | 
+                            crate::StorageClass::Extern | 
+                            crate::StorageClass::Register => {
+                                // These are actual variable declarations
+                                // Note: Auto at file scope should be treated as Extern
+                                self.type_analyzer.borrow_mut().declare_global_variable(decl)?;
+                                
+                                if let Some(initializer) = &mut decl.initializer {
+                                    self.initializer_analyzer.borrow().analyze(initializer, &decl.decl_type)?;
+                                }
+                            }
                         }
                     }
                 }
                 TopLevelItem::TypeDefinition { name, type_def, .. } => {
-                    let mut symbol_manager = symbols::SymbolManager {
-                        symbol_table: &mut self.symbol_table,
-                        symbol_locations: &mut self.symbol_locations,
-                        symbol_types: &mut self.symbol_types,
-                        type_definitions: &mut self.type_definitions,
-                    };
-                    symbol_manager.register_type_definition(name.clone(), type_def.clone())?;
+                    self.type_analyzer.borrow_mut().register_type_definition(name.clone(), type_def.clone())?;
                 }
             }
         }
@@ -109,47 +143,31 @@ impl SemanticAnalyzer {
         self.current_function = Some(func.return_type.clone());
         
         // Enter function scope
-        self.symbol_table.push_scope();
+        self.type_analyzer.borrow().symbol_table.borrow_mut().push_scope();
         
         // Add parameters to scope
-        let mut symbol_manager = symbols::SymbolManager {
-            symbol_table: &mut self.symbol_table,
-            symbol_locations: &mut self.symbol_locations,
-            symbol_types: &mut self.symbol_types,
-            type_definitions: &mut self.type_definitions,
-        };
-        symbol_manager.add_function_parameters(&mut func.parameters)?;
+        self.type_analyzer.borrow_mut().add_function_parameters(&mut func.parameters)?;
         
         // Analyze function body
-        let mut stmt_analyzer = statements::StatementAnalyzer {
-            current_function: self.current_function.clone(),
-            symbol_locations: &mut self.symbol_locations,
-            symbol_types: &mut self.symbol_types,
-            type_definitions: &mut self.type_definitions,
-        };
-        stmt_analyzer.analyze_statement(&mut func.body, &mut self.symbol_table)?;
+        
+        self.statement_analyzer.borrow().analyze_statement(&mut func.body)?;
         
         // Exit function scope
-        self.symbol_table.pop_scope();
+        self.type_analyzer.borrow().symbol_table.borrow_mut().pop_scope();
         self.current_function = None;
         
         Ok(())
     }
     
-    /// Get the symbol types map (for typed AST conversion)
-    pub fn into_symbol_types(self) -> HashMap<SymbolId, Type> {
-        self.symbol_types
+    /// Get both symbol types and type definitions
+    pub fn into_type_info(self) -> Rc<RefCell<TypeAnalyzer>> {
+        // (
+        //     Rc::try_unwrap(self.symbol_types).ok().unwrap().into_inner(),
+        //     Rc::try_unwrap(self.type_definitions).ok().unwrap().into_inner(),
+        // )
+        Rc::clone(&self.type_analyzer)
     }
     
-    /// Get the type definitions map (for typed AST conversion)
-    pub fn into_type_definitions(self) -> HashMap<String, Type> {
-        self.type_definitions
-    }
-    
-    /// Get both symbol types and type definitions (consumes the analyzer)
-    pub fn into_type_info(self) -> (HashMap<SymbolId, Type>, HashMap<String, Type>) {
-        (self.symbol_types, self.type_definitions)
-    }
 }
 
 #[cfg(test)]

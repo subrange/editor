@@ -11,11 +11,17 @@ MAX_IMMEDIATE = 65535
 
 # Source files
 C_SOURCES = __char_patch.c putchar.c puts.c memset.c memcpy.c mmio.c rand.c
+#QFIXED_SOURCES = src/qfixed.c
 ASM_SOURCES = crt0.asm
 
 # Generated files
+#ASM_FILES = $(C_SOURCES:.c=.asm) $(QFIXED_SOURCES:src/%.c=%.asm)
+#C_OBJ_FILES = $(C_SOURCES:.c=.pobj) $(QFIXED_SOURCES:src/%.c=%.pobj)
+
+#temporarily exclude qfixed
 ASM_FILES = $(C_SOURCES:.c=.asm)
 C_OBJ_FILES = $(C_SOURCES:.c=.pobj)
+
 # Don't include crt0 in the runtime library - it should be linked separately
 RUNTIME_OBJ_FILES = $(C_OBJ_FILES)
 ALL_OBJ_FILES = $(C_OBJ_FILES) crt0.pobj
@@ -27,6 +33,11 @@ all: $(RUNTIME_LIB)
 # Compile C files to assembly
 %.asm: %.c
 	@echo "Compiling $< to assembly..."
+	@$(RCC) compile $< -o $@ -I./include
+
+# Compile qfixed source
+qfixed.asm: src/qfixed.c
+	@echo "Compiling qfixed.c to assembly..."
 	@$(RCC) compile $< -o $@ -I./include
 
 # Assemble C-generated assembly to object files

@@ -1,17 +1,19 @@
 //! Binary expression operations and type checking
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use crate::ast::*;
 use crate::semantic::errors::SemanticError;
 use crate::semantic::types::TypeAnalyzer;
 use crate::Type;
 use rcc_common::{CompilerError, SourceLocation};
 
-pub struct BinaryOperationAnalyzer<'a> {
-    pub type_analyzer: &'a TypeAnalyzer<'a>,
+pub struct BinaryOperationAnalyzer {
+    type_analyzer: Rc<RefCell<TypeAnalyzer>>
 }
 
-impl<'a> BinaryOperationAnalyzer<'a> {
-    pub fn new(type_analyzer: &'a TypeAnalyzer<'a>) -> Self {
+impl BinaryOperationAnalyzer {
+    pub fn new(type_analyzer: Rc<RefCell<TypeAnalyzer>>) -> Self {
         Self { type_analyzer }
     }
 
@@ -32,8 +34,9 @@ impl<'a> BinaryOperationAnalyzer<'a> {
             }
 
             BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => {
-                if left_type.is_integer() && right_type.is_integer() {
-                    Ok(self.type_analyzer.arithmetic_result_type(left_type, right_type))
+                
+                if self.type_analyzer.borrow().is_integer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
+                    Ok(self.type_analyzer.borrow().arithmetic_result_type(left_type, right_type))
                 } else {
                     Err(SemanticError::InvalidOperation {
                         operation: format!("{op}"),
@@ -50,8 +53,8 @@ impl<'a> BinaryOperationAnalyzer<'a> {
             | BinaryOp::BitXor
             | BinaryOp::LeftShift
             | BinaryOp::RightShift => {
-                if left_type.is_integer() && right_type.is_integer() {
-                    Ok(self.type_analyzer.arithmetic_result_type(left_type, right_type))
+                if self.type_analyzer.borrow().is_integer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
+                    Ok(self.type_analyzer.borrow().arithmetic_result_type(left_type, right_type))
                 } else {
                     Err(SemanticError::InvalidOperation {
                         operation: format!("{op}"),
@@ -88,8 +91,8 @@ impl<'a> BinaryOperationAnalyzer<'a> {
                     .into());
                 }
 
-                // Check type compatibility
-                if !left_type.is_assignable_from(right_type) {
+                // Check type compatibility with typedef awareness
+                if !self.type_analyzer.borrow().is_assignable(left_type, right_type) {
                     return Err(SemanticError::TypeMismatch {
                         expected: left_type.clone(),
                         found: right_type.clone(),
@@ -112,9 +115,9 @@ impl<'a> BinaryOperationAnalyzer<'a> {
                 }
 
                 // For pointers, += and -= work like pointer arithmetic
-                if left_type.is_pointer() && right_type.is_integer() {
+                if self.type_analyzer.borrow().is_pointer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
                     Ok(left_type.clone())
-                } else if left_type.is_integer() && right_type.is_integer() {
+                } else if self.type_analyzer.borrow().is_integer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
                     Ok(left_type.clone())
                 } else {
                     Err(SemanticError::TypeMismatch {
@@ -143,7 +146,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
                 }
 
                 // These operations only work on integers
-                if left_type.is_integer() && right_type.is_integer() {
+                if self.type_analyzer.borrow().is_integer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
                     Ok(left_type.clone())
                 } else {
                     Err(SemanticError::TypeMismatch {
@@ -157,19 +160,22 @@ impl<'a> BinaryOperationAnalyzer<'a> {
 
             BinaryOp::Index => {
                 // Array indexing: arr[index]
+                // First resolve typedef if needed
+                let resolved_left = self.type_analyzer.borrow().resolve_type(left_type);
+                
                 // Arrays decay to pointers for indexing
-                let array_type = if let Type::Array { element_type, .. } = left_type {
+                let array_type = if let Type::Array { element_type, .. } = &resolved_left {
                     Type::Pointer {
                         target: element_type.clone(),
                         bank: None, // Arrays are typically on stack or global
                     }
                 } else {
-                    left_type.clone()
+                    resolved_left.clone()
                 };
 
-                if array_type.is_pointer() && right_type.is_integer() {
-                    if let Some(target_type) = array_type.pointer_target() {
-                        Ok(target_type.clone())
+                if self.type_analyzer.borrow().is_pointer(&array_type) && self.type_analyzer.borrow().is_integer(right_type) {
+                    if let Some(target_type) = self.type_analyzer.borrow().pointer_target(&array_type) {
+                        Ok(target_type)
                     } else {
                         Ok(Type::Error)
                     }
@@ -194,14 +200,14 @@ impl<'a> BinaryOperationAnalyzer<'a> {
         location: &SourceLocation,
     ) -> Result<Type, CompilerError> {
         // Case 1: Integer + Integer
-        if left_type.is_integer() && right_type.is_integer() {
-            return Ok(self.type_analyzer.arithmetic_result_type(left_type, right_type));
+        if self.type_analyzer.borrow().is_integer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
+            return Ok(self.type_analyzer.borrow().arithmetic_result_type(left_type, right_type));
         }
 
         // Case 2: Pointer + Integer
-        if left_type.is_pointer() && right_type.is_integer() {
+        if self.type_analyzer.borrow().is_pointer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
             // Verify the pointer target has a known size
-            if let Some(target) = left_type.pointer_target() {
+            if let Some(target) = self.type_analyzer.borrow().pointer_target(left_type) {
                 if target.size_in_words().is_none() {
                     return Err(SemanticError::InvalidOperation {
                         operation: "pointer arithmetic on incomplete type".to_string(),
@@ -215,9 +221,9 @@ impl<'a> BinaryOperationAnalyzer<'a> {
         }
 
         // Case 3: Integer + Pointer (only for Add, commutative)
-        if left_type.is_integer() && right_type.is_pointer() && op == BinaryOp::Add {
+        if self.type_analyzer.borrow().is_integer(left_type) && self.type_analyzer.borrow().is_pointer(right_type) && op == BinaryOp::Add {
             // Verify the pointer target has a known size
-            if let Some(target) = right_type.pointer_target() {
+            if let Some(target) = self.type_analyzer.borrow().pointer_target(right_type) {
                 if target.size_in_words().is_none() {
                     return Err(SemanticError::InvalidOperation {
                         operation: "pointer arithmetic on incomplete type".to_string(),
@@ -231,14 +237,14 @@ impl<'a> BinaryOperationAnalyzer<'a> {
         }
 
         // Case 4: Pointer - Pointer (only for Sub)
-        if left_type.is_pointer() && right_type.is_pointer() && op == BinaryOp::Sub {
+        if self.type_analyzer.borrow().is_pointer(left_type) && self.type_analyzer.borrow().is_pointer(right_type) && op == BinaryOp::Sub {
             // Both pointers must point to compatible types
-            let left_target = left_type.pointer_target();
-            let right_target = right_type.pointer_target();
+            let left_target = self.type_analyzer.borrow().pointer_target(left_type);
+            let right_target = self.type_analyzer.borrow().pointer_target(right_type);
 
             if let (Some(left_elem), Some(right_elem)) = (left_target, right_target) {
                 // Check if element types are compatible
-                if !self.are_types_compatible(left_elem, right_elem) {
+                if !self.are_types_compatible(&left_elem, &right_elem) {
                     return Err(SemanticError::InvalidOperation {
                         operation: "subtracting pointers to incompatible types".to_string(),
                         operand_type: left_type.clone(),
@@ -272,12 +278,7 @@ impl<'a> BinaryOperationAnalyzer<'a> {
 
     /// Check if two types are compatible (for pointer operations)
     fn are_types_compatible(&self, left: &Type, right: &Type) -> bool {
-        // Exact match
-        if left == right {
-            return true;
-        }
-
-        // void* is compatible with any pointer
-        matches!(left, Type::Void) || matches!(right, Type::Void)
+        // Use typedef-aware compatibility check
+        self.type_analyzer.borrow().is_assignable(left, right)
     }
 }

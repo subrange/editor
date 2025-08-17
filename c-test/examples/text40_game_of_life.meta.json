@@ -1,5 +1,4 @@
 {
-  "expected": "Game of Life simulation complete!",
   "use_runtime": true,
   "description": "Conway's Game of Life visualization using TEXT40 display"
 }

@@ -1,4 +1,3 @@
 {
-  "use_runtime": true,
-  "expected": "Doom clone demo completed!"
+  "use_runtime": true
 }

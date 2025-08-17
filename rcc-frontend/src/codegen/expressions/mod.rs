@@ -27,6 +27,15 @@ use crate::types::{Type, BankTag};
 use crate::CompilerError;
 use std::collections::HashMap;
 
+// Helper function to check if a type is an integer type
+fn is_integer_type(ty: &Type) -> bool {
+    matches!(ty, 
+        Type::Bool | Type::Char | Type::SignedChar | Type::UnsignedChar |
+        Type::Short | Type::UnsignedShort | Type::Int | Type::UnsignedInt |
+        Type::Long | Type::UnsignedLong | Type::Enum { .. }
+    )
+}
+
 // Helper function for convert_type with default location
 fn convert_type_default(ast_type: &crate::types::Type) -> Result<crate::ir::IrType, CompilerError> {
     convert_type(ast_type, rcc_common::SourceLocation::new_simple(0, 0))
@@ -116,7 +125,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                     }
                     
                     // Integer to pointer cast
-                    (source, Type::Pointer { .. }) if source.is_integer() => {
+                    (source, Type::Pointer { .. }) if is_integer_type(source) => {
                         // Create a fat pointer from an integer value
                         // Check if this is a NULL pointer (literal 0)
                         let bank_tag = match &operand_val {
@@ -130,7 +139,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                     }
                     
                     // Pointer to integer cast  
-                    (Type::Pointer { .. }, target) if target.is_integer() => {
+                    (Type::Pointer { .. }, target) if is_integer_type(target) => {
                         // Extract address component from fat pointer
                         match operand_val {
                             Value::FatPtr(ref fp) => {
@@ -145,7 +154,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                     }
                     
                     // Integer to integer cast
-                    (source, target) if source.is_integer() && target.is_integer() => {
+                    (source, target) if is_integer_type(source) && is_integer_type(target) => {
                         // For now, pass through the value since our VM uses 16-bit cells uniformly
                         // In a full implementation, we would:
                         // - Sign extend when casting signed to larger type
@@ -201,6 +210,34 @@ impl<'a> TypedExpressionGenerator<'a> {
             TypedExpr::SizeofType { target_type, .. } => misc_ops::generate_sizeof_type(self, target_type),
             
             TypedExpr::ArrayInitializer { elements, .. } => misc_ops::generate_array_initializer(self, elements),
+            
+            TypedExpr::CompoundLiteral { initializer, expr_type } => {
+                // Compound literals create anonymous temporary objects
+                // For structs: allocate space and initialize fields
+                // For arrays: similar to array initializer
+                
+                match expr_type {
+                    Type::Struct { .. } => {
+                        // For structs, we need to allocate temporary space and initialize
+                        // For now, we'll treat it like an array initializer
+                        // This is a simplified implementation
+                        misc_ops::generate_array_initializer(self, initializer)
+                    }
+                    Type::Array { .. } => {
+                        // For arrays, compound literals work like array initializers
+                        misc_ops::generate_array_initializer(self, initializer)
+                    }
+                    _ => {
+                        // For scalar types, just use the first element
+                        if let Some(first) = initializer.first() {
+                            self.generate(first)
+                        } else {
+                            // Empty initializer - return zero
+                            Ok(Value::Constant(0))
+                        }
+                    }
+                }
+            }
             
             TypedExpr::MemberAccess { 
                 object, 

@@ -19,6 +19,7 @@ mod codegen_tests;
 mod type_environment_tests;
 mod cast_tests;
 
+use std::rc::Rc;
 pub use lexer::{Lexer, Token, TokenType};
 pub use parser::{Parser, ParseError};
 pub use ast::{
@@ -71,10 +72,10 @@ impl Frontend {
         // Perform semantic analysis and extract type information
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast)?;
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let type_analyzer = analyzer.into_type_info();
         
         // Convert to typed AST with symbol type information
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions)
+        let typed_ast = type_translation_unit(&ast, Rc::clone(&type_analyzer))
             .map_err(|e| CompilerError::semantic_error(e.to_string(), rcc_common::SourceLocation::new_simple(0, 0)))?;
         
         // Generate IR from typed AST

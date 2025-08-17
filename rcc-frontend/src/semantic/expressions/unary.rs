@@ -1,26 +1,33 @@
 //! Unary expression operations and type checking
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use crate::ast::*;
 use crate::semantic::errors::SemanticError;
 use crate::semantic::types::TypeAnalyzer;
 use crate::{BankTag, Type};
-use rcc_common::{CompilerError, SymbolTable, StorageClass as CommonStorageClass};
+use rcc_common::{CompilerError, StorageClass as CommonStorageClass};
 
-pub struct UnaryOperationAnalyzer;
+pub struct UnaryOperationAnalyzer {
+    pub type_analyzer: Rc<RefCell<TypeAnalyzer>>
+}
 
 impl UnaryOperationAnalyzer {
+    pub fn new(type_analyzer: Rc<RefCell<TypeAnalyzer>>) -> Self {
+        Self { type_analyzer }
+    }
+    
     /// Analyze unary operation and return result type
     pub fn analyze(
         &self,
         op: UnaryOp,
         operand: &Expression,
-        symbol_table: &SymbolTable,
     ) -> Result<Type, CompilerError> {
         let operand_type = operand.expr_type.as_ref().unwrap_or(&Type::Error);
 
         match op {
             UnaryOp::Plus | UnaryOp::Minus => {
-                if operand_type.is_integer() {
+                if self.type_analyzer.borrow().is_integer(operand_type) {
                     Ok(operand_type.clone())
                 } else {
                     Err(SemanticError::InvalidOperation {
@@ -33,7 +40,7 @@ impl UnaryOperationAnalyzer {
             }
 
             UnaryOp::BitNot => {
-                if operand_type.is_integer() {
+                if self.type_analyzer.borrow().is_integer(operand_type) {
                     Ok(operand_type.clone())
                 } else {
                     Err(SemanticError::InvalidOperation {
@@ -50,8 +57,8 @@ impl UnaryOperationAnalyzer {
             }
 
             UnaryOp::Dereference => {
-                if let Some(target_type) = operand_type.pointer_target() {
-                    Ok(target_type.clone())
+                if let Some(target_type) = self.type_analyzer.borrow().pointer_target(operand_type) {
+                    Ok(target_type)
                 } else {
                     Err(SemanticError::InvalidOperation {
                         operation: "dereference".to_string(),
@@ -65,7 +72,7 @@ impl UnaryOperationAnalyzer {
             UnaryOp::AddressOf => {
                 if TypeAnalyzer::is_lvalue(operand) {
                     // Determine bank based on operand
-                    let bank = Self::determine_bank_for_address_of(operand, symbol_table);
+                    let bank = self.determine_bank_for_address_of(operand);
                     Ok(Type::Pointer {
                         target: Box::new(operand_type.clone()),
                         bank,
@@ -91,7 +98,7 @@ impl UnaryOperationAnalyzer {
                     .into());
                 }
 
-                if operand_type.is_integer() || operand_type.is_pointer() {
+                if self.type_analyzer.borrow().is_integer(operand_type) || self.type_analyzer.borrow().is_pointer(operand_type) {
                     Ok(operand_type.clone())
                 } else {
                     Err(SemanticError::InvalidOperation {
@@ -111,13 +118,13 @@ impl UnaryOperationAnalyzer {
 
     /// Determine the bank tag for address-of operations
     fn determine_bank_for_address_of(
+        &self,
         operand: &Expression,
-        symbol_table: &SymbolTable,
     ) -> Option<BankTag> {
         match &operand.kind {
             ExpressionKind::Identifier { symbol_id, .. } => {
                 if let Some(id) = symbol_id {
-                    if let Some(symbol) = symbol_table.get_symbol(*id) {
+                    if let Some(symbol) = self.type_analyzer.borrow().symbol_table.borrow().get_symbol(*id) {
                         // Local variables are on the stack
                         if matches!(
                             symbol.storage_class,

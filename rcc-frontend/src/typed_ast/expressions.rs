@@ -138,6 +138,12 @@ pub enum TypedExpr {
         elements: Vec<TypedExpr>,
         expr_type: Type,  // Array type
     },
+    
+    /// Compound literal (C99)
+    CompoundLiteral {
+        initializer: Vec<TypedExpr>,  // Initialize elements
+        expr_type: Type,  // The literal's type
+    },
 }
 
 impl TypedExpr {
@@ -161,17 +167,8 @@ impl TypedExpr {
             TypedExpr::CompoundAssignment { expr_type, .. } |
             TypedExpr::SizeofExpr { expr_type, .. } |
             TypedExpr::SizeofType { expr_type, .. } |
-            TypedExpr::ArrayInitializer { expr_type, .. } => expr_type,
+            TypedExpr::ArrayInitializer { expr_type, .. } |
+            TypedExpr::CompoundLiteral { expr_type, .. } => expr_type,
         }
-    }
-    
-    /// Check if this expression is a pointer type
-    pub fn is_pointer(&self) -> bool {
-        self.get_type().is_pointer()
-    }
-    
-    /// Check if this expression is an integer type
-    pub fn is_integer(&self) -> bool {
-        self.get_type().is_integer()
     }
 }
