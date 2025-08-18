@@ -5,8 +5,8 @@
 
 use rcc_frontend::ir::{Value, IrType as Type};
 use rcc_common::TempId;
-use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
-use crate::v2::naming::NameGenerator;
+use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::naming::NameGenerator;
 use rcc_codegen::AsmInst;
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;

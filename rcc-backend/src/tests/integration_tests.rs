@@ -3,7 +3,7 @@
 //! These tests verify the V2 backend works correctly using only
 //! the safe, public interfaces.
 
-use crate::v2::{FunctionBuilder, CallArg, lower_module_v2, lower_function_v2};
+use crate::{FunctionBuilder, CallArg, lower_module_v2, lower_function_v2};
 use rcc_codegen::{AsmInst, Reg};
 
 #[test]

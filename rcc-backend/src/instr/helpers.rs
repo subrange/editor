@@ -5,9 +5,9 @@
 
 use rcc_frontend::ir::{Value, FatPointer};
 use rcc_frontend::BankTag;
-use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
-use crate::v2::naming::NameGenerator;
-use crate::v2::globals::GlobalManager;
+use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::naming::NameGenerator;
+use crate::globals::GlobalManager;
 use rcc_codegen::{Reg, AsmInst};
 use rcc_common::TempId;
 use log::warn;

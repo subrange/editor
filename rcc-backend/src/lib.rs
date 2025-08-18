@@ -3,7 +3,12 @@
 //! This crate provides the backend for the Ripple C99 compiler,
 //! responsible for lowering IR to assembly code.
 
-pub mod v2;
+pub mod lower;
+pub mod regmgmt;
+pub mod instr;
+pub mod function;
+pub mod naming;
+pub mod globals;
 
 // Re-export IR types from frontend for convenience
 pub use rcc_frontend::ir::{
@@ -11,9 +16,7 @@ pub use rcc_frontend::ir::{
     IrBinaryOp, IrUnaryOp, GlobalVariable, Linkage, IrBuilder
 };
 pub use rcc_common::LabelId;
-
-// Re-export the main lowering function
-pub use v2::lower_module_v2;
+use crate::lower::module::lower_module;
 
 /// Options for lowering
 pub struct LoweringOptions {
@@ -38,5 +41,5 @@ pub fn lower_module_to_assembly_with_options(
     options: LoweringOptions,
 ) -> Result<Vec<rcc_codegen::AsmInst>, String> {
     // Always use v2 backend now that v1 is removed
-    lower_module_v2(module, options.bank_size, options.trace_spills)
+    lower_module(module, options.bank_size, options.trace_spills)
 }

@@ -76,7 +76,7 @@ pub enum BankInfo {
 ## Usage Example
 
 ```rust
-use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::regmgmt::{RegisterPressureManager, BankInfo};
 
 // Create manager with 10 local variables
 let mut manager = RegisterPressureManager::new(10);

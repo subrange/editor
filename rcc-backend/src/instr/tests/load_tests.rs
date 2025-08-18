@@ -1,9 +1,9 @@
 //! Tests for Load instruction lowering
 
 use rcc_frontend::ir::{Value, IrType as Type, FatPointer, };
-use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
-use crate::v2::naming::new_function_naming;
-use crate::v2::instr::lower_load;
+use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::naming::new_function_naming;
+use crate::instr::lower_load;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_frontend::BankTag;
 

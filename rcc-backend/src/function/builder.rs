@@ -15,11 +15,11 @@
 //! If you need additional functionality, add a proper safe method rather than
 //! exposing internals. The goal is an API that is impossible to misuse.
 
+use crate::regmgmt::{BankInfo, RegisterPressureManager};
 use rcc_codegen::{AsmInst, Reg};
 use super::internal::FunctionLowering;
 use super::calling_convention::CallingConvention;
 use log::{debug, trace, info};
-
 // Re-export types needed for the public API
 pub use super::calling_convention::{CallArg, CallTarget};
 
@@ -64,8 +64,8 @@ impl FunctionBuilder {
     /// 
     /// This is used when lowering individual Call instructions outside of function building
     pub fn make_standalone_call(
-        mgr: &mut crate::v2::RegisterPressureManager,
-        naming: &mut crate::v2::naming::NameGenerator,
+        mgr: &mut RegisterPressureManager,
+        naming: &mut crate::naming::NameGenerator,
         target: super::calling_convention::CallTarget,
         args: Vec<CallArg>,
         returns_pointer: bool,
@@ -131,11 +131,11 @@ impl FunctionBuilder {
     /// This version takes the register manager and naming context to properly bind the parameter
     /// Returns (address_register, optional_bank_register)
     pub fn load_parameter_with_binding(
-        &mut self, 
+        &mut self,
         index: usize,
         param_id: rcc_common::TempId,
-        mgr: &mut crate::v2::RegisterPressureManager,
-        naming: &mut crate::v2::naming::NameGenerator
+        mgr: &mut RegisterPressureManager,
+        naming: &mut crate::naming::NameGenerator
     ) -> (Reg, Option<Reg>) {
         debug!("Loading and binding parameter {index} (t{param_id})");
         assert!(self.prologue_emitted, "Must emit prologue before loading parameters");
@@ -152,7 +152,7 @@ impl FunctionBuilder {
         // If this is a fat pointer, track the bank
         if let Some(bank) = bank_reg {
             debug!("  Parameter {index} is a fat pointer with bank in {bank:?}");
-            mgr.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank));
+            mgr.set_pointer_bank(param_name, BankInfo::Register(bank));
         }
         
         trace!("  Parameter {index} bound to {addr_reg:?} (bank: {bank_reg:?})");
@@ -219,8 +219,8 @@ impl FunctionBuilder {
         args: Vec<CallArg>,
         returns_pointer: bool,
         result_name: Option<String>,
-        mgr: &mut crate::v2::RegisterPressureManager,
-        naming: &mut crate::v2::naming::NameGenerator
+        mgr: &mut RegisterPressureManager,
+        naming: &mut crate::naming::NameGenerator
     ) -> (Reg, Option<Reg>) {
         info!("Calling function at bank:{}, addr:{} with {} args", 
               func_bank, func_addr, args.len());

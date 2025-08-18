@@ -4,9 +4,9 @@
 //! from caller to callee, ensuring that parameters passed by the caller
 //! are correctly received by the callee.
 
-use crate::v2::function::calling_convention::{CallingConvention, CallArg};
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::new_function_naming;
+use crate::function::calling_convention::{CallingConvention, CallArg};
+use crate::regmgmt::RegisterPressureManager;
+use crate::naming::new_function_naming;
 use rcc_frontend::ir::IrType;
 use rcc_codegen::{AsmInst, Reg};
 
@@ -367,7 +367,7 @@ fn test_fat_pointer_loading_both_parts() {
 #[test]
 fn test_stack_offset_correctness() {
     // Detailed verification of stack offset calculations
-    let args = vec![
+    let _args = vec![
         CallArg::Scalar(Reg::T0),                              // A0
         CallArg::Scalar(Reg::T1),                              // A1
         CallArg::FatPointer { addr: Reg::T2, bank: Reg::T3 },  // A2-A3

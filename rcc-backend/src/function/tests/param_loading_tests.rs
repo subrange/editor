@@ -6,9 +6,9 @@
 //! - Mixed scalar and fat pointer parameters
 //! - Edge cases like partial register usage
 
-use crate::v2::function::calling_convention::{CallingConvention, CallArg};
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::new_function_naming;
+use crate::function::calling_convention::{CallingConvention};
+use crate::regmgmt::RegisterPressureManager;
+use crate::naming::new_function_naming;
 use rcc_frontend::ir::IrType;
 use rcc_codegen::{AsmInst, Reg};
 
@@ -126,7 +126,7 @@ fn test_three_scalars_then_fatptr() {
     ];
     
     // Parameter 3 (fat pointer) should have address in A3
-    let (insts, _reg, _bank_reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
+    let (_insts, _reg, _bank_reg) = cc.load_param(3, &param_types, &mut pm, &mut naming);
     // Since it's partially in register, it should load from A3
     // But the bank part would be on stack - our current implementation might need adjustment here
 }
@@ -196,12 +196,12 @@ fn test_complex_mixed_layout() {
 #[test]
 fn test_empty_parameter_list() {
     // Test function with no parameters
-    let cc = CallingConvention::new();
+    let _cc = CallingConvention::new();
     let mut pm = RegisterPressureManager::new(0);
     pm.init();
-    let mut naming = new_function_naming();
+    let mut _naming = new_function_naming();
     
-    let param_types: Vec<(rcc_common::TempId, IrType)> = vec![];
+    let _param_types: Vec<(rcc_common::TempId, IrType)> = vec![];
     
     // This should handle gracefully even though there are no params
     // (though trying to load param 0 would be invalid)
@@ -220,7 +220,7 @@ fn test_single_fat_pointer() {
     ];
     
     // Should use A0 for address and A1 for bank
-    let (insts, addr_reg, bank_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
+    let (insts, _addr_reg, bank_reg) = cc.load_param(0, &param_types, &mut pm, &mut naming);
     assert!(insts.iter().any(|i| matches!(i, AsmInst::Add(_, Reg::A0, Reg::R0))),
             "Fat pointer address should be in A0");
     assert!(bank_reg.is_some(), "Fat pointer should have a bank register");

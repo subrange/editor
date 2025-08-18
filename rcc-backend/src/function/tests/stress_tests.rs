@@ -4,8 +4,8 @@
 
 use super::super::calling_convention::{CallingConvention, CallArg};
 use super::super::internal::FunctionLowering;
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::new_function_naming;
+use crate::regmgmt::RegisterPressureManager;
+use crate::naming::new_function_naming;
 use rcc_codegen::{AsmInst, Reg};
 
 // ========================================================================
@@ -93,7 +93,7 @@ fn stress_test_nested_calls() {
         
         // Handle return
         let result_name = Some(format!("result_{}", depth));
-        let (insts, ret_regs) = cc.handle_return_value(&mut pm, &mut naming, depth % 2 == 0, result_name);
+        let (_insts, ret_regs) = cc.handle_return_value(&mut pm, &mut naming, depth % 2 == 0, result_name);
         let _ret_regs = ret_regs; // Just to use it
         
         // Cleanup
@@ -134,7 +134,7 @@ fn stress_test_many_local_accesses() {
     
     // Access 100 different locals
     for i in 0..100 {
-        let addr = func.get_local_addr(i);
+        let _addr = func.get_local_addr(i);
         
         // Load from local
         let load_insts = func.load_local(i, Reg::A0);

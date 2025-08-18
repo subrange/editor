@@ -17,8 +17,8 @@
 //! - Easy testing of individual components
 
 use rcc_codegen::{AsmInst, Reg};
-use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
-use crate::v2::naming::{NameGenerator, new_function_naming};
+use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::naming::{NameGenerator, new_function_naming};
 use log::{debug, trace, info};
 
 pub(super) struct FunctionLowering {

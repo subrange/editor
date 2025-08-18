@@ -53,7 +53,7 @@ Users of the V2 backend should ONLY use:
 ## Example Usage
 
 ```rust
-use rcc_ir::v2::{FunctionBuilder, CallArg};
+use rcc_ir::{FunctionBuilder, CallArg};
 
 let mut builder = FunctionBuilder::new();
 

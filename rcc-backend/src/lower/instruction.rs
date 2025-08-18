@@ -8,18 +8,18 @@ use rcc_codegen::{AsmInst, Reg};
 use std::collections::HashMap;
 use log::{debug, warn};
 
-use crate::v2::RegisterPressureManager;
-use crate::v2::naming::NameGenerator;
-use crate::v2::globals::GlobalManager;
-use crate::v2::function::{FunctionBuilder, CallArg, CallTarget};
+use crate::naming::NameGenerator;
+use crate::globals::GlobalManager;
+use crate::function::{FunctionBuilder, CallArg, CallTarget};
 
 // Import all the existing lowering functions
-use crate::v2::instr::{
+use crate::instr::{
     lower_load, lower_store, lower_gep,
     lower_binary_op, lower_unary_op,
     lower_inline_asm_extended,
     helpers::{get_bank_register_with_mgr, resolve_global_to_fatptr, canonicalize_value, get_value_register}
 };
+use crate::regmgmt::{BankInfo, RegisterPressureManager};
 
 /// Lower a single instruction using the existing infrastructure
 pub fn lower_instruction(
@@ -119,7 +119,7 @@ pub fn lower_instruction(
             }
 
             // Mark as stack pointer
-            mgr.set_pointer_bank(result_name.clone(), crate::v2::BankInfo::Stack);
+            mgr.set_pointer_bank(result_name.clone(), BankInfo::Stack);
             
             // Register this alloca so it can be recomputed if needed later
             mgr.register_alloca(result_name.clone(), offset);
@@ -196,7 +196,7 @@ pub fn lower_instruction(
                         
                         // Use the helper function to resolve bank tag to bank info
                         // This handles all bank types including Mixed properly
-                        use crate::v2::instr::helpers::resolve_bank_tag_to_info;
+                        use crate::instr::helpers::resolve_bank_tag_to_info;
                         let bank_info = resolve_bank_tag_to_info(&fp.bank, fp, mgr, naming);
                         let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
                         

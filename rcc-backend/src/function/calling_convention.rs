@@ -7,9 +7,9 @@
 //! - Stack parameters pushed before call, accessed via FP in callee
 
 use rcc_codegen::{AsmInst, Reg};
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::NameGenerator;
+use crate::regmgmt::{BankInfo, RegisterPressureManager};
 use log::{debug, trace, info};
+use crate::naming::NameGenerator;
 
 /// Target for function calls - either by address or by label
 #[derive(Debug, Clone)]
@@ -294,7 +294,7 @@ impl CallingConvention {
                 pressure_manager.bind_value_to_register(name.clone(), Reg::Rv0);
                 
                 // Track that Rv1 has the bank
-                pressure_manager.set_pointer_bank(name, crate::v2::BankInfo::Register(Reg::Rv1));
+                pressure_manager.set_pointer_bank(name, BankInfo::Register(Reg::Rv1));
                 
                 (insts, Some((Reg::Rv0, Some(Reg::Rv1))))
             } else {
@@ -468,7 +468,7 @@ impl CallingConvention {
 
                 // Track the bank in the register manager
                 let param_name = naming.param_name(index);
-                pressure_manager.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank_reg));
+                pressure_manager.set_pointer_bank(param_name, BankInfo::Register(bank_reg));
 
                 Some(bank_reg)
             } else {
@@ -506,7 +506,7 @@ impl CallingConvention {
 
                 // Track the bank in the register manager
                 let param_name = naming.param_name(index);
-                pressure_manager.set_pointer_bank(param_name, crate::v2::BankInfo::Register(bank_reg));
+                pressure_manager.set_pointer_bank(param_name, BankInfo::Register(bank_reg));
 
                 Some(bank_reg)
             } else {

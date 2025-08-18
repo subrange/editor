@@ -1,8 +1,8 @@
 //! Helper functions for binary operation lowering
 
 use rcc_frontend::ir::{Value, IrBinaryOp};
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::instr::helpers::calculate_value_need;
+use crate::regmgmt::RegisterPressureManager;
+use crate::instr::helpers::calculate_value_need;
 
 /// Calculate register needs for operands
 pub(super) fn calculate_register_needs(

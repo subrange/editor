@@ -10,11 +10,16 @@ use rcc_frontend::BankTag;
 use rcc_codegen::{AsmInst, Reg};
 use std::collections::HashMap;
 use log::{debug, info, trace};
-use crate::v2::RegisterPressureManager;
-use crate::v2::naming::NameGenerator;
-use crate::v2::globals::GlobalManager;
-use crate::v2::function::FunctionBuilder;
-use crate::v2::instr::helpers::get_bank_register_with_mgr;
+use crate::function::FunctionBuilder;
+use crate::globals::GlobalManager;
+use crate::instr::helpers::get_bank_register_with_mgr;
+use crate::naming::NameGenerator;
+use crate::regmgmt::RegisterPressureManager;
+// use crate::RegisterPressureManager;
+// use crate::naming::NameGenerator;
+// use crate::globals::GlobalManager;
+// use crate::function::FunctionBuilder;
+// use crate::instr::helpers::get_bank_register_with_mgr;
 use super::instruction::lower_instruction;
 
 /// Compute stack offsets (relative to FP) for each alloca result

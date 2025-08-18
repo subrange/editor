@@ -1,9 +1,9 @@
 //! Tests for Store instruction lowering
 
 use rcc_frontend::ir::{Value, FatPointer, };
-use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
-use crate::v2::naming::new_function_naming;
-use crate::v2::instr::lower_store;
+use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::naming::new_function_naming;
+use crate::instr::lower_store;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_frontend::BankTag;
 

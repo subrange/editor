@@ -4,8 +4,8 @@
 //! Supports both scalar stores and fat pointer stores (2-component).
 
 use rcc_frontend::ir::{Value};
-use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
-use crate::v2::naming::NameGenerator;
+use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;

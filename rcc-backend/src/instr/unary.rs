@@ -5,9 +5,9 @@
 
 use rcc_frontend::ir::{Value, IrUnaryOp, IrType};
 use rcc_common::TempId;
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::NameGenerator;
-use crate::v2::instr::helpers::get_value_register;
+use crate::regmgmt::RegisterPressureManager;
+use crate::naming::NameGenerator;
+use crate::instr::helpers::get_value_register;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 

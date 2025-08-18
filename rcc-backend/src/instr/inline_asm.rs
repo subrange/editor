@@ -9,10 +9,10 @@
 use rcc_frontend::ir::{AsmOperandIR, Value};
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::{CompilerError, SourceLocation};
-use crate::v2::RegisterPressureManager;
-use crate::v2::naming::NameGenerator;
+use crate::naming::NameGenerator;
 use log::{debug, warn};
 use std::collections::{HashMap, HashSet};
+use crate::regmgmt::RegisterPressureManager;
 
 /// Parsed constraint information
 #[derive(Debug, Clone)]

@@ -1,9 +1,9 @@
 //! Tests for branch instruction lowering
 
 use rcc_frontend::ir::Value;
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::NameGenerator;
-use crate::v2::instr::branch::{lower_branch, lower_branch_cond, lower_compare_and_branch, ComparisonType};
+use crate::regmgmt::RegisterPressureManager;
+use crate::naming::NameGenerator;
+use crate::instr::branch::{lower_branch, lower_branch_cond, lower_compare_and_branch, ComparisonType};
 use rcc_codegen::{AsmInst, Reg};
 fn create_test_manager() -> RegisterPressureManager {
     let mut mgr = RegisterPressureManager::new(10); // 10 local variables

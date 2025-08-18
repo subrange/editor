@@ -10,7 +10,7 @@ fn test_r13_initialization() {
     alloc.init_stack_bank();
     assert!(alloc.sb_initialized);
     
-    let insts = alloc.take_instructions();
+    let _insts = alloc.take_instructions();
     // assert_eq!(insts.len(), 0);
     // assert!(matches!(insts[1], AsmInst::Li(Reg::Sb, 0)));
 }

@@ -5,8 +5,8 @@
 //! crossing bank boundaries (4096 instruction / 16384 byte boundaries).
 
 use super::helpers::resolve_bank_tag_to_info;
-use crate::v2::naming::NameGenerator;
-use crate::v2::regmgmt::{BankInfo, RegisterPressureManager};
+use crate::naming::NameGenerator;
+use crate::regmgmt::{BankInfo, RegisterPressureManager};
 use log::{debug, trace, warn};
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
@@ -390,8 +390,9 @@ pub fn lower_gep(
 mod tests {
     use rcc_frontend::BankTag;
     use super::*;
-    use crate::v2::naming::new_function_naming;
-    use crate::v2::BANK_SIZE_INSTRUCTIONS;
+    use crate::naming::new_function_naming;
+
+    const BANK_SIZE_INSTRUCTIONS: u16 = 4096;
 
     #[test]
     fn test_gep_constant_offset() {
@@ -431,7 +432,7 @@ mod tests {
         let indices = vec![Value::Temp(11)];
         let element_size = 8; // 8-byte elements (power of 2)
 
-        let insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20, BANK_SIZE_INSTRUCTIONS);
+        let _insts = lower_gep(&mut mgr, &mut naming, &base_ptr, &indices, element_size, 20, BANK_SIZE_INSTRUCTIONS);
 
         // Should generate shift instruction for power-of-2 size
         // Check for shift instruction (using Sll with register, not SllI)

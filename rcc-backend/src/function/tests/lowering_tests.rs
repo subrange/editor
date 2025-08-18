@@ -1,4 +1,4 @@
-use crate::v2::function::internal::FunctionLowering;
+use crate::function::internal::FunctionLowering;
 use rcc_codegen::{AsmInst, Reg};
 
 #[test]

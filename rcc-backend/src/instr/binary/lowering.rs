@@ -2,12 +2,12 @@
 
 use rcc_frontend::ir::{Value, IrBinaryOp};
 use rcc_common::TempId;
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::NameGenerator;
+use crate::regmgmt::RegisterPressureManager;
+use crate::naming::NameGenerator;
 use rcc_codegen::AsmInst;
 use log::{debug, trace, warn};
 
-use crate::v2::instr::helpers::get_value_register;
+use crate::instr::helpers::get_value_register;
 use super::{
     is_commutative, can_reuse_register, calculate_register_needs,
     generate_arithmetic_instruction, generate_comparison_instructions

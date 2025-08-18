@@ -86,7 +86,7 @@ pub fn lower_load(
 4. **Running with debug output**:
 ```bash
 # Enable trace logging for register management
-RUST_LOG=rcc_ir::v2::regmgmt=trace cargo test
+RUST_LOG=rcc_ir::regmgmt=trace cargo test
 
 # Enable debug logging for all V2 components
 RUST_LOG=rcc_ir::v2=debug cargo build --release
@@ -122,7 +122,7 @@ RUST_LOG=trace cargo run -- compile test.c
 1. Create the load module structure:
 ```rust
 use rcc_frontend::ir::{Value, Type};
-use crate::v2::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::regmgmt::{RegisterPressureManager, BankInfo};
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace};
 
@@ -382,8 +382,8 @@ All comparison predicates are fully implemented:
 
 ```rust
 use rcc_frontend::ir::{Instruction, Function};
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::function::{emit_prologue, emit_epilogue};
+use crate::regmgmt::RegisterPressureManager;
+use crate::function::{emit_prologue, emit_epilogue};
 
 pub fn lower_function_v2(func: &Function) -> Vec<AsmInst> {
     let mut insts = vec![];
@@ -566,10 +566,10 @@ Compare V1 vs V2:
 RUST_LOG=rcc_ir::v2=debug cargo test
 
 # Trace register allocation
-RUST_LOG=rcc_ir::v2::regmgmt=trace cargo test specific_test
+RUST_LOG=rcc_ir::regmgmt=trace cargo test specific_test
 
 # Debug specific module
-RUST_LOG=rcc_ir::v2::instr::load=trace cargo run
+RUST_LOG=rcc_ir::instr::load=trace cargo run
 ```
 
 2. **Add temporary trace points**:

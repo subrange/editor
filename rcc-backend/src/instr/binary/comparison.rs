@@ -1,8 +1,8 @@
 //! Comparison operation generation
 
 use rcc_frontend::ir::IrBinaryOp;
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::NameGenerator;
+use crate::regmgmt::RegisterPressureManager;
+use crate::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::TempId;
 

@@ -24,5 +24,5 @@ pub use self::bank::BankInfo;
 
 // Keep internal modules private
 mod allocator;
-mod pressure;
+pub mod pressure;
 mod bank;

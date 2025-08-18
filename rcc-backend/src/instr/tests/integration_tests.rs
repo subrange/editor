@@ -4,9 +4,9 @@
 //! especially focusing on naming conflicts and consistency.
 
 use rcc_frontend::ir::{Value, IrType as Type, FatPointer};
-use crate::v2::regmgmt::RegisterPressureManager;
-use crate::v2::naming::new_function_naming;
-use crate::v2::instr::{lower_load, lower_store};
+use crate::regmgmt::RegisterPressureManager;
+use crate::naming::new_function_naming;
+use crate::instr::{lower_load, lower_store};
 use rcc_codegen::{AsmInst, Reg};
 use rcc_frontend::BankTag;
 

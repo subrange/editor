@@ -6,13 +6,13 @@
 use rcc_frontend::ir::Module;
 use rcc_codegen::AsmInst;
 use log::{debug, info};
-use crate::v2::globals::GlobalManager;
-use crate::v2::RegisterPressureManager;
-use crate::v2::naming::new_function_naming;
+use crate::globals::GlobalManager;
+use crate::naming::new_function_naming;
+use crate::regmgmt::RegisterPressureManager;
 use super::function::lower_function_v2;
 
 /// Lower an entire module using the V2 backend
-pub fn lower_module_v2(module: &Module, bank_size: u16, trace_spills: bool) -> Result<Vec<AsmInst>, String> {
+pub fn lower_module(module: &Module, bank_size: u16, trace_spills: bool) -> Result<Vec<AsmInst>, String> {
     info!("V2: Lowering module '{}' with bank_size {}", module.name, bank_size);
     let mut all_instructions = Vec::new();
     

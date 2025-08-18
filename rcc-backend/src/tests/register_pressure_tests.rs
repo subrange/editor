@@ -1,6 +1,6 @@
 //! Comprehensive tests for RegisterPressureManager
 
-use crate::v2::regmgmt::*;
+use crate::regmgmt::*;
 use rcc_frontend::ir::{Value, IrBinaryOp, BasicBlock, Instruction, IrType, FatPointer};
 use rcc_codegen::{Reg, AsmInst};
 use rcc_frontend::BankTag;
