@@ -14,6 +14,8 @@ VERY IMPORTANT RULES:
 IMPORTANT: rcc is a project inside rust workspace, so everything is being built into the project root target/release directory.
 IMPORTANT: rct (Ripple C Test runner) can be invoked from the project root via "./rct" after building with `cargo build --release`.
 
+To better trace errors, use cargo build --debug and then run the test suite with `RUST_BACKTRACE=1 ./rct` to get detailed backtraces on errors (may require explicitly using std::backtrace::Backtrace in your code).
+
 ## Project Overview
 
 1.
@@ -128,6 +130,10 @@ rct test_new
 
 # Run all tests
 rct
+
+# Run tests with a specific category
+rct -c core/typedef
+
 ```
 
 ## Test Guidelines
@@ -153,20 +159,8 @@ rct list
 # List all categories
 rct list -c
 
-# Check for orphaned test files
-rct check
-
-# Show test suite statistics
-rct stats
-
-# Clean build artifacts
-rct clean
-
 # Rename a test
 rct rename old_name new_name
-
-# Launch interactive TUI
-rct tui
 ```
 
 

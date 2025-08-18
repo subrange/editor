@@ -141,11 +141,19 @@ impl SemanticAnalyzer {
     
     /// Analyze a function definition
     fn analyze_function(&mut self, func: &mut FunctionDefinition) -> Result<(), CompilerError> {
+        // Resolve the function return type before setting current function context
+        func.return_type = self.type_analyzer.borrow().resolve_type(&func.return_type);
+        
         // Set current function context
         self.current_function = Some(func.return_type.clone());
         
         // Enter function scope
         self.type_analyzer.borrow().symbol_table.borrow_mut().push_scope();
+        
+        // Resolve parameter types before adding to scope
+        for param in &mut func.parameters {
+            param.param_type = self.type_analyzer.borrow().resolve_type(&param.param_type);
+        }
         
         // Add parameters to scope
         self.type_analyzer.borrow_mut().add_function_parameters(&mut func.parameters)?;

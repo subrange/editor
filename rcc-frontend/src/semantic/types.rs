@@ -359,9 +359,15 @@ impl TypeAnalyzer {
     }
 
     pub fn declare_function(&mut self, func: &FunctionDefinition) -> Result<(), CompilerError> {
+        // Resolve typedefs in return type and parameters
+        let resolved_return_type = self.resolve_type(&func.return_type);
+        let resolved_parameters: Vec<Type> = func.parameters.iter()
+            .map(|p| self.resolve_type(&p.param_type))
+            .collect();
+        
         let func_type = Type::Function {
-            return_type: Box::new(func.return_type.clone()),
-            parameters: func.parameters.iter().map(|p| p.param_type.clone()).collect(),
+            return_type: Box::new(resolved_return_type),
+            parameters: resolved_parameters,
             is_variadic: false, // TODO: Handle variadic functions
         };
 
