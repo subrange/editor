@@ -88,6 +88,7 @@ impl CategoryView {
                     expected: None,
                     use_runtime: true,
                     description: failure.description.clone(),
+                    skipped: false,
                 });
             }
             categories.insert("Known Failures".to_string(), failure_tests);
@@ -996,6 +997,7 @@ impl TuiApp {
                     description: None,
                     known_failure: false,
                     category: None,
+                    skipped: false,
                 }
             };
             
@@ -1024,6 +1026,7 @@ impl TuiApp {
                     expected: metadata.expected,
                     use_runtime: metadata.use_runtime,
                     description: metadata.description,
+                    skipped: metadata.skipped,
                 });
                 
                 // Rebuild categories
@@ -1396,6 +1399,7 @@ impl TuiApp {
             description: Some(self.new_test_description.clone()),
             known_failure: false,
             category: None,
+            skipped: false,
         };
         
         let meta_content = serde_json::to_string_pretty(&metadata)?;
@@ -1422,6 +1426,7 @@ impl TuiApp {
             expected: metadata.expected,
             use_runtime: metadata.use_runtime,
             description: metadata.description,
+            skipped: metadata.skipped,
         };
         
         // Find the correct position to insert (alphabetically by file path)
@@ -1445,6 +1450,7 @@ impl TuiApp {
             expected: Some("Y\n".to_string()),
             use_runtime: true,
             description: Some(self.new_test_description.clone()),
+            skipped: false,
         };
         self.jump_to_test(&new_test);
         
@@ -1509,6 +1515,7 @@ impl TuiApp {
                 },
                 known_failure: self.metadata_input.is_known_failure,
                 category: None,
+                skipped: false,
             };
 
             // Save the metadata file
@@ -1538,6 +1545,7 @@ impl TuiApp {
                         expected: metadata.expected.clone(),  // Use the properly set expected value
                         use_runtime: metadata.use_runtime,
                         description: metadata.description,
+                        skipped: metadata.skipped,
                     });
                 }
                 

@@ -125,6 +125,7 @@ impl TestRunner {
                             expected: None,
                             use_runtime: true,
                             description: Some("Ad-hoc test".to_string()),
+                            skipped: false,
                         });
                         found = true;
                         break;
@@ -204,6 +205,18 @@ impl TestRunner {
     pub fn run_single_test(&self, test: &TestCase) -> TestResult {
         let start = Instant::now();
         let test_name = test.file.display().to_string();
+        
+        // Check if test is skipped
+        if test.skipped {
+            return TestResult {
+                name: test_name,
+                status: TestStatus::Skipped,
+                message: Some("Test marked as skipped".to_string()),
+                actual_output: None,
+                expected_output: test.expected.clone(),
+                duration_ms: 0,
+            };
+        }
         
         // Fix the path - prepend c-test if needed
         let test_path = if test.file.is_relative() && !test.file.starts_with("c-test") {

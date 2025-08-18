@@ -14,6 +14,8 @@ pub struct TestMetadata {
     pub known_failure: bool,
     #[serde(default)]
     pub category: Option<String>,
+    #[serde(default)]
+    pub skipped: bool,
 }
 
 /// Test configuration discovered from .meta.json files
@@ -31,6 +33,8 @@ pub struct TestCase {
     #[serde(default = "default_true")]
     pub use_runtime: bool,
     pub description: Option<String>,
+    #[serde(default)]
+    pub skipped: bool,
 }
 
 /// A known failure test case
@@ -210,6 +214,7 @@ fn scan_directory_for_tests(
                         expected: metadata.expected,
                         use_runtime: metadata.use_runtime,
                         description: metadata.description,
+                        skipped: metadata.skipped,
                     });
                 }
             }
@@ -259,6 +264,7 @@ fn scan_directory_for_orphans(
                     expected: None,
                     use_runtime: true, // Default to using runtime
                     description: Some("[ORPHAN] Test without metadata".to_string()),
+                    skipped: false, // Default to not skipped
                 });
             }
         }
@@ -271,12 +277,12 @@ fn scan_directory_for_orphans(
 pub fn save_tests(config: &TestConfig, _path: &Path) -> Result<()> {
     // Save regular tests
     for test in &config.tests {
-        save_test_metadata(&test.file, &test.expected, test.use_runtime, &test.description, false)?;
+        save_test_metadata(&test.file, &test.expected, test.use_runtime, &test.description, false, test.skipped)?;
     }
     
     // Save known failures
     for failure in &config.known_failures {
-        save_test_metadata(&failure.file, &None, true, &failure.description, true)?;
+        save_test_metadata(&failure.file, &None, true, &failure.description, true, false)?;
     }
     
     Ok(())
@@ -289,6 +295,7 @@ fn save_test_metadata(
     use_runtime: bool,
     description: &Option<String>,
     known_failure: bool,
+    skipped: bool,
 ) -> Result<()> {
     // Construct the full path
     let full_path = if file.is_relative() && !file.starts_with("c-test") {
@@ -313,6 +320,11 @@ fn save_test_metadata(
     
     if let Some(desc) = description {
         metadata.insert("description", serde_json::Value::String(desc.clone()));
+    }
+    
+    // Add skipped field if true
+    if skipped {
+        metadata.insert("skipped", serde_json::Value::Bool(true));
     }
     
     // Write the metadata file
@@ -364,6 +376,7 @@ pub fn add_test(
         expected,
         use_runtime,
         description,
+        skipped: false, // Default to not skipped when adding new tests
     });
     true // Added new
 }

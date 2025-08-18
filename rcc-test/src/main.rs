@@ -412,10 +412,11 @@ fn list_tests(tests_file: &Path, names_only: bool, include_failures: bool) -> Re
             }
         } else {
             println!(
-                "{} (runtime: {}, expected: {})",
+                "{} (runtime: {}, expected: {}, skipped: {})",
                 test.file.display(),
                 if test.use_runtime { "yes" } else { "no" },
-                if test.expected.is_some() { "defined" } else { "none" }
+                if test.expected.is_some() { "defined" } else { "none" },
+                if test.skipped { "yes" } else { "no" }
             );
             if let Some(desc) = &test.description {
                 println!("  {}", desc.dimmed());
@@ -645,6 +646,7 @@ fn rename_test(tests_file: &Path, old_name: &str, new_name: &str) -> Result<()> 
                         expected: None,
                         use_runtime: true,
                         description: failure.description.clone(),
+                        skipped: false,
                     });
                     found_index = Some(idx);
                     is_known_failure = true;
