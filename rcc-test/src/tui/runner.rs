@@ -370,6 +370,14 @@ impl TuiRunner {
                 // Rename selected test
                 self.app.start_rename_test();
             }
+            KeyCode::Char('s') => {
+                // Toggle skip status for selected test
+                if let Err(e) = self.app.toggle_skip_status() {
+                    self.app.append_output(&format!("Failed to toggle skip status: {e}\n"));
+                } else {
+                    self.app.append_output("Skip status toggled successfully!\n");
+                }
+            }
             KeyCode::Char('M') => {
                 // Move selected test to different category (Shift+M)
                 self.app.start_move_test();

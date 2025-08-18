@@ -152,7 +152,9 @@ fn create_test_item<'a>(test: &'a crate::config::TestCase, _index: usize, app: &
     let is_orphan = app.orphan_tests.iter().any(|orphan| orphan.file == test.file);
     
     // Add test result indicator or orphan indicator
-    if is_orphan {
+    if test.skipped {
+        spans.push(Span::styled("⊘ ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)));
+    } else if is_orphan {
         spans.push(Span::styled("⚠ ", Style::default().fg(Color::Magenta)));
     } else if let Some(result) = app.test_results.get(test_name) {
         if result.passed {
@@ -166,11 +168,15 @@ fn create_test_item<'a>(test: &'a crate::config::TestCase, _index: usize, app: &
         spans.push(Span::raw("  "));
     }
     
-    spans.push(Span::raw(test_name));
-    
-    // Add orphan indicator text
-    if is_orphan {
-        spans.push(Span::styled(" [no metadata]", Style::default().fg(Color::DarkGray)));
+    // Style test name differently if skipped
+    if test.skipped {
+        spans.push(Span::styled(test_name, Style::default().fg(Color::DarkGray).add_modifier(Modifier::CROSSED_OUT)));
+        spans.push(Span::styled(" [SKIP]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)));
+    } else {
+        spans.push(Span::raw(test_name));
+        if is_orphan {
+            spans.push(Span::styled(" [no metadata]", Style::default().fg(Color::DarkGray)));
+        }
     }
     
     ListItem::new(Line::from(spans))
@@ -500,6 +506,14 @@ fn draw_test_details(f: &mut Frame, area: Rect, app: &TuiApp) {
             Line::from(vec![
                 Span::styled("Runtime: ", Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(if test.use_runtime { "Yes" } else { "No" }),
+            ]),
+            Line::from(vec![
+                Span::styled("Skipped: ", Style::default().add_modifier(Modifier::BOLD)),
+                if test.skipped {
+                    Span::styled("Yes (Test will not run)", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+                } else {
+                    Span::styled("No", Style::default().fg(Color::Green))
+                },
             ]),
         ];
 
@@ -983,6 +997,7 @@ fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         Line::from("  ✓       Test passed"),
         Line::from("  ✗       Test failed"),
         Line::from("  ⟳       Test running"),
+        Line::from("  ⊘ [SKIP] Test skipped (yellow, will not run)"),
         Line::from("  ⚠       Orphan test (no metadata)"),
         Line::from("  [C]     Core category"),
         Line::from("  [M]     Memory category"),
@@ -997,6 +1012,7 @@ fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         Line::from("  E       Edit expected output (Shift+E)"),
         Line::from("  g       Golden update (apply actual as expected)"),
         Line::from("  n       Rename selected test"),
+        Line::from("  s       Toggle skip status for selected test"),
         Line::from("  M       Move test to category (uses selector)"),
         Line::from("  x       Delete selected test"),
         Line::from("  o       Jump to first orphan test"),

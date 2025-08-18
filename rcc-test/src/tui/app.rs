@@ -1079,6 +1079,90 @@ impl TuiApp {
         Ok(())
     }
     
+    pub fn toggle_skip_status(&mut self) -> anyhow::Result<()> {
+        // Get the current selected test
+        if let Some(test) = self.get_selected_test_details() {
+            let test_path = test.file.clone();
+            
+            // Find and update the test in the test_config
+            for test_case in &mut self.test_config.tests {
+                if test_case.file == test_path {
+                    // Toggle the skipped status
+                    test_case.skipped = !test_case.skipped;
+                    
+                    // Save to .meta.json file
+                    let full_path = if test_path.is_relative() && !test_path.starts_with("c-test") {
+                        PathBuf::from("c-test").join(&test_path)
+                    } else {
+                        test_path.clone()
+                    };
+                    
+                    let meta_path = full_path.with_extension("meta.json");
+                    
+                    // Read existing metadata or create new
+                    let mut metadata: HashMap<String, serde_json::Value> = if meta_path.exists() {
+                        let content = std::fs::read_to_string(&meta_path)?;
+                        serde_json::from_str(&content)?
+                    } else {
+                        HashMap::new()
+                    };
+                    
+                    // Update the skipped field
+                    if test_case.skipped {
+                        metadata.insert("skipped".to_string(), serde_json::Value::Bool(true));
+                    } else {
+                        // Remove the skipped field if false (to keep files clean)
+                        metadata.remove("skipped");
+                    }
+                    
+                    // Preserve other fields
+                    if let Some(expected) = &test_case.expected {
+                        metadata.insert("expected".to_string(), serde_json::Value::String(expected.clone()));
+                    }
+                    metadata.insert("use_runtime".to_string(), serde_json::Value::Bool(test_case.use_runtime));
+                    if let Some(desc) = &test_case.description {
+                        metadata.insert("description".to_string(), serde_json::Value::String(desc.clone()));
+                    }
+                    
+                    // Write the updated metadata
+                    let content = serde_json::to_string_pretty(&metadata)?;
+                    std::fs::write(&meta_path, content)?;
+                    
+                    // Update in filtered lists too
+                    for filtered in &mut self.filtered_tests {
+                        if filtered.file == test_path {
+                            filtered.skipped = test_case.skipped;
+                            break;
+                        }
+                    }
+                    
+                    // Update in categories
+                    for category in self.categories.values_mut() {
+                        for cat_test in &mut category.tests {
+                            if cat_test.file == test_path {
+                                cat_test.skipped = test_case.skipped;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    let status = if test_case.skipped { "skipped" } else { "enabled" };
+                    self.append_output(&format!("Test '{}' is now {}.\n", 
+                        test_path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown"),
+                        status
+                    ));
+                    
+                    return Ok(());
+                }
+            }
+            
+            self.append_output("Could not find test to update.\n");
+        } else {
+            self.append_output("No test selected.\n");
+        }
+        Ok(())
+    }
+    
     pub fn get_selected_test_path_for_edit(&self) -> Option<PathBuf> {
         if let Some(test) = self.get_selected_test_details() {
             // Construct full path
