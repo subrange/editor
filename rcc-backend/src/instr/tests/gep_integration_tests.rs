@@ -466,7 +466,7 @@ fn test_gep_with_dynamic_2d_access() {
     // Result should have dynamic bank
     assert!(matches!(
         mgr.get_pointer_bank(&format!("t{}", elem_gep_temp)),
-        Some(BankInfo::Register(_))
+        Some(BankInfo::Dynamic(_))
     ), "Result should have dynamic bank after two dynamic GEPs");
     
     // Store a value

@@ -59,10 +59,10 @@ q_add:
     ADDI T6, T5, 1
     LOAD T4, SB, T6
     ADDI T2, T0, 1
-; GEP: Setting bank info for t8 to NamedValue("load_f0_op12_t7_bank_val")
+; GEP: Setting bank info for t8 to Dynamic("load_f0_op12_t7_bank_val")
 ; Load instruction: t9 = load FatPtr(FatPointer { addr: Temp(8), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(8), bank: Mixed })
-; LOAD: Pointer t8 has bank info: NamedValue("load_f0_op12_t7_bank_val")
+; LOAD: Pointer t8 has bank info: Dynamic("load_f0_op12_t7_bank_val")
 ; LOAD: Using bank register T4 for load
     LOAD T6, T4, T2
 ; Load instruction: t10 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
@@ -81,10 +81,10 @@ q_add:
     STORE S3, SB, SC
     LOAD S3, SB, S0
     ADDI S0, T0, 1
-; GEP: Setting bank info for t11 to NamedValue("load_f0_op15_t10_bank_val")
+; GEP: Setting bank info for t11 to Dynamic("load_f0_op15_t10_bank_val")
 ; Load instruction: t12 = load FatPtr(FatPointer { addr: Temp(11), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(11), bank: Mixed })
-; LOAD: Pointer t11 has bank info: NamedValue("load_f0_op15_t10_bank_val")
+; LOAD: Pointer t11 has bank info: Dynamic("load_f0_op15_t10_bank_val")
 ; LOAD: Using bank register S3 for load
     LOAD T0, S3, S0
     ADD T6, T6, T0
@@ -105,7 +105,7 @@ q_add:
     STORE S1, SB, SC
     LOAD S1, SB, S2
     ADDI S2, T0, 1
-; GEP: Setting bank info for t15 to NamedValue("load_f0_op18_t14_bank_val")
+; GEP: Setting bank info for t15 to Dynamic("load_f0_op18_t14_bank_val")
 ; Load instruction: t16 = load FatPtr(FatPointer { addr: Temp(6), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f0_op19_t16 has bank info: Stack
@@ -130,7 +130,7 @@ q_add:
     STORE T4, SB, SC
     LOAD T4, SB, T2
     ADD T2, T5, R0
-; GEP: Setting bank info for t19 to NamedValue("load_f0_op22_t18_bank_val")
+; GEP: Setting bank info for t19 to Dynamic("load_f0_op22_t18_bank_val")
 ; Load instruction: t20 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f0_op23_t20 has bank info: Stack
@@ -150,10 +150,10 @@ q_add:
     STORE S3, SB, SC
     LOAD S3, SB, S0
     ADD S0, T3, R0
-; GEP: Setting bank info for t21 to NamedValue("load_f0_op25_t20_bank_val")
+; GEP: Setting bank info for t21 to Dynamic("load_f0_op25_t20_bank_val")
 ; Load instruction: t22 = load FatPtr(FatPointer { addr: Temp(21), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(21), bank: Mixed })
-; LOAD: Pointer t21 has bank info: NamedValue("load_f0_op25_t20_bank_val")
+; LOAD: Pointer t21 has bank info: Dynamic("load_f0_op25_t20_bank_val")
 ; LOAD: Using bank register S3 for load
     LOAD T3, S3, S0
 ; Load instruction: t23 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
@@ -179,10 +179,10 @@ q_add:
     STORE S2, SB, SC
     LOAD S2, SB, T0
     ADD T0, T1, R0
-; GEP: Setting bank info for t24 to NamedValue("load_f0_op28_t23_bank_val")
+; GEP: Setting bank info for t24 to Dynamic("load_f0_op28_t23_bank_val")
 ; Load instruction: t25 = load FatPtr(FatPointer { addr: Temp(24), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(24), bank: Mixed })
-; LOAD: Pointer t24 has bank info: NamedValue("load_f0_op28_t23_bank_val")
+; LOAD: Pointer t24 has bank info: Dynamic("load_f0_op28_t23_bank_val")
 ; LOAD: Using bank register S2 for load
     LOAD T1, S2, T0
     ADD T3, T3, T1
@@ -284,10 +284,10 @@ L_q_sub_1:
     ADDI T0, T5, 1
     LOAD T6, SB, T0
     ADDI T4, T1, 1
-; GEP: Setting bank info for t7 to NamedValue("load_f2_op12_t6_bank_val")
+; GEP: Setting bank info for t7 to Dynamic("load_f2_op12_t6_bank_val")
 ; Load instruction: t8 = load FatPtr(FatPointer { addr: Temp(7), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(7), bank: Mixed })
-; LOAD: Pointer t7 has bank info: NamedValue("load_f2_op12_t6_bank_val")
+; LOAD: Pointer t7 has bank info: Dynamic("load_f2_op12_t6_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD T2, T6, T4
 ; Load instruction: t9 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
@@ -302,10 +302,10 @@ L_q_sub_1:
     STORE S0, SB, SC
     LOAD S0, SB, T1
     ADDI T1, T0, 1
-; GEP: Setting bank info for t10 to NamedValue("load_f2_op15_t9_bank_val")
+; GEP: Setting bank info for t10 to Dynamic("load_f2_op15_t9_bank_val")
 ; Load instruction: t11 = load FatPtr(FatPointer { addr: Temp(10), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(10), bank: Mixed })
-; LOAD: Pointer t10 has bank info: NamedValue("load_f2_op15_t9_bank_val")
+; LOAD: Pointer t10 has bank info: Dynamic("load_f2_op15_t9_bank_val")
 ; LOAD: Using bank register S0 for load
     LOAD T0, S0, T1
 ; Spill t0 to slot 1
@@ -331,7 +331,7 @@ L_q_sub_2:
     ADDI T0, S3, 1
     LOAD T2, SB, T0
     ADDI T3, T7, 1
-; GEP: Setting bank info for t14 to NamedValue("load_f2_op20_t13_bank_val")
+; GEP: Setting bank info for t14 to Dynamic("load_f2_op20_t13_bank_val")
 ; Load instruction: t15 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f2_op21_t15 has bank info: Stack
@@ -347,10 +347,10 @@ L_q_sub_2:
     STORE S2, SB, SC
     LOAD S2, SB, T7
     ADDI T7, T0, 1
-; GEP: Setting bank info for t16 to NamedValue("load_f2_op23_t15_bank_val")
+; GEP: Setting bank info for t16 to Dynamic("load_f2_op23_t15_bank_val")
 ; Load instruction: t17 = load FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
-; LOAD: Pointer t16 has bank info: NamedValue("load_f2_op23_t15_bank_val")
+; LOAD: Pointer t16 has bank info: Dynamic("load_f2_op23_t15_bank_val")
 ; LOAD: Using bank register S2 for load
     LOAD T0, S2, T7
 ; Load instruction: t18 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
@@ -380,10 +380,10 @@ L_q_sub_2:
     STORE T1, SB, SC
     LOAD T1, SB, T6
     ADDI T6, T4, 1
-; GEP: Setting bank info for t19 to NamedValue("load_f2_op26_t18_bank_val")
+; GEP: Setting bank info for t19 to Dynamic("load_f2_op26_t18_bank_val")
 ; Load instruction: t20 = load FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
-; LOAD: Pointer t19 has bank info: NamedValue("load_f2_op26_t18_bank_val")
+; LOAD: Pointer t19 has bank info: Dynamic("load_f2_op26_t18_bank_val")
 ; LOAD: Using bank register T1 for load
     LOAD T4, T1, T6
     SUB T0, T0, T4
@@ -400,7 +400,7 @@ L_q_sub_2:
     ADDI S0, S3, 1
     LOAD T5, SB, S0
     ADD S0, T4, R0
-; GEP: Setting bank info for t23 to NamedValue("load_f2_op29_t22_bank_val")
+; GEP: Setting bank info for t23 to Dynamic("load_f2_op29_t22_bank_val")
 ; Load instruction: t24 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f2_op30_t24 has bank info: Stack
@@ -420,10 +420,10 @@ L_q_sub_2:
     ADDI S2, T4, 1
     LOAD S1, SB, S2
     ADD S2, T7, R0
-; GEP: Setting bank info for t25 to NamedValue("load_f2_op32_t24_bank_val")
+; GEP: Setting bank info for t25 to Dynamic("load_f2_op32_t24_bank_val")
 ; Load instruction: t26 = load FatPtr(FatPointer { addr: Temp(25), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(25), bank: Mixed })
-; LOAD: Pointer t25 has bank info: NamedValue("load_f2_op32_t24_bank_val")
+; LOAD: Pointer t25 has bank info: Dynamic("load_f2_op32_t24_bank_val")
 ; LOAD: Using bank register S1 for load
     LOAD T7, S1, S2
 ; Load instruction: t27 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
@@ -453,10 +453,10 @@ L_q_sub_2:
     STORE T3, SB, SC
     LOAD T3, SB, T0
     ADD T0, T1, R0
-; GEP: Setting bank info for t28 to NamedValue("load_f2_op35_t27_bank_val")
+; GEP: Setting bank info for t28 to Dynamic("load_f2_op35_t27_bank_val")
 ; Load instruction: t29 = load FatPtr(FatPointer { addr: Temp(28), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(28), bank: Mixed })
-; LOAD: Pointer t28 has bank info: NamedValue("load_f2_op35_t27_bank_val")
+; LOAD: Pointer t28 has bank info: Dynamic("load_f2_op35_t27_bank_val")
 ; LOAD: Using bank register T3 for load
     LOAD T1, T3, T0
     SUB T7, T7, T1
@@ -475,7 +475,7 @@ L_q_sub_3:
     ADDI T6, T1, 1
     LOAD S3, SB, T6
     ADDI T6, T4, 1
-; GEP: Setting bank info for t32 to NamedValue("load_f2_op38_t31_bank_val")
+; GEP: Setting bank info for t32 to Dynamic("load_f2_op38_t31_bank_val")
 ; Load instruction: t33 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f2_op39_t33 has bank info: Stack
@@ -499,10 +499,10 @@ L_q_sub_3:
     STORE S1, SB, SC
     LOAD S1, SB, S2
     ADDI S2, T2, 1
-; GEP: Setting bank info for t34 to NamedValue("load_f2_op41_t33_bank_val")
+; GEP: Setting bank info for t34 to Dynamic("load_f2_op41_t33_bank_val")
 ; Load instruction: t35 = load FatPtr(FatPointer { addr: Temp(34), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(34), bank: Mixed })
-; LOAD: Pointer t34 has bank info: NamedValue("load_f2_op41_t33_bank_val")
+; LOAD: Pointer t34 has bank info: Dynamic("load_f2_op41_t33_bank_val")
 ; LOAD: Using bank register S1 for load
     LOAD T2, S1, S2
 ; Spill t28 to slot 17
@@ -534,10 +534,10 @@ L_q_sub_3:
     STORE S0, SB, SC
     LOAD S0, SB, T7
     ADDI T7, T3, 1
-; GEP: Setting bank info for t38 to NamedValue("load_f2_op44_t37_bank_val")
+; GEP: Setting bank info for t38 to Dynamic("load_f2_op44_t37_bank_val")
 ; Load instruction: t39 = load FatPtr(FatPointer { addr: Temp(38), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(38), bank: Mixed })
-; LOAD: Pointer t38 has bank info: NamedValue("load_f2_op44_t37_bank_val")
+; LOAD: Pointer t38 has bank info: Dynamic("load_f2_op44_t37_bank_val")
 ; LOAD: Using bank register S0 for load
     LOAD T3, S0, T7
     SUB T0, T0, T3
@@ -554,7 +554,7 @@ L_q_sub_3:
     ADDI T5, T1, 1
     LOAD T4, SB, T5
     ADD T5, T3, R0
-; GEP: Setting bank info for t42 to NamedValue("load_f2_op47_t41_bank_val")
+; GEP: Setting bank info for t42 to Dynamic("load_f2_op47_t41_bank_val")
 ; Load instruction: t43 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f2_op48_t43 has bank info: Stack
@@ -574,10 +574,10 @@ L_q_sub_3:
     ADDI S1, T3, 1
     LOAD T2, SB, S1
     ADD S1, S2, R0
-; GEP: Setting bank info for t44 to NamedValue("load_f2_op50_t43_bank_val")
+; GEP: Setting bank info for t44 to Dynamic("load_f2_op50_t43_bank_val")
 ; Load instruction: t45 = load FatPtr(FatPointer { addr: Temp(44), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(44), bank: Mixed })
-; LOAD: Pointer t44 has bank info: NamedValue("load_f2_op50_t43_bank_val")
+; LOAD: Pointer t44 has bank info: Dynamic("load_f2_op50_t43_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD S2, T2, S1
 ; Load instruction: t46 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
@@ -607,10 +607,10 @@ L_q_sub_3:
     STORE T6, SB, SC
     LOAD T6, SB, T0
     ADD T0, S0, R0
-; GEP: Setting bank info for t47 to NamedValue("load_f2_op53_t46_bank_val")
+; GEP: Setting bank info for t47 to Dynamic("load_f2_op53_t46_bank_val")
 ; Load instruction: t48 = load FatPtr(FatPointer { addr: Temp(47), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(47), bank: Mixed })
-; LOAD: Pointer t47 has bank info: NamedValue("load_f2_op53_t46_bank_val")
+; LOAD: Pointer t47 has bank info: Dynamic("load_f2_op53_t46_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD S0, T6, T0
     SUB S2, S2, S0
@@ -709,10 +709,10 @@ L_q_mul_5:
     ADDI T2, T5, 1
     LOAD T0, SB, T2
     ADD T2, T4, R0
-; GEP: Setting bank info for t9 to NamedValue("load_f4_op13_t8_bank_val")
+; GEP: Setting bank info for t9 to Dynamic("load_f4_op13_t8_bank_val")
 ; Load instruction: t10 = load FatPtr(FatPointer { addr: Temp(9), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(9), bank: Mixed })
-; LOAD: Pointer t9 has bank info: NamedValue("load_f4_op13_t8_bank_val")
+; LOAD: Pointer t9 has bank info: Dynamic("load_f4_op13_t8_bank_val")
 ; LOAD: Using bank register T0 for load
     LOAD T4, T0, T2
     STORE T4, SB, T6
@@ -738,10 +738,10 @@ L_q_mul_5:
     STORE S2, SB, SC
     LOAD S2, SB, T7
     ADD T7, S3, R0
-; GEP: Setting bank info for t13 to NamedValue("load_f4_op16_t12_bank_val")
+; GEP: Setting bank info for t13 to Dynamic("load_f4_op16_t12_bank_val")
 ; Load instruction: t14 = load FatPtr(FatPointer { addr: Temp(13), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(13), bank: Mixed })
-; LOAD: Pointer t13 has bank info: NamedValue("load_f4_op16_t12_bank_val")
+; LOAD: Pointer t13 has bank info: Dynamic("load_f4_op16_t12_bank_val")
 ; LOAD: Using bank register S2 for load
     LOAD S3, S2, T7
     STORE S3, SB, S0
@@ -761,10 +761,10 @@ L_q_mul_5:
     STORE T2, SB, SC
     LOAD T2, SB, T1
     ADD T1, S1, R0
-; GEP: Setting bank info for t16 to NamedValue("load_f4_op19_t15_bank_val")
+; GEP: Setting bank info for t16 to Dynamic("load_f4_op19_t15_bank_val")
 ; Load instruction: t17 = load FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
-; LOAD: Pointer t16 has bank info: NamedValue("load_f4_op19_t15_bank_val")
+; LOAD: Pointer t16 has bank info: Dynamic("load_f4_op19_t15_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD S1, T2, T1
 ; Spill load_f4_op13_t8_bank_val to slot 5
@@ -801,10 +801,10 @@ L_q_mul_6:
     ADDI S0, T5, 1
     LOAD S1, SB, S0
     ADD S0, T6, R0
-; GEP: Setting bank info for t22 to NamedValue("load_f4_op23_t21_bank_val")
+; GEP: Setting bank info for t22 to Dynamic("load_f4_op23_t21_bank_val")
 ; Load instruction: t23 = load FatPtr(FatPointer { addr: Temp(22), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(22), bank: Mixed })
-; LOAD: Pointer t22 has bank info: NamedValue("load_f4_op23_t21_bank_val")
+; LOAD: Pointer t22 has bank info: Dynamic("load_f4_op23_t21_bank_val")
 ; LOAD: Using bank register S1 for load
     LOAD T6, S1, S0
 ; Spill t10 to slot 6
@@ -836,10 +836,10 @@ L_q_mul_8:
     STORE T7, SB, SC
     LOAD T7, SB, T6
     ADD T6, T5, R0
-; GEP: Setting bank info for t26 to NamedValue("load_f4_op26_t25_bank_val")
+; GEP: Setting bank info for t26 to Dynamic("load_f4_op26_t25_bank_val")
 ; Load instruction: t27 = load FatPtr(FatPointer { addr: Temp(26), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(26), bank: Mixed })
-; LOAD: Pointer t26 has bank info: NamedValue("load_f4_op26_t25_bank_val")
+; LOAD: Pointer t26 has bank info: Dynamic("load_f4_op26_t25_bank_val")
 ; LOAD: Using bank register T7 for load
     LOAD T5, T7, T6
 ; Spill load_f4_op16_t12_bank_val to slot 8
@@ -888,10 +888,10 @@ L_q_mul_9:
     STORE T2, SB, SC
     LOAD T2, SB, T1
     ADD T1, S3, R0
-; GEP: Setting bank info for t32 to NamedValue("load_f4_op30_t31_bank_val")
+; GEP: Setting bank info for t32 to Dynamic("load_f4_op30_t31_bank_val")
 ; Load instruction: t33 = load FatPtr(FatPointer { addr: Temp(32), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(32), bank: Mixed })
-; LOAD: Pointer t32 has bank info: NamedValue("load_f4_op30_t31_bank_val")
+; LOAD: Pointer t32 has bank info: Dynamic("load_f4_op30_t31_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD S3, T2, T1
 ; Spill t20 to slot 12
@@ -986,10 +986,10 @@ L_q_mul_11:
     STORE T2, SB, SC
     LOAD T2, SB, T1
     ADDI T1, T0, 1
-; GEP: Setting bank info for t44 to NamedValue("load_f4_op38_t43_bank_val")
+; GEP: Setting bank info for t44 to Dynamic("load_f4_op38_t43_bank_val")
 ; Load instruction: t45 = load FatPtr(FatPointer { addr: Temp(44), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(44), bank: Mixed })
-; LOAD: Pointer t44 has bank info: NamedValue("load_f4_op38_t43_bank_val")
+; LOAD: Pointer t44 has bank info: Dynamic("load_f4_op38_t43_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD T0, T2, T1
 ; Spill t34 to slot 21
@@ -1028,10 +1028,10 @@ L_q_mul_12:
     ADDI S1, T7, 1
     LOAD S2, SB, S1
     ADDI T4, S0, 1
-; GEP: Setting bank info for t51 to NamedValue("load_f4_op44_t50_bank_val")
+; GEP: Setting bank info for t51 to Dynamic("load_f4_op44_t50_bank_val")
 ; Load instruction: t52 = load FatPtr(FatPointer { addr: Temp(51), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(51), bank: Mixed })
-; LOAD: Pointer t51 has bank info: NamedValue("load_f4_op44_t50_bank_val")
+; LOAD: Pointer t51 has bank info: Dynamic("load_f4_op44_t50_bank_val")
 ; LOAD: Using bank register S2 for load
     LOAD T5, S2, T4
     LI T6, -32768
@@ -1088,10 +1088,10 @@ L_q_mul_18:
     ADDI S1, T5, 1
     LOAD T6, SB, S1
     ADDI T7, S0, 1
-; GEP: Setting bank info for t58 to NamedValue("load_f4_op54_t57_bank_val")
+; GEP: Setting bank info for t58 to Dynamic("load_f4_op54_t57_bank_val")
 ; Load instruction: t59 = load FatPtr(FatPointer { addr: Temp(58), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(58), bank: Mixed })
-; LOAD: Pointer t58 has bank info: NamedValue("load_f4_op54_t57_bank_val")
+; LOAD: Pointer t58 has bank info: Dynamic("load_f4_op54_t57_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD T3, T6, T7
 ; Recompute alloca t40 at FP+11
@@ -1129,10 +1129,10 @@ L_q_mul_19:
     STORE T1, SB, SC
     LOAD T1, SB, S3
     ADDI S3, T5, 1
-; GEP: Setting bank info for t62 to NamedValue("load_f4_op58_t61_bank_val")
+; GEP: Setting bank info for t62 to Dynamic("load_f4_op58_t61_bank_val")
 ; Load instruction: t63 = load FatPtr(FatPointer { addr: Temp(62), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(62), bank: Mixed })
-; LOAD: Pointer t62 has bank info: NamedValue("load_f4_op58_t61_bank_val")
+; LOAD: Pointer t62 has bank info: Dynamic("load_f4_op58_t61_bank_val")
 ; LOAD: Using bank register T1 for load
     LOAD T5, T1, S3
 ; Spill load_f4_op38_t43_bank_val to slot 24
@@ -1162,10 +1162,10 @@ L_q_mul_19:
     STORE S2, SB, SC
     LOAD S2, SB, T4
     ADDI T4, T5, 1
-; GEP: Setting bank info for t67 to NamedValue("load_f4_op61_t66_bank_val")
+; GEP: Setting bank info for t67 to Dynamic("load_f4_op61_t66_bank_val")
 ; Load instruction: t68 = load FatPtr(FatPointer { addr: Temp(67), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(67), bank: Mixed })
-; LOAD: Pointer t67 has bank info: NamedValue("load_f4_op61_t66_bank_val")
+; LOAD: Pointer t67 has bank info: Dynamic("load_f4_op61_t66_bank_val")
 ; LOAD: Using bank register S2 for load
     LOAD T5, S2, T4
 ; Spill t58 to slot 27
@@ -1242,10 +1242,10 @@ L_q_mul_14:
     STORE T3, SB, SC
     LOAD T3, SB, T6
     ADDI T6, T0, 1
-; GEP: Setting bank info for t77 to NamedValue("load_f4_op67_t76_bank_val")
+; GEP: Setting bank info for t77 to Dynamic("load_f4_op67_t76_bank_val")
 ; Load instruction: t78 = load FatPtr(FatPointer { addr: Temp(77), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(77), bank: Mixed })
-; LOAD: Pointer t77 has bank info: NamedValue("load_f4_op67_t76_bank_val")
+; LOAD: Pointer t77 has bank info: Dynamic("load_f4_op67_t76_bank_val")
 ; LOAD: Using bank register T3 for load
     LOAD T0, T3, T6
 ; Spill t62 to slot 30
@@ -1290,10 +1290,10 @@ L_q_mul_24:
     STORE S0, SB, SC
     LOAD S0, SB, T1
     ADDI T1, S1, 1
-; GEP: Setting bank info for t84 to NamedValue("load_f4_op71_t83_bank_val")
+; GEP: Setting bank info for t84 to Dynamic("load_f4_op71_t83_bank_val")
 ; Load instruction: t85 = load FatPtr(FatPointer { addr: Temp(84), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(84), bank: Mixed })
-; LOAD: Pointer t84 has bank info: NamedValue("load_f4_op71_t83_bank_val")
+; LOAD: Pointer t84 has bank info: Dynamic("load_f4_op71_t83_bank_val")
 ; LOAD: Using bank register S0 for load
     LOAD S1, S0, T1
 ; Spill t67 to slot 33
@@ -1316,10 +1316,10 @@ L_q_mul_24:
     STORE S2, SB, SC
     LOAD S2, SB, S1
     ADDI S1, T4, 1
-; GEP: Setting bank info for t89 to NamedValue("load_f4_op74_t88_bank_val")
+; GEP: Setting bank info for t89 to Dynamic("load_f4_op74_t88_bank_val")
 ; Load instruction: t90 = load FatPtr(FatPointer { addr: Temp(89), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(89), bank: Mixed })
-; LOAD: Pointer t89 has bank info: NamedValue("load_f4_op74_t88_bank_val")
+; LOAD: Pointer t89 has bank info: Dynamic("load_f4_op74_t88_bank_val")
 ; LOAD: Using bank register S2 for load
     LOAD T4, S2, S1
 ; Spill t73 to slot 35
@@ -1394,7 +1394,7 @@ L_q_mul_26:
     STORE T6, SB, SC
     LOAD T6, SB, S3
     ADD S3, T0, R0
-; GEP: Setting bank info for t100 to NamedValue("load_f4_op81_t99_bank_val")
+; GEP: Setting bank info for t100 to Dynamic("load_f4_op81_t99_bank_val")
 ; Load instruction: t101 = load FatPtr(FatPointer { addr: Temp(35), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(35), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f4_op82_t101 has bank info: Stack
@@ -1441,7 +1441,7 @@ L_q_mul_26:
     STORE S1, SB, SC
     LOAD S1, SB, T2
     ADDI T2, S0, 1
-; GEP: Setting bank info for t105 to NamedValue("load_f4_op86_t104_bank_val")
+; GEP: Setting bank info for t105 to Dynamic("load_f4_op86_t104_bank_val")
 ; Load instruction: t106 = load FatPtr(FatPointer { addr: Temp(40), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(40), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f4_op87_t106 has bank info: Stack
@@ -1489,7 +1489,7 @@ L_q_mul_30:
     ADDI T1, T0, 1
     LOAD T4, SB, T1
     ADD T5, T7, R0
-; GEP: Setting bank info for t110 to NamedValue("load_f4_op91_t109_bank_val")
+; GEP: Setting bank info for t110 to Dynamic("load_f4_op91_t109_bank_val")
 ; Load instruction: t111 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f4_op92_t111 has bank info: Stack
@@ -1498,10 +1498,10 @@ L_q_mul_30:
     ADDI T1, T0, 1
     LOAD T7, SB, T1
     ADD T1, S0, R0
-; GEP: Setting bank info for t112 to NamedValue("load_f4_op94_t111_bank_val")
+; GEP: Setting bank info for t112 to Dynamic("load_f4_op94_t111_bank_val")
 ; Load instruction: t113 = load FatPtr(FatPointer { addr: Temp(112), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(112), bank: Mixed })
-; LOAD: Pointer t112 has bank info: NamedValue("load_f4_op94_t111_bank_val")
+; LOAD: Pointer t112 has bank info: Dynamic("load_f4_op94_t111_bank_val")
 ; LOAD: Using bank register T7 for load
     LOAD S0, T7, T1
 ; Spill t103 to slot 45
@@ -1527,10 +1527,10 @@ L_q_mul_30:
     STORE T6, SB, SC
     LOAD T6, SB, S3
     ADDI S3, S0, 1
-; GEP: Setting bank info for t116 to NamedValue("load_f4_op97_t115_bank_val")
+; GEP: Setting bank info for t116 to Dynamic("load_f4_op97_t115_bank_val")
 ; Load instruction: t117 = load FatPtr(FatPointer { addr: Temp(116), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(116), bank: Mixed })
-; LOAD: Pointer t116 has bank info: NamedValue("load_f4_op97_t115_bank_val")
+; LOAD: Pointer t116 has bank info: Dynamic("load_f4_op97_t115_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD S0, T6, S3
 ; Spill t106 to slot 48
@@ -1559,10 +1559,10 @@ L_q_mul_33:
     STORE T2, SB, SC
     LOAD T2, SB, T0
     ADD T0, S0, R0
-; GEP: Setting bank info for t120 to NamedValue("load_f4_op100_t119_bank_val")
+; GEP: Setting bank info for t120 to Dynamic("load_f4_op100_t119_bank_val")
 ; Load instruction: t121 = load FatPtr(FatPointer { addr: Temp(120), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(120), bank: Mixed })
-; LOAD: Pointer t120 has bank info: NamedValue("load_f4_op100_t119_bank_val")
+; LOAD: Pointer t120 has bank info: Dynamic("load_f4_op100_t119_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD S0, T2, T0
 ; Spill load_f4_op86_t104_bank_val to slot 50
@@ -1573,7 +1573,7 @@ L_q_mul_33:
     ADD S0, S0, S1
 ; Load instruction: t123 = load FatPtr(FatPointer { addr: Temp(120), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(120), bank: Mixed })
-; LOAD: Pointer t120 has bank info: NamedValue("load_f4_op100_t119_bank_val")
+; LOAD: Pointer t120 has bank info: Dynamic("load_f4_op100_t119_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD S1, T2, T0
 ; Spill t112 to slot 51
@@ -1599,7 +1599,7 @@ L_q_mul_33:
     STORE T3, SB, SC
     LOAD T3, SB, T7
     ADDI T7, T1, 1
-; GEP: Setting bank info for t126 to NamedValue("load_f4_op103_t125_bank_val")
+; GEP: Setting bank info for t126 to Dynamic("load_f4_op103_t125_bank_val")
 ; Load instruction: t127 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f4_op104_t127 has bank info: Stack
@@ -1616,10 +1616,10 @@ L_q_mul_33:
     STORE T4, SB, SC
     LOAD T4, SB, T5
     ADDI T5, T1, 1
-; GEP: Setting bank info for t128 to NamedValue("load_f4_op106_t127_bank_val")
+; GEP: Setting bank info for t128 to Dynamic("load_f4_op106_t127_bank_val")
 ; Load instruction: t129 = load FatPtr(FatPointer { addr: Temp(128), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(128), bank: Mixed })
-; LOAD: Pointer t128 has bank info: NamedValue("load_f4_op106_t127_bank_val")
+; LOAD: Pointer t128 has bank info: Dynamic("load_f4_op106_t127_bank_val")
 ; LOAD: Using bank register T4 for load
     LOAD T1, T4, T5
 ; Spill t116 to slot 56
@@ -1718,10 +1718,10 @@ L_q_div_36:
     ADDI T0, T3, 1
     LOAD T6, SB, T0
     ADD T4, T1, R0
-; GEP: Setting bank info for t7 to NamedValue("load_f6_op12_t6_bank_val")
+; GEP: Setting bank info for t7 to Dynamic("load_f6_op12_t6_bank_val")
 ; Load instruction: t8 = load FatPtr(FatPointer { addr: Temp(7), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(7), bank: Mixed })
-; LOAD: Pointer t7 has bank info: NamedValue("load_f6_op12_t6_bank_val")
+; LOAD: Pointer t7 has bank info: Dynamic("load_f6_op12_t6_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD T2, T6, T4
     LI T0, 0
@@ -1740,10 +1740,10 @@ L_q_div_36:
     ADDI S0, T3, 1
     LOAD T0, SB, S0
     ADDI S0, T1, 1
-; GEP: Setting bank info for t11 to NamedValue("load_f6_op17_t10_bank_val")
+; GEP: Setting bank info for t11 to Dynamic("load_f6_op17_t10_bank_val")
 ; Load instruction: t12 = load FatPtr(FatPointer { addr: Temp(11), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(11), bank: Mixed })
-; LOAD: Pointer t11 has bank info: NamedValue("load_f6_op17_t10_bank_val")
+; LOAD: Pointer t11 has bank info: Dynamic("load_f6_op17_t10_bank_val")
 ; LOAD: Using bank register T0 for load
     LOAD T1, T0, S0
 ; Spill t0 to slot 1
@@ -1775,7 +1775,7 @@ L_q_div_37:
     ADDI S3, T7, 1
     LOAD T1, SB, S3
     ADD T2, S2, R0
-; GEP: Setting bank info for t16 to NamedValue("load_f6_op22_t15_bank_val")
+; GEP: Setting bank info for t16 to Dynamic("load_f6_op22_t15_bank_val")
     LI T3, 32767
     STORE T3, T1, T2
 ; Load instruction: t17 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
@@ -1786,7 +1786,7 @@ L_q_div_37:
     ADDI S3, T7, 1
     LOAD S2, SB, S3
     ADDI T3, T5, 1
-; GEP: Setting bank info for t18 to NamedValue("load_f6_op26_t17_bank_val")
+; GEP: Setting bank info for t18 to Dynamic("load_f6_op26_t17_bank_val")
     LI S3, -1
     STORE S3, S2, T3
 ; Jump to epilogue
@@ -1810,10 +1810,10 @@ L_q_div_39:
     STORE S1, SB, SC
     LOAD S1, SB, T7
     ADD T7, S3, R0
-; GEP: Setting bank info for t20 to NamedValue("load_f6_op30_t19_bank_val")
+; GEP: Setting bank info for t20 to Dynamic("load_f6_op30_t19_bank_val")
 ; Load instruction: t21 = load FatPtr(FatPointer { addr: Temp(20), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(20), bank: Mixed })
-; LOAD: Pointer t20 has bank info: NamedValue("load_f6_op30_t19_bank_val")
+; LOAD: Pointer t20 has bank info: Dynamic("load_f6_op30_t19_bank_val")
 ; LOAD: Using bank register S1 for load
     LOAD S3, S1, T7
 ; Spill t7 to slot 4
@@ -1848,7 +1848,7 @@ L_q_div_40:
     ADDI T4, T6, 1
     LOAD S3, SB, T4
     ADD T5, S0, R0
-; GEP: Setting bank info for t24 to NamedValue("load_f6_op35_t23_bank_val")
+; GEP: Setting bank info for t24 to Dynamic("load_f6_op35_t23_bank_val")
 ; Load instruction: t25 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f6_op36_t25 has bank info: Stack
@@ -1868,10 +1868,10 @@ L_q_div_40:
     STORE T2, SB, SC
     LOAD T2, SB, T0
     ADD T0, S0, R0
-; GEP: Setting bank info for t26 to NamedValue("load_f6_op38_t25_bank_val")
+; GEP: Setting bank info for t26 to Dynamic("load_f6_op38_t25_bank_val")
 ; Load instruction: t27 = load FatPtr(FatPointer { addr: Temp(26), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(26), bank: Mixed })
-; LOAD: Pointer t26 has bank info: NamedValue("load_f6_op38_t25_bank_val")
+; LOAD: Pointer t26 has bank info: Dynamic("load_f6_op38_t25_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD S0, T2, T0
 ; Load instruction: t28 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
@@ -1901,10 +1901,10 @@ L_q_div_40:
     STORE T7, SB, SC
     LOAD T7, SB, S2
     ADD S2, T3, R0
-; GEP: Setting bank info for t29 to NamedValue("load_f6_op41_t28_bank_val")
+; GEP: Setting bank info for t29 to Dynamic("load_f6_op41_t28_bank_val")
 ; Load instruction: t30 = load FatPtr(FatPointer { addr: Temp(29), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(29), bank: Mixed })
-; LOAD: Pointer t29 has bank info: NamedValue("load_f6_op41_t28_bank_val")
+; LOAD: Pointer t29 has bank info: Dynamic("load_f6_op41_t28_bank_val")
 ; LOAD: Using bank register T7 for load
     LOAD T3, T7, S2
     DIV S0, S0, T3
@@ -1921,7 +1921,7 @@ L_q_div_40:
     ADDI S1, T6, 1
     LOAD T4, SB, S1
     ADDI S1, T3, 1
-; GEP: Setting bank info for t33 to NamedValue("load_f6_op44_t32_bank_val")
+; GEP: Setting bank info for t33 to Dynamic("load_f6_op44_t32_bank_val")
     LI T3, 0
     STORE T3, T4, S1
     BEQ R0, R0, L_q_div_42
@@ -1942,7 +1942,7 @@ L_q_div_41:
     STORE T0, SB, SC
     LOAD T0, SB, T6
     ADD T6, T1, R0
-; GEP: Setting bank info for t35 to NamedValue("load_f6_op48_t34_bank_val")
+; GEP: Setting bank info for t35 to Dynamic("load_f6_op48_t34_bank_val")
     LI T1, 0
     STORE T1, T0, T6
 ; Load instruction: t36 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
@@ -1961,7 +1961,7 @@ L_q_div_41:
     STORE S2, SB, SC
     LOAD S2, SB, T2
     ADDI T2, T1, 1
-; GEP: Setting bank info for t37 to NamedValue("load_f6_op52_t36_bank_val")
+; GEP: Setting bank info for t37 to Dynamic("load_f6_op52_t36_bank_val")
     LI T1, 0
     STORE T1, S2, T2
     BEQ R0, R0, L_q_div_42
@@ -2036,7 +2036,7 @@ L_q_from_int_43:
     ADDI T5, S1, 1
     LOAD T4, SB, T5
     ADD T3, T6, R0
-; GEP: Setting bank info for t5 to NamedValue("load_f8_op6_t4_bank_val")
+; GEP: Setting bank info for t5 to Dynamic("load_f8_op6_t4_bank_val")
 ; Load instruction: t6 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f8_op7_t6 has bank info: Stack
@@ -2051,7 +2051,7 @@ L_q_from_int_43:
     ADDI T0, S1, 1
     LOAD S0, SB, T0
     ADDI T5, T1, 1
-; GEP: Setting bank info for t8 to NamedValue("load_f8_op10_t7_bank_val")
+; GEP: Setting bank info for t8 to Dynamic("load_f8_op10_t7_bank_val")
     LI T6, 0
     STORE T6, S0, T5
 ; Jump to epilogue
@@ -2117,10 +2117,10 @@ L_q_to_int_44:
     ADDI T7, S2, 1
     LOAD T6, SB, T7
     ADD T5, S0, R0
-; GEP: Setting bank info for t3 to NamedValue("load_f10_op5_t2_bank_val")
+; GEP: Setting bank info for t3 to Dynamic("load_f10_op5_t2_bank_val")
 ; Load instruction: t4 = load FatPtr(FatPointer { addr: Temp(3), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(3), bank: Mixed })
-; LOAD: Pointer t3 has bank info: NamedValue("load_f10_op5_t2_bank_val")
+; LOAD: Pointer t3 has bank info: Dynamic("load_f10_op5_t2_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD T4, T6, T5
     MOVE RV0, T4
@@ -2196,10 +2196,10 @@ L_q_eq_45:
     ADDI T4, S1, 1
     LOAD T3, SB, T4
     ADD T2, T5, R0
-; GEP: Setting bank info for t5 to NamedValue("load_f12_op8_t4_bank_val")
+; GEP: Setting bank info for t5 to Dynamic("load_f12_op8_t4_bank_val")
 ; Load instruction: t6 = load FatPtr(FatPointer { addr: Temp(5), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(5), bank: Mixed })
-; LOAD: Pointer t5 has bank info: NamedValue("load_f12_op8_t4_bank_val")
+; LOAD: Pointer t5 has bank info: Dynamic("load_f12_op8_t4_bank_val")
 ; LOAD: Using bank register T3 for load
     LOAD T1, T3, T2
 ; Load instruction: t7 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
@@ -2210,10 +2210,10 @@ L_q_eq_45:
     ADDI S0, T7, 1
     LOAD T6, SB, S0
     ADD T4, T0, R0
-; GEP: Setting bank info for t8 to NamedValue("load_f12_op11_t7_bank_val")
+; GEP: Setting bank info for t8 to Dynamic("load_f12_op11_t7_bank_val")
 ; Load instruction: t9 = load FatPtr(FatPointer { addr: Temp(8), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(8), bank: Mixed })
-; LOAD: Pointer t8 has bank info: NamedValue("load_f12_op11_t7_bank_val")
+; LOAD: Pointer t8 has bank info: Dynamic("load_f12_op11_t7_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD T5, T6, T4
     XOR S0, T1, T5
@@ -2227,10 +2227,10 @@ L_q_eq_45:
     ADDI T0, S1, 1
     LOAD T5, SB, T0
     ADDI T0, S0, 1
-; GEP: Setting bank info for t12 to NamedValue("load_f12_op16_t11_bank_val")
+; GEP: Setting bank info for t12 to Dynamic("load_f12_op16_t11_bank_val")
 ; Load instruction: t13 = load FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
-; LOAD: Pointer t12 has bank info: NamedValue("load_f12_op16_t11_bank_val")
+; LOAD: Pointer t12 has bank info: Dynamic("load_f12_op16_t11_bank_val")
 ; LOAD: Using bank register T5 for load
     LOAD S0, T5, T0
 ; Load instruction: t14 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
@@ -2253,10 +2253,10 @@ L_q_eq_45:
     STORE T2, SB, SC
     LOAD T2, SB, S2
     ADDI S2, S3, 1
-; GEP: Setting bank info for t15 to NamedValue("load_f12_op19_t14_bank_val")
+; GEP: Setting bank info for t15 to Dynamic("load_f12_op19_t14_bank_val")
 ; Load instruction: t16 = load FatPtr(FatPointer { addr: Temp(15), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(15), bank: Mixed })
-; LOAD: Pointer t15 has bank info: NamedValue("load_f12_op19_t14_bank_val")
+; LOAD: Pointer t15 has bank info: Dynamic("load_f12_op19_t14_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD S3, T2, S2
 ; Spill load_f12_op8_t4_bank_val to slot 3
@@ -2344,10 +2344,10 @@ L_q_lt_46:
     ADDI T4, S1, 1
     LOAD T3, SB, T4
     ADD T2, T5, R0
-; GEP: Setting bank info for t5 to NamedValue("load_f14_op8_t4_bank_val")
+; GEP: Setting bank info for t5 to Dynamic("load_f14_op8_t4_bank_val")
 ; Load instruction: t6 = load FatPtr(FatPointer { addr: Temp(5), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(5), bank: Mixed })
-; LOAD: Pointer t5 has bank info: NamedValue("load_f14_op8_t4_bank_val")
+; LOAD: Pointer t5 has bank info: Dynamic("load_f14_op8_t4_bank_val")
 ; LOAD: Using bank register T3 for load
     LOAD T1, T3, T2
 ; Load instruction: t7 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
@@ -2358,10 +2358,10 @@ L_q_lt_46:
     ADDI S0, T7, 1
     LOAD T6, SB, S0
     ADD T4, T0, R0
-; GEP: Setting bank info for t8 to NamedValue("load_f14_op11_t7_bank_val")
+; GEP: Setting bank info for t8 to Dynamic("load_f14_op11_t7_bank_val")
 ; Load instruction: t9 = load FatPtr(FatPointer { addr: Temp(8), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(8), bank: Mixed })
-; LOAD: Pointer t8 has bank info: NamedValue("load_f14_op11_t7_bank_val")
+; LOAD: Pointer t8 has bank info: Dynamic("load_f14_op11_t7_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD T5, T6, T4
     SLT T1, T1, T5
@@ -2387,10 +2387,10 @@ L_q_lt_49:
     ADDI T5, S0, 1
     LOAD T1, SB, T5
     ADD T7, T0, R0
-; GEP: Setting bank info for t12 to NamedValue("load_f14_op14_t11_bank_val")
+; GEP: Setting bank info for t12 to Dynamic("load_f14_op14_t11_bank_val")
 ; Load instruction: t13 = load FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
-; LOAD: Pointer t12 has bank info: NamedValue("load_f14_op14_t11_bank_val")
+; LOAD: Pointer t12 has bank info: Dynamic("load_f14_op14_t11_bank_val")
 ; LOAD: Using bank register T1 for load
     LOAD S1, T1, T7
 ; Load instruction: t14 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
@@ -2412,10 +2412,10 @@ L_q_lt_49:
     STORE S2, SB, SC
     LOAD S2, SB, S3
     ADD S3, T0, R0
-; GEP: Setting bank info for t15 to NamedValue("load_f14_op17_t14_bank_val")
+; GEP: Setting bank info for t15 to Dynamic("load_f14_op17_t14_bank_val")
 ; Load instruction: t16 = load FatPtr(FatPointer { addr: Temp(15), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(15), bank: Mixed })
-; LOAD: Pointer t15 has bank info: NamedValue("load_f14_op17_t14_bank_val")
+; LOAD: Pointer t15 has bank info: Dynamic("load_f14_op17_t14_bank_val")
 ; LOAD: Using bank register S2 for load
     LOAD T0, S2, S3
     SLT S1, T0, S1
@@ -2441,10 +2441,10 @@ L_q_lt_52:
     ADDI T5, T0, 1
     LOAD S0, SB, T5
     ADDI T5, S1, 1
-; GEP: Setting bank info for t19 to NamedValue("load_f14_op20_t18_bank_val")
+; GEP: Setting bank info for t19 to Dynamic("load_f14_op20_t18_bank_val")
 ; Load instruction: t20 = load FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
-; LOAD: Pointer t19 has bank info: NamedValue("load_f14_op20_t18_bank_val")
+; LOAD: Pointer t19 has bank info: Dynamic("load_f14_op20_t18_bank_val")
 ; LOAD: Using bank register S0 for load
     LOAD S1, S0, T5
 ; Load instruction: t21 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
@@ -2474,10 +2474,10 @@ L_q_lt_52:
     STORE T6, SB, SC
     LOAD T6, SB, T4
     ADDI T4, T3, 1
-; GEP: Setting bank info for t22 to NamedValue("load_f14_op23_t21_bank_val")
+; GEP: Setting bank info for t22 to Dynamic("load_f14_op23_t21_bank_val")
 ; Load instruction: t23 = load FatPtr(FatPointer { addr: Temp(22), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(22), bank: Mixed })
-; LOAD: Pointer t22 has bank info: NamedValue("load_f14_op23_t21_bank_val")
+; LOAD: Pointer t22 has bank info: Dynamic("load_f14_op23_t21_bank_val")
 ; LOAD: Using bank register T6 for load
     LOAD T3, T6, T4
     SLT S1, S1, T3
@@ -2673,10 +2673,10 @@ L_q_sin_54:
     ADDI T1, T7, 1
     LOAD T0, SB, T1
     ADD S0, T2, R0
-; GEP: Setting bank info for t7 to NamedValue("load_f18_op9_t6_bank_val")
+; GEP: Setting bank info for t7 to Dynamic("load_f18_op9_t6_bank_val")
 ; Load instruction: t8 = load FatPtr(FatPointer { addr: Temp(7), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(7), bank: Mixed })
-; LOAD: Pointer t7 has bank info: NamedValue("load_f18_op9_t6_bank_val")
+; LOAD: Pointer t7 has bank info: Dynamic("load_f18_op9_t6_bank_val")
 ; LOAD: Using bank register T0 for load
     LOAD T6, T0, S0
     STORE T6, SB, T3
@@ -2741,7 +2741,7 @@ L_q_sin_58:
     ADDI T1, T4, 1
     LOAD T2, SB, T1
     ADD S1, T3, R0
-; GEP: Setting bank info for t16 to NamedValue("load_f18_op18_t15_bank_val")
+; GEP: Setting bank info for t16 to Dynamic("load_f18_op18_t15_bank_val")
     LI T7, 0
     STORE T7, T2, S1
 ; Load instruction: t17 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
@@ -2752,7 +2752,7 @@ L_q_sin_58:
     ADDI T3, T4, 1
     LOAD T7, SB, T3
     ADDI T3, T1, 1
-; GEP: Setting bank info for t18 to NamedValue("load_f18_op22_t17_bank_val")
+; GEP: Setting bank info for t18 to Dynamic("load_f18_op22_t17_bank_val")
 ; Load instruction: t19 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f18_op23_t19 has bank info: Stack
@@ -2776,10 +2776,10 @@ L_q_sin_58:
     STORE S0, SB, SC
     LOAD S0, SB, S2
     ADDI S2, S3, 1
-; GEP: Setting bank info for t20 to NamedValue("load_f18_op25_t19_bank_val")
+; GEP: Setting bank info for t20 to Dynamic("load_f18_op25_t19_bank_val")
 ; Load instruction: t21 = load FatPtr(FatPointer { addr: Temp(20), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(20), bank: Mixed })
-; LOAD: Pointer t20 has bank info: NamedValue("load_f18_op25_t19_bank_val")
+; LOAD: Pointer t20 has bank info: Dynamic("load_f18_op25_t19_bank_val")
 ; LOAD: Using bank register S0 for load
     LOAD S3, S0, S2
     STORE S3, T7, T3
@@ -2827,7 +2827,7 @@ L_q_sin_61:
     ADDI T0, T6, 1
     LOAD T4, SB, T0
     ADD T1, T5, R0
-; GEP: Setting bank info for t25 to NamedValue("load_f18_op31_t24_bank_val")
+; GEP: Setting bank info for t25 to Dynamic("load_f18_op31_t24_bank_val")
     LI T0, 0
     STORE T0, T4, T1
 ; Load instruction: t26 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
@@ -2842,7 +2842,7 @@ L_q_sin_61:
     STORE S1, SB, SC
     LOAD S1, SB, T0
     ADDI T0, T5, 1
-; GEP: Setting bank info for t27 to NamedValue("load_f18_op35_t26_bank_val")
+; GEP: Setting bank info for t27 to Dynamic("load_f18_op35_t26_bank_val")
     LI T5, -10557
     STORE T5, S1, T0
     BEQ R0, R0, L_q_sin_63
@@ -2889,7 +2889,7 @@ L_q_sin_64:
     ADDI T2, S2, 1
     LOAD T6, SB, T2
     ADD T5, S0, R0
-; GEP: Setting bank info for t31 to NamedValue("load_f18_op42_t30_bank_val")
+; GEP: Setting bank info for t31 to Dynamic("load_f18_op42_t30_bank_val")
     LI T2, 0
     STORE T2, T6, T5
 ; Load instruction: t32 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
@@ -2904,7 +2904,7 @@ L_q_sin_64:
     STORE S3, SB, SC
     LOAD S3, SB, T2
     ADDI T2, S0, 1
-; GEP: Setting bank info for t33 to NamedValue("load_f18_op46_t32_bank_val")
+; GEP: Setting bank info for t33 to Dynamic("load_f18_op46_t32_bank_val")
     LI S0, -5958
     STORE S0, S3, T2
     BEQ R0, R0, L_q_sin_66
@@ -2951,7 +2951,7 @@ L_q_sin_67:
     ADDI T3, T7, 1
     LOAD S2, SB, T3
     ADD S0, T1, R0
-; GEP: Setting bank info for t37 to NamedValue("load_f18_op53_t36_bank_val")
+; GEP: Setting bank info for t37 to Dynamic("load_f18_op53_t36_bank_val")
     LI T3, 0
     STORE T3, S2, S0
 ; Load instruction: t38 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
@@ -2966,7 +2966,7 @@ L_q_sin_67:
     STORE T4, SB, SC
     LOAD T4, SB, T3
     ADDI T3, T1, 1
-; GEP: Setting bank info for t39 to NamedValue("load_f18_op57_t38_bank_val")
+; GEP: Setting bank info for t39 to Dynamic("load_f18_op57_t38_bank_val")
     LI T1, 0
     STORE T1, T4, T3
     BEQ R0, R0, L_q_sin_69
@@ -2991,7 +2991,7 @@ L_q_sin_68:
     STORE S1, SB, SC
     LOAD S1, SB, T0
     ADD T0, T7, R0
-; GEP: Setting bank info for t41 to NamedValue("load_f18_op61_t40_bank_val")
+; GEP: Setting bank info for t41 to Dynamic("load_f18_op61_t40_bank_val")
     LI T7, 0
     STORE T7, S1, T0
 ; Load instruction: t42 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
@@ -3010,7 +3010,7 @@ L_q_sin_68:
     STORE T6, SB, SC
     LOAD T6, SB, T5
     ADDI T5, T7, 1
-; GEP: Setting bank info for t43 to NamedValue("load_f18_op65_t42_bank_val")
+; GEP: Setting bank info for t43 to Dynamic("load_f18_op65_t42_bank_val")
     LI T7, -32768
     STORE T7, T6, T5
     BEQ R0, R0, L_q_sin_69
@@ -3058,10 +3058,10 @@ L_q_sin_70:
     STORE S3, SB, SC
     LOAD S3, SB, T2
     ADDI T2, T7, 1
-; GEP: Setting bank info for t46 to NamedValue("load_f18_op70_t45_bank_val")
+; GEP: Setting bank info for t46 to Dynamic("load_f18_op70_t45_bank_val")
 ; Load instruction: t47 = load FatPtr(FatPointer { addr: Temp(46), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(46), bank: Mixed })
-; LOAD: Pointer t46 has bank info: NamedValue("load_f18_op70_t45_bank_val")
+; LOAD: Pointer t46 has bank info: Dynamic("load_f18_op70_t45_bank_val")
 ; LOAD: Using bank register S3 for load
     LOAD T7, S3, T2
 ; Spill t37 to slot 21
@@ -3090,7 +3090,7 @@ L_q_sin_73:
     STORE S2, SB, SC
     LOAD S2, SB, T1
     ADD T1, T7, R0
-; GEP: Setting bank info for t50 to NamedValue("load_f18_op73_t49_bank_val")
+; GEP: Setting bank info for t50 to Dynamic("load_f18_op73_t49_bank_val")
     LI T7, 0
 ; Spill t39 to slot 23
     ADD SC, FP, R0
@@ -3115,7 +3115,7 @@ L_q_sin_73:
     STORE T0, SB, SC
     LOAD T0, SB, T4
     ADDI T4, T3, 1
-; GEP: Setting bank info for t53 to NamedValue("load_f18_op76_t52_bank_val")
+; GEP: Setting bank info for t53 to Dynamic("load_f18_op76_t52_bank_val")
 ; Load instruction: t54 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(2), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f18_op77_t54 has bank info: Stack
@@ -3132,10 +3132,10 @@ L_q_sin_73:
     STORE T5, SB, SC
     LOAD T5, SB, S1
     ADDI S1, T3, 1
-; GEP: Setting bank info for t55 to NamedValue("load_f18_op79_t54_bank_val")
+; GEP: Setting bank info for t55 to Dynamic("load_f18_op79_t54_bank_val")
 ; Load instruction: t56 = load FatPtr(FatPointer { addr: Temp(55), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(55), bank: Mixed })
-; LOAD: Pointer t55 has bank info: NamedValue("load_f18_op79_t54_bank_val")
+; LOAD: Pointer t55 has bank info: Dynamic("load_f18_op79_t54_bank_val")
 ; LOAD: Using bank register T5 for load
     LOAD T3, T5, S1
 ; Spill load_f18_op65_t42_bank_val to slot 28
@@ -3225,10 +3225,10 @@ L_q_cos_76:
     ADDI T3, T7, 1
     LOAD T2, SB, T3
     ADD T1, T4, R0
-; GEP: Setting bank info for t6 to NamedValue("load_f20_op8_t5_bank_val")
+; GEP: Setting bank info for t6 to Dynamic("load_f20_op8_t5_bank_val")
 ; Load instruction: t7 = load FatPtr(FatPointer { addr: Temp(6), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Mixed })
-; LOAD: Pointer t6 has bank info: NamedValue("load_f20_op8_t5_bank_val")
+; LOAD: Pointer t6 has bank info: Dynamic("load_f20_op8_t5_bank_val")
 ; LOAD: Using bank register T2 for load
     LOAD T0, T2, T1
     STORE T0, SB, T5
@@ -3288,7 +3288,7 @@ L_q_cos_80:
     ADDI T4, T3, 1
     LOAD T7, SB, T4
     ADD T5, S1, R0
-; GEP: Setting bank info for t15 to NamedValue("load_f20_op16_t14_bank_val")
+; GEP: Setting bank info for t15 to Dynamic("load_f20_op16_t14_bank_val")
     LI S0, 1
     STORE S0, T7, T5
 ; Load instruction: t16 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
@@ -3299,7 +3299,7 @@ L_q_cos_80:
     ADDI S1, T3, 1
     LOAD S0, SB, S1
     ADDI S1, T4, 1
-; GEP: Setting bank info for t17 to NamedValue("load_f20_op20_t16_bank_val")
+; GEP: Setting bank info for t17 to Dynamic("load_f20_op20_t16_bank_val")
     LI T4, 0
     STORE T4, S0, S1
     BEQ R0, R0, L_q_cos_82
@@ -3346,7 +3346,7 @@ L_q_cos_83:
     ADDI S3, S2, 1
     LOAD T3, SB, S3
     ADD T4, T1, R0
-; GEP: Setting bank info for t21 to NamedValue("load_f20_op27_t20_bank_val")
+; GEP: Setting bank info for t21 to Dynamic("load_f20_op27_t20_bank_val")
     LI S3, 0
     STORE S3, T3, T4
 ; Load instruction: t22 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
@@ -3361,7 +3361,7 @@ L_q_cos_83:
     STORE T2, SB, SC
     LOAD T2, SB, S3
     ADDI S3, T1, 1
-; GEP: Setting bank info for t23 to NamedValue("load_f20_op31_t22_bank_val")
+; GEP: Setting bank info for t23 to Dynamic("load_f20_op31_t22_bank_val")
     LI T1, -30126
     STORE T1, T2, S3
     BEQ R0, R0, L_q_cos_85
@@ -3408,7 +3408,7 @@ L_q_cos_86:
     ADDI T0, T6, 1
     LOAD S2, SB, T0
     ADD T1, T5, R0
-; GEP: Setting bank info for t27 to NamedValue("load_f20_op38_t26_bank_val")
+; GEP: Setting bank info for t27 to Dynamic("load_f20_op38_t26_bank_val")
     LI T0, 0
     LI T5, 1
     SUB T0, T0, T5
@@ -3429,7 +3429,7 @@ L_q_cos_86:
     STORE S1, SB, SC
     LOAD S1, SB, T7
     ADDI T7, T5, 1
-; GEP: Setting bank info for t30 to NamedValue("load_f20_op41_t29_bank_val")
+; GEP: Setting bank info for t30 to Dynamic("load_f20_op41_t29_bank_val")
     LI T5, 27197
     STORE T5, S1, T7
     BEQ R0, R0, L_q_cos_88
@@ -3476,7 +3476,7 @@ L_q_cos_89:
     ADDI S0, T4, 1
     LOAD T6, SB, S0
     ADD T5, T3, R0
-; GEP: Setting bank info for t34 to NamedValue("load_f20_op48_t33_bank_val")
+; GEP: Setting bank info for t34 to Dynamic("load_f20_op48_t33_bank_val")
     LI S0, 0
     LI T3, 1
     SUB S0, S0, T3
@@ -3497,7 +3497,7 @@ L_q_cos_89:
     STORE T2, SB, SC
     LOAD T2, SB, S3
     ADDI S3, T3, 1
-; GEP: Setting bank info for t37 to NamedValue("load_f20_op51_t36_bank_val")
+; GEP: Setting bank info for t37 to Dynamic("load_f20_op51_t36_bank_val")
     LI T3, 0
     STORE T3, T2, S3
     BEQ R0, R0, L_q_cos_91
@@ -3522,7 +3522,7 @@ L_q_cos_90:
     STORE T1, SB, SC
     LOAD T1, SB, T0
     ADD T0, T4, R0
-; GEP: Setting bank info for t39 to NamedValue("load_f20_op55_t38_bank_val")
+; GEP: Setting bank info for t39 to Dynamic("load_f20_op55_t38_bank_val")
     LI T4, 0
     STORE T4, T1, T0
 ; Load instruction: t40 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
@@ -3541,7 +3541,7 @@ L_q_cos_90:
     STORE T7, SB, SC
     LOAD T7, SB, S2
     ADDI S2, T4, 1
-; GEP: Setting bank info for t41 to NamedValue("load_f20_op59_t40_bank_val")
+; GEP: Setting bank info for t41 to Dynamic("load_f20_op59_t40_bank_val")
     LI T4, 16384
     STORE T4, T7, S2
     BEQ R0, R0, L_q_cos_91

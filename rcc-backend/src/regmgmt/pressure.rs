@@ -758,7 +758,7 @@ impl RegisterPressureManager {
     pub fn invalidate_gep_bank_bindings(&mut self) {
         debug!("Invalidating GEP bank register bindings at block boundary");
         
-        // Find all registers that contain GEP bank values (NamedValues starting with "gep_")
+        // Find all registers that contain GEP bank values (Dynamics starting with "gep_")
         let mut gep_banks_to_remove = Vec::new();
         for (reg, value) in self.reg_contents.iter() {
             if value.starts_with("gep_new_bank_") || value.starts_with("gep_bank_") {

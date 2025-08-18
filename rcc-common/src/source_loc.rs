@@ -254,7 +254,7 @@ mod tests {
     fn test_source_tracker_advance_str() {
         let mut tracker = SourceTracker::new("test.c");
         
-        let start_loc = tracker.location();
+        let _start_loc = tracker.location();
         tracker.advance_str("hello\nworld");
         
         let end_loc = tracker.location();

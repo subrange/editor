@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests {
     use crate::{Frontend, SemanticAnalyzer};
-    use crate::typed_ast::{type_translation_unit, TypedExpr};
+    use crate::typed_ast::type_translation_unit;
     use crate::types::Type;
     
     #[test]
@@ -20,12 +20,12 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
         // Verify we have type information for variables
-        assert!(!symbol_types.is_empty(), "Symbol types should not be empty");
+        assert!(!ta.borrow().symbol_types.borrow().is_empty(), "Symbol types should not be empty");
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Check that the typed AST has proper type information
         match &typed_ast.items[0] {
@@ -51,9 +51,9 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Verify the function was converted
         assert_eq!(typed_ast.items.len(), 1);
@@ -80,9 +80,9 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Check function exists
         match &typed_ast.items[0] {
@@ -111,21 +111,21 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
         // Check that typedefs were registered
-        assert!(type_definitions.contains_key("myint"));
-        assert!(type_definitions.contains_key("string"));
-        assert_eq!(type_definitions.get("myint"), Some(&Type::Int));
+        assert!(ta.borrow().type_definitions.borrow().contains_key("myint"));
+        assert!(ta.borrow().type_definitions.borrow().contains_key("string"));
+        assert_eq!(ta.borrow().type_definitions.borrow().get("myint"), Some(&Type::Int));
         assert_eq!(
-            type_definitions.get("string"), 
+            ta.borrow().type_definitions.borrow().get("string"), 
             Some(&Type::Pointer { 
                 target: Box::new(Type::Char), 
                 bank: None 
             })
         );
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Verify function exists
         assert_eq!(typed_ast.items.len(), 1);
@@ -146,9 +146,9 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Check global variables
         let mut global_count = 0;
@@ -185,12 +185,12 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
         // Symbol types should include parameter types
-        assert!(!symbol_types.is_empty());
+        assert!(!ta.borrow().symbol_types.borrow().is_empty());
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Check the add function
         for item in &typed_ast.items {
@@ -240,8 +240,8 @@ mod tests {
         let result = analyzer.analyze(&mut ast);
         // If semantic analysis doesn't catch it, typed AST conversion might
         if result.is_ok() {
-            let (symbol_types, type_definitions) = analyzer.into_type_info();
-            let typed_result = type_translation_unit(&ast, symbol_types, type_definitions);
+            let ta = analyzer.into_type_info();
+            let typed_result = type_translation_unit(&ast, ta);
             // Document current behavior - may need enhancement
             assert!(typed_result.is_ok() || typed_result.is_err());
         }
@@ -263,9 +263,9 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Verify conversion succeeds with nested scopes
         assert_eq!(typed_ast.items.len(), 1);
@@ -285,9 +285,9 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Check that pointer arithmetic is recognized
         match &typed_ast.items[0] {
@@ -311,9 +311,9 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Verify string literal handling
         assert_eq!(typed_ast.items.len(), 1);
@@ -339,20 +339,20 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
         // Check typedef chain resolution
-        assert_eq!(type_definitions.get("int32"), Some(&Type::Int));
-        assert_eq!(type_definitions.get("my_int"), Some(&Type::Int));
+        assert_eq!(ta.borrow().type_definitions.borrow().get("int32"), Some(&Type::Int));
+        assert_eq!(ta.borrow().type_definitions.borrow().get("my_int"), Some(&Type::Int));
         assert_eq!(
-            type_definitions.get("int_ptr"),
+            ta.borrow().type_definitions.borrow().get("int_ptr"),
             Some(&Type::Pointer { 
                 target: Box::new(Type::Int), 
                 bank: None 
             })
         );
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         assert_eq!(typed_ast.items.len(), 1);
     }
     
@@ -372,9 +372,9 @@ mod tests {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
+        let ta = analyzer.into_type_info();
         
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let typed_ast = type_translation_unit(&ast, ta).unwrap();
         
         // Check void function
         for item in &typed_ast.items {

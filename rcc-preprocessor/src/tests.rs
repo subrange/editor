@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_elif() {
-        let input = indoc! {"
+        let _input = indoc! {"
             #define VERSION 2
             #if VERSION == 1
             int v1 = 1;
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn test_token_pasting() {
         // Token pasting with ## is complex and may not be fully implemented
-        let input = indoc! {"
+        let _input = indoc! {"
             #define CONCAT(a, b) a##b
             int CONCAT(var, 123) = 5;
         "};
@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn test_stringification() {
         // Stringification with # is complex and may not be fully implemented
-        let input = indoc! {"
+        let _input = indoc! {"
             #define STR(x) #x
             char* s = STR(hello);
         "};

@@ -393,7 +393,7 @@ fn test_gep_runtime_bank_overflow() {
     // Result should have dynamic bank
     assert!(matches!(
         mgr.get_pointer_bank("t510"),
-        Some(BankInfo::Register(_))
+        Some(BankInfo::Dynamic(_))
     ), "Result should have dynamic bank in a register");
 }
 

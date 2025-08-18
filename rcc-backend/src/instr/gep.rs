@@ -187,7 +187,7 @@ pub fn lower_gep(
                         );
                     }
                 }
-                BankInfo::NamedValue(_) => {
+                BankInfo::Dynamic(_) => {
                     // Named values track their bank dynamically
                     trace!("  Bank is tracked via named value");
                 }
@@ -279,7 +279,7 @@ pub fn lower_gep(
         // Now update the bank based on the original bank info
         insts.push(AsmInst::Comment(format!("Base bank info: {base_bank_info:?}")));
         match base_bank_info {
-            BankInfo::NamedValue(name) => {
+            BankInfo::Dynamic(name) => {
                 // Get the current bank register for the named value
                 let current_bank = mgr.get_register(name.clone());
                 insts.extend(mgr.take_instructions());
@@ -295,9 +295,9 @@ pub fn lower_gep(
                 insts.push(AsmInst::Add(new_bank_reg, current_bank, bank_delta_reg));
                 // Bind the bank value to its register so it can be tracked/reloaded
                 mgr.bind_value_to_register(new_bank_name.clone(), new_bank_reg);
-                // CRITICAL: Use NamedValue so the bank can be reloaded if spilled
-                result_bank_info = BankInfo::NamedValue(new_bank_name.clone());
-                insts.push(AsmInst::Comment(format!("Result bank tracked as NamedValue({new_bank_name})")));
+                // CRITICAL: Use Dynamic so the bank can be reloaded if spilled
+                result_bank_info = BankInfo::Dynamic(new_bank_name.clone());
+                insts.push(AsmInst::Comment(format!("Result bank tracked as Dynamic({new_bank_name})")));
                 debug!("  Updated named value pointer bank to trackable named value");
             }
             BankInfo::Global => {
@@ -314,9 +314,9 @@ pub fn lower_gep(
                 insts.push(AsmInst::Add(new_bank_reg, Reg::Gp, bank_delta_reg));
                 // Bind the bank value to its register so it can be tracked/reloaded
                 mgr.bind_value_to_register(new_bank_name.clone(), new_bank_reg);
-                // CRITICAL: Use NamedValue so the bank can be reloaded if spilled
-                result_bank_info = BankInfo::NamedValue(new_bank_name.clone());
-                insts.push(AsmInst::Comment(format!("Result bank tracked as NamedValue({new_bank_name})")));
+                // CRITICAL: Use Dynamic so the bank can be reloaded if spilled
+                result_bank_info = BankInfo::Dynamic(new_bank_name.clone());
+                insts.push(AsmInst::Comment(format!("Result bank tracked as Dynamic({new_bank_name})")));
                 debug!("  Updated global-based pointer bank to trackable named value");
             }
             BankInfo::Register(existing_bank_reg) => {
@@ -344,9 +344,9 @@ pub fn lower_gep(
                 insts.push(AsmInst::Add(new_bank_reg, Reg::Sb, bank_delta_reg));
                 // Bind the bank value to its register so it can be tracked/reloaded
                 mgr.bind_value_to_register(new_bank_name.clone(), new_bank_reg);
-                // CRITICAL: Use NamedValue so the bank can be reloaded if spilled
-                result_bank_info = BankInfo::NamedValue(new_bank_name.clone());
-                insts.push(AsmInst::Comment(format!("Result bank tracked as NamedValue({new_bank_name})")));
+                // CRITICAL: Use Dynamic so the bank can be reloaded if spilled
+                result_bank_info = BankInfo::Dynamic(new_bank_name.clone());
+                insts.push(AsmInst::Comment(format!("Result bank tracked as Dynamic({new_bank_name})")));
                 debug!("  Updated stack-based pointer bank to trackable named value");
             }
         }

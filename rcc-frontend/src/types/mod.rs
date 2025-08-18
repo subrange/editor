@@ -97,6 +97,50 @@ pub enum Type {
 }
 
 impl Type {
+    /// Check if this type is an integer type
+    pub fn is_integer(&self) -> bool {
+        matches!(self, 
+            Type::Bool | Type::Char | Type::SignedChar | Type::UnsignedChar |
+            Type::Short | Type::UnsignedShort | Type::Int | Type::UnsignedInt |
+            Type::Long | Type::UnsignedLong | Type::Enum { .. }
+        )
+    }
+    
+    /// Check if this type is a signed integer type
+    pub fn is_signed_integer(&self) -> bool {
+        matches!(self,
+            Type::Char | Type::SignedChar | Type::Short | Type::Int | Type::Long | Type::Enum { .. }
+        )
+    }
+    
+    /// Check if this type is a pointer type
+    pub fn is_pointer(&self) -> bool {
+        matches!(self, Type::Pointer { .. })
+    }
+    
+    /// Check if this type can be assigned from another type
+    pub fn is_assignable_from(&self, other: &Type) -> bool {
+        match (self, other) {
+            // Same type is always assignable
+            (a, b) if a == b => true,
+            
+            // Integers can be assigned from each other
+            (a, b) if a.is_integer() && b.is_integer() => true,
+            
+            // void* can be assigned from any pointer
+            (Type::Pointer { target: t1, .. }, Type::Pointer { target: t2, .. }) => {
+                **t1 == Type::Void || **t2 == Type::Void || t1 == t2
+            }
+            
+            // Arrays decay to pointers
+            (Type::Pointer { target: t1, .. }, Type::Array { element_type: t2, .. }) => {
+                t1 == t2
+            }
+            
+            _ => false,
+        }
+    }
+    
     /// Get the size of this type in Ripple VM words (16-bit cells)
     pub fn size_in_words(&self) -> Option<u64> {
         match self {

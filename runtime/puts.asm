@@ -45,7 +45,7 @@ L_puts_1:
     LOAD T5, SB, T6
 ; Load instruction: t3 = load FatPtr(FatPointer { addr: Temp(2), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(2), bank: Mixed })
-; LOAD: Pointer t2 has bank info: NamedValue("load_f0_op5_t2_bank_val")
+; LOAD: Pointer t2 has bank info: Dynamic("load_f0_op5_t2_bank_val")
 ; LOAD: Using bank register T5 for load
     LOAD T4, T5, T7
     BEQ T4, R0, L_puts_3
@@ -65,7 +65,7 @@ L_puts_2:
     LOAD T0, SB, T1
 ; Load instruction: t5 = load FatPtr(FatPointer { addr: Temp(4), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Mixed })
-; LOAD: Pointer t4 has bank info: NamedValue("load_f0_op8_t4_bank_val")
+; LOAD: Pointer t4 has bank info: Dynamic("load_f0_op8_t4_bank_val")
 ; LOAD: Using bank register T0 for load
     LOAD S1, T0, T2
 ; Spill live registers before call
@@ -108,7 +108,7 @@ L_puts_2:
     ADDI T4, S2, 1
     LOAD S0, SB, T4
     ADDI T1, T6, 1
-; GEP: Setting bank info for t7 to NamedValue("load_f0_op11_t6_bank_val")
+; GEP: Setting bank info for t7 to Dynamic("load_f0_op11_t6_bank_val")
     STORE T1, SB, S2
     ADDI S3, S2, 1
     STORE S0, SB, S3

@@ -103,7 +103,7 @@ pub fn lower_load(
     debug!("  Pointer {ptr_name} has bank info: {bank_info:?}");
     insts.push(AsmInst::Comment(format!("LOAD: Pointer {ptr_name} has bank info: {bank_info:?}")));
     
-    // Use the new function that can handle NamedValue and reload if necessary
+    // Use the new function that can handle Dynamic and reload if necessary
     let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
     insts.push(AsmInst::Comment(format!("LOAD: Using bank register {bank_reg:?} for load")));
     trace!("  Using {bank_reg:?} for bank");
@@ -148,7 +148,7 @@ pub fn lower_load(
             mgr.bind_value_to_register(bank_value_name.clone(), bank_dest_reg);
             // Track that this pointer's bank is in a named value (not just a register)
             // This allows the bank to be reloaded if the register gets spilled
-            mgr.set_pointer_bank(result_name.clone(), BankInfo::NamedValue(bank_value_name.clone()));
+            mgr.set_pointer_bank(result_name.clone(), BankInfo::Dynamic(bank_value_name.clone()));
         }
         debug!("  Fat pointer loaded: addr in {dest_reg:?}, bank in {bank_dest_reg:?} (tracked as '{bank_value_name}')");
         

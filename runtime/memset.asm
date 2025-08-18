@@ -98,7 +98,7 @@ L_memset_2:
     ADDI SC, SC, 13
     STORE S3, SB, SC
     MOD S3, T1, T5
-; Base bank info: NamedValue("load_f0_op10_t10_bank_val")
+; Base bank info: Dynamic("load_f0_op10_t10_bank_val")
 ; Clearing binding for 'gep_new_bank_f0_op16_t12'
 ; Spill t1 to slot 1
     ADD SC, FP, R0
@@ -106,9 +106,9 @@ L_memset_2:
     STORE S2, SB, SC
 ; Computing new bank gep_new_bank_f0_op16_t12 = load_f0_op10_t10_bank_val + bank_delta
     ADD S2, T6, T2
-; Result bank tracked as NamedValue(gep_new_bank_f0_op16_t12)
+; Result bank tracked as Dynamic(gep_new_bank_f0_op16_t12)
     ADD T1, S3, R0
-; GEP: Setting bank info for t12 to NamedValue("gep_new_bank_f0_op16_t12")
+; GEP: Setting bank info for t12 to Dynamic("gep_new_bank_f0_op16_t12")
 ; Load instruction: t13 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f0_op17_t13 has bank info: Stack

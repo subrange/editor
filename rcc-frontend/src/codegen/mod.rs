@@ -62,8 +62,8 @@ int main() {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = crate::semantic::SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let type_analyzer = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, type_analyzer).unwrap();
         let codegen = TypedCodeGenerator::new("test".to_string());
         
         let result = codegen.generate(&typed_ast);
@@ -88,8 +88,8 @@ int main() {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = crate::semantic::SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let type_analyzer = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, type_analyzer).unwrap();
         let codegen = TypedCodeGenerator::new("test".to_string());
         
         let result = codegen.generate(&typed_ast);
@@ -116,8 +116,8 @@ int main() {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = crate::semantic::SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let type_analyzer = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, type_analyzer).unwrap();
         let codegen = TypedCodeGenerator::new("test".to_string());
         
         let result = codegen.generate(&typed_ast);
@@ -146,8 +146,8 @@ int abs(int x) {
         let mut ast = Frontend::parse_source(source).unwrap();
         let mut analyzer = crate::semantic::SemanticAnalyzer::new();
         analyzer.analyze(&mut ast).unwrap();
-        let (symbol_types, type_definitions) = analyzer.into_type_info();
-        let typed_ast = type_translation_unit(&ast, symbol_types, type_definitions).unwrap();
+        let type_analyzer = analyzer.into_type_info();
+        let typed_ast = type_translation_unit(&ast, type_analyzer).unwrap();
         let codegen = TypedCodeGenerator::new("test".to_string());
         
         let result = codegen.generate(&typed_ast);

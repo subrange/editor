@@ -91,7 +91,7 @@ pub fn calculate_value_need(value: &Value) -> usize {
 
 /// Convert BankInfo to the actual bank register
 /// 
-/// DEPRECATED: This function will panic on NamedValue bank info.
+/// DEPRECATED: This function will panic on Dynamic bank info.
 /// Use get_bank_register_with_mgr instead which properly handles reloading.
 /// 
 /// This helper converts abstract bank information to concrete register:
@@ -101,15 +101,15 @@ pub fn calculate_value_need(value: &Value) -> usize {
 /// 
 /// WARNING: For Register(r), this assumes r is still valid. If the register
 /// might have been spilled, the value needs to be reloaded first!
-/// For NamedValue, this will panic - use get_bank_register_with_mgr instead.
-#[deprecated(note = "Use get_bank_register_with_mgr instead to handle NamedValue properly")]
+/// For Dynamic, this will panic - use get_bank_register_with_mgr instead.
+#[deprecated(note = "Use get_bank_register_with_mgr instead to handle Dynamic properly")]
 pub fn get_bank_register(bank_info: &BankInfo) -> Reg {
     bank_info.to_register()
 }
 
 /// Get bank register with proper reloading support
 /// 
-/// This version handles NamedValue bank info by using the register manager
+/// This version handles Dynamic bank info by using the register manager
 /// to get/reload the bank value as needed.
 pub fn get_bank_register_with_mgr(
     bank_info: &BankInfo,
@@ -119,7 +119,7 @@ pub fn get_bank_register_with_mgr(
         BankInfo::Global => Reg::Gp,
         BankInfo::Stack => Reg::Sb,
         BankInfo::Register(reg) => *reg,
-        BankInfo::NamedValue(name) => {
+        BankInfo::Dynamic(name) => {
             // Get the register for this named value, which will reload if spilled
             mgr.get_register(name.clone())
         }

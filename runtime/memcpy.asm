@@ -128,7 +128,7 @@ L_memcpy_2:
     ADDI SC, SC, 19
     STORE S1, SB, SC
     MOD S1, S0, S2
-; Base bank info: NamedValue("load_f0_op15_t14_bank_val")
+; Base bank info: Dynamic("load_f0_op15_t14_bank_val")
 ; Clearing binding for 'gep_new_bank_f0_op21_t16'
 ; Spill t3 to slot 4
     ADD SC, FP, R0
@@ -136,9 +136,9 @@ L_memcpy_2:
     STORE T7, SB, SC
 ; Computing new bank gep_new_bank_f0_op21_t16 = load_f0_op15_t14_bank_val + bank_delta
     ADD T7, T2, S3
-; Result bank tracked as NamedValue(gep_new_bank_f0_op21_t16)
+; Result bank tracked as Dynamic(gep_new_bank_f0_op21_t16)
     ADD S0, S1, R0
-; GEP: Setting bank info for t16 to NamedValue("gep_new_bank_f0_op21_t16")
+; GEP: Setting bank info for t16 to Dynamic("gep_new_bank_f0_op21_t16")
 ; Load instruction: t17 = load FatPtr(FatPointer { addr: Temp(7), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(7), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f0_op22_t17 has bank info: Stack
@@ -172,7 +172,7 @@ L_memcpy_2:
     ADDI SC, SC, 23
     STORE T2, SB, SC
     MOD T2, S2, T1
-; Base bank info: NamedValue("load_f0_op24_t17_bank_val")
+; Base bank info: Dynamic("load_f0_op24_t17_bank_val")
 ; Clearing binding for 'gep_new_bank_f0_op30_t19'
 ; Spill gep_new_bank_f0_op21_t16 to slot 8
     ADD SC, FP, R0
@@ -180,12 +180,12 @@ L_memcpy_2:
     STORE T7, SB, SC
 ; Computing new bank gep_new_bank_f0_op30_t19 = load_f0_op24_t17_bank_val + bank_delta
     ADD T7, S1, T3
-; Result bank tracked as NamedValue(gep_new_bank_f0_op30_t19)
+; Result bank tracked as Dynamic(gep_new_bank_f0_op30_t19)
     ADD S2, T2, R0
-; GEP: Setting bank info for t19 to NamedValue("gep_new_bank_f0_op30_t19")
+; GEP: Setting bank info for t19 to Dynamic("gep_new_bank_f0_op30_t19")
 ; Load instruction: t20 = load FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
-; LOAD: Pointer t19 has bank info: NamedValue("gep_new_bank_f0_op30_t19")
+; LOAD: Pointer t19 has bank info: Dynamic("gep_new_bank_f0_op30_t19")
 ; LOAD: Using bank register T7 for load
     LOAD T6, T7, S2
 ; Reload gep_new_bank_f0_op21_t16 from slot 8

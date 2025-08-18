@@ -108,7 +108,7 @@ pub fn lower_store(
                             // Use the dynamic bank register directly; we don't own it
                             (r, false)
                         }
-                        BankInfo::NamedValue(name) => {
+                        BankInfo::Dynamic(name) => {
                             // Get the register for this named value (may reload if spilled)
                             let r = mgr.get_register(name);
                             insts.extend(mgr.take_instructions());

@@ -152,7 +152,7 @@ mod tests {
             }
         "#;
         
-        let result = Frontend::compile_to_ir(code, "test");
+        let _result = Frontend::compile_to_ir(code, "test");
         // Pointer casts between different struct types should work
         // Direct struct casts would fail
     }
@@ -171,7 +171,7 @@ mod tests {
         assert!(result.is_ok(), "NULL pointer casts should work");
         
         // Check that the IR contains FatPtr with Null bank
-        let module = result.unwrap();
+        let _module = result.unwrap();
         // We should verify the generated IR has proper FatPtr values with Null bank
     }
     
@@ -304,7 +304,7 @@ mod tests {
             }
         "#;
         
-        let result = Frontend::compile_to_ir(code, "test");
+        let _result = Frontend::compile_to_ir(code, "test");
         // This might fail at parse or semantic level
         // The important thing is it doesn't silently generate wrong code
     }
@@ -371,7 +371,7 @@ mod tests {
             }
         "#;
         
-        let result = Frontend::compile_to_ir(code, "test");
+        let _result = Frontend::compile_to_ir(code, "test");
         // Some of these might fail (e.g., conditional) but shouldn't corrupt
     }
 

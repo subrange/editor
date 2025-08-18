@@ -1026,7 +1026,7 @@ L_text40_puts_15:
     ADDI SC, SC, 16
     STORE S2, SB, SC
     MOD S2, T7, S3
-; Base bank info: NamedValue("load_f22_op9_t10_bank_val")
+; Base bank info: Dynamic("load_f22_op9_t10_bank_val")
 ; Clearing binding for 'gep_new_bank_f22_op15_t12'
 ; Spill t2 to slot 2
     ADD SC, FP, R0
@@ -1034,12 +1034,12 @@ L_text40_puts_15:
     STORE S1, SB, SC
 ; Computing new bank gep_new_bank_f22_op15_t12 = load_f22_op9_t10_bank_val + bank_delta
     ADD S1, T2, T0
-; Result bank tracked as NamedValue(gep_new_bank_f22_op15_t12)
+; Result bank tracked as Dynamic(gep_new_bank_f22_op15_t12)
     ADD T7, S2, R0
-; GEP: Setting bank info for t12 to NamedValue("gep_new_bank_f22_op15_t12")
+; GEP: Setting bank info for t12 to Dynamic("gep_new_bank_f22_op15_t12")
 ; Load instruction: t13 = load FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
-; LOAD: Pointer t12 has bank info: NamedValue("gep_new_bank_f22_op15_t12")
+; LOAD: Pointer t12 has bank info: Dynamic("gep_new_bank_f22_op15_t12")
 ; LOAD: Using bank register S1 for load
     LOAD S0, S1, T7
 ; Recompute alloca t9 at FP+6
@@ -1751,7 +1751,7 @@ L_text40_puts_color_27:
     ADDI SC, SC, 20
     STORE S0, SB, SC
     MOD S0, S2, S1
-; Base bank info: NamedValue("load_f28_op11_t14_bank_val")
+; Base bank info: Dynamic("load_f28_op11_t14_bank_val")
 ; Clearing binding for 'gep_new_bank_f28_op17_t16'
 ; Spill t4 to slot 4
     ADD SC, FP, R0
@@ -1759,12 +1759,12 @@ L_text40_puts_color_27:
     STORE T7, SB, SC
 ; Computing new bank gep_new_bank_f28_op17_t16 = load_f28_op11_t14_bank_val + bank_delta
     ADD T7, T4, T2
-; Result bank tracked as NamedValue(gep_new_bank_f28_op17_t16)
+; Result bank tracked as Dynamic(gep_new_bank_f28_op17_t16)
     ADD S2, S0, R0
-; GEP: Setting bank info for t16 to NamedValue("gep_new_bank_f28_op17_t16")
+; GEP: Setting bank info for t16 to Dynamic("gep_new_bank_f28_op17_t16")
 ; Load instruction: t17 = load FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
-; LOAD: Pointer t16 has bank info: NamedValue("gep_new_bank_f28_op17_t16")
+; LOAD: Pointer t16 has bank info: Dynamic("gep_new_bank_f28_op17_t16")
 ; LOAD: Using bank register T7 for load
     LOAD S3, T7, S2
 ; Recompute alloca t13 at FP+8
@@ -2042,7 +2042,7 @@ L_text40_puts_attr_31:
     ADDI SC, SC, 18
     STORE S1, SB, SC
     MOD S1, T7, S2
-; Base bank info: NamedValue("load_f30_op10_t12_bank_val")
+; Base bank info: Dynamic("load_f30_op10_t12_bank_val")
 ; Clearing binding for 'gep_new_bank_f30_op16_t14'
 ; Spill t3 to slot 3
     ADD SC, FP, R0
@@ -2050,12 +2050,12 @@ L_text40_puts_attr_31:
     STORE S0, SB, SC
 ; Computing new bank gep_new_bank_f30_op16_t14 = load_f30_op10_t12_bank_val + bank_delta
     ADD S0, T4, S3
-; Result bank tracked as NamedValue(gep_new_bank_f30_op16_t14)
+; Result bank tracked as Dynamic(gep_new_bank_f30_op16_t14)
     ADD T7, S1, R0
-; GEP: Setting bank info for t14 to NamedValue("gep_new_bank_f30_op16_t14")
+; GEP: Setting bank info for t14 to Dynamic("gep_new_bank_f30_op16_t14")
 ; Load instruction: t15 = load FatPtr(FatPointer { addr: Temp(14), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(14), bank: Mixed })
-; LOAD: Pointer t14 has bank info: NamedValue("gep_new_bank_f30_op16_t14")
+; LOAD: Pointer t14 has bank info: Dynamic("gep_new_bank_f30_op16_t14")
 ; LOAD: Using bank register S0 for load
     LOAD T3, S0, T7
 ; Recompute alloca t11 at FP+7

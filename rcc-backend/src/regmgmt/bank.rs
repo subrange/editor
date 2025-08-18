@@ -16,19 +16,20 @@ pub enum BankInfo {
     
     /// Dynamic bank in a named value (can be in register or spilled)
     /// The String is the value name that can be used with get_register()
-    NamedValue(String),
+    Dynamic(String),
 }
 
 impl BankInfo {
     /// Get the register for this bank (for static banks only)
-    /// For NamedValue, this will panic - use get_bank_register_with_mgr instead
+    /// For Dynamic, this will panic - use get_bank_register_with_mgr instead
     pub fn to_register(&self) -> Reg {
         match self {
             BankInfo::Global => Reg::Gp,
             BankInfo::Stack => Reg::Sb,
             BankInfo::Register(reg) => *reg,
-            BankInfo::NamedValue(name) => {
-                panic!("Cannot get register for NamedValue('{name}') without RegisterPressureManager - use get_bank_register_with_mgr")
+
+            BankInfo::Dynamic(name) => {
+                panic!("Cannot get register for Dynamic('{name}') without RegisterPressureManager - use get_bank_register_with_mgr")
             }
         }
     }
