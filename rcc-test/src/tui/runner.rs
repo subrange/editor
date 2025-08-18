@@ -132,9 +132,9 @@ impl TuiRunner {
                             2 => self.app.ir_scroll = self.app.ir_scroll.saturating_add(1),
                             3 => self.app.output_scroll = self.app.output_scroll.saturating_add(1),
                             4 => self.app.details_scroll = self.app.details_scroll.saturating_add(1),
-                            5 => self.app.ast_scroll = self.app.ast_scroll.saturating_add(1),
+                            5 => self.app.ast_move_down(),  // Tree navigation
                             6 => self.app.symbols_scroll = self.app.symbols_scroll.saturating_add(1),
-                            7 => self.app.typed_ast_scroll = self.app.typed_ast_scroll.saturating_add(1),
+                            7 => self.app.typed_ast_move_down(),  // Tree navigation
                             _ => {}
                         }
                     }
@@ -153,9 +153,9 @@ impl TuiRunner {
                             2 => self.app.ir_scroll = self.app.ir_scroll.saturating_sub(1),
                             3 => self.app.output_scroll = self.app.output_scroll.saturating_sub(1),
                             4 => self.app.details_scroll = self.app.details_scroll.saturating_sub(1),
-                            5 => self.app.ast_scroll = self.app.ast_scroll.saturating_sub(1),
+                            5 => self.app.ast_move_up(),  // Tree navigation
                             6 => self.app.symbols_scroll = self.app.symbols_scroll.saturating_sub(1),
-                            7 => self.app.typed_ast_scroll = self.app.typed_ast_scroll.saturating_sub(1),
+                            7 => self.app.typed_ast_move_up(),  // Tree navigation
                             _ => {}
                         }
                     }
@@ -166,20 +166,44 @@ impl TuiRunner {
                 }
             }
             KeyCode::Enter => {
-                match self.app.get_selected_item_type() {
-                    SelectedItemType::Category(_) => {
-                        self.app.toggle_current_category();
-                    }
-                    SelectedItemType::Test(_) => {
-                        if let Err(e) = self.run_selected_test() {
-                            self.app.append_output(&format!("Error running test: {e}\n"));
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            5 => self.app.ast_toggle_current(),  // Toggle AST node expansion
+                            7 => self.app.typed_ast_toggle_current(),  // Toggle TypedAST node expansion
+                            _ => {}
                         }
                     }
-                    SelectedItemType::None => {}
+                    FocusedPane::TestList => {
+                        match self.app.get_selected_item_type() {
+                            SelectedItemType::Category(_) => {
+                                self.app.toggle_current_category();
+                            }
+                            SelectedItemType::Test(_) => {
+                                if let Err(e) = self.run_selected_test() {
+                                    self.app.append_output(&format!("Error running test: {e}\n"));
+                                }
+                            }
+                            SelectedItemType::None => {}
+                        }
+                    }
+                    _ => {}
                 }
             }
             KeyCode::Char(' ') => {
-                self.app.toggle_current_category();
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            5 => self.app.ast_toggle_current(),  // Space also toggles in tree view
+                            7 => self.app.typed_ast_toggle_current(),
+                            _ => {}
+                        }
+                    }
+                    FocusedPane::TestList => {
+                        self.app.toggle_current_category();
+                    }
+                    _ => {}
+                }
             }
             KeyCode::Char('d') => {
                 if let Err(e) = self.debug_selected_test(terminal) {
@@ -240,9 +264,61 @@ impl TuiRunner {
             KeyCode::Char('t') => {
                 self.open_terminal_shell(terminal)?;
             }
+            KeyCode::Char('h') | KeyCode::Left => {
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            5 => self.app.ast_collapse_current(),  // Collapse current node
+                            7 => self.app.typed_ast_collapse_current(),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            KeyCode::Char('l') | KeyCode::Right => {
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            5 => self.app.ast_expand_current(),  // Expand current node
+                            7 => self.app.typed_ast_expand_current(),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            KeyCode::Char('H') => {
+                // Shift+H - collapse all nodes
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            5 => self.app.ast_collapse_all(),
+                            7 => self.app.typed_ast_collapse_all(),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            KeyCode::Char('L') => {
+                // Shift+L - expand all nodes
+                match self.app.focused_pane {
+                    FocusedPane::RightPanel => {
+                        match self.app.selected_tab {
+                            5 => self.app.ast_expand_all(),
+                            7 => self.app.typed_ast_expand_all(),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
             KeyCode::Char('g') => {
-                if let Err(e) = self.app.apply_golden_output() {
-                    self.app.append_output(&format!("Failed to apply golden output: {e}\n"));
+                if self.app.focused_pane == FocusedPane::TestList {
+                    if let Err(e) = self.app.apply_golden_output() {
+                        self.app.append_output(&format!("Failed to apply golden output: {e}\n"));
+                    }
                 }
             }
             KeyCode::Char('G') => {

@@ -1,5 +1,5 @@
 {
-  "expected": "S3\nB3:C>3\nA3=C\nB2:B>2\nA2=B\nF:AXBC\n",
   "use_runtime": true,
+  "expected": "S3\nB3:C>3\nA3=C\nB2:B>2\nA2=B\nF:AXBC\n",
   "description": "Added via command line"
 }

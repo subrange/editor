@@ -6,7 +6,7 @@ use ratatui::{
     Frame,
 };
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use crate::tui::app::{TuiApp, FocusedPane};
 
 #[derive(Debug, Clone)]
@@ -17,6 +17,14 @@ pub struct TreeNode {
     pub expanded: bool,
     pub node_type: NodeType,
     pub metadata: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TraceViewerState {
+    pub selected_path: Vec<usize>,
+    pub expanded_nodes: HashSet<Vec<usize>>,
+    pub scroll: usize,
+    pub tree: Option<TreeNode>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,14 +39,14 @@ pub enum NodeType {
 }
 
 impl TreeNode {
-    pub fn from_json(value: &Value, label: String, node_type: NodeType) -> Self {
+    pub fn from_json(value: &Value, label: String, node_type: NodeType, default_expanded: bool) -> Self {
         match value {
             Value::Object(map) => {
                 let mut node = TreeNode {
                     label,
                     value: None,
                     children: Vec::new(),
-                    expanded: true,
+                    expanded: default_expanded,
                     node_type,
                     metadata: HashMap::new(),
                 };
@@ -67,7 +75,9 @@ impl TreeNode {
                             "kind" | "decl_type" | "param_type" | "return_type" => NodeType::AstNode,
                             _ => NodeType::Property,
                         };
-                        node.children.push(Self::from_json(val, key.clone(), child_type));
+                        // Start with deeper nodes collapsed
+                        let child_expanded = default_expanded && node.children.len() < 3;
+                        node.children.push(Self::from_json(val, key.clone(), child_type, child_expanded));
                     }
                 }
                 node
@@ -82,7 +92,9 @@ impl TreeNode {
                     metadata: HashMap::new(),
                 };
                 for (i, val) in arr.iter().enumerate() {
-                    node.children.push(Self::from_json(val, format!("[{}]", i), NodeType::AstNode));
+                    // Collapse array items by default if there are many
+                    let child_expanded = default_expanded && arr.len() < 5;
+                    node.children.push(Self::from_json(val, format!("[{}]", i), NodeType::AstNode, child_expanded));
                 }
                 node
             }
@@ -121,13 +133,13 @@ impl TreeNode {
         }
     }
     
-    pub fn flatten(&self, depth: usize, selected_path: &[usize]) -> Vec<(Vec<Span<'static>>, Vec<usize>)> {
+    pub fn flatten(&self, depth: usize, selected_path: &[usize], expanded_nodes: &HashSet<Vec<usize>>) -> Vec<(Vec<Span<'static>>, Vec<usize>, bool)> {
         let mut lines = Vec::new();
-        self.flatten_recursive(&mut lines, depth, selected_path, vec![]);
+        self.flatten_recursive(&mut lines, depth, selected_path, expanded_nodes, vec![]);
         lines
     }
     
-    fn flatten_recursive(&self, lines: &mut Vec<(Vec<Span<'static>>, Vec<usize>)>, depth: usize, _selected_path: &[usize], current_path: Vec<usize>) {
+    fn flatten_recursive(&self, lines: &mut Vec<(Vec<Span<'static>>, Vec<usize>, bool)>, depth: usize, selected_path: &[usize], expanded_nodes: &HashSet<Vec<usize>>, current_path: Vec<usize>) {
         let mut spans = vec![];
         
         // Indentation
@@ -137,8 +149,15 @@ impl TreeNode {
         
         // Expansion indicator for nodes with children
         if !self.children.is_empty() {
-            let indicator = if self.expanded { "▼ " } else { "▶ " };
-            spans.push(Span::styled(indicator.to_string(), Style::default().fg(Color::Yellow)));
+            let is_expanded = expanded_nodes.contains(&current_path) || 
+                             (current_path.is_empty() && expanded_nodes.is_empty());
+            let indicator = if is_expanded { "▼ " } else { "▶ " };
+            let indicator_color = if current_path == selected_path {
+                Color::Cyan
+            } else {
+                Color::Yellow
+            };
+            spans.push(Span::styled(indicator.to_string(), Style::default().fg(indicator_color)));
         } else {
             spans.push(Span::raw("  "));
         }
@@ -174,14 +193,18 @@ impl TreeNode {
             ));
         }
         
-        lines.push((spans, current_path.clone()));
+        let is_selected = current_path == selected_path;
+        lines.push((spans, current_path.clone(), is_selected));
         
         // Add children if expanded
-        if self.expanded {
+        // Check if this node should be expanded
+        let is_expanded = expanded_nodes.contains(&current_path) || 
+                         (current_path.is_empty() && expanded_nodes.is_empty()); // Root is expanded by default initially
+        if is_expanded && !self.children.is_empty() {
             for (i, child) in self.children.iter().enumerate() {
                 let mut child_path = current_path.clone();
                 child_path.push(i);
-                child.flatten_recursive(lines, depth + 1, _selected_path, child_path);
+                child.flatten_recursive(lines, depth + 1, selected_path, expanded_nodes, child_path);
             }
         }
     }
@@ -224,17 +247,16 @@ pub fn draw_ast_tree(f: &mut Frame, area: Rect, app: &TuiApp) {
                 Ok(content) => {
                     match serde_json::from_str::<Value>(&content) {
                         Ok(json) => {
-                            let tree = TreeNode::from_json(&json, "AST Root".to_string(), NodeType::AstNode);
-                            let lines = tree.flatten(0, &app.ast_selected_path);
+                            let tree = TreeNode::from_json(&json, "AST Root".to_string(), NodeType::AstNode, true);
+                            let lines = tree.flatten(0, &app.ast_selected_path, &app.ast_expanded_nodes);
                             
                             // Convert to Line objects
                             let mut display_lines: Vec<Line> = Vec::new();
                             let visible_start = app.ast_scroll;
                             let visible_end = (app.ast_scroll + area.height.saturating_sub(2) as usize).min(lines.len());
                             
-                            for (_i, (spans, path)) in lines.iter().enumerate().skip(visible_start).take(visible_end - visible_start) {
-                                let is_selected = path == &app.ast_selected_path;
-                                if is_selected {
+                            for (_i, (spans, _path, is_selected)) in lines.iter().enumerate().skip(visible_start).take(visible_end - visible_start) {
+                                if *is_selected {
                                     let mut styled_spans = vec![];
                                     for span in spans {
                                         styled_spans.push(Span::styled(
@@ -248,9 +270,9 @@ pub fn draw_ast_tree(f: &mut Frame, area: Rect, app: &TuiApp) {
                                 }
                             }
                             
-                            let title = format!(" AST: {}.pp.ast.json [{}] (←→ expand/collapse, ↑↓ navigate) ", 
+                            let title = format!(" AST: {}.pp.ast.json [nodes: {}] (Enter: toggle, h/l: collapse/expand, H/L: all) ", 
                                 test_name, 
-                                if app.ast_expanded { "expanded" } else { "collapsed" }
+                                lines.len()
                             );
                             
                             let paragraph = Paragraph::new(display_lines)
@@ -393,15 +415,15 @@ pub fn draw_typed_ast_tree(f: &mut Frame, area: Rect, app: &TuiApp) {
                 Ok(content) => {
                     match serde_json::from_str::<Value>(&content) {
                         Ok(json) => {
-                            let tree = TreeNode::from_json(&json, "Typed AST".to_string(), NodeType::AstNode);
-                            let lines = tree.flatten(0, &app.typed_ast_selected_path);
+                            let tree = TreeNode::from_json(&json, "Typed AST".to_string(), NodeType::AstNode, true);
+                            let lines = tree.flatten(0, &app.typed_ast_selected_path, &app.typed_ast_expanded_nodes);
                             
                             // Convert to Line objects with type highlighting
                             let mut display_lines: Vec<Line> = Vec::new();
                             let visible_start = app.typed_ast_scroll;
                             let visible_end = (app.typed_ast_scroll + area.height.saturating_sub(2) as usize).min(lines.len());
                             
-                            for (_i, (spans, path)) in lines.iter().enumerate().skip(visible_start).take(visible_end - visible_start) {
+                            for (_i, (spans, _path, is_selected)) in lines.iter().enumerate().skip(visible_start).take(visible_end - visible_start) {
                                 // Clone spans to make them mutable for highlighting
                                 let mut highlighted_spans = spans.clone();
                                 
@@ -415,8 +437,7 @@ pub fn draw_typed_ast_tree(f: &mut Frame, area: Rect, app: &TuiApp) {
                                     }
                                 }
                                 
-                                let is_selected = path == &app.typed_ast_selected_path;
-                                if is_selected {
+                                if *is_selected {
                                     let mut styled_spans = vec![];
                                     for span in highlighted_spans {
                                         styled_spans.push(Span::styled(
@@ -430,7 +451,7 @@ pub fn draw_typed_ast_tree(f: &mut Frame, area: Rect, app: &TuiApp) {
                                 }
                             }
                             
-                            let title = format!(" Typed AST: {}.pp.tast.json (←→ expand/collapse, ↑↓ navigate) ", test_name);
+                            let title = format!(" Typed AST: {}.pp.tast.json [nodes: {}] (Enter: toggle, h/l: collapse/expand, H/L: all) ", test_name, lines.len());
                             
                             let paragraph = Paragraph::new(display_lines)
                                 .block(

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{HashMap, BTreeMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc;
 use crate::config::{TestConfig, TestCase, KnownFailure, discover_orphan_tests};
@@ -217,14 +217,14 @@ pub struct TuiApp {
     // Trace viewer state
     pub ast_scroll: usize,
     pub ast_selected_path: Vec<usize>,
-    pub ast_expanded: bool,
+    pub ast_expanded_nodes: HashSet<Vec<usize>>,
     pub ast_tree: Option<crate::tui::ui::trace_viewer::TreeNode>,
     
     pub symbols_scroll: usize,
     
     pub typed_ast_scroll: usize,
     pub typed_ast_selected_path: Vec<usize>,
-    pub typed_ast_expanded: bool,
+    pub typed_ast_expanded_nodes: HashSet<Vec<usize>>,
     pub typed_ast_tree: Option<crate::tui::ui::trace_viewer::TreeNode>,
 
     // Categories and filtering
@@ -335,14 +335,22 @@ impl TuiApp {
             // Trace viewer state
             ast_scroll: 0,
             ast_selected_path: vec![],
-            ast_expanded: true,
+            ast_expanded_nodes: {                
+                let mut set = HashSet::new();
+                set.insert(vec![]);  // Root is always expanded initially
+                set
+            },
             ast_tree: None,
             
             symbols_scroll: 0,
             
             typed_ast_scroll: 0,
             typed_ast_selected_path: vec![],
-            typed_ast_expanded: true,
+            typed_ast_expanded_nodes: {
+                let mut set = HashSet::new();
+                set.insert(vec![]);  // Root is always expanded initially
+                set
+            },
             typed_ast_tree: None,
 
             categories,
@@ -1608,6 +1616,194 @@ impl TuiApp {
         }
     }
 
+    // Tree navigation helpers for AST viewer
+    pub fn ast_move_up(&mut self) {
+        if self.ast_selected_path.is_empty() {
+            return;
+        }
+        
+        // Find the previous sibling or parent
+        let lines = self.get_ast_lines();
+        let current_idx = lines.iter().position(|(_, path, _)| path == &self.ast_selected_path);
+        
+        if let Some(idx) = current_idx {
+            if idx > 0 {
+                self.ast_selected_path = lines[idx - 1].1.clone();
+                self.ensure_ast_selection_visible(&lines);
+            }
+        }
+    }
+    
+    pub fn ast_move_down(&mut self) {
+        let lines = self.get_ast_lines();
+        let current_idx = lines.iter().position(|(_, path, _)| path == &self.ast_selected_path);
+        
+        if let Some(idx) = current_idx {
+            if idx + 1 < lines.len() {
+                self.ast_selected_path = lines[idx + 1].1.clone();
+                self.ensure_ast_selection_visible(&lines);
+            }
+        } else if !lines.is_empty() {
+            // If no selection, select first item
+            self.ast_selected_path = lines[0].1.clone();
+            self.ast_scroll = 0;
+        }
+    }
+    
+    pub fn ast_toggle_current(&mut self) {
+        if self.ast_expanded_nodes.contains(&self.ast_selected_path) {
+            self.ast_expanded_nodes.remove(&self.ast_selected_path);
+        } else {
+            self.ast_expanded_nodes.insert(self.ast_selected_path.clone());
+        }
+    }
+    
+    pub fn ast_expand_current(&mut self) {
+        self.ast_expanded_nodes.insert(self.ast_selected_path.clone());
+    }
+    
+    pub fn ast_collapse_current(&mut self) {
+        self.ast_expanded_nodes.remove(&self.ast_selected_path);
+    }
+    
+    pub fn ast_expand_all(&mut self) {
+        let lines = self.get_ast_lines();
+        for (_, path, _) in lines {
+            if !path.is_empty() {
+                self.ast_expanded_nodes.insert(path);
+            }
+        }
+    }
+    
+    pub fn ast_collapse_all(&mut self) {
+        self.ast_expanded_nodes.clear();
+    }
+    
+    fn get_ast_lines(&self) -> Vec<(Vec<ratatui::text::Span<'static>>, Vec<usize>, bool)> {
+        if let Some(test_name) = self.get_selected_test_name() {
+            let ast_path = self.tools.build_dir.join(format!("{}.pp.ast.json", test_name));
+            if ast_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&ast_path) {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                        let tree = crate::tui::ui::trace_viewer::TreeNode::from_json(
+                            &json, 
+                            "AST Root".to_string(), 
+                            crate::tui::ui::trace_viewer::NodeType::AstNode,
+                            true
+                        );
+                        return tree.flatten(0, &self.ast_selected_path, &self.ast_expanded_nodes);
+                    }
+                }
+            }
+        }
+        Vec::new()
+    }
+    
+    fn ensure_ast_selection_visible(&mut self, lines: &[(Vec<ratatui::text::Span<'static>>, Vec<usize>, bool)]) {
+        if let Some(idx) = lines.iter().position(|(_, path, _)| path == &self.ast_selected_path) {
+            const VISIBLE_LINES: usize = 20; // Approximate visible lines
+            
+            if idx < self.ast_scroll {
+                self.ast_scroll = idx;
+            } else if idx >= self.ast_scroll + VISIBLE_LINES {
+                self.ast_scroll = idx.saturating_sub(VISIBLE_LINES - 1);
+            }
+        }
+    }
+    
+    // Similar helpers for TypedAST
+    pub fn typed_ast_move_up(&mut self) {
+        if self.typed_ast_selected_path.is_empty() {
+            return;
+        }
+        
+        let lines = self.get_typed_ast_lines();
+        let current_idx = lines.iter().position(|(_, path, _)| path == &self.typed_ast_selected_path);
+        
+        if let Some(idx) = current_idx {
+            if idx > 0 {
+                self.typed_ast_selected_path = lines[idx - 1].1.clone();
+                self.ensure_typed_ast_selection_visible(&lines);
+            }
+        }
+    }
+    
+    pub fn typed_ast_move_down(&mut self) {
+        let lines = self.get_typed_ast_lines();
+        let current_idx = lines.iter().position(|(_, path, _)| path == &self.typed_ast_selected_path);
+        
+        if let Some(idx) = current_idx {
+            if idx + 1 < lines.len() {
+                self.typed_ast_selected_path = lines[idx + 1].1.clone();
+                self.ensure_typed_ast_selection_visible(&lines);
+            }
+        } else if !lines.is_empty() {
+            self.typed_ast_selected_path = lines[0].1.clone();
+            self.typed_ast_scroll = 0;
+        }
+    }
+    
+    pub fn typed_ast_toggle_current(&mut self) {
+        if self.typed_ast_expanded_nodes.contains(&self.typed_ast_selected_path) {
+            self.typed_ast_expanded_nodes.remove(&self.typed_ast_selected_path);
+        } else {
+            self.typed_ast_expanded_nodes.insert(self.typed_ast_selected_path.clone());
+        }
+    }
+    
+    pub fn typed_ast_expand_current(&mut self) {
+        self.typed_ast_expanded_nodes.insert(self.typed_ast_selected_path.clone());
+    }
+    
+    pub fn typed_ast_collapse_current(&mut self) {
+        self.typed_ast_expanded_nodes.remove(&self.typed_ast_selected_path);
+    }
+    
+    pub fn typed_ast_expand_all(&mut self) {
+        let lines = self.get_typed_ast_lines();
+        for (_, path, _) in lines {
+            if !path.is_empty() {
+                self.typed_ast_expanded_nodes.insert(path);
+            }
+        }
+    }
+    
+    pub fn typed_ast_collapse_all(&mut self) {
+        self.typed_ast_expanded_nodes.clear();
+    }
+    
+    fn get_typed_ast_lines(&self) -> Vec<(Vec<ratatui::text::Span<'static>>, Vec<usize>, bool)> {
+        if let Some(test_name) = self.get_selected_test_name() {
+            let tast_path = self.tools.build_dir.join(format!("{}.pp.tast.json", test_name));
+            if tast_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&tast_path) {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                        let tree = crate::tui::ui::trace_viewer::TreeNode::from_json(
+                            &json, 
+                            "Typed AST".to_string(), 
+                            crate::tui::ui::trace_viewer::NodeType::AstNode,
+                            true
+                        );
+                        return tree.flatten(0, &self.typed_ast_selected_path, &self.typed_ast_expanded_nodes);
+                    }
+                }
+            }
+        }
+        Vec::new()
+    }
+    
+    fn ensure_typed_ast_selection_visible(&mut self, lines: &[(Vec<ratatui::text::Span<'static>>, Vec<usize>, bool)]) {
+        if let Some(idx) = lines.iter().position(|(_, path, _)| path == &self.typed_ast_selected_path) {
+            const VISIBLE_LINES: usize = 20;
+            
+            if idx < self.typed_ast_scroll {
+                self.typed_ast_scroll = idx;
+            } else if idx >= self.typed_ast_scroll + VISIBLE_LINES {
+                self.typed_ast_scroll = idx.saturating_sub(VISIBLE_LINES - 1);
+            }
+        }
+    }
+    
     pub fn save_metadata(&mut self) -> anyhow::Result<()> {
         if let Some(test_file) = &self.metadata_input.test_file {
             // Create metadata
