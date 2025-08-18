@@ -6,10 +6,12 @@
 use clap::{Parser, Subcommand};
 // use rcc_codegen::generate_assembly; // Not used currently
 use rcc_backend::{lower_module_to_assembly_with_options, LoweringOptions};
-use rcc_frontend::Frontend;
+use rcc_frontend::{Frontend, SemanticAnalyzer};
 use rcc_preprocessor::Preprocessor;
 use std::fs;
 use std::path::PathBuf;
+use serde::Serialize;
+use rcc_common::CompilerError;
 
 /// Configuration for compilation
 #[derive(Debug, Clone)]
@@ -36,6 +38,8 @@ struct CompileConfig {
     include_dirs: Vec<PathBuf>,
     /// Preprocessor defines
     defines: Vec<String>,
+    /// Enable tracing of all compilation stages to JSON files
+    trace: bool,
 }
 
 #[derive(Parser)]
@@ -119,6 +123,10 @@ enum Commands {
         /// Define macro for preprocessor
         #[arg(short = 'D', long = "define", value_name = "NAME[=VALUE]")]
         defines: Vec<String>,
+        
+        /// Enable tracing of all compilation stages to JSON files
+        #[arg(long)]
+        trace: bool,
     },
 }
 
@@ -138,7 +146,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Compile { input, output, emit_ir, print_ir, save_ir, ir_output, debug, bank_size, trace_spills, no_preprocess, include_dirs, defines } => {
+        Commands::Compile { input, output, emit_ir, print_ir, save_ir, ir_output, debug, bank_size, trace_spills, no_preprocess, include_dirs, defines, trace } => {
             // Initialize logger based on debug level
             let log_level = match debug {
                 0 => "error",
@@ -166,6 +174,7 @@ fn main() {
                 no_preprocess,
                 include_dirs,
                 defines,
+                trace,
             };
             
             if let Err(e) = compile_c99_file(config) {
@@ -191,6 +200,50 @@ fn generate_asm_command(
     // For now, just show that the command exists
     println!("Generate assembly command - not yet implemented");
     println!("This will be implemented in a future milestone when we have a real IR format");
+    Ok(())
+}
+
+/// Tracing helper struct to save semantic analysis state
+#[derive(Serialize)]
+struct SemanticAnalysisOutput {
+    /// Symbol table after semantic analysis
+    symbols: Vec<SymbolInfo>,
+    /// Type definitions discovered
+    type_definitions: Vec<TypeDefInfo>,
+}
+
+#[derive(Serialize)]
+struct SymbolInfo {
+    name: String,
+    symbol_type: String,
+    scope_level: usize,
+}
+
+#[derive(Serialize)]
+struct TypeDefInfo {
+    name: String,
+    definition: String,
+}
+
+fn save_trace_file<T: Serialize>(
+    data: &T,
+    base_path: &PathBuf,
+    suffix: &str,
+) -> Result<(), CompilerError> {
+    let mut path = base_path.clone();
+    let stem = path.file_stem()
+        .ok_or_else(|| CompilerError::internal_error("Invalid file path".to_string()))?
+        .to_str()
+        .ok_or_else(|| CompilerError::internal_error("Invalid file path encoding".to_string()))?;
+    path.set_file_name(format!("{}.{}", stem, suffix));
+    
+    let json = serde_json::to_string_pretty(data)
+        .map_err(|e| CompilerError::internal_error(format!("Failed to serialize to JSON: {}", e)))?;
+    
+    fs::write(&path, json)
+        .map_err(|e| CompilerError::internal_error(format!("Failed to write trace file: {}", e)))?;
+    
+    println!("Trace saved to: {}", path.display());
     Ok(())
 }
 
@@ -229,8 +282,17 @@ fn compile_c99_file(config: CompileConfig) -> Result<(), Box<dyn std::error::Err
         }
     }
     
+    // Tokenize source if tracing is enabled
+    if config.trace {
+        let tokens = Frontend::tokenize_source(&source)?;
+        save_trace_file(&tokens, &config.input_path, "tokens.json")?;
+        if !config.emit_ir {
+            println!("Saved {} tokens to trace file", tokens.len());
+        }
+    }
+    
     // Parse the source
-    let _ast = match Frontend::parse_source(&source) {
+    let mut ast = match Frontend::parse_source(&source) {
         Ok(ast) => {
             if !config.emit_ir {
                 println!("Successfully parsed C99 source...");
@@ -264,15 +326,90 @@ fn compile_c99_file(config: CompileConfig) -> Result<(), Box<dyn std::error::Err
         }
     };
     
-    // Try to compile to IR - if it fails, return an error
+    // Save AST if tracing is enabled
+    if config.trace {
+        save_trace_file(&ast, &config.input_path, "ast.json")?;
+        if !config.emit_ir {
+            println!("Saved AST to trace file");
+        }
+    }
+    
+    // Perform semantic analysis
+    let mut analyzer = SemanticAnalyzer::new();
+    analyzer.analyze(&mut ast)?;
+    let type_analyzer = analyzer.into_type_info();
+    
+    // Save semantic analysis output if tracing is enabled
+    if config.trace {
+        // Extract symbol table and type definitions from the TypeAnalyzer
+        let mut symbols = Vec::new();
+        let mut type_defs = Vec::new();
+        
+        // Get all symbols from the symbol table
+        let symbol_table = type_analyzer.borrow().symbol_table.clone();
+        let symbol_types = type_analyzer.borrow().symbol_types.clone();
+        
+        // Iterate through all symbols and their types
+        for (symbol_id, sym_type) in symbol_types.borrow().iter() {
+            // Try to find the symbol name by looking it up
+            if let Some(symbol) = symbol_table.borrow().get_symbol(*symbol_id) {
+                symbols.push(SymbolInfo {
+                    name: symbol.name.clone(),
+                    symbol_type: format!("{}", sym_type),
+                    scope_level: 0, // TODO: Could track actual scope level
+                });
+            }
+        }
+        
+        // Get all type definitions
+        let type_definitions = type_analyzer.borrow().type_definitions.clone();
+        for (name, typedef) in type_definitions.borrow().iter() {
+            type_defs.push(TypeDefInfo {
+                name: name.clone(),
+                definition: format!("{}", typedef),
+            });
+        }
+        
+        let semantic_output = SemanticAnalysisOutput {
+            symbols,
+            type_definitions: type_defs,
+        };
+        save_trace_file(&semantic_output, &config.input_path, "sem.json")?;
+        if !config.emit_ir {
+            println!("Saved semantic analysis output to trace file");
+        }
+    }
+    
+    // Convert to typed AST
+    let typed_ast = rcc_frontend::type_translation_unit(&ast, type_analyzer)
+        .map_err(|e| CompilerError::internal_error(format!("Type error: {}", e)))?;
+    
+    // Save typed AST if tracing is enabled
+    if config.trace {
+        save_trace_file(&typed_ast, &config.input_path, "tast.json")?;
+        if !config.emit_ir {
+            println!("Saved typed AST to trace file");
+        }
+    }
+    
+    // Generate IR from typed AST
     if !config.emit_ir {
         println!("\n💀 Attempting full compilation pipeline");
     }
-    match Frontend::compile_to_ir(&source, config.input_path.file_stem().unwrap().to_str().unwrap()) {
+    let codegen = rcc_frontend::TypedCodeGenerator::new(config.input_path.file_stem().unwrap().to_str().unwrap().to_string());
+    match codegen.generate(&typed_ast) {
         Ok(ir_module) => {
             if !config.emit_ir {
                 println!("💫 Successfully generated IR");
                 println!("🦄 Module contains {} functions", ir_module.functions.len());
+            }
+            
+            // Save IR as JSON if tracing is enabled
+            if config.trace {
+                save_trace_file(&ir_module, &config.input_path, "ir.json")?;
+                if !config.emit_ir {
+                    println!("Saved IR to trace file");
+                }
             }
             
             // Format IR output

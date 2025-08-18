@@ -5,16 +5,17 @@
 use super::expressions::TypedExpr;
 use crate::types::Type;
 use rcc_common::SymbolId;
+use serde::{Deserialize, Serialize};
 
 /// Typed inline assembly operand
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TypedAsmOperand {
     pub constraint: String,
     pub expr: TypedExpr,
 }
 
 /// Typed statement - produced by semantic analysis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TypedStmt {
     /// Expression statement
     Expression(TypedExpr),

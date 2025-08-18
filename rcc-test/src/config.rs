@@ -68,7 +68,7 @@ impl Default for RunConfig {
             timeout_secs: 2,
             bank_size: 16384,
             verbose: false,
-            no_cleanup: false,
+            no_cleanup: true,  // Changed to always preserve files
             parallel: true,
             debug_mode: false,
             frequency: None,

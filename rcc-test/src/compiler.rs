@@ -188,8 +188,9 @@ pub fn compile_c_to_binary(
     }
 
     // Step 2: Compile preprocessed C to assembly (with --no-preprocess since we already preprocessed)
+    // Also enable --trace to save all compilation stages as JSON files in build directory
     let cmd = format!(
-        "{} compile {} -o {} --save-ir --ir-output {} --no-preprocess",
+        "{} compile {} -o {} --save-ir --ir-output {} --no-preprocess --trace",
         tools.rcc.display(),
         preprocessed_file.display(),
         asm_file.display(),
@@ -263,11 +264,17 @@ pub fn compile_c_file(
     let ir_file = tools.build_dir.join(format!("{basename}.ir"));
     let pobj_file = tools.build_dir.join(format!("{basename}.pobj"));
 
-    // Clean up previous files
+    // Clean up previous files (including trace files from --trace flag)
     let _ = std::fs::remove_file(&preprocessed_file);
     let _ = std::fs::remove_file(&asm_file);
     let _ = std::fs::remove_file(&ir_file);
     let _ = std::fs::remove_file(&pobj_file);
+    // Clean up trace JSON files from previous runs
+    let _ = std::fs::remove_file(tools.build_dir.join(format!("{basename}.pp.tokens.json")));
+    let _ = std::fs::remove_file(tools.build_dir.join(format!("{basename}.pp.ast.json")));
+    let _ = std::fs::remove_file(tools.build_dir.join(format!("{basename}.pp.sem.json")));
+    let _ = std::fs::remove_file(tools.build_dir.join(format!("{basename}.pp.tast.json")));
+    let _ = std::fs::remove_file(tools.build_dir.join(format!("{basename}.pp.ir.json")));
 
     // Step 1: Preprocess the C file (with runtime include directory)
     let cmd = format!(
@@ -289,8 +296,9 @@ pub fn compile_c_file(
     }
 
     // Step 2: Compile preprocessed C to assembly (with --no-preprocess since we already preprocessed)
+    // Also enable --trace to save all compilation stages as JSON files in build directory
     let cmd = format!(
-        "{} compile {} -o {} --save-ir --ir-output {} --no-preprocess",
+        "{} compile {} -o {} --save-ir --ir-output {} --no-preprocess --trace",
         tools.rcc.display(),
         preprocessed_file.display(),
         asm_file.display(),

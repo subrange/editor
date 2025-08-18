@@ -61,23 +61,21 @@ pub fn convert_type(ast_type: &Type, location: SourceLocation) -> Result<IrType,
                 Ok(IrType::FatPtr(Box::new(elem_type)))
             }
         }
-        Type::Struct { fields, .. } => {
-            // For structs, allocate as array of words
-            // Calculate total size in words
-            // By this point, all field types should be fully resolved by semantic analysis
-            let mut total_words = 0u64;
+        Type::Struct { name, fields } => {
+            // Convert struct to IrType::Struct, preserving field type information
+            let mut ir_fields = Vec::new();
+            
             for field in fields {
-                if let Some(size) = field.field_type.size_in_words() {
-                    total_words += size;
-                } else {
-                    return Err(CodegenError::InternalError {
-                        message: format!("Cannot compute size of struct field: {}", field.name),
-                        location,
-                    }.into());
-                }
+                // Recursively convert each field type
+                let field_ir_type = convert_type(&field.field_type, location.clone())?;
+                ir_fields.push(field_ir_type);
             }
-            // Return as array of I16 (words)
-            Ok(IrType::Array { size: total_words, element_type: Box::new(IrType::I16) })
+            
+            Ok(IrType::Struct {
+                name: name.clone(),
+                fields: ir_fields,
+                packed: false,  // C structs are not packed by default
+            })
         }
         Type::Union { fields, .. } => {
             // For unions, allocate the size of the largest field

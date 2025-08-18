@@ -1,5 +1,5 @@
 {
-  "expected": "YYYYYY",
   "use_runtime": true,
-  "description": "Q16.16 graphics operations - rotation, camera, collision"
+  "description": "Q16.16 graphics operations - rotation, camera, collision",
+  "expected": "YYYYYY"
 }

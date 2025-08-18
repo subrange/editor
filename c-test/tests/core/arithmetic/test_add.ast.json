@@ -1,0 +1,945 @@
+{
+  "node_id": 46,
+  "items": [
+    {
+      "Declarations": [
+        {
+          "node_id": 0,
+          "name": "putchar",
+          "decl_type": {
+            "Function": {
+              "return_type": "Void",
+              "parameters": [
+                "Int"
+              ],
+              "is_variadic": false
+            }
+          },
+          "storage_class": "Auto",
+          "initializer": null,
+          "span": {
+            "start": {
+              "filename": "<input>",
+              "line": 1,
+              "column": 6
+            },
+            "end": {
+              "filename": "<input>",
+              "line": 1,
+              "column": 20
+            }
+          },
+          "symbol_id": null
+        }
+      ]
+    },
+    {
+      "Function": {
+        "node_id": 8,
+        "name": "add",
+        "return_type": "Int",
+        "parameters": [
+          {
+            "node_id": 1,
+            "name": "a",
+            "param_type": "Int",
+            "span": {
+              "start": {
+                "filename": "<input>",
+                "line": 3,
+                "column": 9
+              },
+              "end": {
+                "filename": "<input>",
+                "line": 3,
+                "column": 14
+              }
+            },
+            "symbol_id": null
+          },
+          {
+            "node_id": 2,
+            "name": "b",
+            "param_type": "Int",
+            "span": {
+              "start": {
+                "filename": "<input>",
+                "line": 3,
+                "column": 16
+              },
+              "end": {
+                "filename": "<input>",
+                "line": 3,
+                "column": 21
+              }
+            },
+            "symbol_id": null
+          }
+        ],
+        "body": {
+          "node_id": 7,
+          "kind": {
+            "Compound": [
+              {
+                "node_id": 6,
+                "kind": {
+                  "Return": {
+                    "node_id": 5,
+                    "kind": {
+                      "Binary": {
+                        "op": "Add",
+                        "left": {
+                          "node_id": 3,
+                          "kind": {
+                            "Identifier": {
+                              "name": "a",
+                              "symbol_id": null
+                            }
+                          },
+                          "span": {
+                            "start": {
+                              "filename": "<input>",
+                              "line": 4,
+                              "column": 12
+                            },
+                            "end": {
+                              "filename": "<input>",
+                              "line": 4,
+                              "column": 14
+                            }
+                          },
+                          "expr_type": null
+                        },
+                        "right": {
+                          "node_id": 4,
+                          "kind": {
+                            "Identifier": {
+                              "name": "b",
+                              "symbol_id": null
+                            }
+                          },
+                          "span": {
+                            "start": {
+                              "filename": "<input>",
+                              "line": 4,
+                              "column": 16
+                            },
+                            "end": {
+                              "filename": "<input>",
+                              "line": 4,
+                              "column": 17
+                            }
+                          },
+                          "expr_type": null
+                        }
+                      }
+                    },
+                    "span": {
+                      "start": {
+                        "filename": "<input>",
+                        "line": 4,
+                        "column": 12
+                      },
+                      "end": {
+                        "filename": "<input>",
+                        "line": 4,
+                        "column": 17
+                      }
+                    },
+                    "expr_type": null
+                  }
+                },
+                "span": {
+                  "start": {
+                    "filename": "<input>",
+                    "line": 4,
+                    "column": 5
+                  },
+                  "end": {
+                    "filename": "<input>",
+                    "line": 5,
+                    "column": 1
+                  }
+                }
+              }
+            ]
+          },
+          "span": {
+            "start": {
+              "filename": "<input>",
+              "line": 3,
+              "column": 23
+            },
+            "end": {
+              "filename": "<input>",
+              "line": 7,
+              "column": 1
+            }
+          }
+        },
+        "storage_class": "Auto",
+        "span": {
+          "start": {
+            "filename": "<input>",
+            "line": 3,
+            "column": 23
+          },
+          "end": {
+            "filename": "<input>",
+            "line": 7,
+            "column": 1
+          }
+        },
+        "symbol_id": null
+      }
+    },
+    {
+      "Function": {
+        "node_id": 45,
+        "name": "main",
+        "return_type": "Int",
+        "parameters": [],
+        "body": {
+          "node_id": 44,
+          "kind": {
+            "Compound": [
+              {
+                "node_id": 12,
+                "kind": {
+                  "Declaration": {
+                    "declarations": [
+                      {
+                        "node_id": 11,
+                        "name": "x",
+                        "decl_type": "Int",
+                        "storage_class": "Auto",
+                        "initializer": {
+                          "node_id": 10,
+                          "kind": {
+                            "Expression": {
+                              "node_id": 9,
+                              "kind": {
+                                "IntLiteral": 5
+                              },
+                              "span": {
+                                "start": {
+                                  "filename": "<input>",
+                                  "line": 8,
+                                  "column": 13
+                                },
+                                "end": {
+                                  "filename": "<input>",
+                                  "line": 8,
+                                  "column": 14
+                                }
+                              },
+                              "expr_type": null
+                            }
+                          },
+                          "span": {
+                            "start": {
+                              "filename": "<input>",
+                              "line": 8,
+                              "column": 13
+                            },
+                            "end": {
+                              "filename": "<input>",
+                              "line": 8,
+                              "column": 14
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": {
+                            "filename": "<input>",
+                            "line": 8,
+                            "column": 14
+                          },
+                          "end": {
+                            "filename": "<input>",
+                            "line": 8,
+                            "column": 14
+                          }
+                        },
+                        "symbol_id": null
+                      }
+                    ]
+                  }
+                },
+                "span": {
+                  "start": {
+                    "filename": "<input>",
+                    "line": 8,
+                    "column": 5
+                  },
+                  "end": {
+                    "filename": "<input>",
+                    "line": 9,
+                    "column": 5
+                  }
+                }
+              },
+              {
+                "node_id": 16,
+                "kind": {
+                  "Declaration": {
+                    "declarations": [
+                      {
+                        "node_id": 15,
+                        "name": "y",
+                        "decl_type": "Int",
+                        "storage_class": "Auto",
+                        "initializer": {
+                          "node_id": 14,
+                          "kind": {
+                            "Expression": {
+                              "node_id": 13,
+                              "kind": {
+                                "IntLiteral": 10
+                              },
+                              "span": {
+                                "start": {
+                                  "filename": "<input>",
+                                  "line": 9,
+                                  "column": 13
+                                },
+                                "end": {
+                                  "filename": "<input>",
+                                  "line": 9,
+                                  "column": 15
+                                }
+                              },
+                              "expr_type": null
+                            }
+                          },
+                          "span": {
+                            "start": {
+                              "filename": "<input>",
+                              "line": 9,
+                              "column": 13
+                            },
+                            "end": {
+                              "filename": "<input>",
+                              "line": 9,
+                              "column": 15
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": {
+                            "filename": "<input>",
+                            "line": 9,
+                            "column": 15
+                          },
+                          "end": {
+                            "filename": "<input>",
+                            "line": 9,
+                            "column": 15
+                          }
+                        },
+                        "symbol_id": null
+                      }
+                    ]
+                  }
+                },
+                "span": {
+                  "start": {
+                    "filename": "<input>",
+                    "line": 9,
+                    "column": 5
+                  },
+                  "end": {
+                    "filename": "<input>",
+                    "line": 10,
+                    "column": 5
+                  }
+                }
+              },
+              {
+                "node_id": 23,
+                "kind": {
+                  "Declaration": {
+                    "declarations": [
+                      {
+                        "node_id": 22,
+                        "name": "result",
+                        "decl_type": "Int",
+                        "storage_class": "Auto",
+                        "initializer": {
+                          "node_id": 21,
+                          "kind": {
+                            "Expression": {
+                              "node_id": 20,
+                              "kind": {
+                                "Call": {
+                                  "function": {
+                                    "node_id": 17,
+                                    "kind": {
+                                      "Identifier": {
+                                        "name": "add",
+                                        "symbol_id": null
+                                      }
+                                    },
+                                    "span": {
+                                      "start": {
+                                        "filename": "<input>",
+                                        "line": 10,
+                                        "column": 18
+                                      },
+                                      "end": {
+                                        "filename": "<input>",
+                                        "line": 10,
+                                        "column": 21
+                                      }
+                                    },
+                                    "expr_type": null
+                                  },
+                                  "arguments": [
+                                    {
+                                      "node_id": 18,
+                                      "kind": {
+                                        "Identifier": {
+                                          "name": "x",
+                                          "symbol_id": null
+                                        }
+                                      },
+                                      "span": {
+                                        "start": {
+                                          "filename": "<input>",
+                                          "line": 10,
+                                          "column": 22
+                                        },
+                                        "end": {
+                                          "filename": "<input>",
+                                          "line": 10,
+                                          "column": 23
+                                        }
+                                      },
+                                      "expr_type": null
+                                    },
+                                    {
+                                      "node_id": 19,
+                                      "kind": {
+                                        "Identifier": {
+                                          "name": "y",
+                                          "symbol_id": null
+                                        }
+                                      },
+                                      "span": {
+                                        "start": {
+                                          "filename": "<input>",
+                                          "line": 10,
+                                          "column": 25
+                                        },
+                                        "end": {
+                                          "filename": "<input>",
+                                          "line": 10,
+                                          "column": 26
+                                        }
+                                      },
+                                      "expr_type": null
+                                    }
+                                  ]
+                                }
+                              },
+                              "span": {
+                                "start": {
+                                  "filename": "<input>",
+                                  "line": 10,
+                                  "column": 18
+                                },
+                                "end": {
+                                  "filename": "<input>",
+                                  "line": 10,
+                                  "column": 27
+                                }
+                              },
+                              "expr_type": null
+                            }
+                          },
+                          "span": {
+                            "start": {
+                              "filename": "<input>",
+                              "line": 10,
+                              "column": 18
+                            },
+                            "end": {
+                              "filename": "<input>",
+                              "line": 10,
+                              "column": 27
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": {
+                            "filename": "<input>",
+                            "line": 10,
+                            "column": 27
+                          },
+                          "end": {
+                            "filename": "<input>",
+                            "line": 10,
+                            "column": 27
+                          }
+                        },
+                        "symbol_id": null
+                      }
+                    ]
+                  }
+                },
+                "span": {
+                  "start": {
+                    "filename": "<input>",
+                    "line": 10,
+                    "column": 5
+                  },
+                  "end": {
+                    "filename": "<input>",
+                    "line": 13,
+                    "column": 5
+                  }
+                }
+              },
+              {
+                "node_id": 37,
+                "kind": {
+                  "If": {
+                    "condition": {
+                      "node_id": 26,
+                      "kind": {
+                        "Binary": {
+                          "op": "Equal",
+                          "left": {
+                            "node_id": 24,
+                            "kind": {
+                              "Identifier": {
+                                "name": "result",
+                                "symbol_id": null
+                              }
+                            },
+                            "span": {
+                              "start": {
+                                "filename": "<input>",
+                                "line": 13,
+                                "column": 9
+                              },
+                              "end": {
+                                "filename": "<input>",
+                                "line": 13,
+                                "column": 16
+                              }
+                            },
+                            "expr_type": null
+                          },
+                          "right": {
+                            "node_id": 25,
+                            "kind": {
+                              "IntLiteral": 15
+                            },
+                            "span": {
+                              "start": {
+                                "filename": "<input>",
+                                "line": 13,
+                                "column": 19
+                              },
+                              "end": {
+                                "filename": "<input>",
+                                "line": 13,
+                                "column": 21
+                              }
+                            },
+                            "expr_type": null
+                          }
+                        }
+                      },
+                      "span": {
+                        "start": {
+                          "filename": "<input>",
+                          "line": 13,
+                          "column": 9
+                        },
+                        "end": {
+                          "filename": "<input>",
+                          "line": 13,
+                          "column": 21
+                        }
+                      },
+                      "expr_type": null
+                    },
+                    "then_stmt": {
+                      "node_id": 31,
+                      "kind": {
+                        "Compound": [
+                          {
+                            "node_id": 30,
+                            "kind": {
+                              "Expression": {
+                                "node_id": 29,
+                                "kind": {
+                                  "Call": {
+                                    "function": {
+                                      "node_id": 27,
+                                      "kind": {
+                                        "Identifier": {
+                                          "name": "putchar",
+                                          "symbol_id": null
+                                        }
+                                      },
+                                      "span": {
+                                        "start": {
+                                          "filename": "<input>",
+                                          "line": 14,
+                                          "column": 9
+                                        },
+                                        "end": {
+                                          "filename": "<input>",
+                                          "line": 14,
+                                          "column": 16
+                                        }
+                                      },
+                                      "expr_type": null
+                                    },
+                                    "arguments": [
+                                      {
+                                        "node_id": 28,
+                                        "kind": {
+                                          "CharLiteral": 89
+                                        },
+                                        "span": {
+                                          "start": {
+                                            "filename": "<input>",
+                                            "line": 14,
+                                            "column": 17
+                                          },
+                                          "end": {
+                                            "filename": "<input>",
+                                            "line": 14,
+                                            "column": 20
+                                          }
+                                        },
+                                        "expr_type": null
+                                      }
+                                    ]
+                                  }
+                                },
+                                "span": {
+                                  "start": {
+                                    "filename": "<input>",
+                                    "line": 14,
+                                    "column": 9
+                                  },
+                                  "end": {
+                                    "filename": "<input>",
+                                    "line": 14,
+                                    "column": 21
+                                  }
+                                },
+                                "expr_type": null
+                              }
+                            },
+                            "span": {
+                              "start": {
+                                "filename": "<input>",
+                                "line": 14,
+                                "column": 9
+                              },
+                              "end": {
+                                "filename": "<input>",
+                                "line": 15,
+                                "column": 5
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "span": {
+                        "start": {
+                          "filename": "<input>",
+                          "line": 13,
+                          "column": 23
+                        },
+                        "end": {
+                          "filename": "<input>",
+                          "line": 15,
+                          "column": 7
+                        }
+                      }
+                    },
+                    "else_stmt": {
+                      "node_id": 36,
+                      "kind": {
+                        "Compound": [
+                          {
+                            "node_id": 35,
+                            "kind": {
+                              "Expression": {
+                                "node_id": 34,
+                                "kind": {
+                                  "Call": {
+                                    "function": {
+                                      "node_id": 32,
+                                      "kind": {
+                                        "Identifier": {
+                                          "name": "putchar",
+                                          "symbol_id": null
+                                        }
+                                      },
+                                      "span": {
+                                        "start": {
+                                          "filename": "<input>",
+                                          "line": 16,
+                                          "column": 9
+                                        },
+                                        "end": {
+                                          "filename": "<input>",
+                                          "line": 16,
+                                          "column": 16
+                                        }
+                                      },
+                                      "expr_type": null
+                                    },
+                                    "arguments": [
+                                      {
+                                        "node_id": 33,
+                                        "kind": {
+                                          "CharLiteral": 78
+                                        },
+                                        "span": {
+                                          "start": {
+                                            "filename": "<input>",
+                                            "line": 16,
+                                            "column": 17
+                                          },
+                                          "end": {
+                                            "filename": "<input>",
+                                            "line": 16,
+                                            "column": 20
+                                          }
+                                        },
+                                        "expr_type": null
+                                      }
+                                    ]
+                                  }
+                                },
+                                "span": {
+                                  "start": {
+                                    "filename": "<input>",
+                                    "line": 16,
+                                    "column": 9
+                                  },
+                                  "end": {
+                                    "filename": "<input>",
+                                    "line": 16,
+                                    "column": 21
+                                  }
+                                },
+                                "expr_type": null
+                              }
+                            },
+                            "span": {
+                              "start": {
+                                "filename": "<input>",
+                                "line": 16,
+                                "column": 9
+                              },
+                              "end": {
+                                "filename": "<input>",
+                                "line": 17,
+                                "column": 5
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "span": {
+                        "start": {
+                          "filename": "<input>",
+                          "line": 15,
+                          "column": 12
+                        },
+                        "end": {
+                          "filename": "<input>",
+                          "line": 18,
+                          "column": 5
+                        }
+                      }
+                    }
+                  }
+                },
+                "span": {
+                  "start": {
+                    "filename": "<input>",
+                    "line": 13,
+                    "column": 5
+                  },
+                  "end": {
+                    "filename": "<input>",
+                    "line": 18,
+                    "column": 5
+                  }
+                }
+              },
+              {
+                "node_id": 41,
+                "kind": {
+                  "Expression": {
+                    "node_id": 40,
+                    "kind": {
+                      "Call": {
+                        "function": {
+                          "node_id": 38,
+                          "kind": {
+                            "Identifier": {
+                              "name": "putchar",
+                              "symbol_id": null
+                            }
+                          },
+                          "span": {
+                            "start": {
+                              "filename": "<input>",
+                              "line": 18,
+                              "column": 5
+                            },
+                            "end": {
+                              "filename": "<input>",
+                              "line": 18,
+                              "column": 12
+                            }
+                          },
+                          "expr_type": null
+                        },
+                        "arguments": [
+                          {
+                            "node_id": 39,
+                            "kind": {
+                              "CharLiteral": 10
+                            },
+                            "span": {
+                              "start": {
+                                "filename": "<input>",
+                                "line": 18,
+                                "column": 13
+                              },
+                              "end": {
+                                "filename": "<input>",
+                                "line": 18,
+                                "column": 17
+                              }
+                            },
+                            "expr_type": null
+                          }
+                        ]
+                      }
+                    },
+                    "span": {
+                      "start": {
+                        "filename": "<input>",
+                        "line": 18,
+                        "column": 5
+                      },
+                      "end": {
+                        "filename": "<input>",
+                        "line": 18,
+                        "column": 18
+                      }
+                    },
+                    "expr_type": null
+                  }
+                },
+                "span": {
+                  "start": {
+                    "filename": "<input>",
+                    "line": 18,
+                    "column": 5
+                  },
+                  "end": {
+                    "filename": "<input>",
+                    "line": 20,
+                    "column": 5
+                  }
+                }
+              },
+              {
+                "node_id": 43,
+                "kind": {
+                  "Return": {
+                    "node_id": 42,
+                    "kind": {
+                      "Identifier": {
+                        "name": "result",
+                        "symbol_id": null
+                      }
+                    },
+                    "span": {
+                      "start": {
+                        "filename": "<input>",
+                        "line": 20,
+                        "column": 12
+                      },
+                      "end": {
+                        "filename": "<input>",
+                        "line": 20,
+                        "column": 18
+                      }
+                    },
+                    "expr_type": null
+                  }
+                },
+                "span": {
+                  "start": {
+                    "filename": "<input>",
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "filename": "<input>",
+                    "line": 21,
+                    "column": 1
+                  }
+                }
+              }
+            ]
+          },
+          "span": {
+            "start": {
+              "filename": "<input>",
+              "line": 7,
+              "column": 12
+            },
+            "end": {
+              "filename": "<input>",
+              "line": 21,
+              "column": 2
+            }
+          }
+        },
+        "storage_class": "Auto",
+        "span": {
+          "start": {
+            "filename": "<input>",
+            "line": 7,
+            "column": 12
+          },
+          "end": {
+            "filename": "<input>",
+            "line": 21,
+            "column": 2
+          }
+        },
+        "symbol_id": null
+      }
+    }
+  ],
+  "span": {
+    "start": {
+      "filename": "<input>",
+      "line": 1,
+      "column": 1
+    },
+    "end": {
+      "filename": "<input>",
+      "line": 21,
+      "column": 2
+    }
+  }
+}

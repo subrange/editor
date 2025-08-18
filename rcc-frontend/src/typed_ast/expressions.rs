@@ -5,9 +5,10 @@
 use crate::types::Type;
 use crate::ast::{BinaryOp, UnaryOp};
 use rcc_common::SymbolId;
+use serde::{Deserialize, Serialize};
 
 /// Typed expression - produced by semantic analysis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TypedExpr {
     /// Integer literal
     IntLiteral {

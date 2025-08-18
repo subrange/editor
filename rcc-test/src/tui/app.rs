@@ -194,7 +194,7 @@ pub struct TuiApp {
     // UI State
     pub focused_pane: FocusedPane,
     pub mode: AppMode,
-    pub selected_tab: usize,  // 0=Source, 1=ASM, 2=IR, 3=Output, 4=Details
+    pub selected_tab: usize,  // 0=Source, 1=ASM, 2=IR, 3=Output, 4=Details, 5=AST, 6=Symbols, 7=TypedAST
 
     // Test data
     pub test_config: TestConfig,
@@ -213,6 +213,19 @@ pub struct TuiApp {
     pub ir_scroll: usize,
     pub details_scroll: usize,
     pub category_scroll: usize,
+    
+    // Trace viewer state
+    pub ast_scroll: usize,
+    pub ast_selected_path: Vec<usize>,
+    pub ast_expanded: bool,
+    pub ast_tree: Option<crate::tui::ui::trace_viewer::TreeNode>,
+    
+    pub symbols_scroll: usize,
+    
+    pub typed_ast_scroll: usize,
+    pub typed_ast_selected_path: Vec<usize>,
+    pub typed_ast_expanded: bool,
+    pub typed_ast_tree: Option<crate::tui::ui::trace_viewer::TreeNode>,
 
     // Categories and filtering
     pub categories: BTreeMap<String, CategoryView>,
@@ -318,6 +331,19 @@ impl TuiApp {
             ir_scroll: 0,
             details_scroll: 0,
             category_scroll: 0,
+            
+            // Trace viewer state
+            ast_scroll: 0,
+            ast_selected_path: vec![],
+            ast_expanded: true,
+            ast_tree: None,
+            
+            symbols_scroll: 0,
+            
+            typed_ast_scroll: 0,
+            typed_ast_selected_path: vec![],
+            typed_ast_expanded: true,
+            typed_ast_tree: None,
 
             categories,
             selected_category: None,

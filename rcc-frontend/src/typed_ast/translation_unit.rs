@@ -5,9 +5,10 @@
 use super::expressions::TypedExpr;
 use super::statements::TypedStmt;
 use crate::types::Type;
+use serde::{Deserialize, Serialize};
 
 /// Typed function definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypedFunction {
     pub name: String,
     pub return_type: Type,
@@ -16,7 +17,7 @@ pub struct TypedFunction {
 }
 
 /// Typed top-level item
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TypedTopLevelItem {
     Function(TypedFunction),
     GlobalVariable {
@@ -27,7 +28,7 @@ pub enum TypedTopLevelItem {
 }
 
 /// Typed translation unit (entire program)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypedTranslationUnit {
     pub items: Vec<TypedTopLevelItem>,
 }

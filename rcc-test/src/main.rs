@@ -193,7 +193,7 @@ fn run_tests_by_category(cli: &Cli, tools: &ToolPaths, category: &str) -> Result
         timeout_secs: cli.timeout,
         bank_size: cli.bank_size,
         verbose: cli.verbose,
-        no_cleanup: cli.no_cleanup,
+        no_cleanup: true,  // Always preserve files
         parallel: !cli.no_parallel,
         debug_mode: cli.debug,
         frequency: None,
@@ -208,13 +208,8 @@ fn run_tests_by_category(cli: &Cli, tools: &ToolPaths, category: &str) -> Result
     // Print summary
     summary.print();
     
-    // Clean up if requested
-    if !cli.no_cleanup {
-        let count = cleanup_build_dir(&cli.build_dir)?;
-        if cli.verbose {
-            println!("\nCleaned up {count} files");
-        }
-    }
+    // Skip cleanup - always preserve files
+    // (Previously cleaned up based on cli.no_cleanup flag)
     
     process::exit(summary.exit_code())
 }
@@ -246,7 +241,7 @@ fn run_tests_with_frequency(cli: &Cli, tools: &ToolPaths, filter: Option<String>
         timeout_secs: cli.timeout,
         bank_size: cli.bank_size,
         verbose: cli.verbose,
-        no_cleanup: cli.no_cleanup,
+        no_cleanup: true,  // Always preserve files
         parallel: !cli.no_parallel,
         debug_mode: cli.debug,
         frequency,
@@ -292,13 +287,8 @@ fn run_tests_with_frequency(cli: &Cli, tools: &ToolPaths, filter: Option<String>
     // Print summary
     summary.print();
     
-    // Clean up if requested
-    if !cli.no_cleanup {
-        let count = cleanup_build_dir(&cli.build_dir)?;
-        if cli.verbose {
-            println!("\nCleaned up {count} files");
-        }
-    }
+    // Skip cleanup - always preserve files
+    // (Previously cleaned up based on cli.no_cleanup flag)
     
     process::exit(summary.exit_code())
 }
