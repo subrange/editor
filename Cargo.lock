@@ -888,13 +888,10 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "env_logger 0.11.8",
- "log",
  "rcc-backend",
  "rcc-codegen",
- "rcc-common",
  "rcc-frontend",
  "rcc-preprocessor",
- "thiserror 2.0.12",
 ]
 
 [[package]]

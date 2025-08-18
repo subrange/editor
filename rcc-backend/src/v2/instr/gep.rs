@@ -55,7 +55,7 @@ pub fn lower_gep(
     let result_name = naming.temp_name(result_temp);
 
     // Step 1: Extract base pointer components (address and bank)
-    let (base_addr_reg, base_ptr_name, base_bank_info) = match base_ptr {
+    let (base_addr_reg, _base_ptr_name, base_bank_info) = match base_ptr {
         Value::Temp(t) => {
             let name = naming.temp_name(*t);
             trace!("  Base pointer is temp: {name}");

@@ -24,11 +24,11 @@ pub fn emit_instructions(instructions: Vec<AsmInst>) -> Result<String, CodegenEr
     
     for instruction in instructions {
         match instruction {
-            AsmInst::Label(ref label) => {
+            AsmInst::Label(ref _label) => {
                 // Labels get their own line with no indentation
                 output.push_str(&format!("{instruction}\n"));
             }
-            AsmInst::Comment(ref comment) => {
+            AsmInst::Comment(ref _comment) => {
                 // Comments get their own line with no indentation
                 output.push_str(&format!("{instruction}\n"));
             }
@@ -49,7 +49,7 @@ pub fn emit_instructions(instructions: Vec<AsmInst>) -> Result<String, CodegenEr
 /// Generate a complete assembly file with headers and sections
 pub fn emit_complete_program(
     instructions: Vec<AsmInst>,
-    has_main: bool,
+    _has_main: bool,
 ) -> Result<String, CodegenError> {
     let mut output = String::new();
     

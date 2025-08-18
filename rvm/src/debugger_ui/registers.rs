@@ -131,7 +131,8 @@ impl TuiDebugger {
         frame.render_widget(paragraph, area);
     }
 
-    fn format_register(&self, name: &str, index: usize, vm: &VM) -> Vec<Span> {
+    #[allow(dead_code)]
+    fn format_register(&self, name: &str, index: usize, vm: &VM) -> Vec<Span<'_>> {
         let value = vm.registers[index];
         let was_changed = self.register_changes.contains_key(&index);
         
@@ -156,7 +157,7 @@ impl TuiDebugger {
         ]
     }
 
-    fn format_register_with_color(&self, name: &str, index: usize, vm: &VM, group_color: Color) -> Vec<Span> {
+    fn format_register_with_color(&self, name: &str, index: usize, vm: &VM, group_color: Color) -> Vec<Span<'_>> {
         let value = vm.registers[index];
         let was_changed = self.register_changes.contains_key(&index);
         

@@ -1,4 +1,6 @@
 //! V2 Register Allocator - 32 Register Architecture
+
+#![allow(dead_code)]
 //! 
 //! Updated for 32-register architecture:
 //! - Allocatable registers: T0-T7 (temporaries) and S0-S3 (saved)

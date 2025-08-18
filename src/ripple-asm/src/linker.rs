@@ -1,4 +1,4 @@
-use crate::types::{Instruction, Label, ObjectFile, Opcode, ReferenceType, UnresolvedReference, Archive, ArchiveEntry};
+use crate::types::{Instruction, Label, ObjectFile, UnresolvedReference, Archive, ArchiveEntry};
 use std::collections::HashMap;
 use std::path::Path;
 use std::fs;
@@ -36,12 +36,12 @@ impl Linker {
         let mut global_labels = HashMap::new();
         let mut global_data_labels = HashMap::new();
         let mut instruction_offset = 0usize;
-        let mut data_offset = 0u32;
+        let mut _data_offset = 0u32;
 
         // Collect all instructions, data, and labels from all object files
         for (file_idx, obj) in object_files.iter().enumerate() {
             // Add instructions
-            let file_instruction_start = all_instructions.len();
+            let _file_instruction_start = all_instructions.len();
             all_instructions.extend_from_slice(&obj.instructions);
 
             // Add data
@@ -68,7 +68,7 @@ impl Linker {
             }
 
             instruction_offset += obj.instructions.len() * 4; // Each instruction is 4 bytes
-            data_offset += obj.data.len() as u32;
+            _data_offset += obj.data.len() as u32;
         }
 
         if !errors.is_empty() {

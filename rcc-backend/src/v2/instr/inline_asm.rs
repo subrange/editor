@@ -71,6 +71,7 @@ fn parse_constraint(constraint_str: &str) -> ParsedConstraint {
 }
 
 /// Get a set of clobbered registers from string names
+#[allow(dead_code)]
 fn parse_clobbers(clobbers: &[String]) -> HashSet<Reg> {
     let mut clobbered = HashSet::new();
     
@@ -92,7 +93,7 @@ fn allocate_operand_registers(
     naming: &mut NameGenerator,
     outputs: &[AsmOperandIR],
     inputs: &[AsmOperandIR],
-    clobbers: &[String],
+    _clobbers: &[String],
 ) -> Result<(Vec<AllocatedOperand>, Vec<AllocatedOperand>), CompilerError> {
     let mut allocated_outputs = Vec::new();
     let mut allocated_inputs = Vec::new();

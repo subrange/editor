@@ -234,8 +234,8 @@ impl Preprocessor {
         let mut in_string = false;
         let mut in_char = false;
         let mut escape = false;
-        let mut pos = 0;
-        
+        let mut pos;
+
         for (i, ch) in text.char_indices() {
             pos = i;
             

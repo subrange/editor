@@ -23,16 +23,16 @@ use crate::Type;
 
 /// Semantic analyzer context
 pub struct SemanticAnalyzer {
-    symbol_table: Rc<RefCell<SymbolTable>>,
+    _symbol_table: Rc<RefCell<SymbolTable>>,
     current_function: Option<Type>,
-    symbol_locations: Rc<RefCell<HashMap<SymbolId, SourceLocation>>>,
-    symbol_types: Rc<RefCell<HashMap<SymbolId, Type>>>,
-    type_definitions: Rc<RefCell<HashMap<String, Type>>>,
+    _symbol_locations: Rc<RefCell<HashMap<SymbolId, SourceLocation>>>,
+    _symbol_types: Rc<RefCell<HashMap<SymbolId, Type>>>,
+    _type_definitions: Rc<RefCell<HashMap<String, Type>>>,
     
     type_analyzer: Rc<RefCell<TypeAnalyzer>>,
     
     statement_analyzer: Rc<RefCell<StatementAnalyzer>>,
-    expression_analyzer: Rc<RefCell<ExpressionAnalyzer>>,
+    _expression_analyzer: Rc<RefCell<ExpressionAnalyzer>>,
     initializer_analyzer: Rc<RefCell<InitializerAnalyzer>>,
 }
 
@@ -77,14 +77,14 @@ impl SemanticAnalyzer {
         )));
         
         Self {
-            symbol_table,
+            _symbol_table: symbol_table,
             current_function: None,
-            symbol_locations,
-            symbol_types,
-            type_definitions,
+            _symbol_locations: symbol_locations,
+            _symbol_types: symbol_types,
+            _type_definitions: type_definitions,
             type_analyzer,
             statement_analyzer,
-            expression_analyzer,
+            _expression_analyzer: expression_analyzer,
             initializer_analyzer,
         }
     }

@@ -1080,10 +1080,12 @@ impl VM {
         self.output_buffer.drain(..).collect()
     }
     
+    #[allow(dead_code)]
     pub fn push_input(&mut self, byte: u8) {
         self.input_buffer.push_back(byte);
     }
     
+    #[allow(dead_code)]
     pub fn push_input_string(&mut self, input: &str) {
         for byte in input.bytes() {
             self.input_buffer.push_back(byte);

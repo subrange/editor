@@ -1,4 +1,6 @@
 //! Internal Implementation for FunctionBuilder
+
+#![allow(dead_code)]
 //! 
 //! THIS MODULE IS INTERNAL TO THE FUNCTION MODULE AND SHOULD NOT BE USED DIRECTLY!
 //! All function building should go through FunctionBuilder.

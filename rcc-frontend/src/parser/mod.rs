@@ -66,6 +66,7 @@ impl Parser {
     }
     
     /// Check if current token is an identifier
+    #[allow(dead_code)]
     pub(crate) fn check_identifier(&self) -> bool {
         matches!(self.peek().map(|t| &t.token_type), Some(TokenType::Identifier(_)))
     }

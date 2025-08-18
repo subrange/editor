@@ -4,14 +4,14 @@ use crate::Register;
 
 pub struct Disassembler {
     labels: HashMap<u32, String>,
-    next_label_id: usize,
+    _next_label_id: usize,
 }
 
 impl Disassembler {
     pub fn new() -> Self {
         Self {
             labels: HashMap::new(),
-            next_label_id: 0,
+            _next_label_id: 0,
         }
     }
 
@@ -21,8 +21,8 @@ impl Disassembler {
             return Err("Invalid binary: too short".to_string());
         }
         
-        let mut offset = 0;
-        let mut instruction_count = 0;
+        let mut offset;
+        let instruction_count;
         
         // Detect format by magic number
         if &binary[0..4] == b"RASM" {
@@ -280,6 +280,7 @@ impl Disassembler {
         }
     }
 
+    #[allow(dead_code)]
     fn format_operand(&self, value: u16) -> String {
         // Check if it's a register value (0-31 are valid registers)
         if value < 32 {

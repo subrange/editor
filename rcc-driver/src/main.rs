@@ -230,7 +230,7 @@ fn compile_c99_file(config: CompileConfig) -> Result<(), Box<dyn std::error::Err
     }
     
     // Parse the source
-    let ast = match Frontend::parse_source(&source) {
+    let _ast = match Frontend::parse_source(&source) {
         Ok(ast) => {
             if !config.emit_ir {
                 println!("Successfully parsed C99 source...");

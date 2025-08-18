@@ -147,7 +147,7 @@ impl CallingConvention {
         }
         
         // Use common logic to determine placement
-        let (register_arg_slots, first_stack_arg) = self.analyze_arg_placement(&args);
+        let (register_arg_slots, _first_stack_arg) = self.analyze_arg_placement(&args);
         
         // Separate args into register args and stack args
         let mut reg_args = Vec::new();
@@ -517,8 +517,6 @@ impl CallingConvention {
                    insts.len(), dest, bank_reg);
             return (insts, dest, bank_reg);
         }
-
-        unreachable!("Parameter must be either in register or on stack")
     }
 }
 

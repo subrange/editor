@@ -38,7 +38,7 @@ pub fn get_value_register(
             let name = naming.temp_name(*id);
             mgr.get_register(name)
         }
-        Value::Constant(val) => {
+        Value::Constant(_val) => {
             // Use the RegisterPressureManager's get_value_register which handles constants properly
             // This will emit the LI instruction internally
             mgr.get_value_register(value)

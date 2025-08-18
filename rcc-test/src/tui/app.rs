@@ -647,7 +647,7 @@ impl TuiApp {
             }
         } else {
             // All categories view - find which category header is selected
-            for (name, category) in self.categories.iter_mut() {
+            for (_name, category) in self.categories.iter_mut() {
                 if current_idx == self.selected_item {
                     // This is the selected category header
                     category.expanded = !category.expanded;

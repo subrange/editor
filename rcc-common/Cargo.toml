@@ -7,3 +7,6 @@ description = "Ripple C99 Compiler - Common Types and Utilities"
 [dependencies]
 thiserror.workspace = true
 serde.workspace = true
+
+[lints]
+workspace = true

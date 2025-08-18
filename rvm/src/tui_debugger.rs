@@ -27,6 +27,7 @@ pub(crate) enum FocusedPane {
     Watches,
     Breakpoints,
     Output,
+    #[allow(dead_code)]
     Command,
 }
 
@@ -43,6 +44,7 @@ pub(crate) enum DebuggerMode {
 pub struct MemoryWatch {
     pub(crate) name: String,
     pub(crate) address: usize,
+    #[allow(dead_code)]
     pub(crate) size: usize,
     pub(crate) format: WatchFormat,
 }
@@ -99,7 +101,9 @@ pub struct TuiDebugger {
     pub(crate) show_output: bool,
     
     // Performance
+    #[allow(dead_code)]
     last_step_time: Instant,
+    #[allow(dead_code)]
     step_frequency: Duration,
     
     // Execution history

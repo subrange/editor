@@ -139,7 +139,7 @@ fn draw_category_selector(f: &mut Frame, area: Rect, app: &TuiApp) {
     f.render_stateful_widget(list, modal_area, &mut state);
 }
 
-fn create_test_item<'a>(test: &'a crate::config::TestCase, index: usize, app: &'a TuiApp) -> ListItem<'a> {
+fn create_test_item<'a>(test: &'a crate::config::TestCase, _index: usize, app: &'a TuiApp) -> ListItem<'a> {
     let test_name = test.file.file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("unknown");
@@ -878,7 +878,6 @@ fn draw_find_test_modal(f: &mut Frame, area: Rect, app: &TuiApp) {
             
             // Highlight matching characters
             let query_lower = app.search_query.to_lowercase();
-            let name_lower = test_name.to_lowercase();
             
             let mut highlighted_name = String::new();
             let mut query_chars = query_lower.chars().peekable();
@@ -1467,6 +1466,7 @@ fn parse_output_with_colors(output: &str) -> Vec<Line<'static>> {
     lines
 }
 
+#[allow(dead_code)]
 fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)

@@ -25,7 +25,7 @@ pub struct Preprocessor {
     /// Files marked with #pragma once
     pragma_once_files: HashSet<PathBuf>,
     /// Line number mapping for #line directives
-    line_map: Vec<LineMapping>,
+    _line_map: Vec<LineMapping>,
     /// Keep comments in output
     keep_comments: bool,
     /// Keep line directives
@@ -55,9 +55,9 @@ struct ConditionalState {
 /// Line number mapping for error reporting
 #[derive(Debug, Clone)]
 struct LineMapping {
-    output_line: usize,
-    source_file: PathBuf,
-    source_line: usize,
+    _output_line: usize,
+    _source_file: PathBuf,
+    _source_line: usize,
 }
 
 impl Preprocessor {
@@ -70,7 +70,7 @@ impl Preprocessor {
             current_file: None,
             include_depth: 0,
             pragma_once_files: HashSet::new(),
-            line_map: vec![],
+            _line_map: vec![],
             keep_comments: false,
             keep_line_directives: false,
         }

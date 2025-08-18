@@ -25,3 +25,6 @@ num_cpus = "1.16"
 rvm = { path = "../rvm" }
 ripple-asm = { path = "../src/ripple-asm" }
 rcc-frontend = { path = "../rcc-frontend" }
+
+[lints]
+workspace = true

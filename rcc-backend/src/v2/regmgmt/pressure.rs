@@ -1,4 +1,6 @@
 //! Register Pressure Manager for V2 Backend
+
+#![allow(dead_code)]
 //! 
 //! Based on the formalized register spilling algorithm with Sethi-Ullman
 //! expression evaluation order to minimize register pressure.

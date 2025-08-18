@@ -211,7 +211,7 @@ impl ExpressionAnalyzer {
 
             ExpressionKind::CompoundLiteral {
                 type_name,
-                initializer,
+                initializer: _,
             } => {
                 // Compound literals need to be analyzed through the initializer analyzer
                 // We can't directly call it from here due to the Rc<RefCell> structure

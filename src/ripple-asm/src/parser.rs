@@ -1,4 +1,4 @@
-use crate::types::{ParsedLine, Section};
+use crate::types::ParsedLine;
 
 pub struct Parser {
     case_insensitive: bool,

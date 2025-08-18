@@ -51,7 +51,6 @@ impl TuiDebugger {
                 FocusedPane::Breakpoints => "Breakpoints",
                 FocusedPane::Output => "Output",
                 FocusedPane::Command => "Command",
-                _ => "Unknown",
             }),
             Style::default().fg(Color::Cyan)
         ));

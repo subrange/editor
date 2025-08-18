@@ -11,3 +11,6 @@ ripple-asm = { path = "../src/ripple-asm" }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+
+[lints]
+workspace = true

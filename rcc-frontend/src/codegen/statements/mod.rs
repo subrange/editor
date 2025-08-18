@@ -86,7 +86,7 @@ impl<'a> TypedStatementGenerator<'a> {
         }
     }
     
-    pub(super) fn create_expression_generator(&mut self) -> TypedExpressionGenerator {
+    pub(super) fn create_expression_generator(&mut self) -> TypedExpressionGenerator<'_> {
         TypedExpressionGenerator {
             builder: self.builder,
             module: self.module,

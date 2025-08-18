@@ -12,7 +12,9 @@ VERY IMPORTANT RULES:
 3. Conservative implementation - Better to fail loudly than silently corrupt
 
 IMPORTANT: rcc is a project inside rust workspace, so everything is being built into the project root target/release directory.
-IMPORTANT: rct (Ripple C Test runner) can be invoked from the project root via "./rct" after building with `cargo build --release`.
+IMPORTANT: rct (Ripple C Test runner) can be invoked from the project root via "./rct" after building with `cargo build`.
+
+IMPORTANT: No-warning policy. After working on the feature, we 
 
 To better trace errors, use cargo build --debug and then run the test suite with `RUST_BACKTRACE=1 ./rct` to get detailed backtraces on errors (may require explicitly using std::backtrace::Backtrace in your code).
 
@@ -39,7 +41,7 @@ The IDE includes a custom RISC-like assembler for the Ripple VM architecture loc
 
 - **Testing and Execution**
 - After every change of the C compiler, please make sure you add the test case using `rct add` and run it with `rct` to ensure that we don't have any regressions
-- After every change of the C compiler, make sure to rebuild it from project root with `cargo build --release` to ensure the latest changes are included
+- After every change of the C compiler, make sure to rebuild it from project root with `cargo build` to ensure the latest changes are included
 - In c-test tests, use if(condition) putchar('Y') else putchar('N') to make sure we actually have some asserts and can capture it in the test runner
 
 ## Developing C Compiler
