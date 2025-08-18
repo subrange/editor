@@ -28,7 +28,14 @@ int main() {
     m.ptr = &i;
     
     o.mid = m;
-    
+
+    // This is the failing test case
+    if (o.mid.inner.y == 20) {
+        putchar('Y');
+    } else {
+        putchar('N');
+    }
+
     // This is the failing test case
     if (o.mid.ptr->y == 20) {
         putchar('Y');

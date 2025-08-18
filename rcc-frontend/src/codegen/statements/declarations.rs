@@ -89,39 +89,9 @@ pub fn generate_declaration(
                 if matches!(var_type, Type::Struct { .. }) && matches!(init_expr, TypedExpr::CompoundLiteral { .. }) {
                     // We have a struct variable and a compound literal initializer
                     // The compound literal returns a pointer to the struct
-                    // We need to copy the struct contents (memcpy-like operation)
-                    
-                    // Calculate struct size
-                    let struct_size = var_type.size_in_words()
-                        .ok_or_else(|| crate::codegen::CodegenError::InternalError {
-                            message: "Cannot determine struct size".to_string(),
-                            location: rcc_common::SourceLocation::new_simple(0, 0),
-                        })?;
-                    
-                    // Copy each word from source to destination
-                    for offset in 0..struct_size {
-                        let offset_val = Value::Constant(offset as i64);
-                        
-                        // Calculate source address (compound literal pointer + offset)
-                        let src_addr = gen.builder.build_pointer_offset(
-                            init_val.clone(),
-                            offset_val.clone(),
-                            IrType::I16, // Copy word by word
-                        )?;
-                        
-                        // Calculate destination address (variable + offset)
-                        let dst_addr = gen.builder.build_pointer_offset(
-                            var_addr.clone(),
-                            offset_val,
-                            IrType::I16,
-                        )?;
-                        
-                        // Load from source
-                        let word = gen.builder.build_load(src_addr, IrType::I16)?;
-                        
-                        // Store to destination
-                        gen.builder.build_store(Value::Temp(word), dst_addr)?;
-                    }
+                    // Use the helper function to copy struct contents
+                    let mut expr_gen_for_copy = gen.create_expression_generator();
+                    crate::codegen::expressions::copy_struct(&mut expr_gen_for_copy, init_val, var_addr.clone(), var_type)?;
                 } else {
                     // Normal case: store the value directly
                     gen.builder.build_store(init_val, var_addr)?;

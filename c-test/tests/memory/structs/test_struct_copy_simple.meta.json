@@ -1,4 +1,5 @@
 {
+  "description": "Test simple struct copy",
   "expected": "12\n",
   "use_runtime": true
 }

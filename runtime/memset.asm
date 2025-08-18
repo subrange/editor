@@ -132,8 +132,8 @@ L_memset_3:
     ADD T5, FP, R0
     ADDI T5, T5, 4
     LOAD S3, SB, T5
-    LI T4, 1
-    ADD S3, S3, T4
+    LI T0, 1
+    ADD S3, S3, T0
     STORE S3, SB, T5
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1

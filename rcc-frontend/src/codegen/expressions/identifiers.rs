@@ -14,51 +14,63 @@ pub fn generate_identifier(
             // For arrays, return the address (as fat pointer if needed)
             Ok(var_info.as_fat_ptr())
         } else if gen.parameter_variables.contains(name) {
-            // For parameters, load the value
-            // If it's a pointer type, use simplified FatPtr(I16) type for loading
-            let load_type = if var_info.ir_type.is_pointer() {
-                crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16))
+            // For parameters, check if it's a struct type
+            if matches!(var_info.ir_type, crate::ir::IrType::Struct { .. }) {
+                // For struct parameters, return the pointer to allow proper copying
+                Ok(var_info.as_fat_ptr())
             } else {
-                var_info.ir_type.clone()
-            };
-            
-            let result = gen
-                .builder
-                .build_load(var_info.value.clone(), load_type)?;
-            
-            // If it's a pointer type, we need to wrap the loaded value as a FatPtr
-            // For pointer parameters, we use Mixed bank to indicate runtime-determined bank
-            if var_info.ir_type.is_pointer() {
-                Ok(Value::FatPtr(FatPointer {
-                    addr: Box::new(Value::Temp(result)),
-                    bank: BankTag::Mixed,  // Runtime-determined bank
-                }))
-            } else {
-                Ok(Value::Temp(result))
+                // For non-struct parameters, load the value
+                // If it's a pointer type, use simplified FatPtr(I16) type for loading
+                let load_type = if var_info.ir_type.is_pointer() {
+                    crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16))
+                } else {
+                    var_info.ir_type.clone()
+                };
+                
+                let result = gen
+                    .builder
+                    .build_load(var_info.value.clone(), load_type)?;
+                
+                // If it's a pointer type, we need to wrap the loaded value as a FatPtr
+                // For pointer parameters, we use Mixed bank to indicate runtime-determined bank
+                if var_info.ir_type.is_pointer() {
+                    Ok(Value::FatPtr(FatPointer {
+                        addr: Box::new(Value::Temp(result)),
+                        bank: BankTag::Mixed,  // Runtime-determined bank
+                    }))
+                } else {
+                    Ok(Value::Temp(result))
+                }
             }
         } else {
-            // For regular variables, load the value
-            // If it's a pointer type, use simplified FatPtr(I16) type for loading
-            let load_type = if var_info.ir_type.is_pointer() {
-                crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16))
+            // For regular variables, check if it's a struct type
+            if matches!(var_info.ir_type, crate::ir::IrType::Struct { .. }) {
+                // For struct variables, return the pointer to allow proper copying
+                Ok(var_info.as_fat_ptr())
             } else {
-                var_info.ir_type.clone()
-            };
-            
-            let result = gen
-                .builder
-                .build_load(var_info.value.clone(), load_type)?;
-            
-            // If it's a pointer type, wrap it in FatPtr to preserve bank information
-            if var_info.ir_type.is_pointer() {
-                // For local pointer variables that have been loaded, use Mixed bank
-                // The backend will track the actual bank from the load instruction
-                Ok(Value::FatPtr(FatPointer {
-                    addr: Box::new(Value::Temp(result)),
-                    bank: BankTag::Mixed,  // Runtime-determined bank
-                }))
-            } else {
-                Ok(Value::Temp(result))
+                // For non-struct variables, load the value
+                // If it's a pointer type, use simplified FatPtr(I16) type for loading
+                let load_type = if var_info.ir_type.is_pointer() {
+                    crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16))
+                } else {
+                    var_info.ir_type.clone()
+                };
+                
+                let result = gen
+                    .builder
+                    .build_load(var_info.value.clone(), load_type)?;
+                
+                // If it's a pointer type, wrap it in FatPtr to preserve bank information
+                if var_info.ir_type.is_pointer() {
+                    // For local pointer variables that have been loaded, use Mixed bank
+                    // The backend will track the actual bank from the load instruction
+                    Ok(Value::FatPtr(FatPointer {
+                        addr: Box::new(Value::Temp(result)),
+                        bank: BankTag::Mixed,  // Runtime-determined bank
+                    }))
+                } else {
+                    Ok(Value::Temp(result))
+                }
             }
         }
     } else {

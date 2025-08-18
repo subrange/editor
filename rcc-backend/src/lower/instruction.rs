@@ -84,22 +84,25 @@ pub fn lower_instruction(
         Instruction::GetElementPtr { result, ptr, indices, result_type } => {
             debug!("V2: GEP: t{result} = gep {ptr:?} + {indices:?}");
             
-            // IMPORTANT: The frontend already provides the correct offset for struct fields.
+            // IMPORTANT: We need to distinguish between struct field access and array indexing
             // For struct field access, the index IS the offset in words, not an array index.
-            // We detect struct field access when:
-            // 1. We have exactly one index
-            // 2. The index is a constant
-            // 3. The base pointer type indicates a struct (not an array)
+            // For array indexing, we need to multiply by the element size.
             
-            let element_size = if indices.len() == 1 && matches!(indices[0], Value::Constant(_)) {
-                // This looks like struct field access - the index is already the offset
-                // Use element_size = 1 so lower_gep doesn't multiply the offset
-                1
-            } else if let Some(elem_type) = result_type.element_type() {
-                // Array indexing - we need the actual element size
+            // Check if result_type is an array to determine the element size
+            let element_size = if let Some(elem_type) = result_type.element_type() {
+                // This is accessing an array element or a pointer to something
+                // Get the size of what we're pointing to
                 let size_words = elem_type.size_in_words().unwrap_or(1) as i16;
+                debug!("  GEP result type is array/pointer, element size = {size_words} words");
                 if size_words == 0 { 1 } else { size_words }
+            } else if indices.len() == 1 && matches!(indices[0], Value::Constant(_)) {
+                // Single constant index with no array result type - likely struct field access
+                // The index is already the offset in words
+                debug!("  GEP looks like struct field access, using element_size = 1");
+                1
             } else {
+                // Default case
+                debug!("  GEP default case, using element_size = 1");
                 1
             };
             

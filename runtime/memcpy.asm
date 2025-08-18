@@ -153,50 +153,54 @@ L_memcpy_2:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(10), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f0_op25_t18 has bank info: Stack
 ; LOAD: Using bank register Sb for load
-    LOAD T4, SB, T0
+    LOAD S2, SB, T0
 ; Spill t4 to slot 5
     ADD SC, FP, R0
     ADDI SC, SC, 21
     STORE T6, SB, SC
-    ADD T6, T4, R0
-    ADD S2, S3, T6
+    ADD T3, S2, R0
+    ADD T6, S3, T3
 ; Runtime bank overflow calculation for dynamic GEP
-; Spill t15 to slot 6
+; Spill t14 to slot 6
     ADD SC, FP, R0
     ADDI SC, SC, 22
-    STORE T1, SB, SC
-    LI T1, 4096
-    DIV T3, S2, T1
-; Spill load_f0_op15_t14_bank_val to slot 7
+    STORE T4, SB, SC
+; Spill t15 to slot 7
     ADD SC, FP, R0
     ADDI SC, SC, 23
-    STORE T2, SB, SC
-    MOD T2, S2, T1
-; Base bank info: Dynamic("load_f0_op24_t17_bank_val")
-; Clearing binding for 'gep_new_bank_f0_op30_t19'
-; Spill gep_new_bank_f0_op21_t16 to slot 8
+    STORE T1, SB, SC
+    LI T1, 4096
+    DIV T4, T6, T1
+; Spill load_f0_op15_t14_bank_val to slot 8
     ADD SC, FP, R0
     ADDI SC, SC, 24
+    STORE T2, SB, SC
+    MOD T2, T6, T1
+; Base bank info: Dynamic("load_f0_op24_t17_bank_val")
+; Clearing binding for 'gep_new_bank_f0_op30_t19'
+; Spill gep_new_bank_f0_op21_t16 to slot 9
+    ADD SC, FP, R0
+    ADDI SC, SC, 25
     STORE T7, SB, SC
 ; Computing new bank gep_new_bank_f0_op30_t19 = load_f0_op24_t17_bank_val + bank_delta
-    ADD T7, S1, T3
+    ADD T7, S1, T4
 ; Result bank tracked as Dynamic(gep_new_bank_f0_op30_t19)
-    ADD S2, T2, R0
+    ADD T6, T2, R0
 ; GEP: Setting bank info for t19 to Dynamic("gep_new_bank_f0_op30_t19")
 ; Load instruction: t20 = load FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
 ; LOAD: Pointer t19 has bank info: Dynamic("gep_new_bank_f0_op30_t19")
 ; LOAD: Using bank register T7 for load
-    LOAD T6, T7, S2
-; Reload gep_new_bank_f0_op21_t16 from slot 8
+    LOAD T3, T7, T6
+; Reload gep_new_bank_f0_op21_t16 from slot 9
     ADD SC, FP, R0
-    ADDI SC, SC, 24
-    LOAD T3, SB, SC
-    STORE T6, T3, S0
+    ADDI SC, SC, 25
+    LOAD T4, SB, SC
+    STORE T3, T4, S0
     BEQ R0, R0, L_memcpy_3
 ; Unconditional branch to L_memcpy_3
 ; Invalidated 2 alloca bindings
-; Invalidating GEP bank gep_new_bank_f0_op21_t16 in T3
+; Invalidating GEP bank gep_new_bank_f0_op21_t16 in T4
 ; Invalidating GEP bank gep_new_bank_f0_op30_t19 in T7
 ; Invalidated 2 GEP bank bindings
 L_memcpy_3:
@@ -208,8 +212,8 @@ L_memcpy_3:
     ADD T1, FP, R0
     ADDI T1, T1, 7
     LOAD T2, SB, T1
-    LI S3, 1
-    ADD T2, T2, S3
+    LI T0, 1
+    ADD T2, T2, T0
     STORE T2, SB, T1
     BEQ R0, R0, L_memcpy_1
 ; Unconditional branch to L_memcpy_1

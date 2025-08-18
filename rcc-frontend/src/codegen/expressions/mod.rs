@@ -15,7 +15,7 @@ pub use binary_ops::{generate_binary_operation, generate_compound_assignment};
 pub use unary_ops::{generate_unary_operation, generate_lvalue_address};
 pub use pointer_ops::{generate_pointer_arithmetic, generate_pointer_difference, generate_array_index, generate_pointer_compound_assignment};
 pub use function_calls::generate_function_call;
-pub use assignments::generate_assignment;
+pub use assignments::{generate_assignment, copy_struct};
 pub use misc_ops::{generate_sizeof_expr, generate_sizeof_type, generate_array_initializer};
 
 use super::errors::CodegenError;
@@ -366,13 +366,19 @@ impl<'a> TypedExpressionGenerator<'a> {
                     field_type_ir.clone()
                 )?;
                 
-                // Check if the field is an array type or pointer type
-                // Arrays should decay to pointers when accessed (not loaded)
+                // Check if the field is an array type, struct type, or pointer type
+                // Arrays and structs should decay to pointers when accessed (not loaded)
                 // Pointers should be returned as FatPtr for further operations
                 match expr_type {
                     Type::Array { .. } => {
                         // For array fields, return the pointer to the first element
                         // This allows array indexing to work: buf.data[i]
+                        Ok(field_ptr)
+                    }
+                    Type::Struct { .. } => {
+                        // For struct fields, return the pointer to the struct
+                        // This allows struct assignment to work properly: dest.field = src
+                        // The assignment operator will handle the actual copying
                         Ok(field_ptr)
                     }
                     Type::Pointer { .. } => {
@@ -392,7 +398,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                         }))
                     }
                     _ => {
-                        // For other fields, load the value normally
+                        // For other fields (scalars), load the value normally
                         let temp_id = self.builder.build_load(field_ptr, field_type_ir)
                             .map_err(|e| CodegenError::InternalError {
                                 message: e,

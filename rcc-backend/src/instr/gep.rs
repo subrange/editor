@@ -392,9 +392,25 @@ pub fn lower_gep(
     // This ensures the register manager knows what's in the register after GEP
     mgr.bind_value_to_register(result_name.clone(), result_addr_reg);
 
-    // Free base address register if it's not the result
+    // Free the base address register only if it's different from the result
+    // and it was allocated for a constant (not a temp that might be reused)
     if base_addr_reg != result_addr_reg {
-        mgr.free_register(base_addr_reg);
+        // Check if the base register was allocated for a constant
+        if let Value::FatPtr(fp) = base_ptr {
+            if matches!(fp.addr.as_ref(), Value::Constant(_)) {
+                // This register was allocated just for a constant, safe to free
+                mgr.free_register(base_addr_reg);
+                trace!("  Freed base register {base_addr_reg:?} (was constant)");
+            } else {
+                // Base contains a temp - keep it for potential reuse
+                trace!("  Keeping base register {base_addr_reg:?} (contains temp)");
+            }
+        } else {
+            // Base is a plain temp - keep it for potential reuse
+            trace!("  Keeping base register {base_addr_reg:?} (is temp)");
+        }
+    } else {
+        trace!("  Base register reused as result");
     }
 
     debug!("lower_gep complete: generated {} instructions", insts.len());
