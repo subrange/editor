@@ -10,9 +10,9 @@ pub mod statements;
 pub mod struct_layout;
 
 use crate::ast::*;
-use rcc_common::{CompilerError, SymbolTable, SymbolId, SourceLocation, SourceSpan};
+use rcc_common::{CompilerError, SymbolTable, SymbolId, SourceLocation};
 use std::collections::HashMap;
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 pub use errors::SemanticError;
 use crate::semantic::expressions::ExpressionAnalyzer;

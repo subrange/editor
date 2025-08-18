@@ -82,7 +82,7 @@ fn main() -> Result<()> {
     if let Some(output_path) = args.output {
         fs::write(output_path, output)?;
     } else {
-        print!("{}", output);
+        print!("{output}");
     }
 
     Ok(())

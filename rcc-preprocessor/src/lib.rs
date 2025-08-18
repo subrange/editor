@@ -5,7 +5,7 @@ pub mod tests;
 
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub use lexer::Token;
 pub use parser::Directive;
@@ -237,7 +237,7 @@ impl Preprocessor {
                     if next_ch == '/' {
                         // Line comment - skip to end of line
                         chars.next(); // consume second '/'
-                        while let Some(c) = chars.next() {
+                        for c in chars.by_ref() {
                             if c == '\n' {
                                 result.push('\n');
                                 break;
@@ -247,7 +247,7 @@ impl Preprocessor {
                         // Block comment
                         chars.next(); // consume '*'
                         let mut prev = '\0';
-                        while let Some(c) = chars.next() {
+                        for c in chars.by_ref() {
                             if prev == '*' && c == '/' {
                                 result.push(' '); // Replace with space
                                 break;
@@ -381,9 +381,9 @@ impl Preprocessor {
     fn handle_line(&self, directive: Directive) -> Result<String> {
         if let Directive::Line { number, file } = directive {
             if let Some(file) = file {
-                Ok(format!("#line {} \"{}\"\n", number, file))
+                Ok(format!("#line {number} \"{file}\"\n"))
             } else {
-                Ok(format!("#line {}\n", number))
+                Ok(format!("#line {number}\n"))
             }
         } else {
             Ok(String::new())

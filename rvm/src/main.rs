@@ -168,7 +168,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(seed) = rng_seed {
         vm.set_rng_seed(seed);
         if verbose {
-            println!("RNG seed set to: 0x{:08X}", seed);
+            println!("RNG seed set to: 0x{seed:08X}");
         }
     }
     
@@ -274,14 +274,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Run normally with optional frequency limiting
         if let Some(freq) = frequency {
             if verbose {
-                println!("Running at {} Hz", freq);
+                println!("Running at {freq} Hz");
             }
             run_with_frequency(&mut vm, freq)?;
-        } else {
-            if let Err(e) = vm.run() {
-                eprintln!("Runtime error: {e}");
-                process::exit(1);
-            }
+        } else if let Err(e) = vm.run() {
+            eprintln!("Runtime error: {e}");
+            process::exit(1);
         }
     }
     
@@ -316,7 +314,7 @@ fn parse_frequency(s: &str) -> Result<u64, String> {
         parse_float_with_multiplier(num_str, 1)
     } else {
         // Try to parse as plain number (assumed to be Hz)
-        s.parse::<u64>().map_err(|_| format!("Invalid frequency value: {}", s))
+        s.parse::<u64>().map_err(|_| format!("Invalid frequency value: {s}"))
     }
 }
 
@@ -325,7 +323,7 @@ fn parse_float_with_multiplier(s: &str, multiplier: u64) -> Result<u64, String> 
     if let Ok(f) = s.parse::<f64>() {
         Ok((f * multiplier as f64) as u64)
     } else {
-        Err(format!("Invalid numeric value: {}", s))
+        Err(format!("Invalid numeric value: {s}"))
     }
 }
 

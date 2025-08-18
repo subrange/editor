@@ -404,7 +404,7 @@ pub fn type_expression(
                     fields.clone()
                 }
                 _ => return Err(TypeError::TypeMismatch(
-                    format!("Member access requires struct type, got {:?}", resolved_struct_type)
+                    format!("Member access requires struct type, got {resolved_struct_type:?}")
                 ))
             };
             

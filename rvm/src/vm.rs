@@ -475,7 +475,7 @@ impl VM {
     
     // Handle display mode changes (entering/exiting TEXT40 mode)
     fn handle_display_mode_change(&mut self, new_mode: u16) {
-        use std::io::{self, Write};
+        
         
         // Exit current mode
         if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
@@ -578,7 +578,7 @@ impl VM {
                         let _ = stderr.execute(SetBackgroundColor(theme_to_terminal(bg_color)));
                         
                         // Print character
-                        if ch >= 32 && ch < 127 {
+                        if (32..127).contains(&ch) {
                             let _ = stderr.write(&[ch]);
                         } else if ch == 0 {
                             let _ = stderr.write(b" ");
@@ -610,7 +610,7 @@ impl VM {
                         let cell = self.memory[addr];
                         let ch = (cell & 0xFF) as u8;
                         // Print ASCII character or '.' for non-printable
-                        if ch >= 32 && ch < 127 {
+                        if (32..127).contains(&ch) {
                             eprint!("{}", ch as char);
                         } else if ch == 0 {
                             eprint!(" ");

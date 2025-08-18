@@ -208,7 +208,7 @@ impl Parser {
     pub fn parse_inline_asm_statement(&mut self) -> Result<StatementKind, CompilerError> {
         // Extended syntax: asm("code" : outputs : inputs : clobbers);
         // Basic syntax: asm("code");
-        use crate::ast::statements::AsmOperand;
+        
         
         self.expect(TokenType::LeftParen, "inline assembly")?;
         

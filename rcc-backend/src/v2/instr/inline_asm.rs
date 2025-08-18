@@ -9,10 +9,9 @@
 use rcc_frontend::ir::{AsmOperandIR, Value};
 use rcc_codegen::{AsmInst, Reg};
 use rcc_common::{CompilerError, SourceLocation};
-use crate::v2::{RegisterPressureManager, BankInfo};
+use crate::v2::RegisterPressureManager;
 use crate::v2::naming::NameGenerator;
-use crate::v2::instr::helpers::get_value_register;
-use log::{debug, trace, warn};
+use log::{debug, warn};
 use std::collections::{HashMap, HashSet};
 
 /// Parsed constraint information
@@ -80,7 +79,7 @@ fn parse_clobbers(clobbers: &[String]) -> HashSet<Reg> {
         if let Some(reg) = Reg::from_str(clobber) {
             clobbered.insert(reg);
         } else {
-            warn!("Unknown clobber register: {}", clobber);
+            warn!("Unknown clobber register: {clobber}");
         }
     }
     
@@ -116,7 +115,7 @@ fn allocate_operand_registers(
             // Get the value name for tracking
             let value_name = match &output.value {
                 Value::Temp(t) => naming.temp_name(*t),
-                _ => format!("asm_output_{}", idx),
+                _ => format!("asm_output_{idx}"),
             };
             
             // Get a register from the manager
@@ -147,7 +146,7 @@ fn allocate_operand_registers(
             // This input is tied to an output, use the same register
             if output_idx >= allocated_outputs.len() {
                 return Err(CompilerError::codegen_error(
-                    format!("Invalid tied operand index: {}", output_idx),
+                    format!("Invalid tied operand index: {output_idx}"),
                     SourceLocation::new_simple(0, 0),
                 ));
             }
@@ -155,7 +154,7 @@ fn allocate_operand_registers(
             let output_reg = allocated_outputs[output_idx].register;
             let value_name = match &input.value {
                 Value::Temp(t) => naming.temp_name(*t),
-                _ => format!("asm_input_{}", idx),
+                _ => format!("asm_input_{idx}"),
             };
             
             allocated_inputs.push(AllocatedOperand {
@@ -172,7 +171,7 @@ fn allocate_operand_registers(
                 let value_name = match &input.value {
                     Value::Temp(t) => naming.temp_name(*t),
                     Value::Constant(c) => naming.const_value(*c),
-                    _ => format!("asm_input_{}", idx),
+                    _ => format!("asm_input_{idx}"),
                 };
                 
                 // Get a register from the manager
@@ -221,7 +220,7 @@ fn substitute_placeholders(
     
     // Process outputs
     for (idx, op) in allocated_outputs.iter().enumerate() {
-        let placeholder = format!("%{}", idx);
+        let placeholder = format!("%{idx}");
         let reg_name = format!("{:?}", op.register);
         result = result.replace(&placeholder, &reg_name);
     }
@@ -313,7 +312,7 @@ fn generate_teardown_code(
                 // No stores here. Normal codegen will use this binding.
             }
             other => {
-                warn!("Unsupported output value target: {:?}", other);
+                warn!("Unsupported output value target: {other:?}");
             }
         }
     }
@@ -331,10 +330,10 @@ pub fn lower_inline_asm_extended(
     clobbers: &[String],
 ) -> Result<Vec<AsmInst>, CompilerError> {
     debug!("Lowering extended inline assembly:");
-    debug!("  Assembly: {}", assembly);
-    debug!("  Outputs: {:?}", outputs);
-    debug!("  Inputs: {:?}", inputs);
-    debug!("  Clobbers: {:?}", clobbers);
+    debug!("  Assembly: {assembly}");
+    debug!("  Outputs: {outputs:?}");
+    debug!("  Inputs: {inputs:?}");
+    debug!("  Clobbers: {clobbers:?}");
 
     let mut insts = Vec::new();
 

@@ -266,7 +266,7 @@ impl TuiRunner {
                     SelectedItemType::Test(_) => {
                         // Run the test
                         if let Err(e) = self.run_selected_test() {
-                            self.app.append_output(&format!("Error running test: {}\n", e));
+                            self.app.append_output(&format!("Error running test: {e}\n"));
                         }
                     }
                     SelectedItemType::None => {}
@@ -278,18 +278,18 @@ impl TuiRunner {
             }
             KeyCode::Char('d') => {
                 if let Err(e) = self.debug_selected_test(terminal) {
-                    self.app.append_output(&format!("Error debugging test: {}\n", e));
+                    self.app.append_output(&format!("Error debugging test: {e}\n"));
                 }
             }
             KeyCode::Char('r') => {
                 if let Err(e) = self.run_all_visible_tests() {
-                    self.app.append_output(&format!("Error running tests: {}\n", e));
+                    self.app.append_output(&format!("Error running tests: {e}\n"));
                 }
             }
             KeyCode::Char('R') => {
                 // Shift+R - run all tests in current category
                 if let Err(e) = self.run_category_tests() {
-                    self.app.append_output(&format!("Error running category tests: {}\n", e));
+                    self.app.append_output(&format!("Error running category tests: {e}\n"));
                 }
             }
             KeyCode::Char('c') => {

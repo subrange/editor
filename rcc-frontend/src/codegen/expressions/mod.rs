@@ -231,7 +231,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                         // Allocate temporary space for the array
                         let array_ptr = self.builder.build_alloca(array_ir_type, None)
                             .map_err(|e| CodegenError::InternalError {
-                                message: format!("Failed to allocate space for compound literal: {}", e),
+                                message: format!("Failed to allocate space for compound literal: {e}"),
                                 location: rcc_common::SourceLocation::new_simple(0, 0),
                             })?;
                         
@@ -250,7 +250,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                             // Store the element value
                             self.builder.build_store(elem_value, elem_ptr)
                                 .map_err(|e| CodegenError::InternalError {
-                                    message: format!("Failed to store array element: {}", e),
+                                    message: format!("Failed to store array element: {e}"),
                                     location: rcc_common::SourceLocation::new_simple(0, 0),
                                 })?;
                         }
@@ -276,7 +276,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                         // Allocate temporary space
                         let struct_ptr = self.builder.build_alloca(struct_ir_type, None)
                             .map_err(|e| CodegenError::InternalError {
-                                message: format!("Failed to allocate space for struct compound literal: {}", e),
+                                message: format!("Failed to allocate space for struct compound literal: {e}"),
                                 location: rcc_common::SourceLocation::new_simple(0, 0),
                             })?;
                         
@@ -294,7 +294,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                                 
                                 self.builder.build_store(field_value, field_ptr)
                                     .map_err(|e| CodegenError::InternalError {
-                                        message: format!("Failed to store struct field: {}", e),
+                                        message: format!("Failed to store struct field: {e}"),
                                         location: rcc_common::SourceLocation::new_simple(0, 0),
                                     })?;
                             }
@@ -310,7 +310,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                         let scalar_ir_type = convert_type_default(expr_type)?;
                         let scalar_ptr = self.builder.build_alloca(scalar_ir_type.clone(), None)
                             .map_err(|e| CodegenError::InternalError {
-                                message: format!("Failed to allocate space for scalar compound literal: {}", e),
+                                message: format!("Failed to allocate space for scalar compound literal: {e}"),
                                 location: rcc_common::SourceLocation::new_simple(0, 0),
                             })?;
                         
@@ -319,7 +319,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                             let value = self.generate(first)?;
                             self.builder.build_store(value, scalar_ptr.clone())
                                 .map_err(|e| CodegenError::InternalError {
-                                    message: format!("Failed to store scalar value: {}", e),
+                                    message: format!("Failed to store scalar value: {e}"),
                                     location: rcc_common::SourceLocation::new_simple(0, 0),
                                 })?;
                         }
@@ -413,7 +413,7 @@ impl<'a> TypedExpressionGenerator<'a> {
                 // Allocate space for the result value
                 let result_ptr = self.builder.build_alloca(ir_type.clone(), None)
                     .map_err(|e| CodegenError::InternalError {
-                        message: format!("Failed to allocate temporary for ternary: {}", e),
+                        message: format!("Failed to allocate temporary for ternary: {e}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     })?;
                 
@@ -425,27 +425,27 @@ impl<'a> TypedExpressionGenerator<'a> {
                 // Branch based on condition
                 self.builder.build_branch_cond(cond_value, then_label, else_label)
                     .map_err(|e| CodegenError::InternalError {
-                        message: format!("Failed to generate conditional branch: {}", e),
+                        message: format!("Failed to generate conditional branch: {e}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     })?;
                 
                 // Generate then branch
                 self.builder.create_block(then_label)
                     .map_err(|e| CodegenError::InternalError {
-                        message: format!("Failed to create then block: {}", e),
+                        message: format!("Failed to create then block: {e}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     })?;
                 let then_value = self.generate(then_expr)?;
                 self.builder.build_store(then_value, result_ptr.clone())
                     .map_err(|e| CodegenError::InternalError {
-                        message: format!("Failed to store then value: {}", e),
+                        message: format!("Failed to store then value: {e}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     })?;
                 // Only create branch if block doesn't already have a terminator
                 if !self.builder.current_block_has_terminator() {
                     self.builder.build_branch(end_label)
                         .map_err(|e| CodegenError::InternalError {
-                            message: format!("Failed to branch to end: {}", e),
+                            message: format!("Failed to branch to end: {e}"),
                             location: rcc_common::SourceLocation::new_simple(0, 0),
                         })?;
                 }
@@ -453,20 +453,20 @@ impl<'a> TypedExpressionGenerator<'a> {
                 // Generate else branch
                 self.builder.create_block(else_label)
                     .map_err(|e| CodegenError::InternalError {
-                        message: format!("Failed to create else block: {}", e),
+                        message: format!("Failed to create else block: {e}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     })?;
                 let else_value = self.generate(else_expr)?;
                 self.builder.build_store(else_value, result_ptr.clone())
                     .map_err(|e| CodegenError::InternalError {
-                        message: format!("Failed to store else value: {}", e),
+                        message: format!("Failed to store else value: {e}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     })?;
                 // Only create branch if block doesn't already have a terminator
                 if !self.builder.current_block_has_terminator() {
                     self.builder.build_branch(end_label)
                         .map_err(|e| CodegenError::InternalError {
-                            message: format!("Failed to branch to end: {}", e),
+                            message: format!("Failed to branch to end: {e}"),
                             location: rcc_common::SourceLocation::new_simple(0, 0),
                         })?;
                 }
@@ -474,14 +474,14 @@ impl<'a> TypedExpressionGenerator<'a> {
                 // Create end block and load the result
                 self.builder.create_block(end_label)
                     .map_err(|e| CodegenError::InternalError {
-                        message: format!("Failed to create end block: {}", e),
+                        message: format!("Failed to create end block: {e}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     })?;
                 
                 // Load the value from the temporary
                 let result = self.builder.build_load(result_ptr, ir_type)
                     .map_err(|e| CodegenError::InternalError {
-                        message: format!("Failed to load result: {}", e),
+                        message: format!("Failed to load result: {e}"),
                         location: rcc_common::SourceLocation::new_simple(0, 0),
                     })?;
                 

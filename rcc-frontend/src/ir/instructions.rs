@@ -233,7 +233,7 @@ impl fmt::Display for Instruction {
                         write!(f, " : ")?;
                         for (i, clob) in clobbers.iter().enumerate() {
                             if i > 0 { write!(f, ", ")?; }
-                            write!(f, "\"{}\"", clob)?;
+                            write!(f, "\"{clob}\"")?;
                         }
                     }
                 }

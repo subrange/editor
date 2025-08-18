@@ -226,9 +226,9 @@ fn normalize_category_to_path(category: &str) -> String {
     
     // For nested categories, ensure proper path separators
     if normalized.contains('/') {
-        format!("tests/{}", normalized)
+        format!("tests/{normalized}")
     } else {
-        format!("tests/{}", normalized)
+        format!("tests/{normalized}")
     }
 }
 
@@ -463,7 +463,7 @@ fn list_categories(tests_file: &Path) -> Result<()> {
     // Process known failures
     for failure in &config.known_failures {
         let category = get_category_from_path(&failure.file);
-        let category_with_prefix = format!("{} (known failures)", category);
+        let category_with_prefix = format!("{category} (known failures)");
         *categories.entry(category_with_prefix).or_insert(0) += 1;
     }
     
@@ -473,7 +473,7 @@ fn list_categories(tests_file: &Path) -> Result<()> {
     
     let mut total_tests = 0;
     for (category, count) in &categories {
-        println!("{:<40} {} tests", category, count);
+        println!("{category:<40} {count} tests");
         total_tests += count;
     }
     

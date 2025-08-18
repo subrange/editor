@@ -1,7 +1,7 @@
 //! Global variable code generation
 
 use std::collections::{HashMap, HashSet};
-use crate::ir::{Value, IrType, IrBuilder, Module, GlobalVariable, Linkage};
+use crate::ir::{Value, IrBuilder, Module, GlobalVariable, Linkage};
 use crate::typed_ast::TypedExpr;
 use crate::types::{Type, BankTag};
 use crate::CompilerError;

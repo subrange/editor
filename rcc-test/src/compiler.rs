@@ -305,7 +305,7 @@ pub fn compile_c_file(
             success: false,
             output: String::new(),
             has_provenance_warning: false,
-            error_message: Some(format!("Compilation failed: {}", error_msg)),
+            error_message: Some(format!("Compilation failed: {error_msg}")),
         });
     }
 

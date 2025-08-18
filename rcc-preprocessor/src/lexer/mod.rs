@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -203,7 +203,7 @@ impl Lexer {
                 if !self.is_at_end() {
                     self.advance(); // closing quote
                 }
-                Some(self.make_token(TokenType::StringLiteral(text.clone()), &format!("\"{}\"", text), start_line, start_column))
+                Some(self.make_token(TokenType::StringLiteral(text.clone()), &format!("\"{text}\""), start_line, start_column))
             }
             '\'' => {
                 // Character literal - preserve the entire literal including escape sequences
@@ -418,7 +418,7 @@ impl Lexer {
             _ => TokenType::Hash, // Unknown directive
         };
         
-        Some(self.make_token(token_type, &format!("#{}", directive), start_line, start_column))
+        Some(self.make_token(token_type, &format!("#{directive}"), start_line, start_column))
     }
     
     fn advance(&mut self) -> char {
