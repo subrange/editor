@@ -423,4 +423,129 @@ mod tests {
         assert!(!output.contains("outer_not_a"));
         assert!(output.contains("always"));
     }
+
+    #[test]
+    fn test_string_with_double_slash() {
+        let input = r#"char* url = "http://example.com";"#;
+        let output = preprocess(input).unwrap();
+        assert_eq!(output.trim(), r#"char* url = "http://example.com";"#);
+        assert!(output.contains("http://example.com"));
+    }
+
+    #[test]
+    fn test_string_with_comment_like_content() {
+        let input = r#"char* msg = "Use // for comments and /* */ for blocks";"#;
+        let output = preprocess(input).unwrap();
+        assert!(output.contains("// for comments"));
+        assert!(output.contains("/* */ for blocks"));
+    }
+
+    #[test]
+    fn test_string_with_hash() {
+        let input = r##"char* channel = "#general";"##;
+        let output = preprocess(input).unwrap();
+        assert_eq!(output.trim(), r##"char* channel = "#general";"##);
+        assert!(output.contains("#general"));
+    }
+
+    #[test]
+    fn test_string_with_preprocessor_like_content() {
+        let input = r##"char* directive = "#include <stdio.h>";"##;
+        let output = preprocess(input).unwrap();
+        assert!(output.contains("#include <stdio.h>"));
+    }
+
+    #[test]
+    fn test_string_with_escape_sequences() {
+        let input = r#"char* str = "Line 1\nLine 2\tTabbed\\";"#;
+        let output = preprocess(input).unwrap();
+        assert!(output.contains(r#""Line 1\nLine 2\tTabbed\\""#));
+    }
+
+    #[test]
+    fn test_string_with_escaped_quotes() {
+        let input = r#"char* quoted = "He said \"Hello\"";"#;
+        let output = preprocess(input).unwrap();
+        assert!(output.contains(r#""He said \"Hello\"""#));
+    }
+
+    #[test]
+    fn test_char_literal_with_slash() {
+        let input = "char c = '/';";
+        let output = preprocess(input).unwrap();
+        assert_eq!(output.trim(), "char c = '/';");
+    }
+
+    #[test]
+    fn test_char_literal_with_hash() {
+        let input = "char c = '#';";
+        let output = preprocess(input).unwrap();
+        assert_eq!(output.trim(), "char c = '#';");
+    }
+
+    #[test]
+    fn test_mixed_strings_and_comments() {
+        let input = indoc! {r#"
+            // Real comment
+            char* str1 = "Not // a comment";
+            /* Real block comment */
+            char* str2 = "Not /* a */ comment";
+            char* str3 = "URL: http://test.com"; // Actual comment
+        "#};
+        let output = preprocess(input).unwrap();
+        assert!(!output.contains("Real comment"));
+        assert!(!output.contains("Real block comment"));
+        assert!(!output.contains("Actual comment"));
+        assert!(output.contains(r#""Not // a comment""#));
+        assert!(output.contains(r#""Not /* a */ comment""#));
+        assert!(output.contains("http://test.com"));
+    }
+
+    #[test]
+    fn test_multiline_string_literal() {
+        let input = indoc! {r#"
+            char* multi = "Line 1\
+            Line 2\
+            Line 3";
+        "#};
+        let output = preprocess(input).unwrap();
+        // Should preserve the multiline string literal
+        assert!(output.contains("Line 1"));
+    }
+
+    #[test]
+    fn test_adjacent_string_literals() {
+        let input = r#"char* str = "Part 1" " Part 2" " Part 3";"#;
+        let output = preprocess(input).unwrap();
+        // The preprocessor should preserve the string literals as-is
+        assert_eq!(output.trim(), r#"char* str = "Part 1" " Part 2" " Part 3";"#);
+    }
+
+    #[test]
+    fn test_string_in_macro() {
+        let input = indoc! {r#"
+            #define URL "http://example.com"
+            char* site = URL;
+        "#};
+        let output = preprocess(input).unwrap();
+        assert!(output.contains(r#""http://example.com""#));
+    }
+
+    #[test]
+    fn test_string_with_macro_like_content() {
+        let input = indoc! {r#"
+            #define MSG "Use MAX_SIZE for limit"
+            char* help = MSG;
+        "#};
+        let output = preprocess(input).unwrap();
+        // MAX_SIZE inside the string should not be expanded
+        assert!(output.contains("Use MAX_SIZE for limit"));
+    }
+
+    #[test]
+    fn test_complex_escape_in_string() {
+        let input = r#"char* complex = "Tab:\t Quote:\" Backslash:\\ Newline:\n";"#;
+        let output = preprocess(input).unwrap();
+        assert!(output.contains(r#"Tab:\t Quote:\" Backslash:\\ Newline:\n"#));
+    }
 }

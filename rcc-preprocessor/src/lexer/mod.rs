@@ -184,13 +184,13 @@ impl Lexer {
                 }
             }
             '"' => {
-                // String literal
+                // String literal - preserve everything including escape sequences
                 let mut text = String::new();
                 while !self.is_at_end() && self.peek() != '"' {
                     if self.peek() == '\\' {
-                        self.advance();
+                        text.push(self.advance()); // Add the backslash
                         if !self.is_at_end() {
-                            text.push(self.advance());
+                            text.push(self.advance()); // Add the escaped character
                         }
                     } else {
                         if self.peek() == '\n' {

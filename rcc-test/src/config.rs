@@ -95,17 +95,26 @@ pub fn load_tests(_path: &Path) -> Result<TestConfig> {
 
 /// Discover tests by scanning for .meta.json files
 pub fn discover_tests() -> Result<TestConfig> {
+    discover_tests_with_options(false)
+}
+
+/// Discover tests with option to include examples
+pub fn discover_tests_with_options(include_examples: bool) -> Result<TestConfig> {
     let mut tests = Vec::new();
     let mut known_failures = Vec::new();
     
     // Define the test directories to scan
-    let test_dirs = vec![
+    let mut test_dirs = vec![
         "c-test/tests",
         "c-test/tests-runtime", 
         "c-test/tests-known-failures",
         "c-test/known-failures",
-        "c-test/examples",
     ];
+    
+    // Only include examples if explicitly requested
+    if include_examples {
+        test_dirs.push("c-test/examples");
+    }
     
     for dir in test_dirs {
         let dir_path = Path::new(dir);

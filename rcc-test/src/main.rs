@@ -53,8 +53,12 @@ fn run() -> Result<()> {
             return Ok(());
         }
 
-        Some(Command::List { names_only, include_failures }) => {
-            list_tests(&cli.tests_file, names_only, include_failures)?;
+        Some(Command::List { names_only, include_failures, categories }) => {
+            if categories {
+                list_categories(&cli.tests_file)?;
+            } else {
+                list_tests(&cli.tests_file, names_only, include_failures)?;
+            }
             return Ok(());
         }
 
@@ -101,6 +105,9 @@ fn run() -> Result<()> {
                 for test in &cli.tests {
                     debug_test(test, &cli, &tools)?;
                 }
+            } else if let Some(ref category) = cli.category {
+                // Run tests by category
+                run_tests_by_category(&cli, &tools, category)?;
             } else {
                 // Default to run command with no filter
                 run_tests(&cli, &tools, None)?;
@@ -145,6 +152,84 @@ fn detect_project_root() -> Result<PathBuf> {
 
 fn run_tests(cli: &Cli, tools: &ToolPaths, filter: Option<String>) -> Result<()> {
     run_tests_with_frequency(cli, tools, filter, None)
+}
+
+fn run_tests_by_category(cli: &Cli, tools: &ToolPaths, category: &str) -> Result<()> {
+    // Build runtime first
+    println!("Building runtime library (bank_size: {})...", cli.bank_size);
+    build_runtime(tools, cli.bank_size)?;
+    
+    // Load test configuration
+    let test_config = config::load_tests(&cli.tests_file)?;
+    
+    // Filter tests by category
+    let category_path = normalize_category_to_path(category);
+    let filtered_tests: Vec<String> = test_config
+        .tests
+        .iter()
+        .filter(|t| {
+            let test_path = t.file.to_string_lossy();
+            // Check if the test path contains the category path
+            test_path.contains(&category_path)
+        })
+        .map(|t| {
+            t.file.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string()
+        })
+        .collect();
+    
+    if filtered_tests.is_empty() {
+        println!("No tests found in category: {category}");
+        return Ok(());
+    }
+    
+    println!("Running {} tests in category '{}'", filtered_tests.len(), category);
+    
+    // Create run configuration
+    let run_config = RunConfig {
+        backend: cli.backend.to_backend(),
+        timeout_secs: cli.timeout,
+        bank_size: cli.bank_size,
+        verbose: cli.verbose,
+        no_cleanup: cli.no_cleanup,
+        parallel: !cli.no_parallel,
+        debug_mode: cli.debug,
+        frequency: None,
+    };
+    
+    // Create test runner
+    let runner = TestRunner::new(run_config, tools.clone());
+    
+    // Run the filtered tests
+    let summary = runner.run_tests(&filtered_tests, &test_config)?;
+    
+    // Print summary
+    summary.print();
+    
+    // Clean up if requested
+    if !cli.no_cleanup {
+        let count = cleanup_build_dir(&cli.build_dir)?;
+        if cli.verbose {
+            println!("\nCleaned up {count} files");
+        }
+    }
+    
+    process::exit(summary.exit_code())
+}
+
+fn normalize_category_to_path(category: &str) -> String {
+    // Convert category names like "core" or "memory/arrays" to path segments
+    // that match the directory structure under c-test/tests/
+    let normalized = category.to_lowercase().replace('-', "_");
+    
+    // For nested categories, ensure proper path separators
+    if normalized.contains('/') {
+        format!("tests/{}", normalized)
+    } else {
+        format!("tests/{}", normalized)
+    }
 }
 
 fn run_tests_with_frequency(cli: &Cli, tools: &ToolPaths, filter: Option<String>, frequency: Option<String>) -> Result<()> {
@@ -359,6 +444,96 @@ fn list_tests(tests_file: &Path, names_only: bool, include_failures: bool) -> Re
     }
     
     Ok(())
+}
+
+fn list_categories(tests_file: &Path) -> Result<()> {
+    use std::collections::BTreeMap;
+    
+    let config = config::load_tests(tests_file)?;
+    
+    // Collect tests into categories
+    let mut categories: BTreeMap<String, usize> = BTreeMap::new();
+    
+    // Process regular tests
+    for test in &config.tests {
+        let category = get_category_from_path(&test.file);
+        *categories.entry(category).or_insert(0) += 1;
+    }
+    
+    // Process known failures
+    for failure in &config.known_failures {
+        let category = get_category_from_path(&failure.file);
+        let category_with_prefix = format!("{} (known failures)", category);
+        *categories.entry(category_with_prefix).or_insert(0) += 1;
+    }
+    
+    // Print categories
+    println!("Available test categories:");
+    println!("{}", "=".repeat(60));
+    
+    let mut total_tests = 0;
+    for (category, count) in &categories {
+        println!("{:<40} {} tests", category, count);
+        total_tests += count;
+    }
+    
+    println!("{}", "=".repeat(60));
+    println!("Total: {} categories, {} tests", categories.len(), total_tests);
+    
+    // Print usage hint
+    println!("\nUsage: rct -c <category> to run tests in a specific category");
+    println!("Example: rct -c core/typedef");
+    
+    Ok(())
+}
+
+fn get_category_from_path(path: &PathBuf) -> String {
+    let path_str = path.to_string_lossy();
+    let parts: Vec<&str> = path_str.split('/').collect();
+    
+    // Find where test directories start
+    let mut start_idx = None;
+    for (i, part) in parts.iter().enumerate() {
+        if *part == "tests" || *part == "tests-runtime" || 
+           *part == "tests-known-failures" || *part == "known-failures" || 
+           *part == "examples" {
+            start_idx = Some(i);
+            break;
+        }
+    }
+    
+    if let Some(idx) = start_idx {
+        let root = parts[idx];
+        
+        match root {
+            "tests-runtime" => "runtime".to_string(),
+            "examples" => "examples".to_string(),
+            "tests-known-failures" | "known-failures" => {
+                // Check for subdirectory
+                if parts.len() > idx + 2 {
+                    format!("known-failures/{}", parts[idx + 1])
+                } else {
+                    "known-failures".to_string()
+                }
+            },
+            "tests" => {
+                // Build category from path components (excluding the filename)
+                let mut category_parts = Vec::new();
+                for i in (idx + 1)..(parts.len() - 1) {
+                    category_parts.push(parts[i]);
+                }
+                
+                if category_parts.is_empty() {
+                    "uncategorized".to_string()
+                } else {
+                    category_parts.join("/")
+                }
+            },
+            _ => "uncategorized".to_string()
+        }
+    } else {
+        "uncategorized".to_string()
+    }
 }
 
 fn show_stats(tests_file: &Path) -> Result<()> {

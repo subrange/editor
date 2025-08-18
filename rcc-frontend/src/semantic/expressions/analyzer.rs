@@ -8,11 +8,13 @@ use crate::Type;
 use rcc_common::{CompilerError, SymbolId, SymbolTable};
 use std::collections::HashMap;
 use std::rc::Rc;
+use crate::semantic::expressions::initializers::InitializerAnalyzer;
 use super::binary::BinaryOperationAnalyzer;
 use super::unary::UnaryOperationAnalyzer;
 
 pub struct ExpressionAnalyzer {
-    pub type_analyzer: Rc<RefCell<TypeAnalyzer>>
+    pub type_analyzer: Rc<RefCell<TypeAnalyzer>>,
+    pub initializer_analyzer: Option<Rc<RefCell<InitializerAnalyzer>>>
 }
 
 impl ExpressionAnalyzer {
@@ -20,8 +22,16 @@ impl ExpressionAnalyzer {
         type_analyzer: Rc<RefCell<TypeAnalyzer>>,
     ) -> Self {
         Self {
-            type_analyzer
+            type_analyzer,
+            initializer_analyzer: None,
         }
+    }
+    
+    pub fn add_initializer_analyzer(
+        &mut self,
+        initializer_analyzer: Rc<RefCell<InitializerAnalyzer>>,
+    ) {
+        self.initializer_analyzer = Some(initializer_analyzer);
     }
 
     /// Analyze an expression and infer its type

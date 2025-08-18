@@ -68,6 +68,8 @@ impl SemanticAnalyzer {
             Rc::clone(&type_analyzer),
         )));
         
+        expression_analyzer.borrow_mut().add_initializer_analyzer(Rc::clone(&initializer_analyzer));
+        
         let statement_analyzer = Rc::new(RefCell::new(StatementAnalyzer::new(
             None, // No current function initially
             Rc::clone(&expression_analyzer),

@@ -14,6 +14,10 @@ pub struct Cli {
     #[arg(value_name = "TEST")]
     pub tests: Vec<String>,
 
+    /// Run tests in a specific category (e.g., "core", "memory/arrays")
+    #[arg(short = 'c', long = "category")]
+    pub category: Option<String>,
+
     /// Execution backend
     #[arg(short, long, default_value = "rvm")]
     pub backend: BackendArg,
@@ -103,6 +107,10 @@ pub enum Command {
         /// Include known failures
         #[arg(short, long)]
         include_failures: bool,
+        
+        /// List categories instead of tests
+        #[arg(short = 'c', long)]
+        categories: bool,
     },
     
     /// Build and run a single test interactively

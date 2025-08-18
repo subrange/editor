@@ -198,9 +198,41 @@ impl Preprocessor {
     fn remove_comments(&self, text: &str) -> String {
         let mut result = String::new();
         let mut chars = text.chars().peekable();
+        let mut in_string = false;
+        let mut in_char = false;
+        let mut escape_next = false;
         
         while let Some(ch) = chars.next() {
-            if ch == '/' {
+            // Handle escape sequences
+            if escape_next {
+                result.push(ch);
+                escape_next = false;
+                continue;
+            }
+            
+            // Check for escape character
+            if (in_string || in_char) && ch == '\\' {
+                result.push(ch);
+                escape_next = true;
+                continue;
+            }
+            
+            // Handle string literals
+            if ch == '"' && !in_char {
+                in_string = !in_string;
+                result.push(ch);
+                continue;
+            }
+            
+            // Handle character literals
+            if ch == '\'' && !in_string {
+                in_char = !in_char;
+                result.push(ch);
+                continue;
+            }
+            
+            // Only process comments if we're not inside a string or char literal
+            if !in_string && !in_char && ch == '/' {
                 if let Some(&next_ch) = chars.peek() {
                     if next_ch == '/' {
                         // Line comment - skip to end of line
