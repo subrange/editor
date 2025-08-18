@@ -20,6 +20,22 @@ use rcc_frontend::ir::Value;
 /// When a pointer offset crosses a bank boundary, both the address and bank
 /// must be updated correctly.
 ///
+/// # CRITICAL: Array Indexing vs Struct Field Access
+/// 
+/// This function handles BOTH array indexing and struct field offsets, but they
+/// work differently:
+/// 
+/// - **Array Indexing**: `indices[0]` is an array index that needs to be multiplied
+///   by `element_size` to get the offset in words. Example: `arr[5]` with 2-word
+///   elements gives offset = 5 * 2 = 10 words.
+///
+/// - **Struct Field Access**: `indices[0]` is ALREADY the offset in words! The frontend
+///   has already calculated the field offset. We should NOT multiply it by element_size.
+///   Example: accessing field at offset 1 should use offset = 1, not 1 * field_size.
+///
+/// The caller (instruction.rs) must set `element_size = 1` for struct field access
+/// to prevent unwanted multiplication.
+///
 /// # Bank Overflow Formula
 /// ```text
 /// total_addr = base_addr + (index * element_size_in_cells)
@@ -33,6 +49,7 @@ use rcc_frontend::ir::Value;
 /// - `base_ptr`: Base pointer value (must be a FatPtr with bank info)
 /// - `indices`: Array of indices to apply (typically just one for simple arrays)
 /// - `element_size`: Size of each element in cells (16-bit words)
+///                  MUST BE 1 for struct field access!
 /// - `result_temp`: Temp ID for the result pointer
 ///
 /// # Returns
@@ -128,6 +145,9 @@ pub fn lower_gep(
     // Step 3: Check if we can determine offset statically
     let static_offset = match index {
         Value::Constant(idx) => {
+            // IMPORTANT: This multiplication assumes array indexing!
+            // For struct field access, the caller MUST pass element_size = 1
+            // because idx is already the offset in words, not an array index.
             let offset = *idx as i16 * element_size;
             trace!(
                 "  Static offset calculation: {idx} * {element_size} = {offset}"

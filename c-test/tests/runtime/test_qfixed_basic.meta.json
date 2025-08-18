@@ -1,5 +1,5 @@
 {
-  "use_runtime": true,
+  "expected": "YYYYYYYY",
   "description": "Basic Q16.16 fixed-point arithmetic tests",
-  "expected": "YYYYYYYY"
+  "use_runtime": true
 }

@@ -1,6 +1,6 @@
 {
-  "description": "Compound literal scope and lifetime tests",
-  "expected": "YYYYYY",
+  "skipped": true,
   "use_runtime": true,
-  "skipped": true
+  "expected": "YYYYYY",
+  "description": "Compound literal scope and lifetime tests"
 }

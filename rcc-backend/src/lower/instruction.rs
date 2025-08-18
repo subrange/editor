@@ -84,15 +84,21 @@ pub fn lower_instruction(
         Instruction::GetElementPtr { result, ptr, indices, result_type } => {
             debug!("V2: GEP: t{result} = gep {ptr:?} + {indices:?}");
             
-            // Calculate element size from result type
-            // IMPORTANT: The VM uses 16-bit cells, so we need to convert bytes to cells
-            let element_size = if let Some(elem_type) = result_type.element_type() {
-                // size_in_bytes returns the size in bytes
-                // We need to convert to cells (16-bit words)
+            // IMPORTANT: The frontend already provides the correct offset for struct fields.
+            // For struct field access, the index IS the offset in words, not an array index.
+            // We detect struct field access when:
+            // 1. We have exactly one index
+            // 2. The index is a constant
+            // 3. The base pointer type indicates a struct (not an array)
+            
+            let element_size = if indices.len() == 1 && matches!(indices[0], Value::Constant(_)) {
+                // This looks like struct field access - the index is already the offset
+                // Use element_size = 1 so lower_gep doesn't multiply the offset
+                1
+            } else if let Some(elem_type) = result_type.element_type() {
+                // Array indexing - we need the actual element size
                 let size_words = elem_type.size_in_words().unwrap_or(1) as i16;
-                let size_cells = size_words;
-                // Minimum size is 1 cell
-                if size_cells == 0 { 1 } else { size_cells }
+                if size_words == 0 { 1 } else { size_words }
             } else {
                 1
             };

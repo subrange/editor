@@ -15,9 +15,16 @@ pub fn generate_identifier(
             Ok(var_info.as_fat_ptr())
         } else if gen.parameter_variables.contains(name) {
             // For parameters, load the value
+            // If it's a pointer type, use simplified FatPtr(I16) type for loading
+            let load_type = if var_info.ir_type.is_pointer() {
+                crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16))
+            } else {
+                var_info.ir_type.clone()
+            };
+            
             let result = gen
                 .builder
-                .build_load(var_info.value.clone(), var_info.ir_type.clone())?;
+                .build_load(var_info.value.clone(), load_type)?;
             
             // If it's a pointer type, we need to wrap the loaded value as a FatPtr
             // For pointer parameters, we use Mixed bank to indicate runtime-determined bank
@@ -31,9 +38,16 @@ pub fn generate_identifier(
             }
         } else {
             // For regular variables, load the value
+            // If it's a pointer type, use simplified FatPtr(I16) type for loading
+            let load_type = if var_info.ir_type.is_pointer() {
+                crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16))
+            } else {
+                var_info.ir_type.clone()
+            };
+            
             let result = gen
                 .builder
-                .build_load(var_info.value.clone(), var_info.ir_type.clone())?;
+                .build_load(var_info.value.clone(), load_type)?;
             
             // If it's a pointer type, wrap it in FatPtr to preserve bank information
             if var_info.ir_type.is_pointer() {
