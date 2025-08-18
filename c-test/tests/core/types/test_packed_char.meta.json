@@ -1,5 +1,5 @@
 {
+  "expected": "BDAC\n",
   "description": "Added via command line",
-  "use_runtime": true,
-  "expected": "BDAC\n"
+  "use_runtime": true
 }

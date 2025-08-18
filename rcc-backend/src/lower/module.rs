@@ -37,8 +37,9 @@ pub fn lower_module(module: &Module, bank_size: u16, trace_spills: bool) -> Resu
             info!("V2: Initializing {} globals", module.globals.len());
             
             for global in &module.globals {
+                debug!("Processing global '{}' with initializer: {:?}", global.name, global.initializer);
                 if let Some(info) = global_manager.get_global_info(&global.name) {
-                    let global_insts = GlobalManager::lower_global_init(global, info);
+                    let global_insts = global_manager.lower_global_init(global, info);
                     all_instructions.extend(global_insts);
                 }
             }

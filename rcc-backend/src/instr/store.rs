@@ -244,7 +244,13 @@ pub fn lower_store(
     // Free temporary registers if we allocated them for constants
     match value {
         Value::Constant(_) => mgr.free_register(src_reg),
-        Value::FatPtr(_) => mgr.free_register(src_reg), // addr_reg
+        Value::FatPtr(fp) => {
+            // Only free if the address was a constant that we loaded into a temp register
+            if matches!(fp.addr.as_ref(), Value::Constant(_)) {
+                mgr.free_register(src_reg); // addr_reg
+            }
+            // For Temp addresses, don't free - the value might be used again
+        }
         _ => {
             // For temps, we don't free src_reg because it's still holding the value
             // and might be needed again. The register allocator will handle it.

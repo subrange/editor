@@ -44,6 +44,7 @@ impl InitializerAnalyzer {
                     
                     // Use typedef-aware type compatibility checking
                     if !is_null_init && !self.type_analyzer.borrow().is_assignable(expected_type, expr_type) {
+                        log::debug!("Type mismatch in initializer: expected={:?}, found={:?}", expected_type, expr_type);
                         return Err(SemanticError::TypeMismatch {
                             expected: expected_type.clone(),
                             found: expr_type.clone(),

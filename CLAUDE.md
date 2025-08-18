@@ -14,8 +14,6 @@ VERY IMPORTANT RULES:
 IMPORTANT: rcc is a project inside rust workspace, so everything is being built into the project root target/release directory.
 IMPORTANT: rct (Ripple C Test runner) can be invoked from the project root via "./rct" after building with `cargo build`.
 
-IMPORTANT: No-warning policy. After working on the feature, we 
-
 To better trace errors, use cargo build --debug and then run the test suite with `RUST_BACKTRACE=1 ./rct` to get detailed backtraces on errors (may require explicitly using std::backtrace::Backtrace in your code).
 
 ## Project Overview

@@ -52,18 +52,13 @@ pub fn generate_unary_operation(
             // 2. Load the current value
             let current_val = gen.builder.build_load(addr.clone(), ir_type.clone())?;
             
+            // Check if this is a pointer type
+            let is_pointer = matches!(operand.get_type(), Type::Pointer { .. });
+            
             // 3. Calculate the increment/decrement amount
-            let amount = if matches!(operand.get_type(), Type::Pointer { .. }) {
-                // For pointers, increment by the size of the pointed-to type
-                if let Type::Pointer { target, .. } = operand.get_type() {
-                    Value::Constant(target.size_in_words().unwrap_or(1) as i64)
-                } else {
-                    Value::Constant(1)
-                }
-            } else {
-                // For integers, increment by 1
-                Value::Constant(1)
-            };
+            // For GEP, the offset is in elements, not bytes/words
+            // GEP will handle the scaling based on element size
+            let amount = Value::Constant(1);
             
             // 4. Perform the operation
             let binary_op = if matches!(op, UnaryOp::PreIncrement) {
@@ -71,13 +66,53 @@ pub fn generate_unary_operation(
             } else {
                 IrBinaryOp::Sub
             };
-            let new_val_temp = gen.builder.build_binary(binary_op, Value::Temp(current_val), amount, ir_type)?;
+            
+            // For pointers, we need to use GEP to preserve bank information
+            let new_value = if is_pointer {
+                // Load creates a temp, wrap it in FatPtr for pointer arithmetic
+                // Get the bank from the original address
+                let bank = match &addr {
+                    Value::FatPtr(fp) => fp.bank,
+                    // If addr is not a FatPtr, something is wrong - all addresses should be FatPtrs
+                    _ => return Err(CodegenError::InternalError {
+                        message: format!("Address is not a FatPtr: {:?}", addr),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    }.into()),
+                };
+                
+                let current_ptr = Value::FatPtr(FatPointer {
+                    addr: Box::new(Value::Temp(current_val)),
+                    bank,  // Preserve the original bank
+                });
+                
+                // Use pointer offset (GEP) for proper pointer arithmetic
+                let offset = if matches!(op, UnaryOp::PreIncrement) {
+                    amount
+                } else {
+                    // Negate for decrement
+                    Value::Temp(gen.builder.build_binary(
+                        IrBinaryOp::Sub,
+                        Value::Constant(0),
+                        amount,
+                        IrType::I16
+                    )?)
+                };
+                
+                {
+                    let result = gen.builder.build_pointer_offset(current_ptr, offset, ir_type.clone())?;
+                    log::debug!("Pre-increment pointer result: {:?}", result);
+                    result
+                }
+            } else {
+                // For non-pointers, just do regular arithmetic
+                Value::Temp(gen.builder.build_binary(binary_op, Value::Temp(current_val), amount, ir_type)?)
+            };
             
             // 5. Store the new value back
-            gen.builder.build_store(Value::Temp(new_val_temp), addr)?;
+            gen.builder.build_store(new_value.clone(), addr)?;
             
             // 6. Return the new value (for pre-increment/decrement)
-            Ok(Value::Temp(new_val_temp))
+            Ok(new_value)
         }
         UnaryOp::PostIncrement | UnaryOp::PostDecrement => {
             // Post-increment/decrement: x++ or x--
@@ -88,43 +123,91 @@ pub fn generate_unary_operation(
             // 2. Load the current value
             let old_value = gen.builder.build_load(addr.clone(), ir_type.clone())?;
             
-            // 3. Make a copy of the old value to return later (add 0 to copy it)
-            let saved_old = gen.builder.build_binary(
-                IrBinaryOp::Add,
-                Value::Temp(old_value),
-                Value::Constant(0),
-                ir_type.clone()
-            )?;
+            // Check if this is a pointer type
+            let is_pointer = matches!(operand.get_type(), Type::Pointer { .. });
+            
+            // 3. Save the old value to return later
+            let saved_old = if is_pointer {
+                // For pointers, wrap in FatPtr to preserve bank info
+                // Get the bank from the original address
+                let bank = match &addr {
+                    Value::FatPtr(fp) => fp.bank,
+                    // If addr is not a FatPtr, something is wrong - all addresses should be FatPtrs
+                    _ => return Err(CodegenError::InternalError {
+                        message: format!("Address is not a FatPtr: {:?}", addr),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    }.into()),
+                };
+                
+                Value::FatPtr(FatPointer {
+                    addr: Box::new(Value::Temp(old_value)),
+                    bank,  // Preserve the original bank
+                })
+            } else {
+                // For non-pointers, make a copy (add 0 to copy it)
+                Value::Temp(gen.builder.build_binary(
+                    IrBinaryOp::Add,
+                    Value::Temp(old_value),
+                    Value::Constant(0),
+                    ir_type.clone()
+                )?)
+            };
             
             // 4. Calculate the increment/decrement amount
-            let amount = if matches!(operand.get_type(), Type::Pointer { .. }) {
-                // For pointers, increment by the size of the pointed-to type
-                if let Type::Pointer { target, .. } = operand.get_type() {
-                    Value::Constant(target.size_in_words().unwrap_or(1) as i64)
-                } else {
-                    Value::Constant(1)
-                }
-            } else {
-                // For integers, increment by 1
-                Value::Constant(1)
-            };
+            // For GEP, the offset is in elements, not bytes/words
+            // GEP will handle the scaling based on element size
+            let amount = Value::Constant(1);
             
             // 5. Load the value again for the increment operation
             let current = gen.builder.build_load(addr.clone(), ir_type.clone())?;
             
             // 6. Perform the increment/decrement
-            let binary_op = if matches!(op, UnaryOp::PostIncrement) {
-                IrBinaryOp::Add
+            let new_value = if is_pointer {
+                // For pointers, use GEP to preserve bank information
+                // Get the bank from the original address
+                let bank = match &addr {
+                    Value::FatPtr(fp) => fp.bank,
+                    // If addr is not a FatPtr, something is wrong - all addresses should be FatPtrs
+                    _ => return Err(CodegenError::InternalError {
+                        message: format!("Address is not a FatPtr: {:?}", addr),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    }.into()),
+                };
+                
+                let current_ptr = Value::FatPtr(FatPointer {
+                    addr: Box::new(Value::Temp(current)),
+                    bank,  // Preserve the original bank
+                });
+                
+                // Use pointer offset (GEP) for proper pointer arithmetic
+                let offset = if matches!(op, UnaryOp::PostIncrement) {
+                    amount
+                } else {
+                    // Negate for decrement
+                    Value::Temp(gen.builder.build_binary(
+                        IrBinaryOp::Sub,
+                        Value::Constant(0),
+                        amount,
+                        IrType::I16
+                    )?)
+                };
+                
+                gen.builder.build_pointer_offset(current_ptr, offset, ir_type)?
             } else {
-                IrBinaryOp::Sub
+                // For non-pointers, just do regular arithmetic
+                let binary_op = if matches!(op, UnaryOp::PostIncrement) {
+                    IrBinaryOp::Add
+                } else {
+                    IrBinaryOp::Sub
+                };
+                Value::Temp(gen.builder.build_binary(binary_op, Value::Temp(current), amount, ir_type)?)
             };
-            let new_value = gen.builder.build_binary(binary_op, Value::Temp(current), amount, ir_type)?;
             
             // 7. Store the new value back to memory
-            gen.builder.build_store(Value::Temp(new_value), addr)?;
+            gen.builder.build_store(new_value, addr)?;
             
             // 8. Return the saved old value (this is what makes it post-increment)
-            Ok(Value::Temp(saved_old))
+            Ok(saved_old)
         }
         _ => {
             let operand_val = gen.generate(operand)?;

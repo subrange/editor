@@ -974,6 +974,7 @@ fn draw_help_modal(f: &mut Frame, area: Rect, app: &mut TuiApp) {
         Line::from("  r       Run all visible tests"),
         Line::from("  d       Debug selected test (interactive)"),
         Line::from("  e       Edit selected test in vim"),
+        Line::from("  t       Open terminal shell"),
         Line::from(""),
         Line::from(Span::styled("── View Controls ──", Style::default().fg(Color::Yellow))),
         Line::from("  Tab     Switch between panes"),

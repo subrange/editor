@@ -1,5 +1,2 @@
-- 2D array indexing
 - Struct initializers
-- Compiler warnings
 - Missing ^= assignment operators
-- Prepro is too aggressive with //, \, and # 

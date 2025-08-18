@@ -1,0 +1,4 @@
+{
+  "use_runtime": true,
+  "expected": "10\n20\nY\n"
+}

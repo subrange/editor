@@ -1,5 +1,5 @@
 {
-  "description": "Added via command line",
+  "expected": "ABC\nAXBC\n",
   "use_runtime": true,
-  "expected": "ABC\nAXBC\n"
+  "description": "Added via command line"
 }

@@ -91,7 +91,7 @@ pub fn generate_array_index(
     index: &TypedExpr,
     elem_type: &Type,
 ) -> Result<Value, CompilerError> {
-    // Array indexing is pointer arithmetic followed by load
+    // Array indexing is pointer arithmetic followed by load (sometimes)
     let array_val = gen.generate(array)?;
     let index_val = gen.generate(index)?;
     
@@ -105,11 +105,23 @@ pub fn generate_array_index(
         gen.builder
             .build_pointer_offset(array_val, index_val, elem_ptr_type)?;
     
-    // Load the value from that address
-    let elem_ir_type = convert_type_default(elem_type)?;
-    let result = gen.builder.build_load(elem_ptr, elem_ir_type)?;
-    
-    Ok(Value::Temp(result))
+    // Check if the element type is an array
+    // If it is, we should return the pointer to it (for multidimensional array support)
+    // Arrays decay to pointers when used as values
+    match elem_type {
+        Type::Array { .. } => {
+            // For array types, return the pointer without loading
+            // This allows matrix[i] to return a pointer to the i-th row
+            // which can then be indexed again with matrix[i][j]
+            Ok(elem_ptr)
+        }
+        _ => {
+            // For non-array types, load the value from that address
+            let elem_ir_type = convert_type_default(elem_type)?;
+            let result = gen.builder.build_load(elem_ptr, elem_ir_type)?;
+            Ok(Value::Temp(result))
+        }
+    }
 }
 
 pub fn generate_pointer_compound_assignment(

@@ -10,6 +10,12 @@ use crate::parser::Parser;
 use rcc_common::{CompilerError, SourceSpan};
 use crate::{EnumVariant, StorageClass, StructField, Type};
 
+/// Declarator suffix (arrays, functions)
+enum DeclSuffix {
+    Array(Option<u64>),
+    Function { parameters: Vec<Type>, is_variadic: bool },
+}
+
 impl Parser {
     /// Parse storage class specifier
     pub fn parse_storage_class(&mut self) -> StorageClass {
@@ -256,7 +262,8 @@ impl Parser {
                 
                 // Now parse any array/function suffixes that apply after the parentheses
                 // For `int (*parr)[4]`, after parsing (*parr), we need to parse [4]
-                let mut final_type = base_type;
+                // Collect suffixes first
+                let mut suffixes = Vec::new();
                 
                 // Apply suffixes (arrays, functions)
                 loop {
@@ -285,10 +292,7 @@ impl Parser {
                         
                         self.expect(TokenType::RightBracket, "array declarator")?;
                         
-                        final_type = Type::Array {
-                            element_type: Box::new(final_type),
-                            size,
-                        };
+                        suffixes.push(DeclSuffix::Array(size));
                     } else if self.match_token(&TokenType::LeftParen) {
                         // Function suffix
                         let mut parameter_types = Vec::new();
@@ -330,13 +334,32 @@ impl Parser {
                         self.expect(TokenType::RightParen, "function declarator")?;
                         self.last_function_params = Some(parameter_info);
                         
-                        final_type = Type::Function {
-                            return_type: Box::new(final_type),
+                        suffixes.push(DeclSuffix::Function {
                             parameters: parameter_types,
                             is_variadic: false,
-                        };
+                        });
                     } else {
                         break;
+                    }
+                }
+                
+                // Apply suffixes in reverse order
+                let mut final_type = base_type;
+                for suffix in suffixes.into_iter().rev() {
+                    match suffix {
+                        DeclSuffix::Array(size) => {
+                            final_type = Type::Array {
+                                element_type: Box::new(final_type),
+                                size,
+                            };
+                        }
+                        DeclSuffix::Function { parameters, is_variadic } => {
+                            final_type = Type::Function {
+                                return_type: Box::new(final_type),
+                                parameters,
+                                is_variadic,
+                            };
+                        }
                     }
                 }
                 
@@ -352,6 +375,7 @@ impl Parser {
                         target: Box::new(final_type),
                         bank: None,
                     };
+                    log::debug!("Parenthesized declarator: name={}, result_type={:?}", name, result_type);
                     return Ok((name, result_type));
                 } else {
                     return Ok((name, final_type));
@@ -370,7 +394,8 @@ impl Parser {
         };
         
         // Parse suffix (arrays, function parameters)
-        let mut current_type = base_type;
+        // First collect all array dimensions and function parameters
+        let mut suffixes = Vec::new();
         
         loop {
             if self.match_token(&TokenType::LeftBracket) {
@@ -398,10 +423,7 @@ impl Parser {
                 
                 self.expect(TokenType::RightBracket, "array declarator")?;
                 
-                current_type = Type::Array {
-                    element_type: Box::new(current_type),
-                    size,
-                };
+                suffixes.push(DeclSuffix::Array(size));
                 
             } else if self.match_token(&TokenType::LeftParen) {
                 // Function declarator
@@ -454,14 +476,35 @@ impl Parser {
                 // For now, we store it in a thread-local for the parser
                 self.last_function_params = Some(parameter_info);
                 
-                current_type = Type::Function {
-                    return_type: Box::new(current_type),
-                    parameters: parameter_types,
-                    is_variadic: false, // TODO: Handle variadic functions
-                };
+                suffixes.push(DeclSuffix::Function { 
+                    parameters: parameter_types, 
+                    is_variadic: false // TODO: Handle variadic functions
+                });
                 
             } else {
                 break;
+            }
+        }
+        
+        // Apply suffixes in reverse order (right-to-left)
+        // For int arr[2][3], we have suffixes [Array(2), Array(3)]
+        // We need to build: Array(2, Array(3, int))
+        let mut current_type = base_type;
+        for suffix in suffixes.into_iter().rev() {
+            match suffix {
+                DeclSuffix::Array(size) => {
+                    current_type = Type::Array {
+                        element_type: Box::new(current_type),
+                        size,
+                    };
+                }
+                DeclSuffix::Function { parameters, is_variadic } => {
+                    current_type = Type::Function {
+                        return_type: Box::new(current_type),
+                        parameters,
+                        is_variadic,
+                    };
+                }
             }
         }
         

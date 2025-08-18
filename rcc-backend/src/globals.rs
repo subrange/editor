@@ -64,7 +64,7 @@ impl GlobalManager {
     }
     
     /// Generate initialization code for a global variable
-    pub fn lower_global_init(global: &GlobalVariable, info: &GlobalInfo) -> Vec<AsmInst> {
+    pub fn lower_global_init(&self, global: &GlobalVariable, info: &GlobalInfo) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
         // Generate initialization based on the initializer
@@ -74,8 +74,8 @@ impl GlobalManager {
                 insts.extend(Self::lower_array_init(global, values, info.address));
             }
             Some(init_value) => {
-                // Initialize with single value
-                insts.extend(Self::lower_single_value_init(global, init_value, info.address));
+                // Initialize with single value (pass self for global lookups)
+                insts.extend(self.lower_single_value_init(global, init_value, info.address));
             }
             None => {
                 // No initializer - leave uninitialized
@@ -125,7 +125,7 @@ impl GlobalManager {
     }
     
     /// Lower single value initialization
-    fn lower_single_value_init(global: &GlobalVariable, init_value: &Value, address: u16) -> Vec<AsmInst> {
+    fn lower_single_value_init(&self, global: &GlobalVariable, init_value: &Value, address: u16) -> Vec<AsmInst> {
         let mut insts = Vec::new();
         
         insts.push(AsmInst::Comment(format!("Global variable: {} at address {}", 
@@ -158,9 +158,69 @@ impl GlobalManager {
                     }
                 }
             }
+            Value::FatPtr(fp) => {
+                // For FatPtr initializers (e.g., pointer to string literal)
+                // Store the address component
+                match fp.addr.as_ref() {
+                    Value::Global(name) => {
+                        // Need to get the address of the referenced global
+                        insts.push(AsmInst::Comment(format!("Pointer to global '{}'", name)));
+                        
+                        // Look up the address of the referenced global
+                        debug!("Looking up global '{}' for pointer initialization", name);
+                        if let Some(target_info) = self.get_global_info(name) {
+                            debug!("Found global '{}' at address {}", name, target_info.address);
+                            // Store the address of the target global
+                            insts.push(AsmInst::Li(Reg::T0, target_info.address as i16));
+                            insts.push(AsmInst::Li(Reg::T1, address as i16));
+                            insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
+                            
+                            // Store the bank (GP register value for global)
+                            insts.push(AsmInst::Add(Reg::T0, Reg::Gp, Reg::R0)); // Copy GP register value
+                            insts.push(AsmInst::Li(Reg::T1, (address + 1) as i16));
+                            insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
+                        } else {
+                            // Global not found - this is a compiler error
+                            panic!("COMPILER ERROR: Global pointer '{}' references undefined global '{}'", 
+                                   global.name, name);
+                        }
+                    }
+                    Value::Constant(val) => {
+                        // Direct constant pointer value
+                        insts.push(AsmInst::Li(Reg::T0, *val as i16));
+                        insts.push(AsmInst::Li(Reg::T1, address as i16));
+                        insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
+                        
+                        // Store the bank component
+                        match fp.bank {
+                            rcc_frontend::BankTag::Global => {
+                                insts.push(AsmInst::Add(Reg::T0, Reg::Gp, Reg::R0)); // Copy GP register
+                            }
+                            rcc_frontend::BankTag::Stack => {
+                                insts.push(AsmInst::Add(Reg::T0, Reg::Sb, Reg::R0)); // Copy SB register
+                            }
+                            _ => {
+                                insts.push(AsmInst::Add(Reg::T0, Reg::Gp, Reg::R0)); // Default to GP
+                            }
+                        };
+                        insts.push(AsmInst::Li(Reg::T1, (address + 1) as i16));
+                        insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
+                    }
+                    _ => {
+                        panic!("COMPILER ERROR: Global pointer '{}' has unsupported address type: {:?}", 
+                               global.name, fp.addr);
+                    }
+                }
+            }
+            Value::Global(name) => {
+                // Direct reference to another global (for non-pointer types)
+                panic!("COMPILER ERROR: Global '{}' initialized with reference to '{}' - not yet supported", 
+                       global.name, name);
+            }
             _ => {
                 // Other initializer types not yet supported
-                insts.push(AsmInst::Comment(format!("Unsupported initializer for {}", global.name)));
+                panic!("COMPILER ERROR: Global '{}' has unsupported initializer type: {:?}", 
+                       global.name, init_value);
             }
         }
         
@@ -244,7 +304,8 @@ mod tests {
         };
         
         let info = GlobalInfo { address: 10, size: 1 };
-        let insts = GlobalManager::lower_global_init(&global, &info);
+        let manager = GlobalManager::new();
+        let insts = manager.lower_global_init(&global, &info);
         
         // Should have: comment, Li(T0, 100), Li(T1, 10), Store
         assert!(insts.iter().any(|i| matches!(i, AsmInst::Comment(_))));

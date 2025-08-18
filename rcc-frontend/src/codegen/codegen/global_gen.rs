@@ -5,6 +5,7 @@ use crate::ir::{Value, IrBuilder, Module, GlobalVariable, Linkage};
 use crate::typed_ast::TypedExpr;
 use crate::types::{Type, BankTag};
 use crate::CompilerError;
+use crate::codegen::CodegenError;
 use super::super::{VarInfo, expressions::TypedExpressionGenerator, types::complete_type_from_initializer};
 use super::utils::convert_type_default;
 
@@ -38,9 +39,28 @@ pub fn generate_global_variable(
         match expr_gen.generate(init_expr) {
             Ok(value) => match value {
                 Value::Constant(_) | Value::ConstantArray(_) => Some(value),
-                _ => None, // Non-constant initializers not supported for globals
+                Value::FatPtr(ref fp) => {
+                    // Allow FatPtr for pointer initializers (e.g., string literals)
+                    // But only if the address is a constant or global
+                    match fp.addr.as_ref() {
+                        Value::Global(_) | Value::Constant(_) => Some(value),
+                        _ => {
+                            return Err(CodegenError::UnsupportedConstruct {
+                                construct: format!("Non-constant pointer initializer for global variable '{}'", name),
+                                location: rcc_common::SourceLocation::new_simple(0, 0),
+                            }.into());
+                        }
+                    }
+                }
+                Value::Global(_) => Some(value), // Allow references to other globals
+                _ => {
+                    return Err(CodegenError::UnsupportedConstruct {
+                        construct: format!("Non-constant initializer for global variable '{}': {:?}", name, value),
+                        location: rcc_common::SourceLocation::new_simple(0, 0),
+                    }.into());
+                }
             }
-            Err(_) => None,
+            Err(e) => return Err(e),
         }
     } else {
         None

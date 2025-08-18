@@ -343,6 +343,10 @@ impl TuiRunner {
                 // Edit expected output (Shift+E)
                 self.app.start_edit_expected();
             }
+            KeyCode::Char('t') => {
+                // Open terminal shell
+                self.open_terminal_shell(terminal)?;
+            }
             KeyCode::Char('g') => {
                 // Golden update - apply actual output as expected for failing test
                 if let Err(e) = self.app.apply_golden_output() {
@@ -878,6 +882,64 @@ impl TuiRunner {
         } else {
             self.app.append_output("No test selected for editing.\n");
         }
+        Ok(())
+    }
+
+    fn open_terminal_shell<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
+        // Notify user
+        self.app.append_output("\nOpening terminal shell...\n");
+        self.app.append_output("Type 'exit' to return to the test runner.\n");
+        
+        // Pause the event handler FIRST
+        self.events.pause();
+        
+        // Properly suspend the terminal
+        terminal.show_cursor()?;
+        disable_raw_mode()?;
+        execute!(
+            io::stdout(),
+            LeaveAlternateScreen,
+            cursor::Show,
+        )?;
+        io::stdout().flush()?;
+        
+        // Open the user's shell (try $SHELL first, fallback to sh)
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+        let status = std::process::Command::new(&shell)
+            .status()?;
+        
+        // Properly restore the terminal
+        // Small delay to ensure terminal processes the mode change
+        std::thread::sleep(Duration::from_millis(100));
+        
+        enable_raw_mode()?;
+        execute!(
+            io::stdout(),
+            EnterAlternateScreen,
+            cursor::Hide,
+        )?;
+        terminal.hide_cursor()?;
+        
+        // Clear any events that might have been queued
+        while self.events.rx.try_recv().is_ok() {
+            // Discard any queued events
+        }
+        
+        // Resume the event handler
+        self.events.resume();
+        
+        // Clear and force complete redraw
+        terminal.clear()?;
+        
+        // Force redraw
+        terminal.draw(|f| ui::draw(f, &mut self.app))?;
+        
+        if !status.success() {
+            self.app.append_output("Shell exited with error\n");
+        } else {
+            self.app.append_output("Returned from terminal shell\n");
+        }
+        
         Ok(())
     }
 

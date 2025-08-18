@@ -298,6 +298,10 @@ impl TypeAnalyzer {
             
             // Array to pointer decay
             (Type::Pointer { target, .. }, Type::Array { element_type, .. }) => {
+                // An array decays to a pointer to its first element
+                // For multidimensional arrays like int[2][3], the first element is int[3]
+                // So it should decay to int(*)[3]
+                self.is_assignable(target.as_ref(), element_type.as_ref()) || 
                 target.as_ref() == element_type.as_ref()
             }
             

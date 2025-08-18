@@ -26,14 +26,14 @@ int main() {
     
     // Direct access through struct
     if (outer.ptr->y == 20) {
-        putchar('1');
+        putchar('Y');
     } else {
         putchar('N');
     }
     
     // Access through pointer
     if (outer_ptr->ptr->y == 20) {
-        putchar('2');
+        putchar('Y');
     } else {
         putchar('N');  
     }
