@@ -1,3 +1,88 @@
+38d606f 2025-08-20 05:24:26 +0200 Mosst of the tests fixed
+f9bd75f 2025-08-20 05:13:36 +0200 Fixes
+60cb159 2025-08-20 05:06:23 +0200 Much wow
+7e70bd1 2025-08-20 04:31:11 +0200 Better
+d56ec50 2025-08-20 03:10:23 +0200 Fixes
+d21c222 2025-08-20 03:05:49 +0200 Fix struct issues
+0e80122 2025-08-20 02:50:51 +0200 Skip qfixed tests
+e21a292 2025-08-18 21:53:05 +0200 Fixes
+d230299 2025-08-18 20:29:37 +0200 Tree nav
+cd980d4 2025-08-18 20:11:20 +0200 Improvements in test tui
+f1ea05e 2025-08-18 18:16:29 +0200 Savepoint
+ab4caf7 2025-08-18 17:03:23 +0200 More fixes
+a060fcf 2025-08-18 15:31:45 +0200 More things
+667d7f7 2025-08-18 15:09:32 +0200 refuck
+04a1879 2025-08-18 14:58:01 +0200 Skipped tests
+4c22fab 2025-08-18 14:54:15 +0200 Skipped tests
+9e1a9e4 2025-08-18 14:44:55 +0200 Skipping tests
+3108f92 2025-08-18 14:23:30 +0200 Warnings as errors
+9928547 2025-08-18 13:51:55 +0200 clippy fix
+35008bf 2025-08-18 13:51:26 +0200 Savepoint
+1e3e026 2025-08-18 13:48:04 +0200 typedef tests pass
+ed71688 2025-08-18 13:41:10 +0200 Things
+86d9e9c 2025-08-18 12:53:38 +0200 demos
+4929052 2025-08-17 20:40:50 +0200 Parsing designated initializers
+83ca0f9 2025-08-17 20:02:03 +0200 Compound literals core
+d049826 2025-08-17 19:51:49 +0200 The Refactoring
+7d65e7b 2025-08-17 14:38:52 +0200 Experiments
+6b8ac7f 2025-08-17 09:39:59 +0200 More visual demos
+ad0c4ea 2025-08-17 09:09:11 +0200 Thingies
+b276413 2025-08-17 08:24:13 +0200 Things
+4c1a632 2025-08-17 07:47:03 +0200 Here and there
+f83bc7d 2025-08-17 07:36:16 +0200 A LOT of stuff
+7874be9 2025-08-17 05:39:12 +0200 Things
+cdbb3ad 2025-08-17 03:12:41 +0200 Savepoint
+0dc2fb0 2025-08-17 00:39:03 +0200 Improvements
+6841418 2025-08-17 00:17:52 +0200 Savepoint
+ce7d2be 2025-08-16 22:51:16 +0200 Clippy fix
+22cba51 2025-08-16 22:48:06 +0200 Tests cleanup
+1d7f063 2025-08-16 20:56:15 +0200 Tests reloading
+fcc3cf2 2025-08-16 20:46:45 +0200 Integrate vim for editing tests
+0d7381d 2025-08-16 20:12:42 +0200 More improvements
+23582a1 2025-08-16 19:39:55 +0200 Wraparound
+8f1249c 2025-08-16 19:33:18 +0200 Test fzf
+96cdc84 2025-08-16 19:24:55 +0200 Improve runner
+2f9cfb5 2025-08-16 18:50:19 +0200 Improve tests
+d7a46e0 2025-08-16 17:52:51 +0200 c code highlighting in test runner
+cbf271f 2025-08-16 17:42:05 +0200 Improve test runner
+564f21e 2025-08-16 17:29:53 +0200 Improve runner
+eeeafc5 2025-08-16 17:19:10 +0200 Fixes
+cbe41c8 2025-08-16 16:50:30 +0200 Improvements
+ae655af 2025-08-16 16:47:18 +0200 Improve tui runner
+d6497d4 2025-08-16 16:19:08 +0200 test runner improvements
+ef7ac60 2025-08-16 15:11:17 +0200 Cleanup test structure
+5ef5df4 2025-08-16 14:26:18 +0200 Add rct
+df1a358 2025-08-15 20:30:47 +0200 *cries in Assembly*
+3c96b00 2025-08-15 11:05:05 +0200 Fixes
+8ef7eae 2025-08-15 09:30:15 +0200 Savepoint
+8919faa 2025-08-15 08:56:18 +0200 Fix
+abe92c4 2025-08-15 08:54:45 +0200 What a beautiful day
+5c6e719 2025-08-15 07:56:55 +0200 Add support of debug info to compiler and debugger
+c20b58b 2025-08-15 07:36:21 +0200 Improvements
+374186b 2025-08-15 06:31:58 +0200 More fixes
+a71ac6c 2025-08-15 05:20:19 +0200 Add proper null pointer
+ca03744 2025-08-15 04:25:12 +0200 Add spill tracing
+3acbd71 2025-08-15 02:41:56 +0200 Refactoring and structs
+dc9c686 2025-08-15 01:15:28 +0200 Improving structs
+b533922 2025-08-15 00:35:28 +0200 Improvements
+8898447 2025-08-15 00:14:03 +0200 Proper type system phase 2
+d160a12 2025-08-14 23:53:51 +0200 Add unary increments and decrements
+4020980 2025-08-14 22:33:05 +0200 Update pointer arithmetic doc
+346ec78 2025-08-14 21:16:08 +0200 It works. Finally.
+ffbfb47 2025-08-14 19:37:20 +0200 Array initializers
+4049b70 2025-08-14 19:23:43 +0200 Fix shit
+2d325b6 2025-08-14 18:52:52 +0200 Fixes
+aba3072 2025-08-14 18:40:29 +0200 Savepoint
+c10cab8 2025-08-14 17:00:11 +0200 Improvements
+92daba2 2025-08-14 06:35:00 +0200 Savepoint
+5a086ca 2025-08-14 05:40:07 +0200 Fix issues
+865b871 2025-08-14 05:03:01 +0200 Improvements in test runner and bugfixes
+e35ccc7 2025-08-14 04:47:16 +0200 Fix for alloca rematerializing
+0397a24 2025-08-14 04:37:08 +0200 things
+c394f70 2025-08-14 04:10:59 +0200 Refactor
+78eaeb0 2025-08-14 01:52:26 +0200 Struff
+463a90e 2025-08-14 01:10:39 +0200 HUGE progress with pointers.
+2be98ab 2025-08-13 22:13:49 +0200 Catastrophe is something related to cats
 7138328 2025-08-13 17:58:49 +0200 Refactoring
 397ae01 2025-08-13 17:13:08 +0200 Debugger improvements
 997ce6c 2025-08-13 17:04:05 +0200 Improvements
