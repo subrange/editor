@@ -183,6 +183,42 @@ impl VM {
         ]) as usize;
         pos += 4;
         
+        // ☠️💀🔥 CATASTROPHIC CHECK: PROGRAM MUST FIT IN ONE BLOCK 🔥💀☠️
+        if instruction_count > self.bank_size as usize {
+            eprintln!("\n");
+            eprintln!("╔══════════════════════════════════════════════════════════════════╗");
+            eprintln!("║                     💀💀💀 FATAL ERROR 💀💀💀                    ║");
+            eprintln!("║                                                                  ║");
+            eprintln!("║     🔥 PROGRAM TOO LARGE TO FIT IN A SINGLE BLOCK! 🔥          ║");
+            eprintln!("║                                                                  ║");
+            eprintln!("║     Program size: {} instructions                               ", instruction_count);
+            eprintln!("║     Block size:   {} instructions                               ", self.bank_size);
+            eprintln!("║     Overflow:     {} instructions                               ", instruction_count - self.bank_size as usize);
+            eprintln!("║                                                                  ║");
+            eprintln!("║     ⚠️  THE UNIVERSE IS COLLAPSING ⚠️                           ║");
+            eprintln!("║     🌡️  HEAT DEATH IMMINENT 🌡️                                  ║");
+            eprintln!("║     ☢️  ENTROPIC CASCADE INITIATED ☢️                           ║");
+            eprintln!("║     🕳️  BLACK HOLE FORMING 🕳️                                   ║");
+            eprintln!("║     ⏰  TIME ITSELF IS UNRAVELING ⏰                            ║");
+            eprintln!("║                                                                  ║");
+            eprintln!("║     This VM enforces strict single-block execution.             ║");
+            eprintln!("║     Your program has exceeded the fundamental limits            ║");
+            eprintln!("║     of space-time itself. The fabric of reality                 ║");
+            eprintln!("║     cannot sustain this computational burden.                   ║");
+            eprintln!("║                                                                  ║");
+            eprintln!("║     🛸 ESCAPE PODS LAUNCHED 🛸                                  ║");
+            eprintln!("║     💣 SELF-DESTRUCT IN 5...4...3...2...1... 💣                ║");
+            eprintln!("║                                                                  ║");
+            eprintln!("╚══════════════════════════════════════════════════════════════════╝");
+            eprintln!("\n");
+            eprintln!("💥💥💥 BOOM 💥💥💥\n");
+            
+            return Err(format!(
+                "🔥💀 CATASTROPHIC FAILURE: Program ({} instructions) exceeds block size ({} instructions). THE HEAT DEATH OF THE UNIVERSE HAS BEGUN! 💀🔥",
+                instruction_count, self.bank_size
+            ));
+        }
+        
         // Read instructions
         self.instructions.clear();
         for i in 0..instruction_count {

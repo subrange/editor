@@ -65,19 +65,30 @@ impl TuiDebugger {
             KeyCode::F(5) => self.focused_pane = FocusedPane::Watches,
             KeyCode::F(6) => self.focused_pane = FocusedPane::Breakpoints,
             KeyCode::F(7) => self.focused_pane = FocusedPane::Output,
+            KeyCode::F(8) => self.focused_pane = FocusedPane::CallStack,
             KeyCode::Tab if modifiers == KeyModifiers::NONE => self.cycle_pane(),
             KeyCode::BackTab | KeyCode::Tab if modifiers == KeyModifiers::SHIFT => self.cycle_pane_reverse(),
 
             // Navigation based on focused pane
             KeyCode::Up | KeyCode::Char('k') => {
-                if self.show_help {
-                    self.help_scroll = self.help_scroll.saturating_sub(1);
+                // Special case: navigate call stack
+                if self.focused_pane == FocusedPane::CallStack {
+                    if self.callstack_selected > 0 {
+                        self.callstack_selected -= 1;
+                    }
                 } else {
-                    self.navigate_up(vm);
+                    if self.show_help {
+                        self.help_scroll = self.help_scroll.saturating_sub(1);
+                    } else {
+                        self.navigate_up(vm);
+                    }
                 }
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                if self.show_help {
+                // Special case: navigate call stack
+                if self.focused_pane == FocusedPane::CallStack {
+                    self.callstack_selected += 1; // Will be clamped when drawing
+                } else if self.show_help {
                     self.help_scroll = self.help_scroll.saturating_add(1);
                 } else {
                     self.navigate_down(vm);
@@ -85,6 +96,11 @@ impl TuiDebugger {
             }
             KeyCode::Left | KeyCode::Char('h') => self.navigate_left(vm),
             KeyCode::Right | KeyCode::Char('l') => self.navigate_right(vm),
+            
+            // Enter key - special handling for call stack
+            KeyCode::Enter if self.focused_pane == FocusedPane::CallStack => {
+                self.navigate_to_callstack_entry(vm);
+            }
             KeyCode::PageUp => self.page_up(vm),
             KeyCode::PageDown => self.page_down(vm),
 
@@ -154,6 +170,9 @@ impl TuiDebugger {
             }
             KeyCode::Char('7') if modifiers == KeyModifiers::ALT => {
                 self.show_output = !self.show_output;
+            }
+            KeyCode::Char('8') if modifiers == KeyModifiers::ALT => {
+                self.show_callstack = !self.show_callstack;
             }
             
             // Toggle hex view in disassembly
@@ -309,7 +328,8 @@ impl TuiDebugger {
             FocusedPane::Disassembly => FocusedPane::Registers,
             FocusedPane::Registers => FocusedPane::Memory,
             FocusedPane::Memory => FocusedPane::Stack,
-            FocusedPane::Stack => FocusedPane::Watches,
+            FocusedPane::Stack => FocusedPane::CallStack,
+            FocusedPane::CallStack => FocusedPane::Watches,
             FocusedPane::Watches => FocusedPane::Breakpoints,
             FocusedPane::Breakpoints => FocusedPane::Output,
             FocusedPane::Output => FocusedPane::Disassembly,
@@ -323,7 +343,8 @@ impl TuiDebugger {
             FocusedPane::Registers => FocusedPane::Disassembly,
             FocusedPane::Memory => FocusedPane::Registers,
             FocusedPane::Stack => FocusedPane::Memory,
-            FocusedPane::Watches => FocusedPane::Stack,
+            FocusedPane::CallStack => FocusedPane::Stack,
+            FocusedPane::Watches => FocusedPane::CallStack,
             FocusedPane::Breakpoints => FocusedPane::Watches,
             FocusedPane::Output => FocusedPane::Breakpoints,
             _ => FocusedPane::Output,

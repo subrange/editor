@@ -24,6 +24,7 @@ pub(crate) enum FocusedPane {
     Registers,
     Memory,
     Stack,
+    CallStack,
     Watches,
     Breakpoints,
     Output,
@@ -70,6 +71,8 @@ pub struct TuiDebugger {
     pub(crate) memory_base_addr: usize,
     pub(crate) memory_cursor_col: usize,  // Column position within the row (0-7)
     pub(crate) stack_scroll: usize,
+    pub(crate) callstack_selected: usize,  // Selected entry in call stack
+    pub(crate) callstack_scroll: usize,
     pub(crate) output_scroll: usize,
     pub(crate) watches_scroll: usize,
     pub(crate) breakpoints_scroll: usize,
@@ -96,6 +99,7 @@ pub struct TuiDebugger {
     pub(crate) show_registers: bool,
     pub(crate) show_memory: bool,
     pub(crate) show_stack: bool,
+    pub(crate) show_callstack: bool,
     pub(crate) show_watches: bool,
     pub(crate) show_breakpoints: bool,
     pub(crate) show_output: bool,
@@ -144,6 +148,8 @@ impl TuiDebugger {
             memory_base_addr: 0,
             memory_cursor_col: 0,
             stack_scroll: 0,
+            callstack_selected: 0,
+            callstack_scroll: 0,
             output_scroll: 0,
             watches_scroll: 0,
             breakpoints_scroll: 0,
@@ -166,6 +172,7 @@ impl TuiDebugger {
             show_registers: settings.show_registers,
             show_memory: settings.show_memory,
             show_stack: settings.show_stack,
+            show_callstack: false,  // New feature, disabled by default
             show_watches: settings.show_watches,
             show_breakpoints: settings.show_breakpoints,
             show_output: settings.show_output,
@@ -311,7 +318,7 @@ impl TuiDebugger {
         
         // Right column: Split horizontally only if we have panels on both sides
         let show_left_panels = self.show_registers || self.show_memory;
-        let show_right_panels = self.show_stack || self.show_watches || self.show_breakpoints;
+        let show_right_panels = self.show_stack || self.show_callstack || self.show_watches || self.show_breakpoints;
         
         let (left_panel_area, right_panel_area) = if show_left_panels && show_right_panels {
             let right_chunks = Layout::default()
@@ -361,7 +368,7 @@ impl TuiDebugger {
             }
         }
         
-        // Right part: Stack, Watches, and Breakpoints
+        // Right part: Stack, CallStack, Watches, and Breakpoints
         if let Some(area) = right_panel_area {
             let mut constraints = vec![];
             let mut panels = vec![];
@@ -369,6 +376,10 @@ impl TuiDebugger {
             if self.show_stack {
                 constraints.push(Constraint::Ratio(1, 3));
                 panels.push("stack");
+            }
+            if self.show_callstack {
+                constraints.push(Constraint::Ratio(1, 3));
+                panels.push("callstack");
             }
             if self.show_watches {
                 constraints.push(Constraint::Ratio(1, 3));
@@ -398,6 +409,11 @@ impl TuiDebugger {
                         "stack" => {
                             self.panel_areas.insert(FocusedPane::Stack, chunks[chunk_idx]);
                             self.draw_stack(frame, chunks[chunk_idx], vm);
+                            chunk_idx += 1;
+                        }
+                        "callstack" => {
+                            self.panel_areas.insert(FocusedPane::CallStack, chunks[chunk_idx]);
+                            self.draw_callstack(frame, chunks[chunk_idx], vm);
                             chunk_idx += 1;
                         }
                         "watches" => {
@@ -430,7 +446,7 @@ impl TuiDebugger {
         match self.mode {
             DebuggerMode::Command => {
                 if self.command_buffer == "toggle:" {
-                    self.draw_input_line(frame, status_area, "Toggle Panel (2-7, 1=Disasm fixed)");
+                    self.draw_input_line(frame, status_area, "Toggle Panel (2-8, 1=Disasm fixed)");
                 } else {
                     self.draw_input_line(frame, status_area, "Command");
                 }
@@ -619,6 +635,9 @@ impl TuiDebugger {
                     FocusedPane::Stack => {
                         self.stack_scroll = self.stack_scroll.saturating_add(1);
                     }
+                    FocusedPane::CallStack => {
+                        self.callstack_scroll = self.callstack_scroll.saturating_add(1);
+                    }
                     FocusedPane::Output => {
                         self.output_scroll = self.output_scroll.saturating_add(1);
                     }
@@ -650,6 +669,9 @@ impl TuiDebugger {
                     }
                     FocusedPane::Stack => {
                         self.stack_scroll = self.stack_scroll.saturating_sub(1);
+                    }
+                    FocusedPane::CallStack => {
+                        self.callstack_scroll = self.callstack_scroll.saturating_sub(1);
                     }
                     FocusedPane::Output => {
                         self.output_scroll = self.output_scroll.saturating_sub(1);

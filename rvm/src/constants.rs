@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 // Default VM configuration
-pub const DEFAULT_BANK_SIZE: u16 = 4096;
+pub const DEFAULT_BANK_SIZE: u16 = 65535;
 pub const DEFAULT_MEMORY_SIZE: usize = 65536 * 65536; // 64K words in 64K banks
 
 // Memory-mapped I/O header addresses (bank 0, words 0..31)

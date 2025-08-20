@@ -75,6 +75,13 @@ impl TuiDebugger {
                             self.command_buffer.clear();
                             return true;
                         }
+                        '8' => {
+                            // F8 = Call Stack
+                            self.show_callstack = !self.show_callstack;
+                            self.mode = DebuggerMode::Normal;
+                            self.command_buffer.clear();
+                            return true;
+                        }
                         _ => {
                             // Not a valid toggle key, exit toggle mode
                             self.mode = DebuggerMode::Normal;

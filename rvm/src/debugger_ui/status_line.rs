@@ -47,6 +47,7 @@ impl TuiDebugger {
                 FocusedPane::Registers => "Registers",
                 FocusedPane::Memory => "Memory",
                 FocusedPane::Stack => "Stack",
+                FocusedPane::CallStack => "Call Stack",
                 FocusedPane::Watches => "Watches",
                 FocusedPane::Breakpoints => "Breakpoints",
                 FocusedPane::Output => "Output",
@@ -61,6 +62,7 @@ impl TuiDebugger {
             FocusedPane::Memory => " | g:goto e:edit",
             FocusedPane::Watches => " | w:add W:remove",
             FocusedPane::Breakpoints => " | Space:toggle d:delete",
+            FocusedPane::CallStack => " | Enter:goto ↑↓:navigate",
             _ => " | ?:help q:quit",
         };
         spans.push(Span::styled(hints, Style::default().fg(Color::DarkGray)));
@@ -70,6 +72,7 @@ impl TuiDebugger {
         if !self.show_registers { hidden_panels.push("Reg"); }
         if !self.show_memory { hidden_panels.push("Mem"); }
         if !self.show_stack { hidden_panels.push("Stk"); }
+        if !self.show_callstack { hidden_panels.push("CS"); }
         if !self.show_watches { hidden_panels.push("Wat"); }
         if !self.show_breakpoints { hidden_panels.push("BP"); }
         if !self.show_output { hidden_panels.push("Out"); }

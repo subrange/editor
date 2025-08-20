@@ -2,6 +2,7 @@ mod disassembly;
 mod registers;
 mod memory;
 mod stack;
+mod callstack;
 mod watches;
 mod output;
 mod breakpoints;

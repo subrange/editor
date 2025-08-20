@@ -15,7 +15,7 @@ pub struct Cli {
     pub binary_file: PathBuf,
     
     /// Set bank size
-    #[arg(short = 'b', long, default_value = "4096")]
+    #[arg(short = 'b', long, default_value = "65535")]
     pub bank_size: u16,
     
     /// Set memory size in words
