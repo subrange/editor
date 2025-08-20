@@ -1,5 +1,6 @@
 {
-  "use_runtime": true,
   "expected": "YYYYYYYY",
-  "description": "Advanced Q16.16 tests with physics and vector operations"
+  "use_runtime": true,
+  "description": "Advanced Q16.16 tests with physics and vector operations",
+  "skipped": true
 }

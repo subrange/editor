@@ -723,17 +723,17 @@
         ],
         "data": [],
         "labels": {
-          "L___st8_1": {
-            "name": "L___st8_1",
+          "__st8": {
+            "name": "__st8",
             "bank": 0,
-            "offset": 256,
-            "absolute_address": 256
+            "offset": 184,
+            "absolute_address": 184
           },
-          "L___ld8_99999": {
-            "name": "L___ld8_99999",
+          "__ld8_done": {
+            "name": "__ld8_done",
             "bank": 0,
-            "offset": 124,
-            "absolute_address": 124
+            "offset": 120,
+            "absolute_address": 120
           },
           "__st8_hi": {
             "name": "__st8_hi",
@@ -741,17 +741,17 @@
             "offset": 320,
             "absolute_address": 320
           },
-          "__st8_store": {
-            "name": "__st8_store",
+          "L___st8_99999": {
+            "name": "L___st8_99999",
             "bank": 0,
-            "offset": 336,
-            "absolute_address": 336
+            "offset": 348,
+            "absolute_address": 348
           },
-          "__st8": {
-            "name": "__st8",
+          "L___st8_1": {
+            "name": "L___st8_1",
             "bank": 0,
-            "offset": 184,
-            "absolute_address": 184
+            "offset": 256,
+            "absolute_address": 256
           },
           "__ld8_hi": {
             "name": "__ld8_hi",
@@ -759,11 +759,11 @@
             "offset": 112,
             "absolute_address": 112
           },
-          "L___st8_99999": {
-            "name": "L___st8_99999",
+          "L___ld8_99999": {
+            "name": "L___ld8_99999",
             "bank": 0,
-            "offset": 348,
-            "absolute_address": 348
+            "offset": 124,
+            "absolute_address": 124
           },
           "__ld8": {
             "name": "__ld8",
@@ -771,11 +771,11 @@
             "offset": 0,
             "absolute_address": 0
           },
-          "__ld8_done": {
-            "name": "__ld8_done",
+          "__st8_store": {
+            "name": "__st8_store",
             "bank": 0,
-            "offset": 120,
-            "absolute_address": 120
+            "offset": 336,
+            "absolute_address": 336
           }
         },
         "data_labels": {},
@@ -1036,17 +1036,17 @@
         ],
         "data": [],
         "labels": {
-          "putchar": {
-            "name": "putchar",
-            "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
           "L_putchar_99999": {
             "name": "L_putchar_99999",
             "bank": 0,
             "offset": 80,
             "absolute_address": 80
+          },
+          "putchar": {
+            "name": "putchar",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
           }
         },
         "data_labels": {},
@@ -1720,23 +1720,11 @@
         ],
         "data": [],
         "labels": {
-          "L_puts_1": {
-            "name": "L_puts_1",
-            "bank": 0,
-            "offset": 84,
-            "absolute_address": 84
-          },
           "puts": {
             "name": "puts",
             "bank": 0,
             "offset": 0,
             "absolute_address": 0
-          },
-          "L_puts_99999": {
-            "name": "L_puts_99999",
-            "bank": 0,
-            "offset": 316,
-            "absolute_address": 316
           },
           "L_puts_3": {
             "name": "L_puts_3",
@@ -1749,6 +1737,18 @@
             "bank": 0,
             "offset": 112,
             "absolute_address": 112
+          },
+          "L_puts_99999": {
+            "name": "L_puts_99999",
+            "bank": 0,
+            "offset": 316,
+            "absolute_address": 316
+          },
+          "L_puts_1": {
+            "name": "L_puts_1",
+            "bank": 0,
+            "offset": 84,
+            "absolute_address": 84
           }
         },
         "data_labels": {},
@@ -2403,17 +2403,29 @@
         ],
         "data": [],
         "labels": {
-          "L_memset_4": {
-            "name": "L_memset_4",
+          "L_memset_2": {
+            "name": "L_memset_2",
             "bank": 0,
-            "offset": 296,
-            "absolute_address": 296
+            "offset": 168,
+            "absolute_address": 168
           },
           "memset": {
             "name": "memset",
             "bank": 0,
             "offset": 0,
             "absolute_address": 0
+          },
+          "L_memset_4": {
+            "name": "L_memset_4",
+            "bank": 0,
+            "offset": 296,
+            "absolute_address": 296
+          },
+          "L_memset_99999": {
+            "name": "L_memset_99999",
+            "bank": 0,
+            "offset": 300,
+            "absolute_address": 300
           },
           "L_memset_1": {
             "name": "L_memset_1",
@@ -2426,18 +2438,6 @@
             "bank": 0,
             "offset": 268,
             "absolute_address": 268
-          },
-          "L_memset_2": {
-            "name": "L_memset_2",
-            "bank": 0,
-            "offset": 168,
-            "absolute_address": 168
-          },
-          "L_memset_99999": {
-            "name": "L_memset_99999",
-            "bank": 0,
-            "offset": 300,
-            "absolute_address": 300
           }
         },
         "data_labels": {},
@@ -3454,23 +3454,23 @@
         ],
         "data": [],
         "labels": {
-          "L_memcpy_2": {
-            "name": "L_memcpy_2",
-            "bank": 0,
-            "offset": 240,
-            "absolute_address": 240
-          },
           "L_memcpy_1": {
             "name": "L_memcpy_1",
             "bank": 0,
             "offset": 204,
             "absolute_address": 204
           },
-          "L_memcpy_4": {
-            "name": "L_memcpy_4",
+          "L_memcpy_2": {
+            "name": "L_memcpy_2",
             "bank": 0,
-            "offset": 508,
-            "absolute_address": 508
+            "offset": 240,
+            "absolute_address": 240
+          },
+          "L_memcpy_99999": {
+            "name": "L_memcpy_99999",
+            "bank": 0,
+            "offset": 512,
+            "absolute_address": 512
           },
           "memcpy": {
             "name": "memcpy",
@@ -3484,11 +3484,11 @@
             "offset": 480,
             "absolute_address": 480
           },
-          "L_memcpy_99999": {
-            "name": "L_memcpy_99999",
+          "L_memcpy_4": {
+            "name": "L_memcpy_4",
             "bank": 0,
-            "offset": 512,
-            "absolute_address": 512
+            "offset": 508,
+            "absolute_address": 508
           }
         },
         "data_labels": {},
@@ -15208,179 +15208,11 @@
         ],
         "data": [],
         "labels": {
-          "L_mmio_read_99999": {
-            "name": "L_mmio_read_99999",
-            "bank": 0,
-            "offset": 148,
-            "absolute_address": 148
-          },
-          "L_text40_putchar_13": {
-            "name": "L_text40_putchar_13",
-            "bank": 0,
-            "offset": 2232,
-            "absolute_address": 2232
-          },
-          "L_rng_set_seed_99999": {
-            "name": "L_rng_set_seed_99999",
-            "bank": 0,
-            "offset": 1064,
-            "absolute_address": 1064
-          },
-          "L_text40_get_attr_99999": {
-            "name": "L_text40_get_attr_99999",
-            "bank": 0,
-            "offset": 6628,
-            "absolute_address": 6628
-          },
-          "L_text40_get_attr_42": {
-            "name": "L_text40_get_attr_42",
-            "bank": 0,
-            "offset": 6352,
-            "absolute_address": 6352
-          },
-          "L_text40_putchar_attr_23": {
-            "name": "L_text40_putchar_attr_23",
-            "bank": 0,
-            "offset": 3704,
-            "absolute_address": 3704
-          },
-          "L_text40_puts_attr_31": {
-            "name": "L_text40_puts_attr_31",
-            "bank": 0,
-            "offset": 4884,
-            "absolute_address": 4884
-          },
-          "L_display_flush_99999": {
-            "name": "L_display_flush_99999",
-            "bank": 0,
-            "offset": 1792,
-            "absolute_address": 1792
-          },
-          "L_text40_get_attr_43": {
-            "name": "L_text40_get_attr_43",
-            "bank": 0,
-            "offset": 6456,
-            "absolute_address": 6456
-          },
-          "mmio_write": {
-            "name": "mmio_write",
-            "bank": 0,
-            "offset": 208,
-            "absolute_address": 208
-          },
-          "L_text40_get_char_39": {
-            "name": "L_text40_get_char_39",
-            "bank": 0,
-            "offset": 6060,
-            "absolute_address": 6060
-          },
-          "text40_get_char": {
-            "name": "text40_get_char",
-            "bank": 0,
-            "offset": 5888,
-            "absolute_address": 5888
-          },
-          "rng_set_seed": {
-            "name": "rng_set_seed",
-            "bank": 0,
-            "offset": 932,
-            "absolute_address": 932
-          },
-          "L_display_flush_9": {
-            "name": "L_display_flush_9",
-            "bank": 0,
-            "offset": 1744,
-            "absolute_address": 1744
-          },
-          "text40_puts_attr": {
-            "name": "text40_puts_attr",
-            "bank": 0,
-            "offset": 4708,
-            "absolute_address": 4708
-          },
-          "L_text40_puts_99999": {
-            "name": "L_text40_puts_99999",
-            "bank": 0,
-            "offset": 2824,
-            "absolute_address": 2824
-          },
           "L_text40_puts_attr_33": {
             "name": "L_text40_puts_attr_33",
             "bank": 0,
             "offset": 5292,
             "absolute_address": 5292
-          },
-          "L_text40_puts_14": {
-            "name": "L_text40_puts_14",
-            "bank": 0,
-            "offset": 2368,
-            "absolute_address": 2368
-          },
-          "L_rng_get_3": {
-            "name": "L_rng_get_3",
-            "bank": 0,
-            "offset": 696,
-            "absolute_address": 696
-          },
-          "L_rng_get_seed_99999": {
-            "name": "L_rng_get_seed_99999",
-            "bank": 0,
-            "offset": 872,
-            "absolute_address": 872
-          },
-          "L_text40_get_char_41": {
-            "name": "L_text40_get_char_41",
-            "bank": 0,
-            "offset": 6216,
-            "absolute_address": 6216
-          },
-          "text40_putchar_color": {
-            "name": "text40_putchar_color",
-            "bank": 0,
-            "offset": 2884,
-            "absolute_address": 2884
-          },
-          "L_text40_set_attr_99999": {
-            "name": "L_text40_set_attr_99999",
-            "bank": 0,
-            "offset": 5828,
-            "absolute_address": 5828
-          },
-          "L_text40_putchar_color_18": {
-            "name": "L_text40_putchar_color_18",
-            "bank": 0,
-            "offset": 2968,
-            "absolute_address": 2968
-          },
-          "display_set_mode": {
-            "name": "display_set_mode",
-            "bank": 0,
-            "offset": 1124,
-            "absolute_address": 1124
-          },
-          "L_text40_puts_attr_30": {
-            "name": "L_text40_puts_attr_30",
-            "bank": 0,
-            "offset": 4788,
-            "absolute_address": 4788
-          },
-          "L_text40_get_attr_45": {
-            "name": "L_text40_get_attr_45",
-            "bank": 0,
-            "offset": 6620,
-            "absolute_address": 6620
-          },
-          "L_display_enable_99999": {
-            "name": "L_display_enable_99999",
-            "bank": 0,
-            "offset": 1432,
-            "absolute_address": 1432
-          },
-          "L_text40_putchar_attr_25": {
-            "name": "L_text40_putchar_attr_25",
-            "bank": 0,
-            "offset": 3928,
-            "absolute_address": 3928
           },
           "L_tty_putchar_2": {
             "name": "L_tty_putchar_2",
@@ -15388,89 +15220,11 @@
             "offset": 508,
             "absolute_address": 508
           },
-          "display_clear": {
-            "name": "display_clear",
+          "L_text40_get_attr_42": {
+            "name": "L_text40_get_attr_42",
             "bank": 0,
-            "offset": 1492,
-            "absolute_address": 1492
-          },
-          "L_text40_putchar_color_99999": {
-            "name": "L_text40_putchar_color_99999",
-            "bank": 0,
-            "offset": 3428,
-            "absolute_address": 3428
-          },
-          "L_display_set_mode_6": {
-            "name": "L_display_set_mode_6",
-            "bank": 0,
-            "offset": 1188,
-            "absolute_address": 1188
-          },
-          "L_text40_puts_color_27": {
-            "name": "L_text40_puts_color_27",
-            "bank": 0,
-            "offset": 4212,
-            "absolute_address": 4212
-          },
-          "L_text40_puts_color_26": {
-            "name": "L_text40_puts_color_26",
-            "bank": 0,
-            "offset": 4080,
-            "absolute_address": 4080
-          },
-          "L_display_enable_7": {
-            "name": "L_display_enable_7",
-            "bank": 0,
-            "offset": 1376,
-            "absolute_address": 1376
-          },
-          "text40_putchar_attr": {
-            "name": "text40_putchar_attr",
-            "bank": 0,
-            "offset": 3488,
-            "absolute_address": 3488
-          },
-          "L_text40_puts_attr_99999": {
-            "name": "L_text40_puts_attr_99999",
-            "bank": 0,
-            "offset": 5296,
-            "absolute_address": 5296
-          },
-          "L_mmio_write_1": {
-            "name": "L_mmio_write_1",
-            "bank": 0,
-            "offset": 276,
-            "absolute_address": 276
-          },
-          "L_rng_get_99999": {
-            "name": "L_rng_get_99999",
-            "bank": 0,
-            "offset": 724,
-            "absolute_address": 724
-          },
-          "text40_puts": {
-            "name": "text40_puts",
-            "bank": 0,
-            "offset": 2296,
-            "absolute_address": 2296
-          },
-          "text40_set_attr": {
-            "name": "text40_set_attr",
-            "bank": 0,
-            "offset": 5356,
-            "absolute_address": 5356
-          },
-          "L_display_clear_8": {
-            "name": "L_display_clear_8",
-            "bank": 0,
-            "offset": 1552,
-            "absolute_address": 1552
-          },
-          "L_text40_puts_color_99999": {
-            "name": "L_text40_puts_color_99999",
-            "bank": 0,
-            "offset": 4648,
-            "absolute_address": 4648
+            "offset": 6352,
+            "absolute_address": 6352
           },
           "L_text40_putchar_attr_22": {
             "name": "L_text40_putchar_attr_22",
@@ -15478,17 +15232,59 @@
             "offset": 3564,
             "absolute_address": 3564
           },
+          "L_text40_puts_color_29": {
+            "name": "L_text40_puts_color_29",
+            "bank": 0,
+            "offset": 4644,
+            "absolute_address": 4644
+          },
+          "L_text40_putchar_13": {
+            "name": "L_text40_putchar_13",
+            "bank": 0,
+            "offset": 2232,
+            "absolute_address": 2232
+          },
           "L_text40_putchar_10": {
             "name": "L_text40_putchar_10",
             "bank": 0,
             "offset": 1924,
             "absolute_address": 1924
           },
-          "L_rng_set_seed_5": {
-            "name": "L_rng_set_seed_5",
+          "L_text40_puts_attr_32": {
+            "name": "L_text40_puts_attr_32",
             "bank": 0,
-            "offset": 996,
-            "absolute_address": 996
+            "offset": 5068,
+            "absolute_address": 5068
+          },
+          "L_text40_puts_color_99999": {
+            "name": "L_text40_puts_color_99999",
+            "bank": 0,
+            "offset": 4648,
+            "absolute_address": 4648
+          },
+          "L_text40_get_attr_99999": {
+            "name": "L_text40_get_attr_99999",
+            "bank": 0,
+            "offset": 6628,
+            "absolute_address": 6628
+          },
+          "L_text40_set_attr_34": {
+            "name": "L_text40_set_attr_34",
+            "bank": 0,
+            "offset": 5428,
+            "absolute_address": 5428
+          },
+          "L_display_flush_9": {
+            "name": "L_display_flush_9",
+            "bank": 0,
+            "offset": 1744,
+            "absolute_address": 1744
+          },
+          "L_text40_putchar_attr_99999": {
+            "name": "L_text40_putchar_attr_99999",
+            "bank": 0,
+            "offset": 3932,
+            "absolute_address": 3932
           },
           "L_display_clear_99999": {
             "name": "L_display_clear_99999",
@@ -15496,29 +15292,23 @@
             "offset": 1624,
             "absolute_address": 1624
           },
-          "L_text40_putchar_color_21": {
-            "name": "L_text40_putchar_color_21",
+          "L_text40_puts_color_26": {
+            "name": "L_text40_puts_color_26",
             "bank": 0,
-            "offset": 3424,
-            "absolute_address": 3424
+            "offset": 4080,
+            "absolute_address": 4080
           },
-          "L_text40_puts_16": {
-            "name": "L_text40_puts_16",
+          "L_text40_putchar_color_18": {
+            "name": "L_text40_putchar_color_18",
             "bank": 0,
-            "offset": 2624,
-            "absolute_address": 2624
+            "offset": 2968,
+            "absolute_address": 2968
           },
-          "L_mmio_write_99999": {
-            "name": "L_mmio_write_99999",
+          "rng_set_seed": {
+            "name": "rng_set_seed",
             "bank": 0,
-            "offset": 384,
-            "absolute_address": 384
-          },
-          "text40_putchar": {
-            "name": "text40_putchar",
-            "bank": 0,
-            "offset": 1852,
-            "absolute_address": 1852
+            "offset": 932,
+            "absolute_address": 932
           },
           "tty_putchar": {
             "name": "tty_putchar",
@@ -15526,11 +15316,89 @@
             "offset": 444,
             "absolute_address": 444
           },
+          "L_rng_get_seed_4": {
+            "name": "L_rng_get_seed_4",
+            "bank": 0,
+            "offset": 844,
+            "absolute_address": 844
+          },
+          "L_display_flush_99999": {
+            "name": "L_display_flush_99999",
+            "bank": 0,
+            "offset": 1792,
+            "absolute_address": 1792
+          },
+          "L_text40_puts_15": {
+            "name": "L_text40_puts_15",
+            "bank": 0,
+            "offset": 2452,
+            "absolute_address": 2452
+          },
+          "display_clear": {
+            "name": "display_clear",
+            "bank": 0,
+            "offset": 1492,
+            "absolute_address": 1492
+          },
+          "L_text40_putchar_attr_23": {
+            "name": "L_text40_putchar_attr_23",
+            "bank": 0,
+            "offset": 3704,
+            "absolute_address": 3704
+          },
+          "L_rng_get_3": {
+            "name": "L_rng_get_3",
+            "bank": 0,
+            "offset": 696,
+            "absolute_address": 696
+          },
+          "L_text40_puts_99999": {
+            "name": "L_text40_puts_99999",
+            "bank": 0,
+            "offset": 2824,
+            "absolute_address": 2824
+          },
+          "L_text40_get_char_39": {
+            "name": "L_text40_get_char_39",
+            "bank": 0,
+            "offset": 6060,
+            "absolute_address": 6060
+          },
           "text40_get_attr": {
             "name": "text40_get_attr",
             "bank": 0,
             "offset": 6284,
             "absolute_address": 6284
+          },
+          "L_mmio_read_99999": {
+            "name": "L_mmio_read_99999",
+            "bank": 0,
+            "offset": 148,
+            "absolute_address": 148
+          },
+          "L_text40_get_attr_45": {
+            "name": "L_text40_get_attr_45",
+            "bank": 0,
+            "offset": 6620,
+            "absolute_address": 6620
+          },
+          "L_text40_puts_attr_31": {
+            "name": "L_text40_puts_attr_31",
+            "bank": 0,
+            "offset": 4884,
+            "absolute_address": 4884
+          },
+          "mmio_read": {
+            "name": "mmio_read",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
+          "L_text40_puts_17": {
+            "name": "L_text40_puts_17",
+            "bank": 0,
+            "offset": 2820,
+            "absolute_address": 2820
           },
           "display_flush": {
             "name": "display_flush",
@@ -15538,17 +15406,185 @@
             "offset": 1684,
             "absolute_address": 1684
           },
-          "L_tty_putchar_99999": {
-            "name": "L_tty_putchar_99999",
+          "L_display_enable_99999": {
+            "name": "L_display_enable_99999",
             "bank": 0,
-            "offset": 576,
-            "absolute_address": 576
+            "offset": 1432,
+            "absolute_address": 1432
+          },
+          "L_rng_get_99999": {
+            "name": "L_rng_get_99999",
+            "bank": 0,
+            "offset": 724,
+            "absolute_address": 724
+          },
+          "text40_puts_color": {
+            "name": "text40_puts_color",
+            "bank": 0,
+            "offset": 3992,
+            "absolute_address": 3992
+          },
+          "text40_get_char": {
+            "name": "text40_get_char",
+            "bank": 0,
+            "offset": 5888,
+            "absolute_address": 5888
+          },
+          "mmio_write": {
+            "name": "mmio_write",
+            "bank": 0,
+            "offset": 208,
+            "absolute_address": 208
+          },
+          "L_text40_get_char_41": {
+            "name": "L_text40_get_char_41",
+            "bank": 0,
+            "offset": 6216,
+            "absolute_address": 6216
+          },
+          "L_text40_putchar_99999": {
+            "name": "L_text40_putchar_99999",
+            "bank": 0,
+            "offset": 2236,
+            "absolute_address": 2236
+          },
+          "text40_putchar_color": {
+            "name": "text40_putchar_color",
+            "bank": 0,
+            "offset": 2884,
+            "absolute_address": 2884
+          },
+          "L_text40_get_char_38": {
+            "name": "L_text40_get_char_38",
+            "bank": 0,
+            "offset": 5956,
+            "absolute_address": 5956
+          },
+          "text40_puts_attr": {
+            "name": "text40_puts_attr",
+            "bank": 0,
+            "offset": 4708,
+            "absolute_address": 4708
+          },
+          "L_text40_puts_14": {
+            "name": "L_text40_puts_14",
+            "bank": 0,
+            "offset": 2368,
+            "absolute_address": 2368
+          },
+          "L_text40_puts_color_27": {
+            "name": "L_text40_puts_color_27",
+            "bank": 0,
+            "offset": 4212,
+            "absolute_address": 4212
+          },
+          "text40_puts": {
+            "name": "text40_puts",
+            "bank": 0,
+            "offset": 2296,
+            "absolute_address": 2296
+          },
+          "L_text40_puts_color_28": {
+            "name": "L_text40_puts_color_28",
+            "bank": 0,
+            "offset": 4384,
+            "absolute_address": 4384
+          },
+          "L_display_clear_8": {
+            "name": "L_display_clear_8",
+            "bank": 0,
+            "offset": 1552,
+            "absolute_address": 1552
+          },
+          "L_text40_set_attr_35": {
+            "name": "L_text40_set_attr_35",
+            "bank": 0,
+            "offset": 5544,
+            "absolute_address": 5544
+          },
+          "L_rng_set_seed_5": {
+            "name": "L_rng_set_seed_5",
+            "bank": 0,
+            "offset": 996,
+            "absolute_address": 996
+          },
+          "L_text40_set_attr_99999": {
+            "name": "L_text40_set_attr_99999",
+            "bank": 0,
+            "offset": 5828,
+            "absolute_address": 5828
+          },
+          "L_text40_putchar_attr_25": {
+            "name": "L_text40_putchar_attr_25",
+            "bank": 0,
+            "offset": 3928,
+            "absolute_address": 3928
+          },
+          "L_text40_puts_attr_30": {
+            "name": "L_text40_puts_attr_30",
+            "bank": 0,
+            "offset": 4788,
+            "absolute_address": 4788
+          },
+          "L_rng_set_seed_99999": {
+            "name": "L_rng_set_seed_99999",
+            "bank": 0,
+            "offset": 1064,
+            "absolute_address": 1064
+          },
+          "rng_get_seed": {
+            "name": "rng_get_seed",
+            "bank": 0,
+            "offset": 784,
+            "absolute_address": 784
           },
           "L_text40_set_attr_37": {
             "name": "L_text40_set_attr_37",
             "bank": 0,
             "offset": 5824,
             "absolute_address": 5824
+          },
+          "text40_putchar": {
+            "name": "text40_putchar",
+            "bank": 0,
+            "offset": 1852,
+            "absolute_address": 1852
+          },
+          "text40_set_attr": {
+            "name": "text40_set_attr",
+            "bank": 0,
+            "offset": 5356,
+            "absolute_address": 5356
+          },
+          "L_text40_putchar_color_19": {
+            "name": "L_text40_putchar_color_19",
+            "bank": 0,
+            "offset": 3144,
+            "absolute_address": 3144
+          },
+          "display_set_mode": {
+            "name": "display_set_mode",
+            "bank": 0,
+            "offset": 1124,
+            "absolute_address": 1124
+          },
+          "L_mmio_write_99999": {
+            "name": "L_mmio_write_99999",
+            "bank": 0,
+            "offset": 384,
+            "absolute_address": 384
+          },
+          "L_text40_get_attr_43": {
+            "name": "L_text40_get_attr_43",
+            "bank": 0,
+            "offset": 6456,
+            "absolute_address": 6456
+          },
+          "L_mmio_write_1": {
+            "name": "L_mmio_write_1",
+            "bank": 0,
+            "offset": 276,
+            "absolute_address": 276
           },
           "L_display_set_mode_99999": {
             "name": "L_display_set_mode_99999",
@@ -15562,41 +15598,29 @@
             "offset": 6224,
             "absolute_address": 6224
           },
-          "L_text40_putchar_99999": {
-            "name": "L_text40_putchar_99999",
+          "L_display_enable_7": {
+            "name": "L_display_enable_7",
             "bank": 0,
-            "offset": 2236,
-            "absolute_address": 2236
+            "offset": 1376,
+            "absolute_address": 1376
           },
-          "mmio_read": {
-            "name": "mmio_read",
+          "text40_putchar_attr": {
+            "name": "text40_putchar_attr",
             "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
+            "offset": 3488,
+            "absolute_address": 3488
           },
-          "L_text40_puts_color_28": {
-            "name": "L_text40_puts_color_28",
+          "L_tty_putchar_99999": {
+            "name": "L_tty_putchar_99999",
             "bank": 0,
-            "offset": 4384,
-            "absolute_address": 4384
+            "offset": 576,
+            "absolute_address": 576
           },
-          "L_text40_set_attr_34": {
-            "name": "L_text40_set_attr_34",
+          "L_text40_putchar_color_99999": {
+            "name": "L_text40_putchar_color_99999",
             "bank": 0,
-            "offset": 5428,
-            "absolute_address": 5428
-          },
-          "L_text40_puts_color_29": {
-            "name": "L_text40_puts_color_29",
-            "bank": 0,
-            "offset": 4644,
-            "absolute_address": 4644
-          },
-          "L_text40_putchar_color_19": {
-            "name": "L_text40_putchar_color_19",
-            "bank": 0,
-            "offset": 3144,
-            "absolute_address": 3144
+            "offset": 3428,
+            "absolute_address": 3428
           },
           "display_enable": {
             "name": "display_enable",
@@ -15604,11 +15628,17 @@
             "offset": 1316,
             "absolute_address": 1316
           },
-          "rng_get_seed": {
-            "name": "rng_get_seed",
+          "L_rng_get_seed_99999": {
+            "name": "L_rng_get_seed_99999",
             "bank": 0,
-            "offset": 784,
-            "absolute_address": 784
+            "offset": 872,
+            "absolute_address": 872
+          },
+          "L_text40_putchar_color_21": {
+            "name": "L_text40_putchar_color_21",
+            "bank": 0,
+            "offset": 3424,
+            "absolute_address": 3424
           },
           "L_text40_putchar_11": {
             "name": "L_text40_putchar_11",
@@ -15616,59 +15646,29 @@
             "offset": 2040,
             "absolute_address": 2040
           },
+          "L_text40_puts_16": {
+            "name": "L_text40_puts_16",
+            "bank": 0,
+            "offset": 2624,
+            "absolute_address": 2624
+          },
           "rng_get": {
             "name": "rng_get",
             "bank": 0,
             "offset": 636,
             "absolute_address": 636
           },
-          "L_text40_set_attr_35": {
-            "name": "L_text40_set_attr_35",
+          "L_display_set_mode_6": {
+            "name": "L_display_set_mode_6",
             "bank": 0,
-            "offset": 5544,
-            "absolute_address": 5544
+            "offset": 1188,
+            "absolute_address": 1188
           },
-          "L_text40_puts_15": {
-            "name": "L_text40_puts_15",
+          "L_text40_puts_attr_99999": {
+            "name": "L_text40_puts_attr_99999",
             "bank": 0,
-            "offset": 2452,
-            "absolute_address": 2452
-          },
-          "text40_puts_color": {
-            "name": "text40_puts_color",
-            "bank": 0,
-            "offset": 3992,
-            "absolute_address": 3992
-          },
-          "L_text40_putchar_attr_99999": {
-            "name": "L_text40_putchar_attr_99999",
-            "bank": 0,
-            "offset": 3932,
-            "absolute_address": 3932
-          },
-          "L_rng_get_seed_4": {
-            "name": "L_rng_get_seed_4",
-            "bank": 0,
-            "offset": 844,
-            "absolute_address": 844
-          },
-          "L_text40_get_char_38": {
-            "name": "L_text40_get_char_38",
-            "bank": 0,
-            "offset": 5956,
-            "absolute_address": 5956
-          },
-          "L_text40_puts_attr_32": {
-            "name": "L_text40_puts_attr_32",
-            "bank": 0,
-            "offset": 5068,
-            "absolute_address": 5068
-          },
-          "L_text40_puts_17": {
-            "name": "L_text40_puts_17",
-            "bank": 0,
-            "offset": 2820,
-            "absolute_address": 2820
+            "offset": 5296,
+            "absolute_address": 5296
           }
         },
         "data_labels": {},
@@ -16468,6 +16468,12 @@
         ],
         "data": [],
         "labels": {
+          "L_rand_99999": {
+            "name": "L_rand_99999",
+            "bank": 0,
+            "offset": 388,
+            "absolute_address": 388
+          },
           "L_rand_1": {
             "name": "L_rand_1",
             "bank": 0,
@@ -16486,39 +16492,33 @@
             "offset": 352,
             "absolute_address": 352
           },
+          "L_srand_99999": {
+            "name": "L_srand_99999",
+            "bank": 0,
+            "offset": 160,
+            "absolute_address": 160
+          },
           "rand": {
             "name": "rand",
             "bank": 0,
             "offset": 220,
             "absolute_address": 220
           },
-          "L_rand_99999": {
-            "name": "L_rand_99999",
-            "bank": 0,
-            "offset": 388,
-            "absolute_address": 388
-          },
           "L_rand_2": {
             "name": "L_rand_2",
             "bank": 0,
             "offset": 312,
             "absolute_address": 312
-          },
-          "L_srand_99999": {
-            "name": "L_srand_99999",
-            "bank": 0,
-            "offset": 160,
-            "absolute_address": 160
           }
         },
         "data_labels": {},
         "unresolved_references": {
-          "35": {
-            "label": "rng_set_seed",
-            "ref_type": "absolute"
-          },
           "89": {
             "label": "rng_get",
+            "ref_type": "absolute"
+          },
+          "35": {
+            "label": "rng_set_seed",
             "ref_type": "absolute"
           }
         },
