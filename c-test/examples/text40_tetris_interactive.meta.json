@@ -1,0 +1,5 @@
+{
+  "use_runtime": true,
+  "description": "Fully interactive Tetris game with keyboard controls",
+  "expected": "Interactive Tetris completed!"
+}

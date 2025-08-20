@@ -1042,17 +1042,17 @@ L_text40_puts_15:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
 ; LOAD: Pointer t12 has bank info: Dynamic("gep_new_bank_f22_op24_t12")
     LI T0, -1
-    BEQ S1, T0, L_bc_2340a35b_use_global
+    BEQ S1, T0, L_bc_d4121a11_use_global
     LI S3, -2
-    BEQ S1, S3, L_bc_2340a35b_use_stack
+    BEQ S1, S3, L_bc_d4121a11_use_stack
     ADD S0, S1, R0
-    BEQ R0, R0, L_bc_2340a35b_done
-L_bc_2340a35b_use_global:
+    BEQ R0, R0, L_bc_d4121a11_done
+L_bc_d4121a11_use_global:
     ADD S0, GP, R0
-    BEQ R0, R0, L_bc_2340a35b_done
-L_bc_2340a35b_use_stack:
+    BEQ R0, R0, L_bc_d4121a11_done
+L_bc_d4121a11_use_stack:
     ADD S0, SB, R0
-L_bc_2340a35b_done:
+L_bc_d4121a11_done:
 ; LOAD: Using bank register S0 for load
     LOAD S2, S0, T7
 ; Recompute alloca t9 at FP+6
@@ -1788,17 +1788,17 @@ L_text40_puts_color_27:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
 ; LOAD: Pointer t16 has bank info: Dynamic("gep_new_bank_f28_op28_t16")
     LI T2, -1
-    BEQ T7, T2, L_bc_3de63064_use_global
+    BEQ T7, T2, L_bc_e59b63b0_use_global
     LI S1, -2
-    BEQ T7, S1, L_bc_3de63064_use_stack
+    BEQ T7, S1, L_bc_e59b63b0_use_stack
     ADD S3, T7, R0
-    BEQ R0, R0, L_bc_3de63064_done
-L_bc_3de63064_use_global:
+    BEQ R0, R0, L_bc_e59b63b0_done
+L_bc_e59b63b0_use_global:
     ADD S3, GP, R0
-    BEQ R0, R0, L_bc_3de63064_done
-L_bc_3de63064_use_stack:
+    BEQ R0, R0, L_bc_e59b63b0_done
+L_bc_e59b63b0_use_stack:
     ADD S3, SB, R0
-L_bc_3de63064_done:
+L_bc_e59b63b0_done:
 ; LOAD: Using bank register S3 for load
     LOAD S0, S3, S2
 ; Recompute alloca t13 at FP+8
@@ -2100,17 +2100,17 @@ L_text40_puts_attr_31:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(14), bank: Mixed })
 ; LOAD: Pointer t14 has bank info: Dynamic("gep_new_bank_f30_op26_t14")
     LI S3, -1
-    BEQ S0, S3, L_bc_9543ea97_use_global
+    BEQ S0, S3, L_bc_0cca89ed_use_global
     LI S2, -2
-    BEQ S0, S2, L_bc_9543ea97_use_stack
+    BEQ S0, S2, L_bc_0cca89ed_use_stack
     ADD T3, S0, R0
-    BEQ R0, R0, L_bc_9543ea97_done
-L_bc_9543ea97_use_global:
+    BEQ R0, R0, L_bc_0cca89ed_done
+L_bc_0cca89ed_use_global:
     ADD T3, GP, R0
-    BEQ R0, R0, L_bc_9543ea97_done
-L_bc_9543ea97_use_stack:
+    BEQ R0, R0, L_bc_0cca89ed_done
+L_bc_0cca89ed_use_stack:
     ADD T3, SB, R0
-L_bc_9543ea97_done:
+L_bc_0cca89ed_done:
 ; LOAD: Using bank register T3 for load
     LOAD S1, T3, T7
 ; Recompute alloca t11 at FP+7
