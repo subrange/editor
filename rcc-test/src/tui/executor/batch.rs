@@ -81,6 +81,7 @@ fn run_test_batch_internal(app: &mut TuiApp, tests_to_run: Vec<TestCase>) -> Res
                 parallel: true,  // Use parallel execution like CLI
                 debug_mode: false,
                 frequency: None,
+                disk_path: RunConfig::default().disk_path,
             };
             
             // Create the same TestRunner that CLI uses

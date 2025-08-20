@@ -6,8 +6,8 @@ mod debugger_ui;
 mod mode;
 mod settings;
 mod display_rgb565;
+mod cli;
 
-use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::process;
@@ -15,10 +15,12 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use vm::VM;
-use constants::{DEFAULT_BANK_SIZE, DEFAULT_MEMORY_SIZE};
+use constants::DEFAULT_MEMORY_SIZE;
 use debug::Debugger;
 use colored::*;
 use crossterm::{terminal, cursor, style::ResetColor, ExecutableCommand};
+use clap::Parser;
+use cli::Cli;
 
 /// Install signal handlers to ensure terminal cleanup on exit
 fn install_signal_handlers() {
@@ -44,171 +46,38 @@ fn install_signal_handlers() {
     }
 }
 
-fn print_usage() {
-    eprintln!("Usage: rvm [OPTIONS] <binary-file>");
-    eprintln!();
-    eprintln!("Run a Ripple VM binary program");
-    eprintln!();
-    eprintln!("OPTIONS:");
-    eprintln!("  -b, --bank-size <size>   Set bank size (default: {DEFAULT_BANK_SIZE})");
-    eprintln!("  -m, --memory <size>      Set memory size in words (default: {DEFAULT_MEMORY_SIZE})");
-    eprintln!("  -f, --frequency <hz>     Set virtual CPU frequency (e.g., 1MHz, 500KHz, 2.5GHz)");
-    eprintln!("  -s, --seed <value>       Set RNG seed (default: 0x12345678)");
-    eprintln!("  -i, --input <text>       Pre-populate input buffer with text");
-    eprintln!("  -d, --debug              Enable debug mode (step through execution)");
-    eprintln!("  -t, --tui                Enable TUI debugger_ui mode");
-    eprintln!("  -v, --verbose            Show VM state during execution");
-    eprintln!("  --visual                 Enable RGB565 visual display window");
-    eprintln!("  -h, --help               Show this help message");
-    eprintln!();
-    eprintln!("TUI DEBUGGER MODE (-t):");
-    eprintln!("  Professional terminal-based debugger_ui with multiple panes:");
-    eprintln!("  - Disassembly view with breakpoints and execution tracking");
-    eprintln!("  - Register display with change highlighting");
-    eprintln!("  - Memory viewer with hex/ASCII display and editing");
-    eprintln!("  - Stack trace and memory watches");
-    eprintln!("  - Output buffer display");
-    eprintln!();
-    eprintln!("  Key features:");
-    eprintln!("  • Set breakpoints at cursor or by instruction number");
-    eprintln!("  • Step, run, and continue execution");
-    eprintln!("  • Edit memory and registers on-the-fly");
-    eprintln!("  • Navigate with vim-style keys or arrows");
-    eprintln!("  • Command mode for advanced operations");
-    eprintln!("  • Press '?' in TUI for complete keyboard shortcuts");
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Install terminal cleanup hooks
     vm::install_terminal_cleanup_hook();
     install_signal_handlers();
     
-    let args: Vec<String> = env::args().collect();
+    // Parse command line arguments
+    let cli = Cli::parse();
     
-    if args.len() < 2 {
-        print_usage();
-        process::exit(1);
-    }
-    
-    let mut bank_size = DEFAULT_BANK_SIZE;
-    let mut memory_size: Option<usize> = None;
-    let mut frequency: Option<u64> = None;
-    let mut rng_seed: Option<u32> = None;
-    let mut input_text: Option<String> = None;
-    let mut debug_mode = false;
-    let mut tui_mode = false;
-    let mut verbose = false;
-    let mut visual_mode = false;
-    let mut file_path = None;
-    
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
-            "-h" | "--help" => {
-                print_usage();
-                process::exit(0);
-            },
-            "-b" | "--bank-size" => {
-                if i + 1 >= args.len() {
-                    eprintln!("Error: --bank-size requires an argument");
-                    process::exit(1);
-                }
-                i += 1;
-                bank_size = args[i].parse().unwrap_or_else(|_| {
-                    eprintln!("Error: Invalid bank size: {}", args[i]);
-                    process::exit(1);
-                });
-            },
-            "-m" | "--memory" => {
-                if i + 1 >= args.len() {
-                    eprintln!("Error: --memory requires an argument");
-                    process::exit(1);
-                }
-                i += 1;
-                memory_size = Some(args[i].parse().unwrap_or_else(|_| {
-                    eprintln!("Error: Invalid memory size: {}", args[i]);
-                    process::exit(1);
-                }));
-            },
-            "-f" | "--frequency" => {
-                if i + 1 >= args.len() {
-                    eprintln!("Error: --frequency requires an argument");
-                    process::exit(1);
-                }
-                i += 1;
-                frequency = Some(parse_frequency(&args[i]).unwrap_or_else(|e| {
-                    eprintln!("Error: Invalid frequency '{}': {}", args[i], e);
-                    process::exit(1);
-                }));
-            },
-            "-s" | "--seed" => {
-                if i + 1 >= args.len() {
-                    eprintln!("Error: --seed requires an argument");
-                    process::exit(1);
-                }
-                i += 1;
-                // Parse as hex if it starts with 0x, otherwise decimal
-                let seed_str = &args[i];
-                rng_seed = Some(if seed_str.starts_with("0x") || seed_str.starts_with("0X") {
-                    u32::from_str_radix(&seed_str[2..], 16).unwrap_or_else(|_| {
-                        eprintln!("Error: Invalid hex seed: {}", args[i]);
-                        process::exit(1);
-                    })
-                } else {
-                    seed_str.parse().unwrap_or_else(|_| {
-                        eprintln!("Error: Invalid seed: {}", args[i]);
-                        process::exit(1);
-                    })
-                });
-            },
-            "-i" | "--input" => {
-                if i + 1 >= args.len() {
-                    eprintln!("Error: --input requires an argument");
-                    process::exit(1);
-                }
-                i += 1;
-                input_text = Some(args[i].clone());
-            },
-            "-d" | "--debug" => {
-                debug_mode = true;
-            },
-            "-t" | "--tui" => {
-                tui_mode = true;
-            },
-            "-v" | "--verbose" => {
-                verbose = true;
-            },
-            "--visual" => {
-                visual_mode = true;
-            },
-            _ => {
-                if args[i].starts_with('-') {
-                    eprintln!("Error: Unknown option: {}", args[i]);
-                    process::exit(1);
-                }
-                file_path = Some(args[i].clone());
-            }
-        }
-        i += 1;
-    }
-    
-    let file_path = file_path.unwrap_or_else(|| {
-        eprintln!("Error: No input file specified");
-        print_usage();
-        process::exit(1);
-    });
+    let bank_size = cli.bank_size;
+    let memory_size = cli.memory;
+    let frequency = cli.parse_frequency();
+    let rng_seed = cli.parse_seed();
+    let input_text = cli.input.clone();
+    let debug_mode = cli.debug;
+    let tui_mode = cli.tui;
+    let verbose = cli.verbose;
+    let visual_mode = cli.visual;
+    let disk_path = cli.disk.clone();
+    let file_path = cli.binary_file;
     
     // Read the binary file
     let binary = fs::read(&file_path).unwrap_or_else(|e| {
-        eprintln!("Error reading file '{file_path}': {e}");
+        eprintln!("Error reading file '{}': {}", file_path.display(), e);
         process::exit(1);
     });
     
     // Create and initialize the VM
     let mut vm = if let Some(mem_size) = memory_size {
-        VM::with_memory_size(bank_size, mem_size)
+        VM::with_options(bank_size, mem_size, disk_path)
     } else {
-        VM::new(bank_size) // Default 64K memory
+        VM::with_options(bank_size, DEFAULT_MEMORY_SIZE, disk_path)
     };
     
     // Set RNG seed if specified
@@ -242,9 +111,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     if verbose {
-        println!("Loading binary from {file_path}...");
+        println!("Loading binary from {}...", file_path.display());
         println!("Bank size: {bank_size}");
         println!("Memory size: {} words", vm.memory.len());
+        if let Some(ref disk) = cli.disk {
+            println!("Disk image: {}", disk.display());
+        }
     }
     
     if verbose {
@@ -406,35 +278,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Parse frequency from string (e.g., "1MHz", "500KHz", "1000000", "2.5MHz")
-fn parse_frequency(s: &str) -> Result<u64, String> {
-    let s = s.trim();
-    
-    // Check for suffix
-    if let Some(num_str) = s.strip_suffix("GHz") {
-        parse_float_with_multiplier(num_str, 1_000_000_000)
-    } else if let Some(num_str) = s.strip_suffix("MHz") {
-        parse_float_with_multiplier(num_str, 1_000_000)
-    } else if let Some(num_str) = s.strip_suffix("KHz") {
-        parse_float_with_multiplier(num_str, 1_000)
-    } else if let Some(num_str) = s.strip_suffix("kHz") {
-        parse_float_with_multiplier(num_str, 1_000)
-    } else if let Some(num_str) = s.strip_suffix("Hz") {
-        parse_float_with_multiplier(num_str, 1)
-    } else {
-        // Try to parse as plain number (assumed to be Hz)
-        s.parse::<u64>().map_err(|_| format!("Invalid frequency value: {s}"))
-    }
-}
-
-fn parse_float_with_multiplier(s: &str, multiplier: u64) -> Result<u64, String> {
-    let s = s.trim();
-    if let Ok(f) = s.parse::<f64>() {
-        Ok((f * multiplier as f64) as u64)
-    } else {
-        Err(format!("Invalid numeric value: {s}"))
-    }
-}
 
 /// Run VM with frequency limiting
 fn run_with_frequency(vm: &mut VM, frequency: u64) -> Result<(), String> {

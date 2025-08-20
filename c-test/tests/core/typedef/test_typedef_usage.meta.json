@@ -1,5 +1,5 @@
 {
-  "expected": "YHY\n",
   "use_runtime": true,
-  "description": "Test typedef name usage as type specifiers"
+  "description": "Test typedef name usage as type specifiers",
+  "expected": "YHY\n"
 }

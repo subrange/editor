@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(
     name = "rct",
     about = "Test runner for the Ripple C compiler",
@@ -45,6 +45,10 @@ pub struct Cli {
     /// Use debug mode (RVM with -t flag)
     #[arg(short, long)]
     pub debug: bool,
+    
+    /// Path to disk image file for storage (passed to RVM)
+    #[arg(long)]
+    pub disk: Option<PathBuf>,
 
     /// Path to test directory (deprecated, kept for compatibility)
     #[arg(long, default_value = "c-test", hide = true)]
@@ -62,7 +66,7 @@ pub struct Cli {
     pub command: Option<Command>,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum Command {
     /// Run tests (default if no command specified) or execute programs
     Run {
@@ -84,6 +88,10 @@ pub enum Command {
         /// Bank size for assembler
         #[arg(long)]
         bank_size: Option<usize>,
+        
+        /// Path to disk image file for storage (passed to RVM)
+        #[arg(long)]
+        disk: Option<PathBuf>,
     },
     
     /// Add a new test (creates .meta.json file)

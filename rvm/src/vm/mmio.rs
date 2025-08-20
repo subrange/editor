@@ -124,7 +124,29 @@ impl VM {
                 self.memory[HDR_DISP_RESOLUTION] = self.display_resolution;
                 Some(self.display_resolution)
             },
-            17..=31 => Some(0), // Reserved addresses return 0
+            HDR_STORE_BLOCK => Some(0), // Write-only, return 0
+            HDR_STORE_ADDR => Some(0),  // Write-only, return 0
+            HDR_STORE_DATA => {
+                // Read word from storage at current (block, addr)
+                if let Some(ref mut storage) = self.storage {
+                    let value = storage.read_word();
+                    self.memory[HDR_STORE_DATA] = value;
+                    Some(value)
+                } else {
+                    Some(0)  // No storage available
+                }
+            },
+            HDR_STORE_CTL => {
+                // Read control register
+                if let Some(ref storage) = self.storage {
+                    let value = storage.get_control();
+                    self.memory[HDR_STORE_CTL] = value;
+                    Some(value)
+                } else {
+                    Some(0)  // No storage available
+                }
+            },
+            21..=31 => Some(0), // Reserved addresses return 0
             _ => None, // Not an MMIO address
         }
     }
@@ -219,7 +241,36 @@ impl VM {
                 self.memory[HDR_DISP_RESOLUTION] = value;
                 true
             },
-            17..=31 => true, // Reserved addresses, ignore writes
+            HDR_STORE_BLOCK => {
+                // Set current block number
+                if let Some(ref mut storage) = self.storage {
+                    storage.set_block(value);
+                }
+                true
+            },
+            HDR_STORE_ADDR => {
+                // Set current word address within block
+                if let Some(ref mut storage) = self.storage {
+                    storage.set_addr(value);
+                }
+                true
+            },
+            HDR_STORE_DATA => {
+                // Write word to storage at current (block, addr)
+                if let Some(ref mut storage) = self.storage {
+                    storage.write_word(value);
+                    self.memory[HDR_STORE_DATA] = value;
+                }
+                true
+            },
+            HDR_STORE_CTL => {
+                // Handle control register writes
+                if let Some(ref mut storage) = self.storage {
+                    storage.set_control(value);
+                }
+                true
+            },
+            21..=31 => true, // Reserved addresses, ignore writes
             _ => false, // Not an MMIO address
         }
     }

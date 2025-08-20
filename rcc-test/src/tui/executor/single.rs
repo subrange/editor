@@ -109,6 +109,7 @@ fn compile_and_run_test(app: &TuiApp, test_name: &str, test: Option<&TestCase>) 
         parallel: false,
         debug_mode: false,
         frequency: None,
+        disk_path: RunConfig::default().disk_path,
     };
     
     let use_runtime = test.map(|t| t.use_runtime).unwrap_or(true);

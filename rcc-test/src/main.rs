@@ -87,16 +87,22 @@ fn run() -> Result<()> {
             return Ok(());
         }
 
-        Some(Command::Run { ref programs, ref filter, ref frequency, visual, bank_size }) => {
+        Some(Command::Run { ref programs, ref filter, ref frequency, visual, bank_size, ref disk }) => {
+            // Override CLI disk path if Run command has its own disk flag
+            let mut cli_with_disk = cli.clone();
+            if let Some(disk_path) = disk {
+                cli_with_disk.disk = Some(disk_path.clone());
+            }
+            
             if !programs.is_empty() {
                 // Run as programs without test expectations
                 let run_bank_size = bank_size.unwrap_or(cli.bank_size);
                 for program in programs {
-                    exec_program(program, &cli, &tools, frequency.clone(), visual, run_bank_size)?;
+                    exec_program(program, &cli_with_disk, &tools, frequency.clone(), visual, run_bank_size)?;
                 }
             } else {
                 // Run as test suite with frequency if provided
-                run_tests_with_frequency(&cli, &tools, filter.clone(), frequency.clone())?;
+                run_tests_with_frequency(&cli_with_disk, &tools, filter.clone(), frequency.clone())?;
             }
         }
         None => {
@@ -198,6 +204,7 @@ fn run_tests_by_category(cli: &Cli, tools: &ToolPaths, category: &str) -> Result
         parallel: !cli.no_parallel,
         debug_mode: cli.debug,
         frequency: None,
+        disk_path: cli.disk.clone().or_else(|| RunConfig::default().disk_path),
     };
     
     // Create test runner
@@ -246,6 +253,7 @@ fn run_tests_with_frequency(cli: &Cli, tools: &ToolPaths, filter: Option<String>
         parallel: !cli.no_parallel,
         debug_mode: cli.debug,
         frequency,
+        disk_path: cli.disk.clone().or_else(|| RunConfig::default().disk_path),
     };
     
     // Create test runner
@@ -591,10 +599,17 @@ fn debug_test(test_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> {
     println!("\nStarting debugger...");
     println!("{}", "-".repeat(60));
     
-    let status = std::process::Command::new(&tools.rvm)
-        .arg(&bin_file)
-        .arg("-t")
-        .status()?;
+    let mut cmd = std::process::Command::new(&tools.rvm);
+    cmd.arg(&bin_file);
+    cmd.arg("-t");
+    
+    // Add disk path if provided (or use default test.img)
+    let disk_path = cli.disk.clone().or_else(|| RunConfig::default().disk_path);
+    if let Some(disk) = disk_path {
+        cmd.arg("--disk").arg(disk);
+    }
+    
+    let status = cmd.status()?;
     
     if !status.success() {
         anyhow::bail!("Debugger exited with error");
@@ -830,10 +845,17 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Opt
     
     if cli.debug {
         // Run with debugger
-        let status = std::process::Command::new(&tools.rvm)
-            .arg(&bin_file)
-            .arg("-t")
-            .status()?;
+        let mut cmd = std::process::Command::new(&tools.rvm);
+        cmd.arg(&bin_file);
+        cmd.arg("-t");
+        
+        // Add disk path if provided (or use default test.img)
+        let disk_path = cli.disk.clone().or_else(|| RunConfig::default().disk_path);
+        if let Some(disk) = disk_path {
+            cmd.arg("--disk").arg(disk);
+        }
+        
+        let status = cmd.status()?;
         
         if !status.success() {
             anyhow::bail!("Program exited with error");
@@ -851,6 +873,12 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Opt
         // Add visual flag if requested
         if visual {
             cmd.arg("--visual");
+        }
+        
+        // Add disk path if provided (or use default test.img)
+        let disk_path = cli.disk.clone().or_else(|| RunConfig::default().disk_path);
+        if let Some(disk) = disk_path {
+            cmd.arg("--disk").arg(disk);
         }
         
         let status = cmd.status()?;

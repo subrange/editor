@@ -59,10 +59,23 @@ pub struct RunConfig {
     pub parallel: bool,
     pub debug_mode: bool,
     pub frequency: Option<String>,
+    pub disk_path: Option<PathBuf>,
 }
 
 impl Default for RunConfig {
     fn default() -> Self {
+        // Default disk path for tests: ~/.RippleVM/test.img
+        let home_dir = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .ok();
+        
+        let disk_path = home_dir.map(|home| {
+            let mut path = PathBuf::from(home);
+            path.push(".RippleVM");
+            path.push("test.img");
+            path
+        });
+        
         Self {
             backend: Backend::Rvm,
             timeout_secs: 2,
@@ -72,6 +85,7 @@ impl Default for RunConfig {
             parallel: true,
             debug_mode: false,
             frequency: None,
+            disk_path,
         }
     }
 }

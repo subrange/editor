@@ -6,6 +6,7 @@ mod mmio;
 mod display;
 mod terminal;
 mod execution;
+mod storage;
 
 pub use instruction::Instr;
 pub use state::{VMState, KeyboardState};
@@ -15,6 +16,7 @@ use std::collections::{VecDeque, HashMap};
 use ripple_asm::Register;
 use crate::constants::*;
 use crate::display_rgb565::RGB565Display;
+use crate::vm::storage::Storage;
 
 /// The Ripple Virtual Machine
 pub struct VM {
@@ -73,6 +75,9 @@ pub struct VM {
     
     // Debug information: maps instruction indices to function names
     pub debug_symbols: HashMap<usize, String>,
+    
+    // Storage subsystem
+    storage: Option<Storage>,
 }
 
 impl VM {
@@ -81,7 +86,30 @@ impl VM {
     }
     
     pub fn with_memory_size(bank_size: u16, memory_size: usize) -> Self {
+        Self::with_options(bank_size, memory_size, None)
+    }
+    
+    pub fn with_options(bank_size: u16, memory_size: usize, disk_path: Option<std::path::PathBuf>) -> Self {
         let memory_size = memory_size.max(MIN_MEMORY_SIZE);
+        
+        // Try to initialize storage, but don't fail if it can't be created
+        let storage = match disk_path {
+            Some(path) => match Storage::with_path(path) {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    eprintln!("Warning: Could not initialize storage with custom path: {}", e);
+                    None
+                }
+            },
+            None => match Storage::new() {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    eprintln!("Warning: Could not initialize storage: {}", e);
+                    None
+                }
+            }
+        };
+        
         VM {
             instructions: Vec::new(),
             memory: vec![0; memory_size],
@@ -105,6 +133,7 @@ impl VM {
             rgb565_display: None,
             display_resolution: 0,
             debug_symbols: HashMap::new(),
+            storage,
         }
     }
     
@@ -404,7 +433,7 @@ impl VM {
         // Clear all memory (reset to zeros)
         self.memory.fill(0);
         
-        // Note: We keep the loaded instructions, data, and debug symbols intact
+        // Note: We keep the loaded instructions, data, debug symbols, and storage intact
     }
 }
 
@@ -420,6 +449,11 @@ impl Drop for VM {
             } else if self.display_mode == DISP_TEXT40 {
                 self.exit_text40_mode();
             }
+        }
+        
+        // Flush storage if present
+        if let Some(ref mut storage) = self.storage {
+            storage.flush();
         }
     }
 }

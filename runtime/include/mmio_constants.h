@@ -24,6 +24,18 @@
 // Display resolution for RGB565 mode
 #define MMIO_DISP_RESOLUTION 16
 
+// Storage device registers (bank 0, words 17..20)
+#define MMIO_STORE_BLOCK   17
+#define MMIO_STORE_ADDR    18
+#define MMIO_STORE_DATA    19
+#define MMIO_STORE_CTL     20
+
+// Storage control bits
+#define STORE_CTL_BUSY        (1 << 0)
+#define STORE_CTL_DIRTY       (1 << 1)
+#define STORE_CTL_COMMIT      (1 << 2)
+#define STORE_CTL_COMMIT_ALL  (1 << 3)
+
 // Keyboard status bit
 #define KEY_PRESSED        (1 << 0)
 

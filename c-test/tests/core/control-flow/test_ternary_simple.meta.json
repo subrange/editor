@@ -1,5 +1,5 @@
 {
-  "expected": "10\nT\nB\n",
   "use_runtime": true,
-  "description": "Simple ternary operator test"
+  "description": "Simple ternary operator test",
+  "expected": "10\nT\nB\n"
 }

@@ -37,6 +37,7 @@ pub fn debug_test<B: Backend>(
                 parallel: false,
                 debug_mode: false,
                 frequency: None,
+                disk_path: RunConfig::default().disk_path,
             };
             
             // Get test details to determine if runtime is needed

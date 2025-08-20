@@ -420,6 +420,12 @@ fn compile_and_run_rvm(
         rvm_args.push(freq.clone());
     }
     
+    // Add disk path if provided
+    if let Some(ref disk) = config.disk_path {
+        rvm_args.push("--disk".to_string());
+        rvm_args.push(disk.display().to_string());
+    }
+    
     // Add debug flag if needed
     if config.debug_mode {
         rvm_args.push("-t".to_string());

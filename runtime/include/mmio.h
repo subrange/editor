@@ -48,4 +48,21 @@ int key_right_pressed(void);
 int key_z_pressed(void);
 int key_x_pressed(void);
 
+// Storage functions
+void storage_set_block(unsigned short block);
+void storage_set_addr(unsigned short addr);
+unsigned short storage_read(void);
+void storage_write(unsigned short value);
+unsigned short storage_get_status(void);
+void storage_commit(void);
+void storage_commit_all(void);
+int storage_is_busy(void);
+int storage_is_dirty(void);
+
+// High-level storage operations
+void storage_write_at(unsigned short block, unsigned short addr, unsigned short value);
+unsigned short storage_read_at(unsigned short block, unsigned short addr);
+void storage_write_buffer(unsigned short block, unsigned short addr, const unsigned short* data, unsigned short count);
+void storage_read_buffer(unsigned short block, unsigned short addr, unsigned short* data, unsigned short count);
+
 #endif // MMIO_H

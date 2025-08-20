@@ -220,3 +220,69 @@ void rgb565_fill_rect(unsigned short x, unsigned short y, unsigned short w, unsi
         }
     }
 }
+
+// Storage device functions
+void storage_set_block(unsigned short block) {
+    mmio_write(MMIO_STORE_BLOCK, block);
+}
+
+void storage_set_addr(unsigned short addr) {
+    mmio_write(MMIO_STORE_ADDR, addr);
+}
+
+unsigned short storage_read(void) {
+    return mmio_read(MMIO_STORE_DATA);
+}
+
+void storage_write(unsigned short value) {
+    mmio_write(MMIO_STORE_DATA, value);
+}
+
+unsigned short storage_get_status(void) {
+    return mmio_read(MMIO_STORE_CTL);
+}
+
+void storage_commit(void) {
+    mmio_write(MMIO_STORE_CTL, STORE_CTL_COMMIT);
+}
+
+void storage_commit_all(void) {
+    mmio_write(MMIO_STORE_CTL, STORE_CTL_COMMIT_ALL);
+}
+
+int storage_is_busy(void) {
+    return (storage_get_status() & STORE_CTL_BUSY) != 0;
+}
+
+int storage_is_dirty(void) {
+    return (storage_get_status() & STORE_CTL_DIRTY) != 0;
+}
+
+// High-level storage operations
+void storage_write_at(unsigned short block, unsigned short addr, unsigned short value) {
+    storage_set_block(block);
+    storage_set_addr(addr);
+    storage_write(value);
+}
+
+unsigned short storage_read_at(unsigned short block, unsigned short addr) {
+    storage_set_block(block);
+    storage_set_addr(addr);
+    return storage_read();
+}
+
+void storage_write_buffer(unsigned short block, unsigned short addr, const unsigned short* data, unsigned short count) {
+    storage_set_block(block);
+    storage_set_addr(addr);
+    for (unsigned short i = 0; i < count; i++) {
+        storage_write(data[i]);
+    }
+}
+
+void storage_read_buffer(unsigned short block, unsigned short addr, unsigned short* data, unsigned short count) {
+    storage_set_block(block);
+    storage_set_addr(addr);
+    for (unsigned short i = 0; i < count; i++) {
+        data[i] = storage_read();
+    }
+}

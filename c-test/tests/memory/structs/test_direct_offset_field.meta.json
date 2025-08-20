@@ -1,5 +1,5 @@
 {
   "expected": "Y\n",
-  "use_runtime": true,
-  "description": "Test direct access to pointer field with offset"
+  "description": "Test direct access to pointer field with offset",
+  "use_runtime": true
 }

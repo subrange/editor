@@ -29,7 +29,19 @@ pub const HDR_KEY_X: usize         = 15; // Read: bit0=pressed (X key)
 // Display resolution for RGB565 mode (bank 0, word 16)
 pub const HDR_DISP_RESOLUTION: usize = 16; // R/W: hi8=width, lo8=height (for RGB565 mode)
 
-// Words 17..31 are reserved for future use
+// Storage device registers (bank 0, words 17..20)
+pub const HDR_STORE_BLOCK: usize = 17; // Write: Select current block (0-65535)
+pub const HDR_STORE_ADDR: usize = 18;  // Write: Select word address within block (0-65535)
+pub const HDR_STORE_DATA: usize = 19;  // R/W: Data register for current (block, addr)
+pub const HDR_STORE_CTL: usize = 20;   // R/W: Control register (busy/dirty/commit bits)
+
+// Storage control bits
+pub const STORE_BUSY: u16 = 1 << 0;        // bit0: VM is processing storage operation
+pub const STORE_DIRTY: u16 = 1 << 1;       // bit1: Current block has uncommitted writes
+pub const STORE_COMMIT: u16 = 1 << 2;      // bit2: Trigger commit of current block
+pub const STORE_COMMIT_ALL: u16 = 1 << 3;  // bit3: Trigger commit of all dirty blocks
+
+// Words 21..31 are reserved for future use
 
 // TEXT40 display constants
 pub const TEXT40_BASE_WORD: usize  = 32;         // Start of VRAM

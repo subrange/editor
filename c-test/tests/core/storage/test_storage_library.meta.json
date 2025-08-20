@@ -1,0 +1,5 @@
+{
+  "use_runtime": true,
+  "description": "Test storage with library functions",
+  "expected": "YYYYYYY\n"
+}

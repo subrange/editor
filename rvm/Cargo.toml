@@ -13,6 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 ripple-asm = { path = "../src/ripple-asm" }
+clap = { version = "4.5", features = ["derive"] }
 colored = "2.1"
 ratatui = "0.26"
 crossterm = "0.27"

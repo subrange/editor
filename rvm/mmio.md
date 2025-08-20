@@ -27,7 +27,11 @@ The Ripple VM implements a memory-mapped I/O (MMIO) system with a dedicated 32-w
 | 14      | `HDR_KEY_Z`           | R   | Z key state (bit 0: 1=pressed, 0=released)            |
 | 15      | `HDR_KEY_X`           | R   | X key state (bit 0: 1=pressed, 0=released)            |
 | 16      | `HDR_DISP_RESOLUTION` | R/W | Display resolution for RGB565 (hi8=width, lo8=height) |
-| 17-31   | Reserved              | -   | Reserved for future use (return 0 on read)            |
+| 17      | `HDR_STORE_BLOCK`     | W   | Select current storage block (0-65535)                |
+| 18      | `HDR_STORE_ADDR`      | W   | Select word address within block (0-65535)            |
+| 19      | `HDR_STORE_DATA`      | R/W | Data register: read/write word at (block, addr)       |
+| 20      | `HDR_STORE_CTL`       | R/W | Storage control (busy/dirty/commit bits)              |
+| 21-31   | Reserved              | -   | Reserved for future use (return 0 on read)            |
 
 ### TEXT40 VRAM (Bank 0, Words 32-1031)
 
@@ -75,6 +79,40 @@ Regular data memory starts at word 1032, after the VRAM region.
 - Read/Write register at address 5
 - Controls low 16 bits of RNG seed
 - Writing sets the seed for reproducible sequences
+
+### Storage Device
+
+**Overview**
+- Persistent block storage device with 8 GiB total capacity
+- 65,536 blocks × 65,536 words per block × 2 bytes = 8 GiB
+- Lazy initialization: blocks are only allocated when accessed
+- Backed by `~/.RippleVM/disk.img` sparse file
+
+**Storage Block (HDR_STORE_BLOCK)**
+- Write-only register at address 17
+- Selects active block number (0-65535)
+- All subsequent operations apply to this block
+
+**Storage Address (HDR_STORE_ADDR)**
+- Write-only register at address 18
+- Selects word address within current block (0-65535)
+- Auto-increments after each HDR_STORE_DATA access
+- Wraps to 0 after reaching 65535
+
+**Storage Data (HDR_STORE_DATA)**
+- Read/Write register at address 19
+- Read: Returns 16-bit word at (block, addr)
+- Write: Updates word and marks block as dirty
+- Auto-increments HDR_STORE_ADDR after each operation
+
+**Storage Control (HDR_STORE_CTL)**
+- Read/Write register at address 20
+- Control bits:
+  - Bit 0 (BUSY): Read-only, 1 if VM is processing operation
+  - Bit 1 (DIRTY): Read/Write, 1 if current block has uncommitted writes
+  - Bit 2 (COMMIT): Write-only, writing 1 commits current block
+  - Bit 3 (COMMIT_ALL): Write-only, writing 1 commits all dirty blocks
+  - Bits 15-4: Reserved (read as 0)
 
 ### Keyboard Input (TEXT40 Mode Only)
 
@@ -316,6 +354,49 @@ BEQ   T2, R0, not_pressed
 not_pressed:
 ```
 
+### Storage Operations
+```asm
+; Write data to block 42, starting at word 0
+LI    A0, 42
+LI    T0, 0        ; Bank 0
+LI    T1, 17       ; HDR_STORE_BLOCK
+STORE A0, T0, T1
+
+LI    A0, 0
+LI    T1, 18       ; HDR_STORE_ADDR
+STORE A0, T0, T1
+
+; Write "Hello" (one word at a time)
+LI    A0, 'H' | ('e' << 8)
+LI    T1, 19       ; HDR_STORE_DATA
+STORE A0, T0, T1   ; Auto-increments address
+
+LI    A0, 'l' | ('l' << 8)
+STORE A0, T0, T1   ; Auto-increments address
+
+LI    A0, 'o' | (0 << 8)
+STORE A0, T0, T1   ; Auto-increments address
+
+; Commit the block to disk
+LI    A0, 4        ; Bit 2 = COMMIT
+LI    T1, 20       ; HDR_STORE_CTL
+STORE A0, T0, T1
+
+; Read back the data
+LI    A0, 42
+LI    T1, 17       ; HDR_STORE_BLOCK
+STORE A0, T0, T1
+
+LI    A0, 0
+LI    T1, 18       ; HDR_STORE_ADDR
+STORE A0, T0, T1
+
+LI    T1, 19       ; HDR_STORE_DATA
+LOAD  A0, T0, T1   ; Read first word
+LOAD  A1, T0, T1   ; Read second word (auto-increment)
+LOAD  A2, T0, T1   ; Read third word (auto-increment)
+```
+
 ## C Runtime Integration
 
 The C runtime library uses these MMIO addresses for standard I/O:
@@ -378,6 +459,11 @@ pub const HDR_KEY_LEFT: usize      = 12;
 pub const HDR_KEY_RIGHT: usize     = 13;
 pub const HDR_KEY_Z: usize         = 14;
 pub const HDR_KEY_X: usize         = 15;
+pub const HDR_DISP_RESOLUTION: usize = 16;
+pub const HDR_STORE_BLOCK: usize   = 17;
+pub const HDR_STORE_ADDR: usize    = 18;
+pub const HDR_STORE_DATA: usize    = 19;
+pub const HDR_STORE_CTL: usize     = 20;
 
 // TEXT40 VRAM
 pub const TEXT40_BASE_WORD: usize  = 32;
@@ -397,16 +483,23 @@ pub const DISP_OFF: u16            = 0;
 pub const DISP_TTY: u16            = 1;
 pub const DISP_TEXT40: u16         = 2;
 pub const DISP_RGB565: u16         = 3;
+
+// Storage Control Bits
+pub const STORE_BUSY: u16          = 0x0001;  // bit0
+pub const STORE_DIRTY: u16         = 0x0002;  // bit1
+pub const STORE_COMMIT: u16        = 0x0004;  // bit2
+pub const STORE_COMMIT_ALL: u16    = 0x0008;  // bit3
 ```
 
 ## Future Enhancements
 
-The reserved MMIO addresses (10-31) are available for future devices such as:
+The reserved MMIO addresses (21-31) are available for future devices such as:
 - Timer/counter peripherals
 - Additional display modes
 - Sound generation
 - Network I/O
-- Persistent storage
 - Interrupt controllers
+- DMA controllers
+- Serial communication ports
 
 These can be added without breaking existing code since the header layout is fixed.

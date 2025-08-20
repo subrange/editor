@@ -1,6 +1,6 @@
 {
   "description": "Basic Q16.16 fixed-point arithmetic tests",
+  "use_runtime": true,
   "skipped": true,
-  "expected": "YYYYYYYY",
-  "use_runtime": true
+  "expected": "YYYYYYYY"
 }

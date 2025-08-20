@@ -1,5 +1,0 @@
-{
-  "use_runtime": true,
-  "description": "Minimal Forth interpreter with basic operations",
-  "expected": "Minimal Forth\nArithmetic: + - * / MOD\nComparison: = < >\nStack: DUP DROP SWAP OVER ROT 2DUP\nI/O: . CR .S WORDS BYE\nDefinition: : name ... ;\n\n>"
-}
