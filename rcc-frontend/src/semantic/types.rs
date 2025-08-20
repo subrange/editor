@@ -375,16 +375,27 @@ impl TypeAnalyzer {
             is_variadic: false, // TODO: Handle variadic functions
         };
 
-        // Check if symbol already exists
-        if self.symbol_table.borrow().exists_in_current_scope(&func.name) {
-            // Get the existing symbol's type
-            if let Some(existing_symbol_id) = self.symbol_table.borrow().lookup(&func.name) {
-                if let Some(existing_type) = self.symbol_types.borrow().get(&existing_symbol_id) {
+        // Check if symbol already exists - borrow once and reuse
+        let symbol_table_borrow = self.symbol_table.borrow();
+        let exists_in_scope = symbol_table_borrow.exists_in_current_scope(&func.name);
+        let existing_symbol_id = if exists_in_scope {
+            symbol_table_borrow.lookup(&func.name)
+        } else {
+            None
+        };
+        drop(symbol_table_borrow); // Explicitly drop the borrow
+        
+        if exists_in_scope {
+            if let Some(existing_symbol_id) = existing_symbol_id {
+                // Clone the existing type to avoid holding borrow
+                let existing_type = self.symbol_types.borrow().get(&existing_symbol_id).cloned();
+                if let Some(existing_type) = existing_type {
                     // Check if the existing type is a compatible function declaration
-                    if self.is_compatible_function(existing_type, &func_type) {
+                    if self.is_compatible_function(&existing_type, &func_type) {
                         // Compatible function definition after declaration
                         // Update the symbol to mark it as defined
-                        if let Some(symbol) = self.symbol_table.borrow_mut().get_symbol_mut(existing_symbol_id) {
+                        let mut symbol_table = self.symbol_table.borrow_mut();
+                        if let Some(symbol) = symbol_table.get_symbol_mut(existing_symbol_id) {
                             *symbol = symbol.clone()
                                 .as_function()
                                 .as_defined()
@@ -424,17 +435,20 @@ impl TypeAnalyzer {
         // Store the function type
         self.symbol_types.borrow_mut().insert(symbol_id, func_type);
 
-        if let Some(symbol) = self.symbol_table.borrow_mut().get_symbol_mut(symbol_id) {
-            *symbol = symbol.clone()
-                .as_function()
-                .as_defined()
-                .with_storage_class(
-                    match func.storage_class {
-                        StorageClass::Static => CommonStorageClass::Static,
-                        StorageClass::Extern => CommonStorageClass::Extern,
-                        _ => CommonStorageClass::Auto,
-                    }
-                );
+        {
+            let mut symbol_table = self.symbol_table.borrow_mut();
+            if let Some(symbol) = symbol_table.get_symbol_mut(symbol_id) {
+                *symbol = symbol.clone()
+                    .as_function()
+                    .as_defined()
+                    .with_storage_class(
+                        match func.storage_class {
+                            StorageClass::Static => CommonStorageClass::Static,
+                            StorageClass::Extern => CommonStorageClass::Extern,
+                            _ => CommonStorageClass::Auto,
+                        }
+                    );
+            }
         }
 
         Ok(())
@@ -464,15 +478,25 @@ impl TypeAnalyzer {
             }
         }
 
-        // Check if symbol already exists
-        if self.symbol_table.borrow().exists_in_current_scope(&decl.name) {
+        // Check if symbol already exists - borrow once and reuse
+        let symbol_table_borrow = self.symbol_table.borrow();
+        let exists_in_scope = symbol_table_borrow.exists_in_current_scope(&decl.name);
+        let existing_symbol_id = if exists_in_scope {
+            symbol_table_borrow.lookup(&decl.name)
+        } else {
+            None
+        };
+        drop(symbol_table_borrow); // Explicitly drop the borrow
+        
+        if exists_in_scope {
             // For function declarations, allow redeclaration if types are compatible
             if let Type::Function { .. } = &decl.decl_type {
-                // Get the existing symbol's type
-                if let Some(existing_symbol_id) = self.symbol_table.borrow().lookup(&decl.name) {
-                    if let Some(existing_type) = self.symbol_types.borrow().get(&existing_symbol_id) {
+                if let Some(existing_symbol_id) = existing_symbol_id {
+                    // Clone the existing type to avoid holding borrow
+                    let existing_type = self.symbol_types.borrow().get(&existing_symbol_id).cloned();
+                    if let Some(existing_type) = existing_type {
                         // Check if the existing type is also a function and if they're compatible
-                        if self.is_compatible_function(existing_type, &decl.decl_type) {
+                        if self.is_compatible_function(&existing_type, &decl.decl_type) {
                             // Compatible function redeclaration - skip adding to symbol table
                             // but still return Ok to indicate this is valid
                             return Ok(());
@@ -511,16 +535,19 @@ impl TypeAnalyzer {
         // Store the global variable type (keeping typedef if present)
         self.symbol_types.borrow_mut().insert(symbol_id, decl.decl_type.clone());
 
-        if let Some(symbol) = self.symbol_table.borrow_mut().get_symbol_mut(symbol_id) {
-            *symbol = symbol.clone()
-                .with_storage_class(
-                    match decl.storage_class {
-                        StorageClass::Static => CommonStorageClass::Static,
-                        StorageClass::Extern => CommonStorageClass::Extern,
-                        StorageClass::Register => CommonStorageClass::Register,
-                        _ => CommonStorageClass::Extern,  // Default to Extern for globals
-                    }
-                );
+        {
+            let mut symbol_table = self.symbol_table.borrow_mut();
+            if let Some(symbol) = symbol_table.get_symbol_mut(symbol_id) {
+                *symbol = symbol.clone()
+                    .with_storage_class(
+                        match decl.storage_class {
+                            StorageClass::Static => CommonStorageClass::Static,
+                            StorageClass::Extern => CommonStorageClass::Extern,
+                            StorageClass::Register => CommonStorageClass::Register,
+                            _ => CommonStorageClass::Extern,  // Default to Extern for globals
+                        }
+                    );
+            }
         }
 
         Ok(())

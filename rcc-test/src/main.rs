@@ -87,11 +87,11 @@ fn run() -> Result<()> {
             return Ok(());
         }
 
-        Some(Command::Run { ref programs, ref filter, ref frequency }) => {
+        Some(Command::Run { ref programs, ref filter, ref frequency, visual }) => {
             if !programs.is_empty() {
                 // Run as programs without test expectations
                 for program in programs {
-                    exec_program(program, &cli, &tools, frequency.clone())?;
+                    exec_program(program, &cli, &tools, frequency.clone(), visual)?;
                 }
             } else {
                 // Run as test suite with frequency if provided
@@ -795,7 +795,7 @@ fn check_untracked_tests(tests_file: &Path, verbose: bool) -> Result<()> {
     Ok(())
 }
 
-fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Option<String>) -> Result<()> {
+fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Option<String>, visual: bool) -> Result<()> {
     // Build runtime first
     println!("Building runtime library...");
     build_runtime(tools, cli.bank_size)?;
@@ -845,6 +845,11 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Opt
         // Add frequency parameter if provided
         if let Some(freq) = frequency {
             cmd.arg("--frequency").arg(freq);
+        }
+        
+        // Add visual flag if requested
+        if visual {
+            cmd.arg("--visual");
         }
         
         let status = cmd.status()?;

@@ -28,6 +28,13 @@ pub struct RGB565State {
     pub front_buffer: Vec<u16>,
     pub back_buffer: Vec<u16>,
     pub should_quit: bool,
+    // Keyboard state for RGB565 mode
+    pub key_up: bool,
+    pub key_down: bool,
+    pub key_left: bool,
+    pub key_right: bool,
+    pub key_z: bool,
+    pub key_x: bool,
 }
 
 impl RGB565State {
@@ -39,6 +46,12 @@ impl RGB565State {
             front_buffer: Vec::new(),
             back_buffer: Vec::new(),
             should_quit: false,
+            key_up: false,
+            key_down: false,
+            key_left: false,
+            key_right: false,
+            key_z: false,
+            key_x: false,
         }
     }
     
@@ -196,6 +209,20 @@ pub fn run_rgb565_display(state: Arc<Mutex<RGB565State>>) -> Result<(), Box<dyn 
             }
         }
         
+        // Update input helper first to capture keyboard events
+        if input.update(&event) {
+            // Update keyboard state based on input
+            let mut s = state.lock().unwrap();
+            
+            // Update key states based on what's currently pressed
+            s.key_up = input.key_held(winit::event::VirtualKeyCode::Up);
+            s.key_down = input.key_held(winit::event::VirtualKeyCode::Down);
+            s.key_left = input.key_held(winit::event::VirtualKeyCode::Left);
+            s.key_right = input.key_held(winit::event::VirtualKeyCode::Right);
+            s.key_z = input.key_held(winit::event::VirtualKeyCode::Z);
+            s.key_x = input.key_held(winit::event::VirtualKeyCode::X);
+        }
+        
         // Handle events
         match event {
             Event::WindowEvent {
@@ -258,9 +285,6 @@ pub fn run_rgb565_display(state: Arc<Mutex<RGB565State>>) -> Result<(), Box<dyn 
             }
             _ => {}
         }
-        
-        // Update input helper
-        let _ = input.update(&event);
     })
 }
 

@@ -126,6 +126,37 @@ impl VM {
         Self::with_memory_size(bank_size, DEFAULT_MEMORY_SIZE)
     }
     
+    // Calculate the data section offset based on display mode and resolution
+    fn get_data_section_offset(&self) -> usize {
+        match self.display_mode {
+            DISP_RGB565 => {
+                // For RGB565, data section must come after both framebuffers
+                let width = ((self.display_resolution >> 8) & 0xFF) as usize;
+                let height = (self.display_resolution & 0xFF) as usize;
+                
+                if width > 0 && height > 0 {
+                    let pixels_per_buffer = width * height;
+                    let total_framebuffer_words = pixels_per_buffer * 2; // Double-buffered
+                    
+                    // Data section starts after MMIO headers (32 words) and both framebuffers
+                    32 + total_framebuffer_words
+                } else {
+                    // Invalid resolution, use default
+                    TEXT40_LAST_WORD + 1
+                }
+            },
+            DISP_TEXT40 => {
+                // For TEXT40, data section starts after VRAM (word 1032)
+                TEXT40_LAST_WORD + 1
+            },
+            _ => {
+                // For OFF or TTY modes, use minimal offset (after MMIO headers)
+                // But keep compatibility with existing binaries by using TEXT40 offset
+                TEXT40_LAST_WORD + 1
+            }
+        }
+    }
+    
     pub fn with_memory_size(bank_size: u16, memory_size: usize) -> Self {
         let memory_size = memory_size.max(MIN_MEMORY_SIZE);
         VM {
@@ -231,10 +262,15 @@ impl VM {
             return Err("Invalid binary: incomplete data section".to_string());
         }
         
-        // Load data into memory starting after VRAM (word 1032)
+        // Determine data section offset based on display mode
+        // Note: At this point, display mode might not be set yet, so we need to check
+        // if the binary is intended for RGB565 mode by looking for display setup
+        let data_offset = self.get_data_section_offset();
+        
+        // Load data into memory starting at the calculated offset
         for (i, &byte) in binary[pos..pos + data_size].iter().enumerate() {
-            if i + DATA_SECTION_OFFSET < self.memory.len() {
-                self.memory[i + DATA_SECTION_OFFSET] = byte as u16;
+            if i + data_offset < self.memory.len() {
+                self.memory[i + data_offset] = byte as u16;
             }
         }
         pos += data_size;
@@ -418,8 +454,25 @@ impl VM {
             },
             HDR_DISP_FLUSH => Some(0), // Write-only, return 0
             HDR_KEY_UP | HDR_KEY_DOWN | HDR_KEY_LEFT | HDR_KEY_RIGHT | HDR_KEY_Z | HDR_KEY_X => {
-                // Poll keyboard only when reading keyboard addresses
-                if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
+                let value = if self.display_mode == DISP_RGB565 {
+                    // For RGB565 mode, read keyboard state from the display window
+                    if let Some(ref display) = self.rgb565_display {
+                        let state = display.get_state();
+                        let s = state.lock().unwrap();
+                        match addr {
+                            HDR_KEY_UP => if s.key_up { 1 } else { 0 },
+                            HDR_KEY_DOWN => if s.key_down { 1 } else { 0 },
+                            HDR_KEY_LEFT => if s.key_left { 1 } else { 0 },
+                            HDR_KEY_RIGHT => if s.key_right { 1 } else { 0 },
+                            HDR_KEY_Z => if s.key_z { 1 } else { 0 },
+                            HDR_KEY_X => if s.key_x { 1 } else { 0 },
+                            _ => 0,
+                        }
+                    } else {
+                        0
+                    }
+                } else if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
+                    // For TEXT40 mode, poll keyboard from terminal
                     self.poll_keyboard();
                     
                     // Auto-clear keys after they've been read a few times
@@ -429,18 +482,21 @@ impl VM {
                         // Clear the keyboard state after ~10 reads without new input
                         self.keyboard_state = KeyboardState::default();
                     }
-                }
-                
-                // Return the appropriate key state
-                let value = match addr {
-                    HDR_KEY_UP => if self.keyboard_state.up { 1 } else { 0 },
-                    HDR_KEY_DOWN => if self.keyboard_state.down { 1 } else { 0 },
-                    HDR_KEY_LEFT => if self.keyboard_state.left { 1 } else { 0 },
-                    HDR_KEY_RIGHT => if self.keyboard_state.right { 1 } else { 0 },
-                    HDR_KEY_Z => if self.keyboard_state.z { 1 } else { 0 },
-                    HDR_KEY_X => if self.keyboard_state.x { 1 } else { 0 },
-                    _ => 0,
+                    
+                    // Return the appropriate key state
+                    match addr {
+                        HDR_KEY_UP => if self.keyboard_state.up { 1 } else { 0 },
+                        HDR_KEY_DOWN => if self.keyboard_state.down { 1 } else { 0 },
+                        HDR_KEY_LEFT => if self.keyboard_state.left { 1 } else { 0 },
+                        HDR_KEY_RIGHT => if self.keyboard_state.right { 1 } else { 0 },
+                        HDR_KEY_Z => if self.keyboard_state.z { 1 } else { 0 },
+                        HDR_KEY_X => if self.keyboard_state.x { 1 } else { 0 },
+                        _ => 0,
+                    }
+                } else {
+                    0  // No keyboard input in other modes
                 };
+                
                 self.memory[addr] = value;
                 Some(value)
             },
@@ -541,6 +597,30 @@ impl VM {
         }
     }
     
+    // Check if data section will be affected by display mode change
+    fn check_data_section_conflict(&self, new_mode: u16) -> bool {
+        if new_mode == DISP_RGB565 {
+            let width = ((self.display_resolution >> 8) & 0xFF) as usize;
+            let height = (self.display_resolution & 0xFF) as usize;
+            
+            if width > 0 && height > 0 {
+                let pixels_per_buffer = width * height;
+                let total_framebuffer_words = pixels_per_buffer * 2;
+                let required_end = 32 + total_framebuffer_words;
+                
+                // Check if current data at word 1032 would conflict
+                if required_end > TEXT40_LAST_WORD + 1 {
+                    eprintln!("WARNING: RGB565 mode {}x{} requires {} words for framebuffers", 
+                             width, height, total_framebuffer_words);
+                    eprintln!("         This conflicts with data section at word {}", TEXT40_LAST_WORD + 1);
+                    eprintln!("         Data section should start at word {} or later", required_end);
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    
     // Handle display mode changes
     fn handle_display_mode_change(&mut self, new_mode: u16) {
         // Exit current mode
@@ -568,6 +648,11 @@ impl VM {
                 let height = (self.display_resolution & 0xFF) as u8;
                 
                 eprintln!("Setting RGB565 mode with resolution {}x{}", width, height);
+                
+                // Check for data section conflicts
+                if self.check_data_section_conflict(new_mode) {
+                    eprintln!("WARNING: Potential memory conflict with global data!");
+                }
                 
                 if width > 0 && height > 0 {
                     // Use existing display if available, or create new one

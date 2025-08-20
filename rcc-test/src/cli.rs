@@ -76,6 +76,10 @@ pub enum Command {
         /// Set virtual CPU frequency (e.g., 1MHz, 500KHz, 60Hz)
         #[arg(long)]
         frequency: Option<String>,
+        
+        /// Enable visual display mode for graphics programs
+        #[arg(long)]
+        visual: bool,
     },
     
     /// Add a new test (creates .meta.json file)
