@@ -15,16 +15,47 @@ pub fn draw_test_list(f: &mut Frame, area: Rect, app: &mut TuiApp) {
     // If a specific category is selected, show only that category
     if let Some(ref selected_cat) = app.selected_category {
         if let Some(category) = app.categories.get(selected_cat) {
-            // Add category header
-            items.push(ListItem::new(Line::from(vec![
-                Span::styled("▼ ", if category.expanded { 
-                    Style::default().fg(Color::Yellow) 
-                } else { 
-                    Style::default().fg(Color::DarkGray) 
-                }),
-                Span::styled(selected_cat.clone(), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-                Span::styled(format!(" ({} tests)", category.test_count), Style::default().fg(Color::DarkGray)),
-            ])));
+            // Check if any test in this category is failing
+            let has_failing_tests = category.tests.iter().any(|test| {
+                let test_name = test.file.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown");
+                app.test_results.get(test_name)
+                    .map(|result| !result.passed)
+                    .unwrap_or(false)
+            });
+            
+            // Build category header with failing indicator
+            let mut category_spans = vec![];
+            
+            // Always show expanded arrow for selected category
+            category_spans.push(Span::styled(
+                "▼ ", 
+                Style::default().fg(Color::Yellow)
+            ));
+            
+            // Add failing indicator if any test is failing
+            if has_failing_tests {
+                category_spans.push(Span::styled("✗ ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+            }
+            
+            // Category name
+            category_spans.push(Span::styled(
+                selected_cat.clone(), 
+                if has_failing_tests {
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                }
+            ));
+            
+            // Test count
+            category_spans.push(Span::styled(
+                format!(" ({} tests)", category.test_count), 
+                Style::default().fg(Color::DarkGray)
+            ));
+            
+            items.push(ListItem::new(Line::from(category_spans)));
             
             // Add tests in this category
             if category.expanded {
@@ -37,15 +68,47 @@ pub fn draw_test_list(f: &mut Frame, area: Rect, app: &mut TuiApp) {
     } else {
         // Show all categories with their tests
         for (category_name, category) in &app.categories {
-            // Add category header
-            items.push(ListItem::new(Line::from(vec![
-                Span::styled(if category.expanded { "▼ " } else { "▶ " }, 
-                    Style::default().fg(Color::Yellow)),
-                Span::styled(category_name.clone(), 
-                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-                Span::styled(format!(" ({} tests)", category.test_count), 
-                    Style::default().fg(Color::DarkGray)),
-            ])));
+            // Check if any test in this category is failing
+            let has_failing_tests = category.tests.iter().any(|test| {
+                let test_name = test.file.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown");
+                app.test_results.get(test_name)
+                    .map(|result| !result.passed)
+                    .unwrap_or(false)
+            });
+            
+            // Build category header with failing indicator
+            let mut category_spans = vec![];
+            
+            // Expand/collapse arrow
+            category_spans.push(Span::styled(
+                if category.expanded { "▼ " } else { "▶ " }, 
+                Style::default().fg(Color::Yellow)
+            ));
+            
+            // Add failing indicator if any test is failing
+            if has_failing_tests {
+                category_spans.push(Span::styled("✗ ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+            }
+            
+            // Category name
+            category_spans.push(Span::styled(
+                category_name.clone(), 
+                if has_failing_tests {
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                }
+            ));
+            
+            // Test count
+            category_spans.push(Span::styled(
+                format!(" ({} tests)", category.test_count), 
+                Style::default().fg(Color::DarkGray)
+            ));
+            
+            items.push(ListItem::new(Line::from(category_spans)));
             
             // Add tests if category is expanded
             if category.expanded {

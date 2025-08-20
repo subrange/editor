@@ -104,7 +104,7 @@ impl CategoryView {
                 name: name.clone(),
                 test_count: tests.len(),
                 tests,
-                expanded: true, // Start expanded
+                expanded: false, // Start collapsed
             });
         }
         
@@ -1770,6 +1770,81 @@ impl TuiApp {
     
     pub fn typed_ast_collapse_all(&mut self) {
         self.typed_ast_expanded_nodes.clear();
+    }
+    
+    pub fn expand_all_categories(&mut self) {
+        for category in self.categories.values_mut() {
+            category.expanded = true;
+        }
+    }
+    
+    pub fn collapse_all_categories(&mut self) {
+        for category in self.categories.values_mut() {
+            category.expanded = false;
+        }
+    }
+    
+    pub fn handle_test_list_click(&mut self, clicked_index: usize) {
+        // Early return if the clicked index is beyond visible items
+        let total_visible = self.get_total_visible_items();
+        if clicked_index >= total_visible {
+            return;
+        }
+        
+        // Find what was clicked - could be a category header or a test
+        let mut current_index = 0;
+        
+        // We need to clone the category names to avoid borrowing issues
+        let category_names: Vec<String> = self.categories.keys().cloned().collect();
+        
+        for category_name in category_names {
+            // Check if this is the category header
+            if current_index == clicked_index {
+                // Toggle category expansion
+                if let Some(category) = self.categories.get_mut(&category_name) {
+                    category.expanded = !category.expanded;
+                }
+                return;
+            }
+            current_index += 1;
+            
+            // If category is expanded, check tests
+            if let Some(category) = self.categories.get(&category_name) {
+                if category.expanded {
+                    if clicked_index < current_index + category.tests.len() {
+                        // Clicked on a test - select it
+                        self.selected_item = clicked_index;
+                        self.ensure_selection_visible();
+                        return;
+                    }
+                    current_index += category.tests.len();
+                }
+            }
+        }
+    }
+    
+    pub fn handle_ast_click(&mut self, clicked_line: usize) {
+        // Get the AST lines to find which node was clicked
+        let lines = self.get_ast_lines();
+        if clicked_line < lines.len() {
+            let (_, path, _) = &lines[clicked_line];
+            // Select the clicked node
+            self.ast_selected_path = path.clone();
+            // Toggle expansion of the clicked node
+            self.ast_toggle_current();
+        }
+    }
+    
+    pub fn handle_typed_ast_click(&mut self, clicked_line: usize) {
+        // Get the TypedAST lines to find which node was clicked
+        let lines = self.get_typed_ast_lines();
+        if clicked_line < lines.len() {
+            let (_, path, _) = &lines[clicked_line];
+            // Select the clicked node
+            self.typed_ast_selected_path = path.clone();
+            // Toggle expansion of the clicked node
+            self.typed_ast_toggle_current();
+        }
     }
     
     fn get_typed_ast_lines(&self) -> Vec<(Vec<ratatui::text::Span<'static>>, Vec<usize>, bool)> {

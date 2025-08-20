@@ -4,6 +4,7 @@ use anyhow::Result;
 use crossterm::{
     cursor,
     execute,
+    event::{DisableMouseCapture, EnableMouseCapture},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{
@@ -15,12 +16,12 @@ use crate::compiler::{build_runtime, ToolPaths};
 use crate::config::TestConfig;
 use crate::tui::{
     app::{TuiApp, AppMode, TestMessage, FocusedPane, SelectedItemType},
-    event::{Event, EventHandler, KeyEvent},
+    event::{Event, EventHandler, KeyEvent, MouseEvent},
     ui,
     handlers,
     executor,
 };
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers};
 
 pub struct TuiRunner {
     pub app: TuiApp,
@@ -43,7 +44,7 @@ impl TuiRunner {
         // Setup terminal
         enable_raw_mode()?;
         let mut stdout = io::stdout();
-        execute!(stdout, EnterAlternateScreen)?;
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
         terminal.clear()?;
@@ -70,6 +71,7 @@ impl TuiRunner {
         execute!(
             terminal.backend_mut(),
             LeaveAlternateScreen,
+            DisableMouseCapture,
         )?;
         terminal.show_cursor()?;
 
@@ -109,8 +111,10 @@ impl TuiRunner {
                 Event::Tick => {
                     // Handle any background updates
                 }
-                Event::Mouse(_) => {
-                    // Ignore mouse events for now
+                Event::Mouse(mouse) => {
+                    if self.app.mode == AppMode::Normal && !self.app.show_help {
+                        self.handle_mouse_input(mouse);
+                    }
                 }
             }
         }
@@ -126,20 +130,47 @@ impl TuiRunner {
             KeyCode::Char('j') | KeyCode::Down => {
                 match self.app.focused_pane {
                     FocusedPane::RightPanel => {
+                        // Shift+Down scrolls faster in right panel
+                        let scroll_amount = if key.modifiers.contains(KeyModifiers::SHIFT) { 10 } else { 1 };
                         match self.app.selected_tab {
-                            0 => self.app.source_scroll = self.app.source_scroll.saturating_add(1),
-                            1 => self.app.asm_scroll = self.app.asm_scroll.saturating_add(1),
-                            2 => self.app.ir_scroll = self.app.ir_scroll.saturating_add(1),
-                            3 => self.app.output_scroll = self.app.output_scroll.saturating_add(1),
-                            4 => self.app.details_scroll = self.app.details_scroll.saturating_add(1),
-                            5 => self.app.ast_move_down(),  // Tree navigation
-                            6 => self.app.symbols_scroll = self.app.symbols_scroll.saturating_add(1),
-                            7 => self.app.typed_ast_move_down(),  // Tree navigation
+                            0 => self.app.source_scroll = self.app.source_scroll.saturating_add(scroll_amount),
+                            1 => self.app.asm_scroll = self.app.asm_scroll.saturating_add(scroll_amount),
+                            2 => self.app.ir_scroll = self.app.ir_scroll.saturating_add(scroll_amount),
+                            3 => self.app.output_scroll = self.app.output_scroll.saturating_add(scroll_amount),
+                            4 => self.app.details_scroll = self.app.details_scroll.saturating_add(scroll_amount),
+                            5 => {
+                                if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                    // Shift+Down moves down 10 times in tree
+                                    for _ in 0..10 {
+                                        self.app.ast_move_down();
+                                    }
+                                } else {
+                                    self.app.ast_move_down();
+                                }
+                            }
+                            6 => self.app.symbols_scroll = self.app.symbols_scroll.saturating_add(scroll_amount),
+                            7 => {
+                                if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                    // Shift+Down moves down 10 times in tree
+                                    for _ in 0..10 {
+                                        self.app.typed_ast_move_down();
+                                    }
+                                } else {
+                                    self.app.typed_ast_move_down();
+                                }
+                            }
                             _ => {}
                         }
                     }
                     FocusedPane::TestList => {
-                        self.app.move_selection_down();
+                        // Shift+Down moves selection down by 10 items
+                        if key.modifiers.contains(KeyModifiers::SHIFT) {
+                            for _ in 0..10 {
+                                self.app.move_selection_down();
+                            }
+                        } else {
+                            self.app.move_selection_down();
+                        }
                     }
                     _ => {}
                 }
@@ -147,20 +178,47 @@ impl TuiRunner {
             KeyCode::Char('k') | KeyCode::Up => {
                 match self.app.focused_pane {
                     FocusedPane::RightPanel => {
+                        // Shift+Up scrolls faster in right panel
+                        let scroll_amount = if key.modifiers.contains(KeyModifiers::SHIFT) { 10 } else { 1 };
                         match self.app.selected_tab {
-                            0 => self.app.source_scroll = self.app.source_scroll.saturating_sub(1),
-                            1 => self.app.asm_scroll = self.app.asm_scroll.saturating_sub(1),
-                            2 => self.app.ir_scroll = self.app.ir_scroll.saturating_sub(1),
-                            3 => self.app.output_scroll = self.app.output_scroll.saturating_sub(1),
-                            4 => self.app.details_scroll = self.app.details_scroll.saturating_sub(1),
-                            5 => self.app.ast_move_up(),  // Tree navigation
-                            6 => self.app.symbols_scroll = self.app.symbols_scroll.saturating_sub(1),
-                            7 => self.app.typed_ast_move_up(),  // Tree navigation
+                            0 => self.app.source_scroll = self.app.source_scroll.saturating_sub(scroll_amount),
+                            1 => self.app.asm_scroll = self.app.asm_scroll.saturating_sub(scroll_amount),
+                            2 => self.app.ir_scroll = self.app.ir_scroll.saturating_sub(scroll_amount),
+                            3 => self.app.output_scroll = self.app.output_scroll.saturating_sub(scroll_amount),
+                            4 => self.app.details_scroll = self.app.details_scroll.saturating_sub(scroll_amount),
+                            5 => {
+                                if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                    // Shift+Up moves up 10 times in tree
+                                    for _ in 0..10 {
+                                        self.app.ast_move_up();
+                                    }
+                                } else {
+                                    self.app.ast_move_up();
+                                }
+                            }
+                            6 => self.app.symbols_scroll = self.app.symbols_scroll.saturating_sub(scroll_amount),
+                            7 => {
+                                if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                    // Shift+Up moves up 10 times in tree
+                                    for _ in 0..10 {
+                                        self.app.typed_ast_move_up();
+                                    }
+                                } else {
+                                    self.app.typed_ast_move_up();
+                                }
+                            }
                             _ => {}
                         }
                     }
                     FocusedPane::TestList => {
-                        self.app.move_selection_up();
+                        // Shift+Up moves selection up by 10 items  
+                        if key.modifiers.contains(KeyModifiers::SHIFT) {
+                            for _ in 0..10 {
+                                self.app.move_selection_up();
+                            }
+                        } else {
+                            self.app.move_selection_up();
+                        }
                     }
                     _ => {}
                 }
@@ -312,6 +370,18 @@ impl TuiRunner {
                         }
                     }
                     _ => {}
+                }
+            }
+            KeyCode::Char('O') => {
+                // Shift+O - expand all categories
+                if self.app.focused_pane == FocusedPane::TestList {
+                    self.app.expand_all_categories();
+                }
+            }
+            KeyCode::Char('C') => {
+                // Shift+C - collapse all categories
+                if self.app.focused_pane == FocusedPane::TestList {
+                    self.app.collapse_all_categories();
                 }
             }
             KeyCode::Char('g') => {
@@ -471,6 +541,94 @@ impl TuiRunner {
         Ok(true)
     }
     
+    fn handle_mouse_input(&mut self, mouse: MouseEvent) {
+        use crossterm::event::MouseEventKind;
+        
+        // Only handle single left button clicks (not double clicks or drags)
+        match mouse.kind {
+            MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+            // Get terminal size to properly calculate panel boundaries
+            let terminal_size = crossterm::terminal::size().unwrap_or((150, 50));
+            let terminal_width = terminal_size.0;
+            
+            // Test list takes 35% of width (matching the layout in ui/layout.rs)
+            // We calculate 35% and subtract 1 for the border between panels
+            let test_list_width = (terminal_width * 35 / 100).saturating_sub(1) as u16;
+            
+            if mouse.column <= test_list_width {
+                // Calculate which item was clicked based on row
+                // Account for borders and title (1 row for top border + title)
+                if mouse.row > 0 {
+                    let clicked_index = (mouse.row - 1) as usize + self.app.test_scroll;
+                    self.app.handle_test_list_click(clicked_index);
+                }
+            } else {
+                // Click is in the right panel
+                
+                // Check if click is on the tab bar (row 1, since row 0 is the border)
+                if mouse.row == 1 {
+                    // Tab bar clicked - calculate which tab based on approximate positions
+                    // Tab titles: ["Source", "ASM", "IR", "Output", "Details", "AST", "Symbols", "TypedAST"]
+                    // Calculate relative position from the start of the right panel
+                    let right_panel_start = (terminal_width * 35 / 100) as u16;
+                    
+                    if mouse.column > right_panel_start {
+                        let relative_x = mouse.column - right_panel_start;
+                        
+                        // Approximate tab positions (each tab name + spacing)
+                        // These are rough estimates based on tab text lengths
+                        let tab_boundaries = [
+                            0,   // Source starts at 0
+                            10,  // ASM starts around 10
+                            16,  // IR starts around 16  
+                            20,  // Output starts around 20
+                            29,  // Details starts around 29
+                            39,  // AST starts around 39
+                            45,  // Symbols starts around 45
+                            55,  // TypedAST starts around 55
+                        ];
+                        
+                        // Find which tab was clicked
+                        let mut clicked_tab = 7; // Default to last tab
+                        for (i, &boundary) in tab_boundaries.iter().enumerate().rev() {
+                            if relative_x >= boundary {
+                                clicked_tab = i;
+                                break;
+                            }
+                        }
+                        
+                        self.app.selected_tab = clicked_tab;
+                    }
+                } else {
+                    // Check if it's in AST or TypedAST tab content area
+                    match self.app.selected_tab {
+                        5 => {
+                            // AST tab - handle tree click
+                            // Account for tab header (3 rows for tabs + border)
+                            if mouse.row > 3 {
+                                let clicked_line = (mouse.row - 4) as usize + self.app.ast_scroll;
+                                self.app.handle_ast_click(clicked_line);
+                            }
+                        }
+                        7 => {
+                            // TypedAST tab - handle tree click
+                            // Account for tab header (3 rows for tabs + border)
+                            if mouse.row > 3 {
+                                let clicked_line = (mouse.row - 4) as usize + self.app.typed_ast_scroll;
+                                self.app.handle_typed_ast_click(clicked_line);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            }
+            _ => {
+                // Ignore other mouse events (move, release, drag, etc.)
+            }
+        }
+    }
+    
     fn handle_test_message(&mut self, msg: TestMessage) {
         match msg {
             TestMessage::Started(test_name) => {
@@ -577,6 +735,7 @@ impl TuiRunner {
             execute!(
                 io::stdout(),
                 LeaveAlternateScreen,
+                DisableMouseCapture,
                 cursor::Show,
             )?;
             io::stdout().flush()?;
@@ -594,6 +753,7 @@ impl TuiRunner {
             execute!(
                 io::stdout(),
                 EnterAlternateScreen,
+                EnableMouseCapture,
                 cursor::Hide,
             )?;
             terminal.hide_cursor()?;
@@ -640,6 +800,7 @@ impl TuiRunner {
         execute!(
             io::stdout(),
             LeaveAlternateScreen,
+            DisableMouseCapture,
             cursor::Show,
         )?;
         io::stdout().flush()?;
@@ -657,6 +818,7 @@ impl TuiRunner {
         execute!(
             io::stdout(),
             EnterAlternateScreen,
+            EnableMouseCapture,
             cursor::Hide,
         )?;
         terminal.hide_cursor()?;

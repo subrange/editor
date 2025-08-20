@@ -63,8 +63,18 @@ impl EventHandler {
                                     return;
                                 }
                             }
+                            Ok(CEvent::Mouse(mouse)) => {
+                                let mouse_event = MouseEvent {
+                                    kind: mouse.kind,
+                                    column: mouse.column,
+                                    row: mouse.row,
+                                };
+                                if event_tx.send(Event::Mouse(mouse_event)).is_err() {
+                                    return;
+                                }
+                            }
                             Ok(_) => {
-                                // Other event types (mouse, resize, etc.) - ignore for now
+                                // Other event types (resize, etc.) - ignore for now
                             }
                             Err(_) => {
                                 // Error reading event - continue
