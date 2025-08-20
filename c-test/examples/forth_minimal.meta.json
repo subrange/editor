@@ -1,0 +1,5 @@
+{
+  "description": "Minimal Forth with parallel arrays",
+  "use_runtime": true,
+  "expected": ""
+}

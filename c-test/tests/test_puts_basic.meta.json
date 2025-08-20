@@ -1,0 +1,5 @@
+{
+  "expected": "Hello\nWorld\nTest\nArray\n",
+  "description": "Test puts with strings",
+  "use_runtime": true
+}

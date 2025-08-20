@@ -10,9 +10,12 @@ void putchar(int c);
 // Returns 0 on success, -1 on error
 int puts(const char *s);
 
+// Read a single character from input
+// Blocks until a character is available
+int getchar(void);
+
 // TODO: Future additions
 // int printf(const char *format, ...);
-// int getchar(void);
 // char *gets(char *s);
 
 #endif // STDIO_H

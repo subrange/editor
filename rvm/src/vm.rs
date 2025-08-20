@@ -97,6 +97,9 @@ pub struct VM {
     // Input buffer for TTY_IN
     pub input_buffer: VecDeque<u8>,
     
+    // TTY input mode state
+    tty_input_enabled: bool,
+    
     // RNG state (simple LCG)
     rng_state: u32,
     
@@ -171,6 +174,7 @@ impl VM {
             output_buffer: VecDeque::new(),
             output_ready: true,
             input_buffer: VecDeque::new(),
+            tty_input_enabled: false,
             rng_state: 0x12345678,  // Fixed seed for reproducibility
             display_mode: DISP_OFF,
             display_enabled: false,
@@ -350,6 +354,12 @@ impl VM {
             VMState::Setup => return Err("VM not initialized".to_string()),
         }
         
+        // Poll stdin for TTY input (non-blocking) - always poll when not in debug/verbose mode
+        // This populates the input buffer for TTY_IN_POP/TTY_IN_STATUS
+        if !self.debug_mode && !self.verbose {
+            self.poll_stdin();
+        }
+        
         // DON'T poll keyboard here - only poll when actually reading keyboard MMIO
         
         // Calculate instruction address
@@ -407,6 +417,11 @@ impl VM {
                 Some(value)
             },
             HDR_TTY_IN_POP => {
+                // Enable TTY input mode on first access
+                if !self.tty_input_enabled && !self.debug_mode && !self.verbose {
+                    self.enable_tty_input();
+                }
+                
                 // Pop a byte from input buffer
                 let value = if let Some(byte) = self.input_buffer.pop_front() {
                     byte as u16
@@ -418,6 +433,11 @@ impl VM {
                 Some(value)
             },
             HDR_TTY_IN_STATUS => {
+                // Enable TTY input mode on first access
+                if !self.tty_input_enabled && !self.debug_mode && !self.verbose {
+                    self.enable_tty_input();
+                }
+                
                 let value = if !self.input_buffer.is_empty() { TTY_HAS_BYTE } else { 0 };
                 self.memory[HDR_TTY_IN_STATUS] = value;
                 Some(value)
@@ -523,7 +543,14 @@ impl VM {
                 
                 // Print immediately to stdout for real-time effect
                 use std::io::{self, Write};
-                let _ = io::stdout().write_all(&[byte]);
+                
+                // If we're in raw mode and outputting a newline, also output carriage return
+                if self.tty_input_enabled && byte == b'\n' {
+                    // Output \r\n for proper line ending in raw mode
+                    let _ = io::stdout().write_all(b"\r\n");
+                } else {
+                    let _ = io::stdout().write_all(&[byte]);
+                }
                 let _ = io::stdout().flush();
                 
                 // Also store in buffer for compatibility
@@ -625,6 +652,9 @@ impl VM {
     fn handle_display_mode_change(&mut self, new_mode: u16) {
         // Exit current mode
         match self.display_mode {
+            DISP_TTY if self.terminal_raw_mode => {
+                self.exit_tty_mode();
+            },
             DISP_TEXT40 if self.terminal_raw_mode => {
                 self.exit_text40_mode();
             },
@@ -639,6 +669,9 @@ impl VM {
         
         // Enter new mode
         match new_mode {
+            DISP_TTY if !self.terminal_raw_mode => {
+                self.enter_tty_mode();
+            },
             DISP_TEXT40 if !self.terminal_raw_mode => {
                 self.enter_text40_mode();
             },
@@ -730,9 +763,98 @@ impl VM {
         // If no event, keep the current state (don't clear)
     }
     
+    // Enable TTY input mode (enable raw terminal mode for input capture)
+    fn enable_tty_input(&mut self) {
+        use std::io::IsTerminal;
+        
+        if !self.tty_input_enabled {
+            // Only enable raw mode if stdin is actually a terminal (not piped)
+            if std::io::stdin().is_terminal() {
+                let _ = terminal::enable_raw_mode();
+                self.tty_input_enabled = true;
+            }
+        }
+    }
+    
+    // Disable TTY input mode
+    fn disable_tty_input(&mut self) {
+        if self.tty_input_enabled {
+            let _ = terminal::disable_raw_mode();
+            self.tty_input_enabled = false;
+        }
+    }
+    
+    // Poll stdin for input (handles both terminal and piped input)
+    fn poll_stdin(&mut self) {
+        use std::time::Duration;
+        
+        // Terminal input - use crossterm events if raw mode is enabled
+        if self.tty_input_enabled {
+            // Use crossterm to check for available input
+            if event::poll(Duration::from_millis(0)).unwrap_or(false) {
+                if let Ok(Event::Key(key_event)) = event::read() {
+                    // Convert key event to ASCII character
+                    match key_event.code {
+                        KeyCode::Char(c) => {
+                            // Push character to input buffer
+                            self.input_buffer.push_back(c as u8);
+                        },
+                        KeyCode::Enter => {
+                            // Push newline
+                            self.input_buffer.push_back(b'\n');
+                        },
+                        KeyCode::Backspace => {
+                            // Push backspace (ASCII 8)
+                            self.input_buffer.push_back(8);
+                        },
+                        KeyCode::Tab => {
+                            // Push tab
+                            self.input_buffer.push_back(b'\t');
+                        },
+                        KeyCode::Esc => {
+                            // Push escape (ASCII 27)
+                            self.input_buffer.push_back(27);
+                        },
+                        _ => {
+                            // Ignore other special keys for now
+                        }
+                    }
+                }
+            }
+        }
+        // For piped input, we rely on pre-populated input buffer via --input flag
+        // Real-time piped input would require platform-specific non-blocking I/O
+    }
+    
     // Clear keyboard state flags
     fn clear_keyboard_state(&mut self) {
         self.keyboard_state = KeyboardState::default();
+    }
+    
+    // Enter TTY mode (for simple stdin/stdout with raw input)
+    fn enter_tty_mode(&mut self) {
+        // Only enter raw mode if not in verbose/debug mode
+        if self.verbose || self.debug_mode {
+            return; // Keep normal mode for debugging
+        }
+        
+        // Enable raw mode to capture input immediately
+        let _ = terminal::enable_raw_mode();
+        self.terminal_raw_mode = true;
+        
+        // Clear input buffer when entering TTY mode
+        self.input_buffer.clear();
+    }
+    
+    // Exit TTY mode
+    fn exit_tty_mode(&mut self) {
+        if !self.terminal_raw_mode {
+            return;
+        }
+        
+        // Restore terminal
+        let _ = terminal::disable_raw_mode();
+        self.terminal_raw_mode = false;
     }
     
     // Enter TEXT40 terminal mode
@@ -1411,11 +1533,18 @@ impl VM {
         self.input_buffer.clear();
         self.output_ready = true;
         
+        // Disable TTY input if it was enabled
+        if self.tty_input_enabled {
+            self.disable_tty_input();
+        }
+        
         // Clear keyboard state
         self.clear_keyboard_state();
         
         // Reset display state (and exit any active display mode)
-        if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
+        if self.display_mode == DISP_TTY && self.terminal_raw_mode {
+            self.exit_tty_mode();
+        } else if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
             self.exit_text40_mode();
         } else if self.display_mode == DISP_RGB565 {
             if let Some(mut display) = self.rgb565_display.take() {
@@ -1509,8 +1638,15 @@ impl VM {
 impl Drop for VM {
     fn drop(&mut self) {
         // Ensure terminal is restored when VM is dropped
+        if self.tty_input_enabled {
+            self.disable_tty_input();
+        }
         if self.terminal_raw_mode {
-            self.exit_text40_mode();
+            if self.display_mode == DISP_TTY {
+                self.exit_tty_mode();
+            } else if self.display_mode == DISP_TEXT40 {
+                self.exit_text40_mode();
+            }
         }
     }
 }

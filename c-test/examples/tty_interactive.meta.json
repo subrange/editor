@@ -1,0 +1,5 @@
+{
+  "expected": "manual",
+  "use_runtime": true,
+  "description": "Interactive TTY input test"
+}

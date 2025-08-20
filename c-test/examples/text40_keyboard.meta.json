@@ -1,5 +1,0 @@
-{
-  "description": "Interactive keyboard demo for TEXT40 mode - shows arrow keys and Z/X button states",
-  "expected": "Keyboard input test completed!",
-  "use_runtime": true
-}

@@ -1,0 +1,5 @@
+{
+  "expected": "",
+  "description": "Simple Forth without function pointers",
+  "use_runtime": true
+}

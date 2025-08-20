@@ -1,0 +1,5 @@
+{
+  "expected": "manual",
+  "description": "TTY input echo test program - manual test",
+  "use_runtime": true
+}

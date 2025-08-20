@@ -193,17 +193,17 @@ L_memcpy_2:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
 ; LOAD: Pointer t19 has bank info: Dynamic("gep_new_bank_f0_op44_t19")
     LI T4, -1
-    BEQ T7, T4, L_bc_12756adb_use_global
+    BEQ T7, T4, L_bc_48ce09ae_use_global
     LI T1, -2
-    BEQ T7, T1, L_bc_12756adb_use_stack
+    BEQ T7, T1, L_bc_48ce09ae_use_stack
     ADD T3, T7, R0
-    BEQ R0, R0, L_bc_12756adb_done
-L_bc_12756adb_use_global:
+    BEQ R0, R0, L_bc_48ce09ae_done
+L_bc_48ce09ae_use_global:
     ADD T3, GP, R0
-    BEQ R0, R0, L_bc_12756adb_done
-L_bc_12756adb_use_stack:
+    BEQ R0, R0, L_bc_48ce09ae_done
+L_bc_48ce09ae_use_stack:
     ADD T3, SB, R0
-L_bc_12756adb_done:
+L_bc_48ce09ae_done:
 ; LOAD: Using bank register T3 for load
     LOAD T2, T3, T6
 ; Reload gep_new_bank_f0_op33_t16 from slot 9
@@ -211,23 +211,20 @@ L_bc_12756adb_done:
     ADDI SC, SC, 25
     LOAD T4, SB, SC
     LI T5, -1
-    BEQ T4, T5, L_bc_a779df2b_use_global
+    BEQ T4, T5, L_bc_56d3c9b7_use_global
     LI T0, -2
-    BEQ T4, T0, L_bc_a779df2b_use_stack
+    BEQ T4, T0, L_bc_56d3c9b7_use_stack
     ADD T1, T4, R0
-    BEQ R0, R0, L_bc_a779df2b_done
-L_bc_a779df2b_use_global:
+    BEQ R0, R0, L_bc_56d3c9b7_done
+L_bc_56d3c9b7_use_global:
     ADD T1, GP, R0
-    BEQ R0, R0, L_bc_a779df2b_done
-L_bc_a779df2b_use_stack:
+    BEQ R0, R0, L_bc_56d3c9b7_done
+L_bc_56d3c9b7_use_stack:
     ADD T1, SB, R0
-L_bc_a779df2b_done:
+L_bc_56d3c9b7_done:
     STORE T2, T1, S0
     BEQ R0, R0, L_memcpy_3
 ; Unconditional branch to L_memcpy_3
-; Invalidating GEP bank gep_new_bank_f0_op33_t16 in T4
-; Invalidating GEP bank gep_new_bank_f0_op44_t19 in T7
-; Invalidated 2 GEP bank bindings
 L_memcpy_3:
 ; Load instruction: t21 = load FatPtr(FatPointer { addr: Temp(10), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(10), bank: Stack })
@@ -237,8 +234,12 @@ L_memcpy_3:
     ADD T5, FP, R0
     ADDI T5, T5, 7
     LOAD T0, SB, T5
-    LI T4, 1
-    ADD T0, T0, T4
+; Spill t17 to slot 10
+    ADD SC, FP, R0
+    ADDI SC, SC, 26
+    STORE S3, SB, SC
+    LI S3, 1
+    ADD T0, T0, S3
     STORE T0, SB, T5
     BEQ R0, R0, L_memcpy_1
 ; Unconditional branch to L_memcpy_1

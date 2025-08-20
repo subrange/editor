@@ -1,0 +1,5 @@
+{
+  "expected": "YYYYY\n",
+  "description": "Forth evaluation test",
+  "use_runtime": true
+}

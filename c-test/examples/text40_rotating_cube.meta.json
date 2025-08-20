@@ -1,4 +1,0 @@
-{
-  "use_runtime": true,
-  "description": "3D rotating cube demonstration using fixed-point math (qfixed library) and TEXT40 graphics mode"
-}

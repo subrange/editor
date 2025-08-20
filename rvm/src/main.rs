@@ -54,6 +54,7 @@ fn print_usage() {
     eprintln!("  -m, --memory <size>      Set memory size in words (default: {DEFAULT_MEMORY_SIZE})");
     eprintln!("  -f, --frequency <hz>     Set virtual CPU frequency (e.g., 1MHz, 500KHz, 2.5GHz)");
     eprintln!("  -s, --seed <value>       Set RNG seed (default: 0x12345678)");
+    eprintln!("  -i, --input <text>       Pre-populate input buffer with text");
     eprintln!("  -d, --debug              Enable debug mode (step through execution)");
     eprintln!("  -t, --tui                Enable TUI debugger_ui mode");
     eprintln!("  -v, --verbose            Show VM state during execution");
@@ -93,6 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut memory_size: Option<usize> = None;
     let mut frequency: Option<u64> = None;
     let mut rng_seed: Option<u32> = None;
+    let mut input_text: Option<String> = None;
     let mut debug_mode = false;
     let mut tui_mode = false;
     let mut verbose = false;
@@ -159,6 +161,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     })
                 });
             },
+            "-i" | "--input" => {
+                if i + 1 >= args.len() {
+                    eprintln!("Error: --input requires an argument");
+                    process::exit(1);
+                }
+                i += 1;
+                input_text = Some(args[i].clone());
+            },
             "-d" | "--debug" => {
                 debug_mode = true;
             },
@@ -211,6 +221,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Set verbose mode if requested
     vm.verbose = verbose;
+    
+    // Pre-populate input buffer if provided
+    if let Some(input) = input_text {
+        // Replace escape sequences with actual characters
+        let processed_input = input
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
+            .replace("\\t", "\t");
+        vm.push_input_string(&processed_input);
+        if verbose {
+            println!("Pre-populated input buffer with: {:?}", processed_input);
+        }
+    }
     
     // Load the binary
     if let Err(e) = vm.load_binary(&binary) {

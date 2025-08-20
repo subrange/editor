@@ -723,23 +723,11 @@
         ],
         "data": [],
         "labels": {
-          "__st8": {
-            "name": "__st8",
+          "__ld8_done": {
+            "name": "__ld8_done",
             "bank": 0,
-            "offset": 184,
-            "absolute_address": 184
-          },
-          "L___st8_99999": {
-            "name": "L___st8_99999",
-            "bank": 0,
-            "offset": 348,
-            "absolute_address": 348
-          },
-          "L___st8_1": {
-            "name": "L___st8_1",
-            "bank": 0,
-            "offset": 256,
-            "absolute_address": 256
+            "offset": 120,
+            "absolute_address": 120
           },
           "__st8_hi": {
             "name": "__st8_hi",
@@ -747,11 +735,23 @@
             "offset": 320,
             "absolute_address": 320
           },
-          "__ld8_done": {
-            "name": "__ld8_done",
+          "L___st8_99999": {
+            "name": "L___st8_99999",
             "bank": 0,
-            "offset": 120,
-            "absolute_address": 120
+            "offset": 348,
+            "absolute_address": 348
+          },
+          "__st8_store": {
+            "name": "__st8_store",
+            "bank": 0,
+            "offset": 336,
+            "absolute_address": 336
+          },
+          "L___st8_1": {
+            "name": "L___st8_1",
+            "bank": 0,
+            "offset": 256,
+            "absolute_address": 256
           },
           "__ld8": {
             "name": "__ld8",
@@ -759,17 +759,17 @@
             "offset": 0,
             "absolute_address": 0
           },
+          "__st8": {
+            "name": "__st8",
+            "bank": 0,
+            "offset": 184,
+            "absolute_address": 184
+          },
           "L___ld8_99999": {
             "name": "L___ld8_99999",
             "bank": 0,
             "offset": 124,
             "absolute_address": 124
-          },
-          "__st8_store": {
-            "name": "__st8_store",
-            "bank": 0,
-            "offset": 336,
-            "absolute_address": 336
           },
           "__ld8_hi": {
             "name": "__ld8_hi",
@@ -1036,17 +1036,17 @@
         ],
         "data": [],
         "labels": {
-          "putchar": {
-            "name": "putchar",
-            "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
           "L_putchar_99999": {
             "name": "L_putchar_99999",
             "bank": 0,
             "offset": 80,
             "absolute_address": 80
+          },
+          "putchar": {
+            "name": "putchar",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
           }
         },
         "data_labels": {},
@@ -1888,41 +1888,23 @@
         ],
         "data": [],
         "labels": {
-          "L_puts_2": {
-            "name": "L_puts_2",
+          "L_bc_b2725261_use_global": {
+            "name": "L_bc_b2725261_use_global",
             "bank": 0,
-            "offset": 148,
-            "absolute_address": 148
+            "offset": 188,
+            "absolute_address": 188
           },
-          "L_bc_7390f3ee_use_stack": {
-            "name": "L_bc_7390f3ee_use_stack",
-            "bank": 0,
-            "offset": 132,
-            "absolute_address": 132
-          },
-          "L_bc_7390f3ee_done": {
-            "name": "L_bc_7390f3ee_done",
-            "bank": 0,
-            "offset": 136,
-            "absolute_address": 136
-          },
-          "L_bc_7390f3ee_use_global": {
-            "name": "L_bc_7390f3ee_use_global",
-            "bank": 0,
-            "offset": 124,
-            "absolute_address": 124
-          },
-          "L_puts_1": {
-            "name": "L_puts_1",
-            "bank": 0,
-            "offset": 84,
-            "absolute_address": 84
-          },
-          "L_bc_6dbe2b09_done": {
-            "name": "L_bc_6dbe2b09_done",
+          "L_bc_b2725261_done": {
+            "name": "L_bc_b2725261_done",
             "bank": 0,
             "offset": 200,
             "absolute_address": 200
+          },
+          "L_bc_20bb6027_done": {
+            "name": "L_bc_20bb6027_done",
+            "bank": 0,
+            "offset": 136,
+            "absolute_address": 136
           },
           "L_puts_3": {
             "name": "L_puts_3",
@@ -1930,39 +1912,632 @@
             "offset": 344,
             "absolute_address": 344
           },
-          "L_bc_6dbe2b09_use_global": {
-            "name": "L_bc_6dbe2b09_use_global",
-            "bank": 0,
-            "offset": 188,
-            "absolute_address": 188
-          },
-          "L_bc_6dbe2b09_use_stack": {
-            "name": "L_bc_6dbe2b09_use_stack",
-            "bank": 0,
-            "offset": 196,
-            "absolute_address": 196
-          },
           "puts": {
             "name": "puts",
             "bank": 0,
             "offset": 0,
             "absolute_address": 0
           },
+          "L_puts_2": {
+            "name": "L_puts_2",
+            "bank": 0,
+            "offset": 148,
+            "absolute_address": 148
+          },
+          "L_bc_b2725261_use_stack": {
+            "name": "L_bc_b2725261_use_stack",
+            "bank": 0,
+            "offset": 196,
+            "absolute_address": 196
+          },
           "L_puts_99999": {
             "name": "L_puts_99999",
             "bank": 0,
             "offset": 412,
             "absolute_address": 412
+          },
+          "L_bc_20bb6027_use_global": {
+            "name": "L_bc_20bb6027_use_global",
+            "bank": 0,
+            "offset": 124,
+            "absolute_address": 124
+          },
+          "L_bc_20bb6027_use_stack": {
+            "name": "L_bc_20bb6027_use_stack",
+            "bank": 0,
+            "offset": 132,
+            "absolute_address": 132
+          },
+          "L_puts_1": {
+            "name": "L_puts_1",
+            "bank": 0,
+            "offset": 84,
+            "absolute_address": 84
           }
         },
         "data_labels": {},
         "unresolved_references": {
-          "100": {
+          "76": {
             "label": "putchar",
             "ref_type": "absolute"
           },
-          "76": {
+          "100": {
             "label": "putchar",
+            "ref_type": "absolute"
+          }
+        },
+        "entry_point": null
+      }
+    },
+    {
+      "name": "getchar",
+      "object": {
+        "version": 1,
+        "instructions": [
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 3,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 30,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 23,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 24,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 30,
+            "word2": 29,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 9
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 20
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 26,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 25,
+            "word2": 3,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 9
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 7,
+            "word2": 25,
+            "word3": 0
+          },
+          {
+            "opcode": 19,
+            "word0": 19,
+            "word1": 3,
+            "word2": 0,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 24,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 5,
+            "word2": 28,
+            "word3": 24
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 23,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 22,
+            "word2": 28,
+            "word3": 23
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 21,
+            "word2": 1,
+            "word3": 0
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 20,
+            "word2": 0,
+            "word3": 0
+          },
+          {
+            "opcode": 6,
+            "word0": 6,
+            "word1": 21,
+            "word2": 21,
+            "word3": 20
+          },
+          {
+            "opcode": 3,
+            "word0": 3,
+            "word1": 22,
+            "word2": 22,
+            "word3": 21
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 19,
+            "word2": 0,
+            "word3": 0
+          },
+          {
+            "opcode": 5,
+            "word0": 5,
+            "word1": 18,
+            "word2": 22,
+            "word3": 19
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 17,
+            "word2": 1,
+            "word3": 0
+          },
+          {
+            "opcode": 9,
+            "word0": 9,
+            "word1": 22,
+            "word2": 18,
+            "word3": 17
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 22,
+            "word2": 0,
+            "word3": 14
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 16,
+            "word2": 3,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 10
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 5,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 11
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 16,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 7,
+            "word2": 16,
+            "word3": 0
+          },
+          {
+            "opcode": 19,
+            "word0": 19,
+            "word1": 3,
+            "word2": 0,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 15,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 5,
+            "word2": 28,
+            "word3": 15
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 65513
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 26,
+            "word2": 2,
+            "word3": 0
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 12
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 5,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 13
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 7,
+            "word2": 26,
+            "word3": 0
+          },
+          {
+            "opcode": 19,
+            "word0": 19,
+            "word1": 3,
+            "word2": 0,
+            "word3": 0
+          },
+          {
+            "opcode": 21,
+            "word0": 21,
+            "word1": 0,
+            "word2": 0,
+            "word3": 1
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 29,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65534
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 25,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65533
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 24,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 30,
+            "word3": 65532
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 23,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65531
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 30,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 29,
+            "word2": 29,
+            "word3": 65535
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 3,
+            "word2": 28,
+            "word3": 29
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 2,
+            "word2": 4,
+            "word3": 0
+          },
+          {
+            "opcode": 20,
+            "word0": 20,
+            "word1": 0,
+            "word2": 0,
+            "word3": 3
+          }
+        ],
+        "data": [],
+        "labels": {
+          "getchar": {
+            "name": "getchar",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
+          "L_getchar_2": {
+            "name": "L_getchar_2",
+            "bank": 0,
+            "offset": 148,
+            "absolute_address": 148
+          },
+          "L_getchar_1": {
+            "name": "L_getchar_1",
+            "bank": 0,
+            "offset": 100,
+            "absolute_address": 100
+          },
+          "L_getchar_3": {
+            "name": "L_getchar_3",
+            "bank": 0,
+            "offset": 196,
+            "absolute_address": 196
+          },
+          "L_getchar_99999": {
+            "name": "L_getchar_99999",
+            "bank": 0,
+            "offset": 236,
+            "absolute_address": 236
+          }
+        },
+        "data_labels": {},
+        "unresolved_references": {
+          "45": {
+            "label": "mmio_read",
+            "ref_type": "absolute"
+          },
+          "21": {
+            "label": "mmio_read",
+            "ref_type": "absolute"
+          },
+          "57": {
+            "label": "mmio_read",
             "ref_type": "absolute"
           }
         },
@@ -2691,20 +3266,32 @@
         ],
         "data": [],
         "labels": {
-          "L_bc_def9a1fa_use_global": {
-            "name": "L_bc_def9a1fa_use_global",
-            "bank": 0,
-            "offset": 296,
-            "absolute_address": 296
-          },
           "memset": {
             "name": "memset",
             "bank": 0,
             "offset": 0,
             "absolute_address": 0
           },
-          "L_bc_def9a1fa_done": {
-            "name": "L_bc_def9a1fa_done",
+          "L_memset_4": {
+            "name": "L_memset_4",
+            "bank": 0,
+            "offset": 344,
+            "absolute_address": 344
+          },
+          "L_memset_1": {
+            "name": "L_memset_1",
+            "bank": 0,
+            "offset": 132,
+            "absolute_address": 132
+          },
+          "L_memset_3": {
+            "name": "L_memset_3",
+            "bank": 0,
+            "offset": 316,
+            "absolute_address": 316
+          },
+          "L_bc_7d70390a_done": {
+            "name": "L_bc_7d70390a_done",
             "bank": 0,
             "offset": 308,
             "absolute_address": 308
@@ -2715,35 +3302,23 @@
             "offset": 348,
             "absolute_address": 348
           },
-          "L_memset_4": {
-            "name": "L_memset_4",
-            "bank": 0,
-            "offset": 344,
-            "absolute_address": 344
-          },
-          "L_bc_def9a1fa_use_stack": {
-            "name": "L_bc_def9a1fa_use_stack",
-            "bank": 0,
-            "offset": 304,
-            "absolute_address": 304
-          },
           "L_memset_2": {
             "name": "L_memset_2",
             "bank": 0,
             "offset": 168,
             "absolute_address": 168
           },
-          "L_memset_3": {
-            "name": "L_memset_3",
+          "L_bc_7d70390a_use_stack": {
+            "name": "L_bc_7d70390a_use_stack",
             "bank": 0,
-            "offset": 316,
-            "absolute_address": 316
+            "offset": 304,
+            "absolute_address": 304
           },
-          "L_memset_1": {
-            "name": "L_memset_1",
+          "L_bc_7d70390a_use_global": {
+            "name": "L_bc_7d70390a_use_global",
             "bank": 0,
-            "offset": 132,
-            "absolute_address": 132
+            "offset": 296,
+            "absolute_address": 296
           }
         },
         "data_labels": {},
@@ -3167,7 +3742,7 @@
             "word0": 21,
             "word1": 15,
             "word2": 0,
-            "word3": 87
+            "word3": 90
           },
           {
             "opcode": 21,
@@ -3744,9 +4319,30 @@
             "word3": 20
           },
           {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 26
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
             "opcode": 14,
             "word0": 14,
-            "word1": 19,
+            "word1": 26,
             "word2": 1,
             "word3": 0
           },
@@ -3755,7 +4351,7 @@
             "word0": 1,
             "word1": 15,
             "word2": 15,
-            "word3": 19
+            "word3": 26
           },
           {
             "opcode": 18,
@@ -3769,7 +4365,7 @@
             "word0": 21,
             "word1": 0,
             "word2": 0,
-            "word3": 65443
+            "word3": 65440
           },
           {
             "opcode": 21,
@@ -3886,17 +4482,17 @@
         ],
         "data": [],
         "labels": {
-          "L_memcpy_4": {
-            "name": "L_memcpy_4",
+          "L_bc_48ce09ae_use_global": {
+            "name": "L_bc_48ce09ae_use_global",
             "bank": 0,
-            "offset": 580,
-            "absolute_address": 580
+            "offset": 480,
+            "absolute_address": 480
           },
-          "L_memcpy_3": {
-            "name": "L_memcpy_3",
+          "L_bc_56d3c9b7_done": {
+            "name": "L_bc_56d3c9b7_done",
             "bank": 0,
-            "offset": 552,
-            "absolute_address": 552
+            "offset": 544,
+            "absolute_address": 544
           },
           "L_memcpy_1": {
             "name": "L_memcpy_1",
@@ -3904,59 +4500,59 @@
             "offset": 204,
             "absolute_address": 204
           },
+          "L_bc_56d3c9b7_use_global": {
+            "name": "L_bc_56d3c9b7_use_global",
+            "bank": 0,
+            "offset": 532,
+            "absolute_address": 532
+          },
+          "L_memcpy_3": {
+            "name": "L_memcpy_3",
+            "bank": 0,
+            "offset": 552,
+            "absolute_address": 552
+          },
           "L_memcpy_2": {
             "name": "L_memcpy_2",
             "bank": 0,
             "offset": 240,
             "absolute_address": 240
           },
-          "L_bc_a779df2b_use_global": {
-            "name": "L_bc_a779df2b_use_global",
-            "bank": 0,
-            "offset": 532,
-            "absolute_address": 532
-          },
-          "L_memcpy_99999": {
-            "name": "L_memcpy_99999",
-            "bank": 0,
-            "offset": 584,
-            "absolute_address": 584
-          },
-          "L_bc_a779df2b_use_stack": {
-            "name": "L_bc_a779df2b_use_stack",
-            "bank": 0,
-            "offset": 540,
-            "absolute_address": 540
-          },
-          "L_bc_a779df2b_done": {
-            "name": "L_bc_a779df2b_done",
-            "bank": 0,
-            "offset": 544,
-            "absolute_address": 544
-          },
-          "L_bc_12756adb_use_stack": {
-            "name": "L_bc_12756adb_use_stack",
+          "L_bc_48ce09ae_use_stack": {
+            "name": "L_bc_48ce09ae_use_stack",
             "bank": 0,
             "offset": 488,
             "absolute_address": 488
-          },
-          "L_bc_12756adb_use_global": {
-            "name": "L_bc_12756adb_use_global",
-            "bank": 0,
-            "offset": 480,
-            "absolute_address": 480
-          },
-          "L_bc_12756adb_done": {
-            "name": "L_bc_12756adb_done",
-            "bank": 0,
-            "offset": 492,
-            "absolute_address": 492
           },
           "memcpy": {
             "name": "memcpy",
             "bank": 0,
             "offset": 0,
             "absolute_address": 0
+          },
+          "L_bc_48ce09ae_done": {
+            "name": "L_bc_48ce09ae_done",
+            "bank": 0,
+            "offset": 492,
+            "absolute_address": 492
+          },
+          "L_memcpy_4": {
+            "name": "L_memcpy_4",
+            "bank": 0,
+            "offset": 592,
+            "absolute_address": 592
+          },
+          "L_memcpy_99999": {
+            "name": "L_memcpy_99999",
+            "bank": 0,
+            "offset": 596,
+            "absolute_address": 596
+          },
+          "L_bc_56d3c9b7_use_stack": {
+            "name": "L_bc_56d3c9b7_use_stack",
+            "bank": 0,
+            "offset": 540,
+            "absolute_address": 540
           }
         },
         "data_labels": {},
@@ -9077,7 +9673,7 @@
             "word0": 21,
             "word1": 25,
             "word2": 0,
-            "word3": 54
+            "word3": 57
           },
           {
             "opcode": 21,
@@ -9150,20 +9746,6 @@
             "word3": 18
           },
           {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 24,
-            "word2": 255,
-            "word3": 0
-          },
-          {
-            "opcode": 3,
-            "word0": 3,
-            "word1": 19,
-            "word2": 19,
-            "word3": 24
-          },
-          {
             "opcode": 1,
             "word0": 1,
             "word1": 27,
@@ -9183,6 +9765,20 @@
             "word1": 16,
             "word2": 28,
             "word3": 27
+          },
+          {
+            "opcode": 14,
+            "word0": 14,
+            "word1": 16,
+            "word2": 255,
+            "word3": 0
+          },
+          {
+            "opcode": 3,
+            "word0": 3,
+            "word1": 19,
+            "word2": 19,
+            "word3": 16
           },
           {
             "opcode": 1,
@@ -9264,7 +9860,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 23,
+            "word1": 24,
             "word2": 28,
             "word3": 27
           },
@@ -9285,7 +9881,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 20,
+            "word1": 23,
             "word2": 28,
             "word3": 27
           },
@@ -9306,7 +9902,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 15,
+            "word1": 20,
             "word2": 28,
             "word3": 27
           },
@@ -9323,6 +9919,27 @@
             "word1": 27,
             "word2": 27,
             "word3": 26
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 15,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 27
           },
           {
             "opcode": 18,
@@ -9362,65 +9979,65 @@
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 24,
+            "word1": 16,
             "word2": 30,
             "word3": 0
           },
           {
             "opcode": 10,
             "word0": 10,
-            "word1": 24,
-            "word2": 24,
+            "word1": 16,
+            "word2": 16,
             "word3": 4
           },
           {
             "opcode": 17,
             "word0": 17,
-            "word1": 16,
+            "word1": 21,
             "word2": 28,
-            "word3": 24
+            "word3": 16
           },
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 21,
+            "word1": 17,
             "word2": 1,
             "word3": 0
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 16,
-            "word2": 16,
-            "word3": 21
+            "word1": 21,
+            "word2": 21,
+            "word3": 17
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 16,
+            "word1": 21,
             "word2": 28,
-            "word3": 24
+            "word3": 16
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 17,
+            "word1": 22,
             "word2": 30,
             "word3": 0
           },
           {
             "opcode": 10,
             "word0": 10,
-            "word1": 17,
-            "word2": 17,
+            "word1": 22,
+            "word2": 22,
             "word3": 5
           },
           {
             "opcode": 17,
             "word0": 17,
-            "word1": 22,
+            "word1": 24,
             "word2": 28,
-            "word3": 17
+            "word3": 22
           },
           {
             "opcode": 14,
@@ -9432,23 +10049,23 @@
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 22,
-            "word2": 22,
+            "word1": 24,
+            "word2": 24,
             "word3": 23
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 22,
+            "word1": 24,
             "word2": 28,
-            "word3": 17
+            "word3": 22
           },
           {
             "opcode": 21,
             "word0": 21,
             "word1": 0,
             "word2": 0,
-            "word3": 65433
+            "word3": 65430
           },
           {
             "opcode": 21,
@@ -12241,7 +12858,7 @@
             "word0": 21,
             "word1": 23,
             "word2": 0,
-            "word3": 70
+            "word3": 73
           },
           {
             "opcode": 21,
@@ -12314,34 +12931,6 @@
             "word3": 18
           },
           {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 22,
-            "word2": 255,
-            "word3": 0
-          },
-          {
-            "opcode": 3,
-            "word0": 3,
-            "word1": 20,
-            "word2": 20,
-            "word3": 22
-          },
-          {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 22,
-            "word2": 30,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 22,
-            "word2": 22,
-            "word3": 4
-          },
-          {
             "opcode": 1,
             "word0": 1,
             "word1": 27,
@@ -12363,11 +12952,32 @@
             "word3": 27
           },
           {
-            "opcode": 17,
-            "word0": 17,
+            "opcode": 14,
+            "word0": 14,
             "word1": 16,
-            "word2": 28,
-            "word3": 22
+            "word2": 255,
+            "word3": 0
+          },
+          {
+            "opcode": 3,
+            "word0": 3,
+            "word1": 20,
+            "word2": 20,
+            "word3": 16
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 16,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 16,
+            "word2": 16,
+            "word3": 4
           },
           {
             "opcode": 1,
@@ -12391,18 +13001,11 @@
             "word3": 27
           },
           {
-            "opcode": 1,
-            "word0": 1,
+            "opcode": 17,
+            "word0": 17,
             "word1": 21,
-            "word2": 30,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 21,
-            "word2": 21,
-            "word3": 5
+            "word2": 28,
+            "word3": 16
           },
           {
             "opcode": 1,
@@ -12426,11 +13029,18 @@
             "word3": 27
           },
           {
-            "opcode": 17,
-            "word0": 17,
+            "opcode": 1,
+            "word0": 1,
             "word1": 19,
-            "word2": 28,
-            "word3": 21
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 19,
+            "word2": 19,
+            "word3": 5
           },
           {
             "opcode": 1,
@@ -12454,6 +13064,13 @@
             "word3": 27
           },
           {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 25,
+            "word2": 28,
+            "word3": 19
+          },
+          {
             "opcode": 1,
             "word0": 1,
             "word1": 27,
@@ -12470,7 +13087,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 26,
+            "word1": 22,
             "word2": 28,
             "word3": 27
           },
@@ -12491,7 +13108,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 15,
+            "word1": 26,
             "word2": 28,
             "word3": 27
           },
@@ -12512,7 +13129,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 17,
+            "word1": 15,
             "word2": 28,
             "word3": 27
           },
@@ -12533,7 +13150,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 20,
+            "word1": 17,
             "word2": 28,
             "word3": 27
           },
@@ -12554,7 +13171,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 16,
+            "word1": 20,
             "word2": 28,
             "word3": 27
           },
@@ -12575,14 +13192,35 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 19,
+            "word1": 21,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 33
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 25,
             "word2": 28,
             "word3": 27
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 19,
+            "word1": 25,
             "word2": 28,
             "word3": 29
           },
@@ -12618,7 +13256,7 @@
             "opcode": 1,
             "word0": 1,
             "word1": 10,
-            "word2": 16,
+            "word2": 21,
             "word3": 0
           },
           {
@@ -12626,7 +13264,7 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 799
+            "word3": 802
           },
           {
             "opcode": 10,
@@ -12638,15 +13276,15 @@
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 25,
+            "word1": 22,
             "word2": 30,
             "word3": 0
           },
           {
             "opcode": 10,
             "word0": 10,
-            "word1": 25,
-            "word2": 25,
+            "word1": 22,
+            "word2": 22,
             "word3": 6
           },
           {
@@ -12654,7 +13292,7 @@
             "word0": 17,
             "word1": 26,
             "word2": 28,
-            "word3": 25
+            "word3": 22
           },
           {
             "opcode": 14,
@@ -12675,7 +13313,7 @@
             "word0": 18,
             "word1": 26,
             "word2": 28,
-            "word3": 25
+            "word3": 22
           },
           {
             "opcode": 1,
@@ -12701,7 +13339,7 @@
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 22,
+            "word1": 16,
             "word2": 1,
             "word3": 0
           },
@@ -12710,7 +13348,7 @@
             "word0": 1,
             "word1": 18,
             "word2": 18,
-            "word3": 22
+            "word3": 16
           },
           {
             "opcode": 18,
@@ -12724,7 +13362,7 @@
             "word0": 21,
             "word1": 0,
             "word2": 0,
-            "word3": 65417
+            "word3": 65414
           },
           {
             "opcode": 21,
@@ -13522,7 +14160,7 @@
             "word0": 21,
             "word1": 24,
             "word2": 0,
-            "word3": 61
+            "word3": 64
           },
           {
             "opcode": 21,
@@ -13595,34 +14233,6 @@
             "word3": 20
           },
           {
-            "opcode": 14,
-            "word0": 14,
-            "word1": 23,
-            "word2": 255,
-            "word3": 0
-          },
-          {
-            "opcode": 3,
-            "word0": 3,
-            "word1": 26,
-            "word2": 26,
-            "word3": 23
-          },
-          {
-            "opcode": 1,
-            "word0": 1,
-            "word1": 23,
-            "word2": 30,
-            "word3": 0
-          },
-          {
-            "opcode": 10,
-            "word0": 10,
-            "word1": 23,
-            "word2": 23,
-            "word3": 4
-          },
-          {
             "opcode": 1,
             "word0": 1,
             "word1": 27,
@@ -13644,11 +14254,32 @@
             "word3": 27
           },
           {
-            "opcode": 17,
-            "word0": 17,
+            "opcode": 14,
+            "word0": 14,
             "word1": 17,
-            "word2": 28,
-            "word3": 23
+            "word2": 255,
+            "word3": 0
+          },
+          {
+            "opcode": 3,
+            "word0": 3,
+            "word1": 26,
+            "word2": 26,
+            "word3": 17
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 17,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 17,
+            "word2": 17,
+            "word3": 4
           },
           {
             "opcode": 1,
@@ -13670,6 +14301,13 @@
             "word1": 21,
             "word2": 28,
             "word3": 27
+          },
+          {
+            "opcode": 17,
+            "word0": 17,
+            "word1": 21,
+            "word2": 28,
+            "word3": 17
           },
           {
             "opcode": 1,
@@ -13730,7 +14368,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 18,
+            "word1": 23,
             "word2": 28,
             "word3": 27
           },
@@ -13751,7 +14389,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 15,
+            "word1": 18,
             "word2": 28,
             "word3": 27
           },
@@ -13772,7 +14410,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 16,
+            "word1": 15,
             "word2": 28,
             "word3": 27
           },
@@ -13793,7 +14431,7 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 26,
+            "word1": 16,
             "word2": 28,
             "word3": 27
           },
@@ -13814,7 +14452,28 @@
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 17,
+            "word1": 26,
+            "word2": 28,
+            "word3": 27
+          },
+          {
+            "opcode": 1,
+            "word0": 1,
+            "word1": 27,
+            "word2": 30,
+            "word3": 0
+          },
+          {
+            "opcode": 10,
+            "word0": 10,
+            "word1": 27,
+            "word2": 27,
+            "word3": 30
+          },
+          {
+            "opcode": 18,
+            "word0": 18,
+            "word1": 21,
             "word2": 28,
             "word3": 27
           },
@@ -13843,7 +14502,7 @@
             "opcode": 1,
             "word0": 1,
             "word1": 10,
-            "word2": 17,
+            "word2": 21,
             "word3": 0
           },
           {
@@ -13851,49 +14510,49 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 950
+            "word3": 953
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 21,
+            "word1": 19,
             "word2": 30,
             "word3": 0
           },
           {
             "opcode": 10,
             "word0": 10,
-            "word1": 21,
-            "word2": 21,
+            "word1": 19,
+            "word2": 19,
             "word3": 5
           },
           {
             "opcode": 17,
             "word0": 17,
-            "word1": 19,
+            "word1": 22,
             "word2": 28,
-            "word3": 21
+            "word3": 19
           },
           {
             "opcode": 14,
             "word0": 14,
-            "word1": 22,
+            "word1": 23,
             "word2": 1,
             "word3": 0
           },
           {
             "opcode": 1,
             "word0": 1,
-            "word1": 19,
-            "word2": 19,
-            "word3": 22
+            "word1": 22,
+            "word2": 22,
+            "word3": 23
           },
           {
             "opcode": 18,
             "word0": 18,
-            "word1": 19,
+            "word1": 22,
             "word2": 28,
-            "word3": 21
+            "word3": 19
           },
           {
             "opcode": 1,
@@ -13942,7 +14601,7 @@
             "word0": 21,
             "word1": 0,
             "word2": 0,
-            "word3": 65423
+            "word3": 65420
           },
           {
             "opcode": 21,
@@ -16889,7 +17548,7 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 1774
+            "word3": 1783
           },
           {
             "opcode": 21,
@@ -17148,7 +17807,7 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 1774
+            "word3": 1783
           },
           {
             "opcode": 21,
@@ -17407,7 +18066,7 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 1774
+            "word3": 1783
           },
           {
             "opcode": 21,
@@ -17666,7 +18325,7 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 1774
+            "word3": 1783
           },
           {
             "opcode": 21,
@@ -17925,7 +18584,7 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 1774
+            "word3": 1783
           },
           {
             "opcode": 21,
@@ -18184,7 +18843,7 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 1774
+            "word3": 1783
           },
           {
             "opcode": 21,
@@ -20403,7 +21062,7 @@
             "word0": 19,
             "word1": 3,
             "word2": 0,
-            "word3": 2132
+            "word3": 2141
           },
           {
             "opcode": 21,
@@ -20674,707 +21333,17 @@
         ],
         "data": [],
         "labels": {
-          "L_text40_puts_attr_32": {
-            "name": "L_text40_puts_attr_32",
-            "bank": 0,
-            "offset": 5244,
-            "absolute_address": 5244
-          },
-          "L_text40_putchar_99999": {
-            "name": "L_text40_putchar_99999",
-            "bank": 0,
-            "offset": 2500,
-            "absolute_address": 2500
-          },
-          "L_text40_puts_16": {
-            "name": "L_text40_puts_16",
-            "bank": 0,
-            "offset": 2716,
-            "absolute_address": 2716
-          },
-          "L_display_clear_9": {
-            "name": "L_display_clear_9",
-            "bank": 0,
-            "offset": 1816,
-            "absolute_address": 1816
-          },
-          "L_text40_puts_attr_99999": {
-            "name": "L_text40_puts_attr_99999",
-            "bank": 0,
-            "offset": 5704,
-            "absolute_address": 5704
-          },
-          "L_rng_get_99999": {
-            "name": "L_rng_get_99999",
-            "bank": 0,
-            "offset": 724,
-            "absolute_address": 724
-          },
-          "key_down_pressed": {
-            "name": "key_down_pressed",
-            "bank": 0,
-            "offset": 7448,
-            "absolute_address": 7448
-          },
-          "L_key_left_pressed_50": {
-            "name": "L_key_left_pressed_50",
-            "bank": 0,
-            "offset": 7656,
-            "absolute_address": 7656
-          },
-          "L_rgb565_fill_rect_61": {
-            "name": "L_rgb565_fill_rect_61",
-            "bank": 0,
-            "offset": 9152,
-            "absolute_address": 9152
-          },
-          "key_x_pressed": {
-            "name": "key_x_pressed",
-            "bank": 0,
-            "offset": 8040,
-            "absolute_address": 8040
-          },
-          "L_rng_get_seed_99999": {
-            "name": "L_rng_get_seed_99999",
-            "bank": 0,
-            "offset": 872,
-            "absolute_address": 872
-          },
-          "key_right_pressed": {
-            "name": "key_right_pressed",
-            "bank": 0,
-            "offset": 7744,
-            "absolute_address": 7744
-          },
-          "mmio_write": {
-            "name": "mmio_write",
-            "bank": 0,
-            "offset": 208,
-            "absolute_address": 208
-          },
-          "L_text40_get_char_40": {
-            "name": "L_text40_get_char_40",
-            "bank": 0,
-            "offset": 6468,
-            "absolute_address": 6468
-          },
-          "display_enable": {
-            "name": "display_enable",
-            "bank": 0,
-            "offset": 1580,
-            "absolute_address": 1580
-          },
-          "L_text40_get_char_39": {
-            "name": "L_text40_get_char_39",
-            "bank": 0,
-            "offset": 6364,
-            "absolute_address": 6364
-          },
-          "L_rgb565_fill_rect_63": {
-            "name": "L_rgb565_fill_rect_63",
-            "bank": 0,
-            "offset": 9396,
-            "absolute_address": 9396
-          },
-          "L_rgb565_fill_rect_99999": {
-            "name": "L_rgb565_fill_rect_99999",
-            "bank": 0,
-            "offset": 9484,
-            "absolute_address": 9484
-          },
-          "L_text40_putchar_color_22": {
-            "name": "L_text40_putchar_color_22",
-            "bank": 0,
-            "offset": 3736,
-            "absolute_address": 3736
-          },
-          "L_tty_putchar_2": {
-            "name": "L_tty_putchar_2",
-            "bank": 0,
-            "offset": 508,
-            "absolute_address": 508
-          },
-          "display_set_mode": {
-            "name": "display_set_mode",
-            "bank": 0,
-            "offset": 1124,
-            "absolute_address": 1124
-          },
-          "L_mmio_read_99999": {
-            "name": "L_mmio_read_99999",
-            "bank": 0,
-            "offset": 148,
-            "absolute_address": 148
-          },
-          "L_text40_get_attr_44": {
-            "name": "L_text40_get_attr_44",
-            "bank": 0,
-            "offset": 6864,
-            "absolute_address": 6864
-          },
-          "L_text40_putchar_attr_23": {
-            "name": "L_text40_putchar_attr_23",
-            "bank": 0,
-            "offset": 3876,
-            "absolute_address": 3876
-          },
-          "L_mmio_write_1": {
-            "name": "L_mmio_write_1",
-            "bank": 0,
-            "offset": 276,
-            "absolute_address": 276
-          },
-          "rgb565_set_pixel": {
-            "name": "rgb565_set_pixel",
-            "bank": 0,
-            "offset": 8528,
-            "absolute_address": 8528
-          },
-          "rgb565_fill_rect": {
-            "name": "rgb565_fill_rect",
-            "bank": 0,
-            "offset": 8904,
-            "absolute_address": 8904
-          },
-          "L_rgb565_fill_rect_59": {
-            "name": "L_rgb565_fill_rect_59",
-            "bank": 0,
-            "offset": 9440,
-            "absolute_address": 9440
-          },
-          "key_left_pressed": {
-            "name": "key_left_pressed",
-            "bank": 0,
-            "offset": 7596,
-            "absolute_address": 7596
-          },
-          "rng_set_seed": {
-            "name": "rng_set_seed",
-            "bank": 0,
-            "offset": 932,
-            "absolute_address": 932
-          },
-          "display_clear": {
-            "name": "display_clear",
-            "bank": 0,
-            "offset": 1756,
-            "absolute_address": 1756
-          },
-          "L_rng_set_seed_5": {
-            "name": "L_rng_set_seed_5",
-            "bank": 0,
-            "offset": 996,
-            "absolute_address": 996
-          },
-          "L_rgb565_fill_rect_60": {
-            "name": "L_rgb565_fill_rect_60",
-            "bank": 0,
-            "offset": 9480,
-            "absolute_address": 9480
-          },
-          "L_key_up_pressed_99999": {
-            "name": "L_key_up_pressed_99999",
-            "bank": 0,
-            "offset": 7388,
-            "absolute_address": 7388
-          },
-          "L_text40_putchar_color_20": {
-            "name": "L_text40_putchar_color_20",
-            "bank": 0,
-            "offset": 3456,
-            "absolute_address": 3456
-          },
-          "text40_putchar": {
-            "name": "text40_putchar",
-            "bank": 0,
-            "offset": 2116,
-            "absolute_address": 2116
-          },
-          "tty_putchar": {
-            "name": "tty_putchar",
-            "bank": 0,
-            "offset": 444,
-            "absolute_address": 444
-          },
-          "L_display_set_mode_6": {
-            "name": "L_display_set_mode_6",
-            "bank": 0,
-            "offset": 1188,
-            "absolute_address": 1188
-          },
-          "L_key_down_pressed_99999": {
-            "name": "L_key_down_pressed_99999",
-            "bank": 0,
-            "offset": 7536,
-            "absolute_address": 7536
-          },
-          "L_key_x_pressed_53": {
-            "name": "L_key_x_pressed_53",
-            "bank": 0,
-            "offset": 8100,
-            "absolute_address": 8100
-          },
-          "L_key_down_pressed_49": {
-            "name": "L_key_down_pressed_49",
-            "bank": 0,
-            "offset": 7508,
-            "absolute_address": 7508
-          },
-          "L_text40_putchar_color_19": {
-            "name": "L_text40_putchar_color_19",
-            "bank": 0,
-            "offset": 3280,
-            "absolute_address": 3280
-          },
-          "L_rgb565_from_rgb_54": {
-            "name": "L_rgb565_from_rgb_54",
-            "bank": 0,
-            "offset": 8260,
-            "absolute_address": 8260
-          },
-          "key_z_pressed": {
-            "name": "key_z_pressed",
-            "bank": 0,
-            "offset": 7892,
-            "absolute_address": 7892
-          },
-          "L_bc_87aec18e_done": {
-            "name": "L_bc_87aec18e_done",
-            "bank": 0,
-            "offset": 5388,
-            "absolute_address": 5388
-          },
-          "L_text40_set_attr_36": {
-            "name": "L_text40_set_attr_36",
-            "bank": 0,
-            "offset": 5952,
-            "absolute_address": 5952
-          },
           "text40_putchar_attr": {
             "name": "text40_putchar_attr",
             "bank": 0,
-            "offset": 3800,
-            "absolute_address": 3800
+            "offset": 3812,
+            "absolute_address": 3812
           },
-          "L_text40_get_attr_46": {
-            "name": "L_text40_get_attr_46",
-            "bank": 0,
-            "offset": 7028,
-            "absolute_address": 7028
-          },
-          "L_text40_puts_attr_34": {
-            "name": "L_text40_puts_attr_34",
-            "bank": 0,
-            "offset": 5700,
-            "absolute_address": 5700
-          },
-          "L_key_z_pressed_52": {
-            "name": "L_key_z_pressed_52",
-            "bank": 0,
-            "offset": 7952,
-            "absolute_address": 7952
-          },
-          "text40_puts": {
-            "name": "text40_puts",
-            "bank": 0,
-            "offset": 2560,
-            "absolute_address": 2560
-          },
-          "L_bc_1650dea2_use_global": {
-            "name": "L_bc_1650dea2_use_global",
+          "L_bc_251d766c_use_global": {
+            "name": "L_bc_251d766c_use_global",
             "bank": 0,
             "offset": 2836,
             "absolute_address": 2836
-          },
-          "L_text40_puts_color_27": {
-            "name": "L_text40_puts_color_27",
-            "bank": 0,
-            "offset": 4392,
-            "absolute_address": 4392
-          },
-          "L_mmio_write_99999": {
-            "name": "L_mmio_write_99999",
-            "bank": 0,
-            "offset": 384,
-            "absolute_address": 384
-          },
-          "L_text40_puts_18": {
-            "name": "L_text40_puts_18",
-            "bank": 0,
-            "offset": 3132,
-            "absolute_address": 3132
-          },
-          "L_rgb565_from_rgb_99999": {
-            "name": "L_rgb565_from_rgb_99999",
-            "bank": 0,
-            "offset": 8468,
-            "absolute_address": 8468
-          },
-          "key_pressed": {
-            "name": "key_pressed",
-            "bank": 0,
-            "offset": 7096,
-            "absolute_address": 7096
-          },
-          "L_bc_1650dea2_done": {
-            "name": "L_bc_1650dea2_done",
-            "bank": 0,
-            "offset": 2848,
-            "absolute_address": 2848
-          },
-          "L_display_enable_99999": {
-            "name": "L_display_enable_99999",
-            "bank": 0,
-            "offset": 1696,
-            "absolute_address": 1696
-          },
-          "L_rgb565_fill_rect_62": {
-            "name": "L_rgb565_fill_rect_62",
-            "bank": 0,
-            "offset": 9188,
-            "absolute_address": 9188
-          },
-          "L_key_right_pressed_51": {
-            "name": "L_key_right_pressed_51",
-            "bank": 0,
-            "offset": 7804,
-            "absolute_address": 7804
-          },
-          "L_bc_1650dea2_use_stack": {
-            "name": "L_bc_1650dea2_use_stack",
-            "bank": 0,
-            "offset": 2844,
-            "absolute_address": 2844
-          },
-          "L_text40_set_attr_99999": {
-            "name": "L_text40_set_attr_99999",
-            "bank": 0,
-            "offset": 6236,
-            "absolute_address": 6236
-          },
-          "text40_puts_color": {
-            "name": "text40_puts_color",
-            "bank": 0,
-            "offset": 4304,
-            "absolute_address": 4304
-          },
-          "L_text40_puts_color_99999": {
-            "name": "L_text40_puts_color_99999",
-            "bank": 0,
-            "offset": 5008,
-            "absolute_address": 5008
-          },
-          "L_text40_puts_color_28": {
-            "name": "L_text40_puts_color_28",
-            "bank": 0,
-            "offset": 4524,
-            "absolute_address": 4524
-          },
-          "L_text40_puts_99999": {
-            "name": "L_text40_puts_99999",
-            "bank": 0,
-            "offset": 3136,
-            "absolute_address": 3136
-          },
-          "L_text40_puts_color_30": {
-            "name": "L_text40_puts_color_30",
-            "bank": 0,
-            "offset": 5004,
-            "absolute_address": 5004
-          },
-          "L_text40_putchar_color_99999": {
-            "name": "L_text40_putchar_color_99999",
-            "bank": 0,
-            "offset": 3740,
-            "absolute_address": 3740
-          },
-          "L_bc_ca399e06_done": {
-            "name": "L_bc_ca399e06_done",
-            "bank": 0,
-            "offset": 4656,
-            "absolute_address": 4656
-          },
-          "L_rgb565_set_pixel_99999": {
-            "name": "L_rgb565_set_pixel_99999",
-            "bank": 0,
-            "offset": 8844,
-            "absolute_address": 8844
-          },
-          "L_rgb565_fill_rect_57": {
-            "name": "L_rgb565_fill_rect_57",
-            "bank": 0,
-            "offset": 9096,
-            "absolute_address": 9096
-          },
-          "L_rgb565_fill_rect_64": {
-            "name": "L_rgb565_fill_rect_64",
-            "bank": 0,
-            "offset": 9436,
-            "absolute_address": 9436
-          },
-          "L_text40_putchar_attr_99999": {
-            "name": "L_text40_putchar_attr_99999",
-            "bank": 0,
-            "offset": 4244,
-            "absolute_address": 4244
-          },
-          "text40_set_attr": {
-            "name": "text40_set_attr",
-            "bank": 0,
-            "offset": 5764,
-            "absolute_address": 5764
-          },
-          "L_display_set_mode_99999": {
-            "name": "L_display_set_mode_99999",
-            "bank": 0,
-            "offset": 1256,
-            "absolute_address": 1256
-          },
-          "text40_putchar_color": {
-            "name": "text40_putchar_color",
-            "bank": 0,
-            "offset": 3196,
-            "absolute_address": 3196
-          },
-          "rgb565_from_rgb": {
-            "name": "rgb565_from_rgb",
-            "bank": 0,
-            "offset": 8188,
-            "absolute_address": 8188
-          },
-          "L_key_pressed_47": {
-            "name": "L_key_pressed_47",
-            "bank": 0,
-            "offset": 7160,
-            "absolute_address": 7160
-          },
-          "L_text40_putchar_12": {
-            "name": "L_text40_putchar_12",
-            "bank": 0,
-            "offset": 2304,
-            "absolute_address": 2304
-          },
-          "L_bc_87aec18e_use_global": {
-            "name": "L_bc_87aec18e_use_global",
-            "bank": 0,
-            "offset": 5376,
-            "absolute_address": 5376
-          },
-          "L_text40_get_attr_43": {
-            "name": "L_text40_get_attr_43",
-            "bank": 0,
-            "offset": 6760,
-            "absolute_address": 6760
-          },
-          "L_text40_puts_17": {
-            "name": "L_text40_puts_17",
-            "bank": 0,
-            "offset": 2924,
-            "absolute_address": 2924
-          },
-          "L_rgb565_fill_rect_56": {
-            "name": "L_rgb565_fill_rect_56",
-            "bank": 0,
-            "offset": 8996,
-            "absolute_address": 8996
-          },
-          "L_rng_get_seed_4": {
-            "name": "L_rng_get_seed_4",
-            "bank": 0,
-            "offset": 844,
-            "absolute_address": 844
-          },
-          "L_key_pressed_99999": {
-            "name": "L_key_pressed_99999",
-            "bank": 0,
-            "offset": 7240,
-            "absolute_address": 7240
-          },
-          "rng_get": {
-            "name": "rng_get",
-            "bank": 0,
-            "offset": 636,
-            "absolute_address": 636
-          },
-          "L_bc_ca399e06_use_global": {
-            "name": "L_bc_ca399e06_use_global",
-            "bank": 0,
-            "offset": 4644,
-            "absolute_address": 4644
-          },
-          "L_text40_putchar_attr_26": {
-            "name": "L_text40_putchar_attr_26",
-            "bank": 0,
-            "offset": 4240,
-            "absolute_address": 4240
-          },
-          "L_rng_get_3": {
-            "name": "L_rng_get_3",
-            "bank": 0,
-            "offset": 696,
-            "absolute_address": 696
-          },
-          "display_flush": {
-            "name": "display_flush",
-            "bank": 0,
-            "offset": 1948,
-            "absolute_address": 1948
-          },
-          "L_text40_puts_attr_31": {
-            "name": "L_text40_puts_attr_31",
-            "bank": 0,
-            "offset": 5148,
-            "absolute_address": 5148
-          },
-          "key_up_pressed": {
-            "name": "key_up_pressed",
-            "bank": 0,
-            "offset": 7300,
-            "absolute_address": 7300
-          },
-          "L_tty_putchar_99999": {
-            "name": "L_tty_putchar_99999",
-            "bank": 0,
-            "offset": 576,
-            "absolute_address": 576
-          },
-          "L_text40_get_char_42": {
-            "name": "L_text40_get_char_42",
-            "bank": 0,
-            "offset": 6624,
-            "absolute_address": 6624
-          },
-          "L_rgb565_fill_rect_58": {
-            "name": "L_rgb565_fill_rect_58",
-            "bank": 0,
-            "offset": 9132,
-            "absolute_address": 9132
-          },
-          "L_text40_puts_attr_33": {
-            "name": "L_text40_puts_attr_33",
-            "bank": 0,
-            "offset": 5464,
-            "absolute_address": 5464
-          },
-          "text40_get_char": {
-            "name": "text40_get_char",
-            "bank": 0,
-            "offset": 6296,
-            "absolute_address": 6296
-          },
-          "rng_get_seed": {
-            "name": "rng_get_seed",
-            "bank": 0,
-            "offset": 784,
-            "absolute_address": 784
-          },
-          "L_text40_set_attr_38": {
-            "name": "L_text40_set_attr_38",
-            "bank": 0,
-            "offset": 6232,
-            "absolute_address": 6232
-          },
-          "L_text40_putchar_attr_24": {
-            "name": "L_text40_putchar_attr_24",
-            "bank": 0,
-            "offset": 4016,
-            "absolute_address": 4016
-          },
-          "L_key_right_pressed_99999": {
-            "name": "L_key_right_pressed_99999",
-            "bank": 0,
-            "offset": 7832,
-            "absolute_address": 7832
-          },
-          "L_rgb565_set_pixel_55": {
-            "name": "L_rgb565_set_pixel_55",
-            "bank": 0,
-            "offset": 8604,
-            "absolute_address": 8604
-          },
-          "L_text40_putchar_14": {
-            "name": "L_text40_putchar_14",
-            "bank": 0,
-            "offset": 2496,
-            "absolute_address": 2496
-          },
-          "L_key_x_pressed_99999": {
-            "name": "L_key_x_pressed_99999",
-            "bank": 0,
-            "offset": 8128,
-            "absolute_address": 8128
-          },
-          "L_text40_puts_15": {
-            "name": "L_text40_puts_15",
-            "bank": 0,
-            "offset": 2632,
-            "absolute_address": 2632
-          },
-          "L_bc_87aec18e_use_stack": {
-            "name": "L_bc_87aec18e_use_stack",
-            "bank": 0,
-            "offset": 5384,
-            "absolute_address": 5384
-          },
-          "L_display_flush_99999": {
-            "name": "L_display_flush_99999",
-            "bank": 0,
-            "offset": 2056,
-            "absolute_address": 2056
-          },
-          "L_key_left_pressed_99999": {
-            "name": "L_key_left_pressed_99999",
-            "bank": 0,
-            "offset": 7684,
-            "absolute_address": 7684
-          },
-          "L_text40_puts_color_29": {
-            "name": "L_text40_puts_color_29",
-            "bank": 0,
-            "offset": 4732,
-            "absolute_address": 4732
-          },
-          "text40_puts_attr": {
-            "name": "text40_puts_attr",
-            "bank": 0,
-            "offset": 5068,
-            "absolute_address": 5068
-          },
-          "L_text40_get_attr_99999": {
-            "name": "L_text40_get_attr_99999",
-            "bank": 0,
-            "offset": 7036,
-            "absolute_address": 7036
-          },
-          "L_text40_putchar_11": {
-            "name": "L_text40_putchar_11",
-            "bank": 0,
-            "offset": 2188,
-            "absolute_address": 2188
-          },
-          "mmio_read": {
-            "name": "mmio_read",
-            "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
-          "L_text40_set_attr_35": {
-            "name": "L_text40_set_attr_35",
-            "bank": 0,
-            "offset": 5836,
-            "absolute_address": 5836
-          },
-          "L_text40_get_char_99999": {
-            "name": "L_text40_get_char_99999",
-            "bank": 0,
-            "offset": 6632,
-            "absolute_address": 6632
-          },
-          "L_display_flush_10": {
-            "name": "L_display_flush_10",
-            "bank": 0,
-            "offset": 2008,
-            "absolute_address": 2008
           },
           "L_display_set_resolution_99999": {
             "name": "L_display_set_resolution_99999",
@@ -21382,35 +21351,35 @@
             "offset": 1520,
             "absolute_address": 1520
           },
-          "L_bc_ca399e06_use_stack": {
-            "name": "L_bc_ca399e06_use_stack",
+          "key_pressed": {
+            "name": "key_pressed",
             "bank": 0,
-            "offset": 4652,
-            "absolute_address": 4652
+            "offset": 7132,
+            "absolute_address": 7132
           },
-          "L_key_z_pressed_99999": {
-            "name": "L_key_z_pressed_99999",
+          "display_flush": {
+            "name": "display_flush",
             "bank": 0,
-            "offset": 7980,
-            "absolute_address": 7980
+            "offset": 1948,
+            "absolute_address": 1948
           },
-          "L_display_set_resolution_7": {
-            "name": "L_display_set_resolution_7",
+          "L_text40_puts_color_28": {
+            "name": "L_text40_puts_color_28",
             "bank": 0,
-            "offset": 1384,
-            "absolute_address": 1384
+            "offset": 4536,
+            "absolute_address": 4536
           },
-          "L_display_enable_8": {
-            "name": "L_display_enable_8",
+          "key_right_pressed": {
+            "name": "key_right_pressed",
             "bank": 0,
-            "offset": 1640,
-            "absolute_address": 1640
+            "offset": 7780,
+            "absolute_address": 7780
           },
-          "display_set_resolution": {
-            "name": "display_set_resolution",
+          "L_text40_puts_attr_99999": {
+            "name": "L_text40_puts_attr_99999",
             "bank": 0,
-            "offset": 1316,
-            "absolute_address": 1316
+            "offset": 5740,
+            "absolute_address": 5740
           },
           "L_rng_set_seed_99999": {
             "name": "L_rng_set_seed_99999",
@@ -21418,23 +21387,713 @@
             "offset": 1064,
             "absolute_address": 1064
           },
+          "mmio_read": {
+            "name": "mmio_read",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
+          "L_rgb565_fill_rect_58": {
+            "name": "L_rgb565_fill_rect_58",
+            "bank": 0,
+            "offset": 9168,
+            "absolute_address": 9168
+          },
+          "L_text40_putchar_12": {
+            "name": "L_text40_putchar_12",
+            "bank": 0,
+            "offset": 2304,
+            "absolute_address": 2304
+          },
+          "text40_set_attr": {
+            "name": "text40_set_attr",
+            "bank": 0,
+            "offset": 5800,
+            "absolute_address": 5800
+          },
+          "L_text40_puts_color_27": {
+            "name": "L_text40_puts_color_27",
+            "bank": 0,
+            "offset": 4404,
+            "absolute_address": 4404
+          },
+          "L_text40_puts_15": {
+            "name": "L_text40_puts_15",
+            "bank": 0,
+            "offset": 2632,
+            "absolute_address": 2632
+          },
+          "text40_puts_attr": {
+            "name": "text40_puts_attr",
+            "bank": 0,
+            "offset": 5092,
+            "absolute_address": 5092
+          },
+          "L_tty_putchar_99999": {
+            "name": "L_tty_putchar_99999",
+            "bank": 0,
+            "offset": 576,
+            "absolute_address": 576
+          },
+          "L_text40_putchar_color_99999": {
+            "name": "L_text40_putchar_color_99999",
+            "bank": 0,
+            "offset": 3752,
+            "absolute_address": 3752
+          },
+          "L_text40_puts_attr_31": {
+            "name": "L_text40_puts_attr_31",
+            "bank": 0,
+            "offset": 5172,
+            "absolute_address": 5172
+          },
+          "rng_get": {
+            "name": "rng_get",
+            "bank": 0,
+            "offset": 636,
+            "absolute_address": 636
+          },
+          "L_key_up_pressed_99999": {
+            "name": "L_key_up_pressed_99999",
+            "bank": 0,
+            "offset": 7424,
+            "absolute_address": 7424
+          },
+          "L_tty_putchar_2": {
+            "name": "L_tty_putchar_2",
+            "bank": 0,
+            "offset": 508,
+            "absolute_address": 508
+          },
+          "L_rgb565_set_pixel_55": {
+            "name": "L_rgb565_set_pixel_55",
+            "bank": 0,
+            "offset": 8640,
+            "absolute_address": 8640
+          },
+          "L_text40_putchar_99999": {
+            "name": "L_text40_putchar_99999",
+            "bank": 0,
+            "offset": 2500,
+            "absolute_address": 2500
+          },
+          "L_text40_puts_color_99999": {
+            "name": "L_text40_puts_color_99999",
+            "bank": 0,
+            "offset": 5032,
+            "absolute_address": 5032
+          },
+          "text40_putchar_color": {
+            "name": "text40_putchar_color",
+            "bank": 0,
+            "offset": 3208,
+            "absolute_address": 3208
+          },
+          "L_key_right_pressed_99999": {
+            "name": "L_key_right_pressed_99999",
+            "bank": 0,
+            "offset": 7868,
+            "absolute_address": 7868
+          },
+          "L_rgb565_from_rgb_54": {
+            "name": "L_rgb565_from_rgb_54",
+            "bank": 0,
+            "offset": 8296,
+            "absolute_address": 8296
+          },
+          "key_up_pressed": {
+            "name": "key_up_pressed",
+            "bank": 0,
+            "offset": 7336,
+            "absolute_address": 7336
+          },
+          "L_text40_puts_16": {
+            "name": "L_text40_puts_16",
+            "bank": 0,
+            "offset": 2716,
+            "absolute_address": 2716
+          },
+          "L_rng_get_seed_4": {
+            "name": "L_rng_get_seed_4",
+            "bank": 0,
+            "offset": 844,
+            "absolute_address": 844
+          },
+          "L_bc_6ab74b86_use_stack": {
+            "name": "L_bc_6ab74b86_use_stack",
+            "bank": 0,
+            "offset": 4664,
+            "absolute_address": 4664
+          },
+          "L_rgb565_fill_rect_64": {
+            "name": "L_rgb565_fill_rect_64",
+            "bank": 0,
+            "offset": 9472,
+            "absolute_address": 9472
+          },
+          "mmio_write": {
+            "name": "mmio_write",
+            "bank": 0,
+            "offset": 208,
+            "absolute_address": 208
+          },
+          "L_display_enable_8": {
+            "name": "L_display_enable_8",
+            "bank": 0,
+            "offset": 1640,
+            "absolute_address": 1640
+          },
+          "L_text40_putchar_color_19": {
+            "name": "L_text40_putchar_color_19",
+            "bank": 0,
+            "offset": 3292,
+            "absolute_address": 3292
+          },
+          "L_display_flush_99999": {
+            "name": "L_display_flush_99999",
+            "bank": 0,
+            "offset": 2056,
+            "absolute_address": 2056
+          },
+          "key_z_pressed": {
+            "name": "key_z_pressed",
+            "bank": 0,
+            "offset": 7928,
+            "absolute_address": 7928
+          },
+          "L_rgb565_fill_rect_62": {
+            "name": "L_rgb565_fill_rect_62",
+            "bank": 0,
+            "offset": 9224,
+            "absolute_address": 9224
+          },
+          "L_rgb565_fill_rect_57": {
+            "name": "L_rgb565_fill_rect_57",
+            "bank": 0,
+            "offset": 9132,
+            "absolute_address": 9132
+          },
+          "key_down_pressed": {
+            "name": "key_down_pressed",
+            "bank": 0,
+            "offset": 7484,
+            "absolute_address": 7484
+          },
+          "L_rgb565_fill_rect_63": {
+            "name": "L_rgb565_fill_rect_63",
+            "bank": 0,
+            "offset": 9432,
+            "absolute_address": 9432
+          },
+          "L_text40_set_attr_38": {
+            "name": "L_text40_set_attr_38",
+            "bank": 0,
+            "offset": 6268,
+            "absolute_address": 6268
+          },
+          "L_rgb565_fill_rect_56": {
+            "name": "L_rgb565_fill_rect_56",
+            "bank": 0,
+            "offset": 9032,
+            "absolute_address": 9032
+          },
+          "text40_get_char": {
+            "name": "text40_get_char",
+            "bank": 0,
+            "offset": 6332,
+            "absolute_address": 6332
+          },
+          "L_text40_putchar_11": {
+            "name": "L_text40_putchar_11",
+            "bank": 0,
+            "offset": 2188,
+            "absolute_address": 2188
+          },
+          "L_key_pressed_47": {
+            "name": "L_key_pressed_47",
+            "bank": 0,
+            "offset": 7196,
+            "absolute_address": 7196
+          },
+          "display_set_mode": {
+            "name": "display_set_mode",
+            "bank": 0,
+            "offset": 1124,
+            "absolute_address": 1124
+          },
+          "L_key_down_pressed_49": {
+            "name": "L_key_down_pressed_49",
+            "bank": 0,
+            "offset": 7544,
+            "absolute_address": 7544
+          },
+          "L_bc_6ab74b86_use_global": {
+            "name": "L_bc_6ab74b86_use_global",
+            "bank": 0,
+            "offset": 4656,
+            "absolute_address": 4656
+          },
+          "L_mmio_write_1": {
+            "name": "L_mmio_write_1",
+            "bank": 0,
+            "offset": 276,
+            "absolute_address": 276
+          },
+          "display_set_resolution": {
+            "name": "display_set_resolution",
+            "bank": 0,
+            "offset": 1316,
+            "absolute_address": 1316
+          },
+          "L_key_down_pressed_99999": {
+            "name": "L_key_down_pressed_99999",
+            "bank": 0,
+            "offset": 7572,
+            "absolute_address": 7572
+          },
+          "L_text40_puts_17": {
+            "name": "L_text40_puts_17",
+            "bank": 0,
+            "offset": 2924,
+            "absolute_address": 2924
+          },
+          "L_text40_putchar_attr_26": {
+            "name": "L_text40_putchar_attr_26",
+            "bank": 0,
+            "offset": 4252,
+            "absolute_address": 4252
+          },
+          "L_rgb565_from_rgb_99999": {
+            "name": "L_rgb565_from_rgb_99999",
+            "bank": 0,
+            "offset": 8504,
+            "absolute_address": 8504
+          },
+          "L_text40_putchar_attr_24": {
+            "name": "L_text40_putchar_attr_24",
+            "bank": 0,
+            "offset": 4028,
+            "absolute_address": 4028
+          },
+          "L_text40_set_attr_99999": {
+            "name": "L_text40_set_attr_99999",
+            "bank": 0,
+            "offset": 6272,
+            "absolute_address": 6272
+          },
+          "L_rng_get_seed_99999": {
+            "name": "L_rng_get_seed_99999",
+            "bank": 0,
+            "offset": 872,
+            "absolute_address": 872
+          },
+          "L_text40_set_attr_35": {
+            "name": "L_text40_set_attr_35",
+            "bank": 0,
+            "offset": 5872,
+            "absolute_address": 5872
+          },
+          "L_bc_6ab74b86_done": {
+            "name": "L_bc_6ab74b86_done",
+            "bank": 0,
+            "offset": 4668,
+            "absolute_address": 4668
+          },
+          "L_rgb565_fill_rect_59": {
+            "name": "L_rgb565_fill_rect_59",
+            "bank": 0,
+            "offset": 9476,
+            "absolute_address": 9476
+          },
+          "text40_puts_color": {
+            "name": "text40_puts_color",
+            "bank": 0,
+            "offset": 4316,
+            "absolute_address": 4316
+          },
+          "rgb565_fill_rect": {
+            "name": "rgb565_fill_rect",
+            "bank": 0,
+            "offset": 8940,
+            "absolute_address": 8940
+          },
+          "L_text40_puts_99999": {
+            "name": "L_text40_puts_99999",
+            "bank": 0,
+            "offset": 3148,
+            "absolute_address": 3148
+          },
+          "L_key_pressed_99999": {
+            "name": "L_key_pressed_99999",
+            "bank": 0,
+            "offset": 7276,
+            "absolute_address": 7276
+          },
+          "text40_putchar": {
+            "name": "text40_putchar",
+            "bank": 0,
+            "offset": 2116,
+            "absolute_address": 2116
+          },
+          "L_mmio_read_99999": {
+            "name": "L_mmio_read_99999",
+            "bank": 0,
+            "offset": 148,
+            "absolute_address": 148
+          },
+          "L_bc_251d766c_use_stack": {
+            "name": "L_bc_251d766c_use_stack",
+            "bank": 0,
+            "offset": 2844,
+            "absolute_address": 2844
+          },
+          "L_text40_set_attr_36": {
+            "name": "L_text40_set_attr_36",
+            "bank": 0,
+            "offset": 5988,
+            "absolute_address": 5988
+          },
+          "rng_get_seed": {
+            "name": "rng_get_seed",
+            "bank": 0,
+            "offset": 784,
+            "absolute_address": 784
+          },
+          "L_bc_2fb3e081_use_stack": {
+            "name": "L_bc_2fb3e081_use_stack",
+            "bank": 0,
+            "offset": 5408,
+            "absolute_address": 5408
+          },
+          "L_display_flush_10": {
+            "name": "L_display_flush_10",
+            "bank": 0,
+            "offset": 2008,
+            "absolute_address": 2008
+          },
+          "L_text40_get_attr_44": {
+            "name": "L_text40_get_attr_44",
+            "bank": 0,
+            "offset": 6900,
+            "absolute_address": 6900
+          },
+          "L_rng_set_seed_5": {
+            "name": "L_rng_set_seed_5",
+            "bank": 0,
+            "offset": 996,
+            "absolute_address": 996
+          },
+          "key_x_pressed": {
+            "name": "key_x_pressed",
+            "bank": 0,
+            "offset": 8076,
+            "absolute_address": 8076
+          },
+          "L_key_left_pressed_99999": {
+            "name": "L_key_left_pressed_99999",
+            "bank": 0,
+            "offset": 7720,
+            "absolute_address": 7720
+          },
+          "display_enable": {
+            "name": "display_enable",
+            "bank": 0,
+            "offset": 1580,
+            "absolute_address": 1580
+          },
+          "L_text40_puts_18": {
+            "name": "L_text40_puts_18",
+            "bank": 0,
+            "offset": 3144,
+            "absolute_address": 3144
+          },
+          "L_text40_putchar_color_20": {
+            "name": "L_text40_putchar_color_20",
+            "bank": 0,
+            "offset": 3468,
+            "absolute_address": 3468
+          },
+          "L_text40_get_char_42": {
+            "name": "L_text40_get_char_42",
+            "bank": 0,
+            "offset": 6660,
+            "absolute_address": 6660
+          },
+          "L_bc_2fb3e081_done": {
+            "name": "L_bc_2fb3e081_done",
+            "bank": 0,
+            "offset": 5412,
+            "absolute_address": 5412
+          },
+          "L_text40_get_attr_99999": {
+            "name": "L_text40_get_attr_99999",
+            "bank": 0,
+            "offset": 7072,
+            "absolute_address": 7072
+          },
+          "L_display_set_mode_99999": {
+            "name": "L_display_set_mode_99999",
+            "bank": 0,
+            "offset": 1256,
+            "absolute_address": 1256
+          },
+          "L_mmio_write_99999": {
+            "name": "L_mmio_write_99999",
+            "bank": 0,
+            "offset": 384,
+            "absolute_address": 384
+          },
+          "L_text40_putchar_color_22": {
+            "name": "L_text40_putchar_color_22",
+            "bank": 0,
+            "offset": 3748,
+            "absolute_address": 3748
+          },
+          "text40_puts": {
+            "name": "text40_puts",
+            "bank": 0,
+            "offset": 2560,
+            "absolute_address": 2560
+          },
+          "L_text40_puts_attr_33": {
+            "name": "L_text40_puts_attr_33",
+            "bank": 0,
+            "offset": 5488,
+            "absolute_address": 5488
+          },
+          "L_key_x_pressed_99999": {
+            "name": "L_key_x_pressed_99999",
+            "bank": 0,
+            "offset": 8164,
+            "absolute_address": 8164
+          },
+          "L_text40_putchar_attr_23": {
+            "name": "L_text40_putchar_attr_23",
+            "bank": 0,
+            "offset": 3888,
+            "absolute_address": 3888
+          },
+          "rgb565_set_pixel": {
+            "name": "rgb565_set_pixel",
+            "bank": 0,
+            "offset": 8564,
+            "absolute_address": 8564
+          },
+          "rgb565_from_rgb": {
+            "name": "rgb565_from_rgb",
+            "bank": 0,
+            "offset": 8224,
+            "absolute_address": 8224
+          },
+          "L_text40_puts_attr_32": {
+            "name": "L_text40_puts_attr_32",
+            "bank": 0,
+            "offset": 5268,
+            "absolute_address": 5268
+          },
+          "L_rgb565_fill_rect_99999": {
+            "name": "L_rgb565_fill_rect_99999",
+            "bank": 0,
+            "offset": 9520,
+            "absolute_address": 9520
+          },
+          "tty_putchar": {
+            "name": "tty_putchar",
+            "bank": 0,
+            "offset": 444,
+            "absolute_address": 444
+          },
+          "L_text40_putchar_attr_99999": {
+            "name": "L_text40_putchar_attr_99999",
+            "bank": 0,
+            "offset": 4256,
+            "absolute_address": 4256
+          },
+          "L_rng_get_3": {
+            "name": "L_rng_get_3",
+            "bank": 0,
+            "offset": 696,
+            "absolute_address": 696
+          },
+          "display_clear": {
+            "name": "display_clear",
+            "bank": 0,
+            "offset": 1756,
+            "absolute_address": 1756
+          },
+          "L_text40_putchar_14": {
+            "name": "L_text40_putchar_14",
+            "bank": 0,
+            "offset": 2496,
+            "absolute_address": 2496
+          },
+          "L_key_z_pressed_52": {
+            "name": "L_key_z_pressed_52",
+            "bank": 0,
+            "offset": 7988,
+            "absolute_address": 7988
+          },
+          "L_display_set_resolution_7": {
+            "name": "L_display_set_resolution_7",
+            "bank": 0,
+            "offset": 1384,
+            "absolute_address": 1384
+          },
           "L_display_clear_99999": {
             "name": "L_display_clear_99999",
             "bank": 0,
             "offset": 1888,
             "absolute_address": 1888
           },
+          "L_rng_get_99999": {
+            "name": "L_rng_get_99999",
+            "bank": 0,
+            "offset": 724,
+            "absolute_address": 724
+          },
+          "L_text40_get_char_39": {
+            "name": "L_text40_get_char_39",
+            "bank": 0,
+            "offset": 6400,
+            "absolute_address": 6400
+          },
           "text40_get_attr": {
             "name": "text40_get_attr",
             "bank": 0,
-            "offset": 6692,
-            "absolute_address": 6692
+            "offset": 6728,
+            "absolute_address": 6728
           },
           "L_key_up_pressed_48": {
             "name": "L_key_up_pressed_48",
             "bank": 0,
-            "offset": 7360,
-            "absolute_address": 7360
+            "offset": 7396,
+            "absolute_address": 7396
+          },
+          "L_rgb565_fill_rect_60": {
+            "name": "L_rgb565_fill_rect_60",
+            "bank": 0,
+            "offset": 9516,
+            "absolute_address": 9516
+          },
+          "L_display_set_mode_6": {
+            "name": "L_display_set_mode_6",
+            "bank": 0,
+            "offset": 1188,
+            "absolute_address": 1188
+          },
+          "L_text40_puts_color_30": {
+            "name": "L_text40_puts_color_30",
+            "bank": 0,
+            "offset": 5028,
+            "absolute_address": 5028
+          },
+          "L_text40_puts_attr_34": {
+            "name": "L_text40_puts_attr_34",
+            "bank": 0,
+            "offset": 5736,
+            "absolute_address": 5736
+          },
+          "L_bc_2fb3e081_use_global": {
+            "name": "L_bc_2fb3e081_use_global",
+            "bank": 0,
+            "offset": 5400,
+            "absolute_address": 5400
+          },
+          "L_text40_get_attr_46": {
+            "name": "L_text40_get_attr_46",
+            "bank": 0,
+            "offset": 7064,
+            "absolute_address": 7064
+          },
+          "L_display_enable_99999": {
+            "name": "L_display_enable_99999",
+            "bank": 0,
+            "offset": 1696,
+            "absolute_address": 1696
+          },
+          "L_text40_get_attr_43": {
+            "name": "L_text40_get_attr_43",
+            "bank": 0,
+            "offset": 6796,
+            "absolute_address": 6796
+          },
+          "L_display_clear_9": {
+            "name": "L_display_clear_9",
+            "bank": 0,
+            "offset": 1816,
+            "absolute_address": 1816
+          },
+          "L_key_right_pressed_51": {
+            "name": "L_key_right_pressed_51",
+            "bank": 0,
+            "offset": 7840,
+            "absolute_address": 7840
+          },
+          "L_rgb565_set_pixel_99999": {
+            "name": "L_rgb565_set_pixel_99999",
+            "bank": 0,
+            "offset": 8880,
+            "absolute_address": 8880
+          },
+          "key_left_pressed": {
+            "name": "key_left_pressed",
+            "bank": 0,
+            "offset": 7632,
+            "absolute_address": 7632
+          },
+          "L_text40_get_char_40": {
+            "name": "L_text40_get_char_40",
+            "bank": 0,
+            "offset": 6504,
+            "absolute_address": 6504
+          },
+          "L_key_left_pressed_50": {
+            "name": "L_key_left_pressed_50",
+            "bank": 0,
+            "offset": 7692,
+            "absolute_address": 7692
+          },
+          "L_key_x_pressed_53": {
+            "name": "L_key_x_pressed_53",
+            "bank": 0,
+            "offset": 8136,
+            "absolute_address": 8136
+          },
+          "L_text40_get_char_99999": {
+            "name": "L_text40_get_char_99999",
+            "bank": 0,
+            "offset": 6668,
+            "absolute_address": 6668
+          },
+          "L_bc_251d766c_done": {
+            "name": "L_bc_251d766c_done",
+            "bank": 0,
+            "offset": 2848,
+            "absolute_address": 2848
+          },
+          "L_text40_puts_color_29": {
+            "name": "L_text40_puts_color_29",
+            "bank": 0,
+            "offset": 4744,
+            "absolute_address": 4744
+          },
+          "L_key_z_pressed_99999": {
+            "name": "L_key_z_pressed_99999",
+            "bank": 0,
+            "offset": 8016,
+            "absolute_address": 8016
+          },
+          "rng_set_seed": {
+            "name": "rng_set_seed",
+            "bank": 0,
+            "offset": 932,
+            "absolute_address": 932
+          },
+          "L_rgb565_fill_rect_61": {
+            "name": "L_rgb565_fill_rect_61",
+            "bank": 0,
+            "offset": 9188,
+            "absolute_address": 9188
           }
         },
         "data_labels": {},
@@ -22234,17 +22893,17 @@
         ],
         "data": [],
         "labels": {
-          "L_rand_99999": {
-            "name": "L_rand_99999",
-            "bank": 0,
-            "offset": 388,
-            "absolute_address": 388
-          },
           "L_rand_2": {
             "name": "L_rand_2",
             "bank": 0,
             "offset": 312,
             "absolute_address": 312
+          },
+          "rand": {
+            "name": "rand",
+            "bank": 0,
+            "offset": 220,
+            "absolute_address": 220
           },
           "srand": {
             "name": "srand",
@@ -22258,11 +22917,11 @@
             "offset": 352,
             "absolute_address": 352
           },
-          "L_srand_99999": {
-            "name": "L_srand_99999",
+          "L_rand_99999": {
+            "name": "L_rand_99999",
             "bank": 0,
-            "offset": 160,
-            "absolute_address": 160
+            "offset": 388,
+            "absolute_address": 388
           },
           "L_rand_1": {
             "name": "L_rand_1",
@@ -22270,21 +22929,21 @@
             "offset": 280,
             "absolute_address": 280
           },
-          "rand": {
-            "name": "rand",
+          "L_srand_99999": {
+            "name": "L_srand_99999",
             "bank": 0,
-            "offset": 220,
-            "absolute_address": 220
+            "offset": 160,
+            "absolute_address": 160
           }
         },
         "data_labels": {},
         "unresolved_references": {
-          "35": {
-            "label": "rng_set_seed",
-            "ref_type": "absolute"
-          },
           "89": {
             "label": "rng_get",
+            "ref_type": "absolute"
+          },
+          "35": {
+            "label": "rng_set_seed",
             "ref_type": "absolute"
           }
         },
@@ -39225,569 +39884,17 @@
         ],
         "data": [],
         "labels": {
-          "L_fill_rect_72": {
-            "name": "L_fill_rect_72",
+          "L_draw_line_30": {
+            "name": "L_draw_line_30",
             "bank": 0,
-            "offset": 6140,
-            "absolute_address": 6140
+            "offset": 3256,
+            "absolute_address": 3256
           },
-          "L_draw_circle_99999": {
-            "name": "L_draw_circle_99999",
+          "L_draw_circle_84": {
+            "name": "L_draw_circle_84",
             "bank": 0,
-            "offset": 7616,
-            "absolute_address": 7616
-          },
-          "draw_string": {
-            "name": "draw_string",
-            "bank": 0,
-            "offset": 8524,
-            "absolute_address": 8524
-          },
-          "L_fill_circle_90": {
-            "name": "L_fill_circle_90",
-            "bank": 0,
-            "offset": 8024,
-            "absolute_address": 8024
-          },
-          "L_graphics_init_1": {
-            "name": "L_graphics_init_1",
-            "bank": 0,
-            "offset": 300,
-            "absolute_address": 300
-          },
-          "L_draw_line_54": {
-            "name": "L_draw_line_54",
-            "bank": 0,
-            "offset": 4516,
-            "absolute_address": 4516
-          },
-          "L_bc_03883fbe_done": {
-            "name": "L_bc_03883fbe_done",
-            "bank": 0,
-            "offset": 8896,
-            "absolute_address": 8896
-          },
-          "L_fill_rect_71": {
-            "name": "L_fill_rect_71",
-            "bank": 0,
-            "offset": 6100,
-            "absolute_address": 6100
-          },
-          "L_draw_char_93": {
-            "name": "L_draw_char_93",
-            "bank": 0,
-            "offset": 8276,
-            "absolute_address": 8276
-          },
-          "L_draw_line_44": {
-            "name": "L_draw_line_44",
-            "bank": 0,
-            "offset": 4036,
-            "absolute_address": 4036
-          },
-          "L_draw_line_46": {
-            "name": "L_draw_line_46",
-            "bank": 0,
-            "offset": 4272,
-            "absolute_address": 4272
-          },
-          "L_bc_298e112b_use_global": {
-            "name": "L_bc_298e112b_use_global",
-            "bank": 0,
-            "offset": 9588,
-            "absolute_address": 9588
-          },
-          "L_fill_rect_99999": {
-            "name": "L_fill_rect_99999",
-            "bank": 0,
-            "offset": 6144,
-            "absolute_address": 6144
-          },
-          "L_draw_rect_58": {
-            "name": "L_draw_rect_58",
-            "bank": 0,
-            "offset": 4808,
-            "absolute_address": 4808
-          },
-          "set_pixel": {
-            "name": "set_pixel",
-            "bank": 0,
-            "offset": 588,
-            "absolute_address": 588
-          },
-          "clear_screen": {
-            "name": "clear_screen",
-            "bank": 0,
-            "offset": 1600,
-            "absolute_address": 1600
-          },
-          "L_fill_rect_75": {
-            "name": "L_fill_rect_75",
-            "bank": 0,
-            "offset": 6056,
-            "absolute_address": 6056
-          },
-          "L_graphics_height_99999": {
-            "name": "L_graphics_height_99999",
-            "bank": 0,
-            "offset": 9396,
-            "absolute_address": 9396
-          },
-          "L_graphics_width_100": {
-            "name": "L_graphics_width_100",
-            "bank": 0,
-            "offset": 9244,
-            "absolute_address": 9244
-          },
-          "L_set_pixel_2": {
-            "name": "L_set_pixel_2",
-            "bank": 0,
-            "offset": 660,
-            "absolute_address": 660
-          },
-          "rgb565": {
-            "name": "rgb565",
-            "bank": 0,
-            "offset": 0,
-            "absolute_address": 0
-          },
-          "L_draw_char_95": {
-            "name": "L_draw_char_95",
-            "bank": 0,
-            "offset": 8460,
-            "absolute_address": 8460
-          },
-          "L_draw_vline_99999": {
-            "name": "L_draw_vline_99999",
-            "bank": 0,
-            "offset": 3112,
-            "absolute_address": 3112
-          },
-          "L_draw_line_49": {
-            "name": "L_draw_line_49",
-            "bank": 0,
-            "offset": 4348,
-            "absolute_address": 4348
-          },
-          "L_draw_circle_79": {
-            "name": "L_draw_circle_79",
-            "bank": 0,
-            "offset": 6432,
-            "absolute_address": 6432
-          },
-          "L_get_pixel_6": {
-            "name": "L_get_pixel_6",
-            "bank": 0,
-            "offset": 1188,
-            "absolute_address": 1188
-          },
-          "L_fill_rect_68": {
-            "name": "L_fill_rect_68",
-            "bank": 0,
-            "offset": 5616,
-            "absolute_address": 5616
-          },
-          "L_bc_298e112b_use_stack": {
-            "name": "L_bc_298e112b_use_stack",
-            "bank": 0,
-            "offset": 9596,
-            "absolute_address": 9596
-          },
-          "L_draw_string_96": {
-            "name": "L_draw_string_96",
-            "bank": 0,
-            "offset": 8604,
-            "absolute_address": 8604
-          },
-          "graphics_height": {
-            "name": "graphics_height",
-            "bank": 0,
-            "offset": 9320,
-            "absolute_address": 9320
-          },
-          "fast_sin": {
-            "name": "fast_sin",
-            "bank": 0,
-            "offset": 9456,
-            "absolute_address": 9456
-          },
-          "L_draw_circle_86": {
-            "name": "L_draw_circle_86",
-            "bank": 0,
-            "offset": 7608,
-            "absolute_address": 7608
-          },
-          "L_draw_rect_56": {
-            "name": "L_draw_rect_56",
-            "bank": 0,
-            "offset": 4800,
-            "absolute_address": 4800
-          },
-          "L_draw_string_99999": {
-            "name": "L_draw_string_99999",
-            "bank": 0,
-            "offset": 9124,
-            "absolute_address": 9124
-          },
-          "L_draw_hline_20": {
-            "name": "L_draw_hline_20",
-            "bank": 0,
-            "offset": 2292,
-            "absolute_address": 2292
-          },
-          "L_draw_line_40": {
-            "name": "L_draw_line_40",
-            "bank": 0,
-            "offset": 3884,
-            "absolute_address": 3884
-          },
-          "L_fill_circle_89": {
-            "name": "L_fill_circle_89",
-            "bank": 0,
-            "offset": 7860,
-            "absolute_address": 7860
-          },
-          "L_draw_line_41": {
-            "name": "L_draw_line_41",
-            "bank": 0,
-            "offset": 3904,
-            "absolute_address": 3904
-          },
-          "L_graphics_init_99999": {
-            "name": "L_graphics_init_99999",
-            "bank": 0,
-            "offset": 528,
-            "absolute_address": 528
-          },
-          "L_draw_vline_29": {
-            "name": "L_draw_vline_29",
-            "bank": 0,
-            "offset": 3108,
-            "absolute_address": 3108
-          },
-          "L_clear_screen_13": {
-            "name": "L_clear_screen_13",
-            "bank": 0,
-            "offset": 1944,
-            "absolute_address": 1944
-          },
-          "L_clear_screen_11": {
-            "name": "L_clear_screen_11",
-            "bank": 0,
-            "offset": 1692,
-            "absolute_address": 1692
-          },
-          "L_draw_string_99": {
-            "name": "L_draw_string_99",
-            "bank": 0,
-            "offset": 9120,
-            "absolute_address": 9120
-          },
-          "graphics_init": {
-            "name": "graphics_init",
-            "bank": 0,
-            "offset": 232,
-            "absolute_address": 232
-          },
-          "L_draw_rect_61": {
-            "name": "L_draw_rect_61",
-            "bank": 0,
-            "offset": 5124,
-            "absolute_address": 5124
-          },
-          "L_fill_circle_87": {
-            "name": "L_fill_circle_87",
-            "bank": 0,
-            "offset": 7752,
-            "absolute_address": 7752
-          },
-          "L_draw_circle_81": {
-            "name": "L_draw_circle_81",
-            "bank": 0,
-            "offset": 7444,
-            "absolute_address": 7444
-          },
-          "L_draw_line_99999": {
-            "name": "L_draw_line_99999",
-            "bank": 0,
-            "offset": 4524,
-            "absolute_address": 4524
-          },
-          "graphics_width": {
-            "name": "graphics_width",
-            "bank": 0,
-            "offset": 9184,
-            "absolute_address": 9184
-          },
-          "L_draw_hline_22": {
-            "name": "L_draw_hline_22",
-            "bank": 0,
-            "offset": 2424,
-            "absolute_address": 2424
-          },
-          "L_draw_char_99999": {
-            "name": "L_draw_char_99999",
-            "bank": 0,
-            "offset": 8464,
-            "absolute_address": 8464
-          },
-          "L_clear_screen_17": {
-            "name": "L_clear_screen_17",
-            "bank": 0,
-            "offset": 1900,
-            "absolute_address": 1900
-          },
-          "L_clear_screen_14": {
-            "name": "L_clear_screen_14",
-            "bank": 0,
-            "offset": 1984,
-            "absolute_address": 1984
-          },
-          "draw_circle": {
-            "name": "draw_circle",
-            "bank": 0,
-            "offset": 6204,
-            "absolute_address": 6204
-          },
-          "L_draw_line_31": {
-            "name": "L_draw_line_31",
-            "bank": 0,
-            "offset": 3360,
-            "absolute_address": 3360
-          },
-          "L_draw_rect_99999": {
-            "name": "L_draw_rect_99999",
-            "bank": 0,
-            "offset": 5472,
-            "absolute_address": 5472
-          },
-          "L_bc_fa86d560_use_stack": {
-            "name": "L_bc_fa86d560_use_stack",
-            "bank": 0,
-            "offset": 8728,
-            "absolute_address": 8728
-          },
-          "L_draw_rect_67": {
-            "name": "L_draw_rect_67",
-            "bank": 0,
-            "offset": 5464,
-            "absolute_address": 5464
-          },
-          "L_clear_screen_15": {
-            "name": "L_clear_screen_15",
-            "bank": 0,
-            "offset": 1744,
-            "absolute_address": 1744
-          },
-          "fill_circle": {
-            "name": "fill_circle",
-            "bank": 0,
-            "offset": 7676,
-            "absolute_address": 7676
-          },
-          "L_draw_line_43": {
-            "name": "L_draw_line_43",
-            "bank": 0,
-            "offset": 4024,
-            "absolute_address": 4024
-          },
-          "draw_vline": {
-            "name": "draw_vline",
-            "bank": 0,
-            "offset": 2692,
-            "absolute_address": 2692
-          },
-          "L_draw_rect_64": {
-            "name": "L_draw_rect_64",
-            "bank": 0,
-            "offset": 5468,
-            "absolute_address": 5468
-          },
-          "L_bc_fa86d560_done": {
-            "name": "L_bc_fa86d560_done",
-            "bank": 0,
-            "offset": 8732,
-            "absolute_address": 8732
-          },
-          "L_bc_298e112b_done": {
-            "name": "L_bc_298e112b_done",
-            "bank": 0,
-            "offset": 9600,
-            "absolute_address": 9600
-          },
-          "L_graphics_height_101": {
-            "name": "L_graphics_height_101",
-            "bank": 0,
-            "offset": 9380,
-            "absolute_address": 9380
-          },
-          "L_clear_screen_99999": {
-            "name": "L_clear_screen_99999",
-            "bank": 0,
-            "offset": 1988,
-            "absolute_address": 1988
-          },
-          "L_draw_hline_23": {
-            "name": "L_draw_hline_23",
-            "bank": 0,
-            "offset": 2588,
-            "absolute_address": 2588
-          },
-          "draw_rect": {
-            "name": "draw_rect",
-            "bank": 0,
-            "offset": 4584,
-            "absolute_address": 4584
-          },
-          "draw_char": {
-            "name": "draw_char",
-            "bank": 0,
-            "offset": 8128,
-            "absolute_address": 8128
-          },
-          "L_draw_line_39": {
-            "name": "L_draw_line_39",
-            "bank": 0,
-            "offset": 3784,
-            "absolute_address": 3784
-          },
-          "L_draw_line_32": {
-            "name": "L_draw_line_32",
-            "bank": 0,
-            "offset": 3400,
-            "absolute_address": 3400
-          },
-          "get_pixel": {
-            "name": "get_pixel",
-            "bank": 0,
-            "offset": 1120,
-            "absolute_address": 1120
-          },
-          "L_graphics_flush_99999": {
-            "name": "L_graphics_flush_99999",
-            "bank": 0,
-            "offset": 2156,
-            "absolute_address": 2156
-          },
-          "L_fill_circle_91": {
-            "name": "L_fill_circle_91",
-            "bank": 0,
-            "offset": 8064,
-            "absolute_address": 8064
-          },
-          "L_graphics_width_99999": {
-            "name": "L_graphics_width_99999",
-            "bank": 0,
-            "offset": 9260,
-            "absolute_address": 9260
-          },
-          "L_fill_rect_69": {
-            "name": "L_fill_rect_69",
-            "bank": 0,
-            "offset": 5692,
-            "absolute_address": 5692
-          },
-          "L_fill_rect_76": {
-            "name": "L_fill_rect_76",
-            "bank": 0,
-            "offset": 6096,
-            "absolute_address": 6096
-          },
-          "L_get_pixel_9": {
-            "name": "L_get_pixel_9",
-            "bank": 0,
-            "offset": 1280,
-            "absolute_address": 1280
-          },
-          "L_draw_line_37": {
-            "name": "L_draw_line_37",
-            "bank": 0,
-            "offset": 3736,
-            "absolute_address": 3736
-          },
-          "L_graphics_flush_19": {
-            "name": "L_graphics_flush_19",
-            "bank": 0,
-            "offset": 2108,
-            "absolute_address": 2108
-          },
-          "L_draw_line_33": {
-            "name": "L_draw_line_33",
-            "bank": 0,
-            "offset": 3440,
-            "absolute_address": 3440
-          },
-          "L_draw_line_34": {
-            "name": "L_draw_line_34",
-            "bank": 0,
-            "offset": 3540,
-            "absolute_address": 3540
-          },
-          "L_fill_rect_73": {
-            "name": "L_fill_rect_73",
-            "bank": 0,
-            "offset": 5784,
-            "absolute_address": 5784
-          },
-          "L_draw_rect_65": {
-            "name": "L_draw_rect_65",
-            "bank": 0,
-            "offset": 5308,
-            "absolute_address": 5308
-          },
-          "L_draw_vline_28": {
-            "name": "L_draw_vline_28",
-            "bank": 0,
-            "offset": 3068,
-            "absolute_address": 3068
-          },
-          "L_draw_hline_99999": {
-            "name": "L_draw_hline_99999",
-            "bank": 0,
-            "offset": 2632,
-            "absolute_address": 2632
-          },
-          "L_draw_line_51": {
-            "name": "L_draw_line_51",
-            "bank": 0,
-            "offset": 4412,
-            "absolute_address": 4412
-          },
-          "L_clear_screen_16": {
-            "name": "L_clear_screen_16",
-            "bank": 0,
-            "offset": 1776,
-            "absolute_address": 1776
-          },
-          "L_draw_rect_55": {
-            "name": "L_draw_rect_55",
-            "bank": 0,
-            "offset": 4668,
-            "absolute_address": 4668
-          },
-          "L_rgb565_99999": {
-            "name": "L_rgb565_99999",
-            "bank": 0,
-            "offset": 172,
-            "absolute_address": 172
-          },
-          "L_draw_circle_77": {
-            "name": "L_draw_circle_77",
-            "bank": 0,
-            "offset": 6280,
-            "absolute_address": 6280
-          },
-          "L_draw_circle_80": {
-            "name": "L_draw_circle_80",
-            "bank": 0,
-            "offset": 7612,
-            "absolute_address": 7612
-          },
-          "L_set_pixel_5": {
-            "name": "L_set_pixel_5",
-            "bank": 0,
-            "offset": 772,
-            "absolute_address": 772
+            "offset": 7540,
+            "absolute_address": 7540
           },
           "L_fill_rect_70": {
             "name": "L_fill_rect_70",
@@ -39795,137 +39902,29 @@
             "offset": 5764,
             "absolute_address": 5764
           },
-          "L_draw_hline_21": {
-            "name": "L_draw_hline_21",
+          "L_get_pixel_9": {
+            "name": "L_get_pixel_9",
             "bank": 0,
-            "offset": 2356,
-            "absolute_address": 2356
+            "offset": 1280,
+            "absolute_address": 1280
           },
-          "L_get_pixel_7": {
-            "name": "L_get_pixel_7",
+          "L_draw_string_96": {
+            "name": "L_draw_string_96",
             "bank": 0,
-            "offset": 1268,
-            "absolute_address": 1268
+            "offset": 8604,
+            "absolute_address": 8604
           },
-          "L_draw_string_97": {
-            "name": "L_draw_string_97",
+          "L_draw_hline_23": {
+            "name": "L_draw_hline_23",
             "bank": 0,
-            "offset": 8676,
-            "absolute_address": 8676
+            "offset": 2588,
+            "absolute_address": 2588
           },
-          "L_clear_screen_10": {
-            "name": "L_clear_screen_10",
+          "graphics_width": {
+            "name": "graphics_width",
             "bank": 0,
-            "offset": 1664,
-            "absolute_address": 1664
-          },
-          "L_get_pixel_99999": {
-            "name": "L_get_pixel_99999",
-            "bank": 0,
-            "offset": 1540,
-            "absolute_address": 1540
-          },
-          "L_fast_sin_102": {
-            "name": "L_fast_sin_102",
-            "bank": 0,
-            "offset": 9520,
-            "absolute_address": 9520
-          },
-          "L_draw_string_98": {
-            "name": "L_draw_string_98",
-            "bank": 0,
-            "offset": 8744,
-            "absolute_address": 8744
-          },
-          "draw_hline": {
-            "name": "draw_hline",
-            "bank": 0,
-            "offset": 2216,
-            "absolute_address": 2216
-          },
-          "L_draw_circle_83": {
-            "name": "L_draw_circle_83",
-            "bank": 0,
-            "offset": 7512,
-            "absolute_address": 7512
-          },
-          "L_draw_line_36": {
-            "name": "L_draw_line_36",
-            "bank": 0,
-            "offset": 3628,
-            "absolute_address": 3628
-          },
-          "L_draw_vline_26": {
-            "name": "L_draw_vline_26",
-            "bank": 0,
-            "offset": 2832,
-            "absolute_address": 2832
-          },
-          "L_draw_rect_62": {
-            "name": "L_draw_rect_62",
-            "bank": 0,
-            "offset": 5152,
-            "absolute_address": 5152
-          },
-          "L_draw_circle_78": {
-            "name": "L_draw_circle_78",
-            "bank": 0,
-            "offset": 6388,
-            "absolute_address": 6388
-          },
-          "L_draw_line_52": {
-            "name": "L_draw_line_52",
-            "bank": 0,
-            "offset": 4448,
-            "absolute_address": 4448
-          },
-          "L_bc_03883fbe_use_global": {
-            "name": "L_bc_03883fbe_use_global",
-            "bank": 0,
-            "offset": 8884,
-            "absolute_address": 8884
-          },
-          "fill_rect": {
-            "name": "fill_rect",
-            "bank": 0,
-            "offset": 5532,
-            "absolute_address": 5532
-          },
-          "L_clear_screen_18": {
-            "name": "L_clear_screen_18",
-            "bank": 0,
-            "offset": 1940,
-            "absolute_address": 1940
-          },
-          "L_draw_rect_59": {
-            "name": "L_draw_rect_59",
-            "bank": 0,
-            "offset": 4984,
-            "absolute_address": 4984
-          },
-          "L_draw_vline_25": {
-            "name": "L_draw_vline_25",
-            "bank": 0,
-            "offset": 2768,
-            "absolute_address": 2768
-          },
-          "L_set_pixel_3": {
-            "name": "L_set_pixel_3",
-            "bank": 0,
-            "offset": 764,
-            "absolute_address": 764
-          },
-          "L_draw_char_92": {
-            "name": "L_draw_char_92",
-            "bank": 0,
-            "offset": 8204,
-            "absolute_address": 8204
-          },
-          "L_draw_vline_27": {
-            "name": "L_draw_vline_27",
-            "bank": 0,
-            "offset": 2904,
-            "absolute_address": 2904
+            "offset": 9184,
+            "absolute_address": 9184
           },
           "L_draw_line_42": {
             "name": "L_draw_line_42",
@@ -39933,11 +39932,41 @@
             "offset": 3932,
             "absolute_address": 3932
           },
-          "L_draw_line_48": {
-            "name": "L_draw_line_48",
+          "L_clear_screen_13": {
+            "name": "L_clear_screen_13",
             "bank": 0,
-            "offset": 4280,
-            "absolute_address": 4280
+            "offset": 1944,
+            "absolute_address": 1944
+          },
+          "L_fast_sin_102": {
+            "name": "L_fast_sin_102",
+            "bank": 0,
+            "offset": 9520,
+            "absolute_address": 9520
+          },
+          "rgb565": {
+            "name": "rgb565",
+            "bank": 0,
+            "offset": 0,
+            "absolute_address": 0
+          },
+          "L_draw_rect_59": {
+            "name": "L_draw_rect_59",
+            "bank": 0,
+            "offset": 4984,
+            "absolute_address": 4984
+          },
+          "clear_screen": {
+            "name": "clear_screen",
+            "bank": 0,
+            "offset": 1600,
+            "absolute_address": 1600
+          },
+          "L_draw_vline_26": {
+            "name": "L_draw_vline_26",
+            "bank": 0,
+            "offset": 2832,
+            "absolute_address": 2832
           },
           "graphics_flush": {
             "name": "graphics_flush",
@@ -39945,59 +39974,143 @@
             "offset": 2048,
             "absolute_address": 2048
           },
-          "L_fill_circle_88": {
-            "name": "L_fill_circle_88",
+          "fill_rect": {
+            "name": "fill_rect",
             "bank": 0,
-            "offset": 7816,
-            "absolute_address": 7816
+            "offset": 5532,
+            "absolute_address": 5532
           },
-          "L_set_pixel_99999": {
-            "name": "L_set_pixel_99999",
+          "graphics_height": {
+            "name": "graphics_height",
             "bank": 0,
-            "offset": 1060,
-            "absolute_address": 1060
+            "offset": 9320,
+            "absolute_address": 9320
           },
-          "L_draw_line_30": {
-            "name": "L_draw_line_30",
+          "L_bc_9ce19011_done": {
+            "name": "L_bc_9ce19011_done",
             "bank": 0,
-            "offset": 3256,
-            "absolute_address": 3256
+            "offset": 8896,
+            "absolute_address": 8896
           },
-          "L_bc_03883fbe_use_stack": {
-            "name": "L_bc_03883fbe_use_stack",
+          "L_clear_screen_99999": {
+            "name": "L_clear_screen_99999",
             "bank": 0,
-            "offset": 8892,
-            "absolute_address": 8892
+            "offset": 1988,
+            "absolute_address": 1988
           },
-          "L_bc_fa86d560_use_global": {
-            "name": "L_bc_fa86d560_use_global",
+          "L_bc_9ce19011_use_global": {
+            "name": "L_bc_9ce19011_use_global",
             "bank": 0,
-            "offset": 8720,
-            "absolute_address": 8720
+            "offset": 8884,
+            "absolute_address": 8884
           },
-          "L_fast_sin_99999": {
-            "name": "L_fast_sin_99999",
+          "L_graphics_height_99999": {
+            "name": "L_graphics_height_99999",
             "bank": 0,
-            "offset": 9612,
-            "absolute_address": 9612
+            "offset": 9396,
+            "absolute_address": 9396
           },
-          "L_fill_rect_74": {
-            "name": "L_fill_rect_74",
+          "L_bc_95f0844d_done": {
+            "name": "L_bc_95f0844d_done",
             "bank": 0,
-            "offset": 5864,
-            "absolute_address": 5864
+            "offset": 8732,
+            "absolute_address": 8732
           },
-          "L_draw_line_45": {
-            "name": "L_draw_line_45",
+          "L_draw_string_99999": {
+            "name": "L_draw_string_99999",
             "bank": 0,
-            "offset": 4520,
-            "absolute_address": 4520
+            "offset": 9124,
+            "absolute_address": 9124
           },
-          "L_fill_circle_99999": {
-            "name": "L_fill_circle_99999",
+          "L_clear_screen_18": {
+            "name": "L_clear_screen_18",
             "bank": 0,
-            "offset": 8068,
-            "absolute_address": 8068
+            "offset": 1940,
+            "absolute_address": 1940
+          },
+          "L_draw_char_93": {
+            "name": "L_draw_char_93",
+            "bank": 0,
+            "offset": 8276,
+            "absolute_address": 8276
+          },
+          "L_fill_rect_72": {
+            "name": "L_fill_rect_72",
+            "bank": 0,
+            "offset": 6140,
+            "absolute_address": 6140
+          },
+          "L_draw_rect_62": {
+            "name": "L_draw_rect_62",
+            "bank": 0,
+            "offset": 5152,
+            "absolute_address": 5152
+          },
+          "L_clear_screen_15": {
+            "name": "L_clear_screen_15",
+            "bank": 0,
+            "offset": 1744,
+            "absolute_address": 1744
+          },
+          "L_fill_circle_89": {
+            "name": "L_fill_circle_89",
+            "bank": 0,
+            "offset": 7860,
+            "absolute_address": 7860
+          },
+          "L_draw_rect_56": {
+            "name": "L_draw_rect_56",
+            "bank": 0,
+            "offset": 4800,
+            "absolute_address": 4800
+          },
+          "L_fill_rect_71": {
+            "name": "L_fill_rect_71",
+            "bank": 0,
+            "offset": 6100,
+            "absolute_address": 6100
+          },
+          "L_draw_char_95": {
+            "name": "L_draw_char_95",
+            "bank": 0,
+            "offset": 8460,
+            "absolute_address": 8460
+          },
+          "L_draw_line_32": {
+            "name": "L_draw_line_32",
+            "bank": 0,
+            "offset": 3400,
+            "absolute_address": 3400
+          },
+          "L_get_pixel_6": {
+            "name": "L_get_pixel_6",
+            "bank": 0,
+            "offset": 1188,
+            "absolute_address": 1188
+          },
+          "fill_circle": {
+            "name": "fill_circle",
+            "bank": 0,
+            "offset": 7676,
+            "absolute_address": 7676
+          },
+          "L_graphics_height_101": {
+            "name": "L_graphics_height_101",
+            "bank": 0,
+            "offset": 9380,
+            "absolute_address": 9380
+          },
+          "L_graphics_init_1": {
+            "name": "L_graphics_init_1",
+            "bank": 0,
+            "offset": 300,
+            "absolute_address": 300
+          },
+          "L_draw_char_92": {
+            "name": "L_draw_char_92",
+            "bank": 0,
+            "offset": 8204,
+            "absolute_address": 8204
           },
           "L_draw_hline_24": {
             "name": "L_draw_hline_24",
@@ -40005,11 +40118,197 @@
             "offset": 2628,
             "absolute_address": 2628
           },
-          "L_clear_screen_12": {
-            "name": "L_clear_screen_12",
+          "draw_circle": {
+            "name": "draw_circle",
             "bank": 0,
-            "offset": 1724,
-            "absolute_address": 1724
+            "offset": 6204,
+            "absolute_address": 6204
+          },
+          "L_draw_line_46": {
+            "name": "L_draw_line_46",
+            "bank": 0,
+            "offset": 4272,
+            "absolute_address": 4272
+          },
+          "L_graphics_init_99999": {
+            "name": "L_graphics_init_99999",
+            "bank": 0,
+            "offset": 528,
+            "absolute_address": 528
+          },
+          "L_draw_rect_61": {
+            "name": "L_draw_rect_61",
+            "bank": 0,
+            "offset": 5124,
+            "absolute_address": 5124
+          },
+          "L_draw_line_34": {
+            "name": "L_draw_line_34",
+            "bank": 0,
+            "offset": 3540,
+            "absolute_address": 3540
+          },
+          "L_bc_95f0844d_use_global": {
+            "name": "L_bc_95f0844d_use_global",
+            "bank": 0,
+            "offset": 8720,
+            "absolute_address": 8720
+          },
+          "L_fill_rect_75": {
+            "name": "L_fill_rect_75",
+            "bank": 0,
+            "offset": 6056,
+            "absolute_address": 6056
+          },
+          "L_get_pixel_99999": {
+            "name": "L_get_pixel_99999",
+            "bank": 0,
+            "offset": 1540,
+            "absolute_address": 1540
+          },
+          "graphics_init": {
+            "name": "graphics_init",
+            "bank": 0,
+            "offset": 232,
+            "absolute_address": 232
+          },
+          "L_rgb565_99999": {
+            "name": "L_rgb565_99999",
+            "bank": 0,
+            "offset": 172,
+            "absolute_address": 172
+          },
+          "L_draw_rect_55": {
+            "name": "L_draw_rect_55",
+            "bank": 0,
+            "offset": 4668,
+            "absolute_address": 4668
+          },
+          "L_draw_circle_83": {
+            "name": "L_draw_circle_83",
+            "bank": 0,
+            "offset": 7512,
+            "absolute_address": 7512
+          },
+          "L_draw_line_49": {
+            "name": "L_draw_line_49",
+            "bank": 0,
+            "offset": 4348,
+            "absolute_address": 4348
+          },
+          "L_draw_line_48": {
+            "name": "L_draw_line_48",
+            "bank": 0,
+            "offset": 4280,
+            "absolute_address": 4280
+          },
+          "L_draw_vline_28": {
+            "name": "L_draw_vline_28",
+            "bank": 0,
+            "offset": 3068,
+            "absolute_address": 3068
+          },
+          "L_clear_screen_16": {
+            "name": "L_clear_screen_16",
+            "bank": 0,
+            "offset": 1776,
+            "absolute_address": 1776
+          },
+          "L_fill_rect_76": {
+            "name": "L_fill_rect_76",
+            "bank": 0,
+            "offset": 6096,
+            "absolute_address": 6096
+          },
+          "L_graphics_flush_19": {
+            "name": "L_graphics_flush_19",
+            "bank": 0,
+            "offset": 2108,
+            "absolute_address": 2108
+          },
+          "L_draw_line_99999": {
+            "name": "L_draw_line_99999",
+            "bank": 0,
+            "offset": 4524,
+            "absolute_address": 4524
+          },
+          "L_draw_rect_58": {
+            "name": "L_draw_rect_58",
+            "bank": 0,
+            "offset": 4808,
+            "absolute_address": 4808
+          },
+          "L_bc_95f0844d_use_stack": {
+            "name": "L_bc_95f0844d_use_stack",
+            "bank": 0,
+            "offset": 8728,
+            "absolute_address": 8728
+          },
+          "L_clear_screen_17": {
+            "name": "L_clear_screen_17",
+            "bank": 0,
+            "offset": 1900,
+            "absolute_address": 1900
+          },
+          "L_bc_7372f4ba_use_global": {
+            "name": "L_bc_7372f4ba_use_global",
+            "bank": 0,
+            "offset": 9588,
+            "absolute_address": 9588
+          },
+          "L_draw_char_99999": {
+            "name": "L_draw_char_99999",
+            "bank": 0,
+            "offset": 8464,
+            "absolute_address": 8464
+          },
+          "L_fill_circle_90": {
+            "name": "L_fill_circle_90",
+            "bank": 0,
+            "offset": 8024,
+            "absolute_address": 8024
+          },
+          "L_clear_screen_10": {
+            "name": "L_clear_screen_10",
+            "bank": 0,
+            "offset": 1664,
+            "absolute_address": 1664
+          },
+          "L_fill_circle_88": {
+            "name": "L_fill_circle_88",
+            "bank": 0,
+            "offset": 7816,
+            "absolute_address": 7816
+          },
+          "draw_rect": {
+            "name": "draw_rect",
+            "bank": 0,
+            "offset": 4584,
+            "absolute_address": 4584
+          },
+          "L_draw_hline_22": {
+            "name": "L_draw_hline_22",
+            "bank": 0,
+            "offset": 2424,
+            "absolute_address": 2424
+          },
+          "L_draw_hline_20": {
+            "name": "L_draw_hline_20",
+            "bank": 0,
+            "offset": 2292,
+            "absolute_address": 2292
+          },
+          "L_set_pixel_2": {
+            "name": "L_set_pixel_2",
+            "bank": 0,
+            "offset": 660,
+            "absolute_address": 660
+          },
+          "draw_vline": {
+            "name": "draw_vline",
+            "bank": 0,
+            "offset": 2692,
+            "absolute_address": 2692
           },
           "draw_line": {
             "name": "draw_line",
@@ -40017,11 +40316,161 @@
             "offset": 3172,
             "absolute_address": 3172
           },
-          "L_draw_line_38": {
-            "name": "L_draw_line_38",
+          "L_draw_rect_64": {
+            "name": "L_draw_rect_64",
             "bank": 0,
-            "offset": 3756,
-            "absolute_address": 3756
+            "offset": 5468,
+            "absolute_address": 5468
+          },
+          "L_draw_vline_29": {
+            "name": "L_draw_vline_29",
+            "bank": 0,
+            "offset": 3108,
+            "absolute_address": 3108
+          },
+          "L_draw_vline_25": {
+            "name": "L_draw_vline_25",
+            "bank": 0,
+            "offset": 2768,
+            "absolute_address": 2768
+          },
+          "L_draw_line_45": {
+            "name": "L_draw_line_45",
+            "bank": 0,
+            "offset": 4520,
+            "absolute_address": 4520
+          },
+          "L_draw_circle_86": {
+            "name": "L_draw_circle_86",
+            "bank": 0,
+            "offset": 7608,
+            "absolute_address": 7608
+          },
+          "L_draw_circle_81": {
+            "name": "L_draw_circle_81",
+            "bank": 0,
+            "offset": 7444,
+            "absolute_address": 7444
+          },
+          "L_set_pixel_3": {
+            "name": "L_set_pixel_3",
+            "bank": 0,
+            "offset": 764,
+            "absolute_address": 764
+          },
+          "L_draw_circle_99999": {
+            "name": "L_draw_circle_99999",
+            "bank": 0,
+            "offset": 7616,
+            "absolute_address": 7616
+          },
+          "L_draw_hline_21": {
+            "name": "L_draw_hline_21",
+            "bank": 0,
+            "offset": 2356,
+            "absolute_address": 2356
+          },
+          "L_draw_line_54": {
+            "name": "L_draw_line_54",
+            "bank": 0,
+            "offset": 4516,
+            "absolute_address": 4516
+          },
+          "L_draw_line_39": {
+            "name": "L_draw_line_39",
+            "bank": 0,
+            "offset": 3784,
+            "absolute_address": 3784
+          },
+          "set_pixel": {
+            "name": "set_pixel",
+            "bank": 0,
+            "offset": 588,
+            "absolute_address": 588
+          },
+          "L_draw_line_33": {
+            "name": "L_draw_line_33",
+            "bank": 0,
+            "offset": 3440,
+            "absolute_address": 3440
+          },
+          "L_graphics_flush_99999": {
+            "name": "L_graphics_flush_99999",
+            "bank": 0,
+            "offset": 2156,
+            "absolute_address": 2156
+          },
+          "L_draw_circle_77": {
+            "name": "L_draw_circle_77",
+            "bank": 0,
+            "offset": 6280,
+            "absolute_address": 6280
+          },
+          "draw_char": {
+            "name": "draw_char",
+            "bank": 0,
+            "offset": 8128,
+            "absolute_address": 8128
+          },
+          "L_draw_vline_99999": {
+            "name": "L_draw_vline_99999",
+            "bank": 0,
+            "offset": 3112,
+            "absolute_address": 3112
+          },
+          "L_draw_hline_99999": {
+            "name": "L_draw_hline_99999",
+            "bank": 0,
+            "offset": 2632,
+            "absolute_address": 2632
+          },
+          "L_draw_string_97": {
+            "name": "L_draw_string_97",
+            "bank": 0,
+            "offset": 8676,
+            "absolute_address": 8676
+          },
+          "L_fill_circle_87": {
+            "name": "L_fill_circle_87",
+            "bank": 0,
+            "offset": 7752,
+            "absolute_address": 7752
+          },
+          "L_bc_9ce19011_use_stack": {
+            "name": "L_bc_9ce19011_use_stack",
+            "bank": 0,
+            "offset": 8892,
+            "absolute_address": 8892
+          },
+          "L_draw_line_31": {
+            "name": "L_draw_line_31",
+            "bank": 0,
+            "offset": 3360,
+            "absolute_address": 3360
+          },
+          "L_bc_7372f4ba_use_stack": {
+            "name": "L_bc_7372f4ba_use_stack",
+            "bank": 0,
+            "offset": 9596,
+            "absolute_address": 9596
+          },
+          "L_fill_circle_91": {
+            "name": "L_fill_circle_91",
+            "bank": 0,
+            "offset": 8064,
+            "absolute_address": 8064
+          },
+          "L_draw_string_99": {
+            "name": "L_draw_string_99",
+            "bank": 0,
+            "offset": 9120,
+            "absolute_address": 9120
+          },
+          "L_graphics_width_100": {
+            "name": "L_graphics_width_100",
+            "bank": 0,
+            "offset": 9244,
+            "absolute_address": 9244
           },
           "L_draw_line_35": {
             "name": "L_draw_line_35",
@@ -40029,16 +40478,234 @@
             "offset": 3584,
             "absolute_address": 3584
           },
-          "L_draw_circle_84": {
-            "name": "L_draw_circle_84",
+          "L_draw_line_40": {
+            "name": "L_draw_line_40",
             "bank": 0,
-            "offset": 7540,
-            "absolute_address": 7540
+            "offset": 3884,
+            "absolute_address": 3884
+          },
+          "L_fill_rect_99999": {
+            "name": "L_fill_rect_99999",
+            "bank": 0,
+            "offset": 6144,
+            "absolute_address": 6144
+          },
+          "L_clear_screen_12": {
+            "name": "L_clear_screen_12",
+            "bank": 0,
+            "offset": 1724,
+            "absolute_address": 1724
+          },
+          "L_draw_line_52": {
+            "name": "L_draw_line_52",
+            "bank": 0,
+            "offset": 4448,
+            "absolute_address": 4448
+          },
+          "L_draw_line_43": {
+            "name": "L_draw_line_43",
+            "bank": 0,
+            "offset": 4024,
+            "absolute_address": 4024
+          },
+          "L_fill_rect_74": {
+            "name": "L_fill_rect_74",
+            "bank": 0,
+            "offset": 5864,
+            "absolute_address": 5864
+          },
+          "L_draw_circle_79": {
+            "name": "L_draw_circle_79",
+            "bank": 0,
+            "offset": 6432,
+            "absolute_address": 6432
+          },
+          "L_clear_screen_11": {
+            "name": "L_clear_screen_11",
+            "bank": 0,
+            "offset": 1692,
+            "absolute_address": 1692
+          },
+          "L_draw_line_38": {
+            "name": "L_draw_line_38",
+            "bank": 0,
+            "offset": 3756,
+            "absolute_address": 3756
+          },
+          "L_draw_line_36": {
+            "name": "L_draw_line_36",
+            "bank": 0,
+            "offset": 3628,
+            "absolute_address": 3628
+          },
+          "L_fill_rect_68": {
+            "name": "L_fill_rect_68",
+            "bank": 0,
+            "offset": 5616,
+            "absolute_address": 5616
+          },
+          "L_fill_rect_69": {
+            "name": "L_fill_rect_69",
+            "bank": 0,
+            "offset": 5692,
+            "absolute_address": 5692
+          },
+          "L_set_pixel_99999": {
+            "name": "L_set_pixel_99999",
+            "bank": 0,
+            "offset": 1060,
+            "absolute_address": 1060
+          },
+          "L_draw_rect_99999": {
+            "name": "L_draw_rect_99999",
+            "bank": 0,
+            "offset": 5472,
+            "absolute_address": 5472
+          },
+          "draw_hline": {
+            "name": "draw_hline",
+            "bank": 0,
+            "offset": 2216,
+            "absolute_address": 2216
+          },
+          "L_set_pixel_5": {
+            "name": "L_set_pixel_5",
+            "bank": 0,
+            "offset": 772,
+            "absolute_address": 772
+          },
+          "L_draw_circle_78": {
+            "name": "L_draw_circle_78",
+            "bank": 0,
+            "offset": 6388,
+            "absolute_address": 6388
+          },
+          "L_draw_line_51": {
+            "name": "L_draw_line_51",
+            "bank": 0,
+            "offset": 4412,
+            "absolute_address": 4412
+          },
+          "L_clear_screen_14": {
+            "name": "L_clear_screen_14",
+            "bank": 0,
+            "offset": 1984,
+            "absolute_address": 1984
+          },
+          "L_draw_line_41": {
+            "name": "L_draw_line_41",
+            "bank": 0,
+            "offset": 3904,
+            "absolute_address": 3904
+          },
+          "L_fill_rect_73": {
+            "name": "L_fill_rect_73",
+            "bank": 0,
+            "offset": 5784,
+            "absolute_address": 5784
+          },
+          "L_draw_rect_67": {
+            "name": "L_draw_rect_67",
+            "bank": 0,
+            "offset": 5464,
+            "absolute_address": 5464
+          },
+          "L_graphics_width_99999": {
+            "name": "L_graphics_width_99999",
+            "bank": 0,
+            "offset": 9260,
+            "absolute_address": 9260
+          },
+          "get_pixel": {
+            "name": "get_pixel",
+            "bank": 0,
+            "offset": 1120,
+            "absolute_address": 1120
+          },
+          "L_draw_line_44": {
+            "name": "L_draw_line_44",
+            "bank": 0,
+            "offset": 4036,
+            "absolute_address": 4036
+          },
+          "L_draw_line_37": {
+            "name": "L_draw_line_37",
+            "bank": 0,
+            "offset": 3736,
+            "absolute_address": 3736
+          },
+          "L_bc_7372f4ba_done": {
+            "name": "L_bc_7372f4ba_done",
+            "bank": 0,
+            "offset": 9600,
+            "absolute_address": 9600
+          },
+          "L_fast_sin_99999": {
+            "name": "L_fast_sin_99999",
+            "bank": 0,
+            "offset": 9612,
+            "absolute_address": 9612
+          },
+          "fast_sin": {
+            "name": "fast_sin",
+            "bank": 0,
+            "offset": 9456,
+            "absolute_address": 9456
+          },
+          "L_get_pixel_7": {
+            "name": "L_get_pixel_7",
+            "bank": 0,
+            "offset": 1268,
+            "absolute_address": 1268
+          },
+          "L_draw_circle_80": {
+            "name": "L_draw_circle_80",
+            "bank": 0,
+            "offset": 7612,
+            "absolute_address": 7612
+          },
+          "L_draw_string_98": {
+            "name": "L_draw_string_98",
+            "bank": 0,
+            "offset": 8744,
+            "absolute_address": 8744
+          },
+          "L_fill_circle_99999": {
+            "name": "L_fill_circle_99999",
+            "bank": 0,
+            "offset": 8068,
+            "absolute_address": 8068
+          },
+          "L_draw_vline_27": {
+            "name": "L_draw_vline_27",
+            "bank": 0,
+            "offset": 2904,
+            "absolute_address": 2904
+          },
+          "L_draw_rect_65": {
+            "name": "L_draw_rect_65",
+            "bank": 0,
+            "offset": 5308,
+            "absolute_address": 5308
+          },
+          "draw_string": {
+            "name": "draw_string",
+            "bank": 0,
+            "offset": 8524,
+            "absolute_address": 8524
           }
         },
         "data_labels": {},
         "unresolved_references": {
+          "537": {
+            "label": "mmio_write",
+            "ref_type": "absolute"
+          },
           "130": {
+            "label": "mmio_write",
+            "ref_type": "absolute"
+          },
+          "119": {
             "label": "mmio_write",
             "ref_type": "absolute"
           },
@@ -40046,15 +40713,7 @@
             "label": "mmio_read",
             "ref_type": "absolute"
           },
-          "119": {
-            "label": "mmio_write",
-            "ref_type": "absolute"
-          },
           "263": {
-            "label": "mmio_write",
-            "ref_type": "absolute"
-          },
-          "537": {
             "label": "mmio_write",
             "ref_type": "absolute"
           }
