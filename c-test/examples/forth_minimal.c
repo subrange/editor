@@ -1,6 +1,7 @@
 // Minimal Forth without structs containing arrays
 // Uses parallel arrays to avoid compiler limitations
- #include <stdio.h>
+#include <stdio.h>
+#include <string.h>
 
 // Configuration
 #define STACK_SIZE 100
@@ -47,25 +48,15 @@ char* get_dict_name(int idx) {
     return &dict_names[idx * 32];
 }
 
-// String compare
+// String compare - wrapper for strcmp that returns 1 for equal
 int str_eq(char* a, char* b) {
-    int i = 0;
-    while (1) {
-        if (!a[i] && !b[i]) return 1;  // Both ended, equal
-        if (!a[i] || !b[i]) return 0;  // One ended, not equal
-        if (a[i] != b[i]) return 0;    // Different chars
-        i++;
-    }
+    return strcmp(a, b) == 0;
 }
 
-// String copy
+// String copy with length limit
 void str_copy(char* dst, char* src) {
-    int i;
-    for (i = 0; i < 31; i++) {
-        if (!src[i]) break;
-        dst[i] = src[i];
-    }
-    dst[i] = 0;
+    strncpy(dst, src, 31);
+    dst[31] = 0;  // Ensure null termination
 }
 
 // Print number
@@ -123,14 +114,8 @@ int find_word(char* name) {
 // Add word to dictionary (not used for user words anymore)
 void add_word(char* name, int is_prim, int code_start) {
     if (dict_count < MAX_WORDS) {
-        // Manually copy to avoid str_copy issues
         char* dst = get_dict_name(dict_count);
-        int i;
-        for (i = 0; i < 31; i++) {
-            if (!name[i]) break;
-            dst[i] = name[i];
-        }
-        dst[i] = 0;
+        str_copy(dst, name);
         
         dict_is_prim[dict_count] = is_prim;
         dict_code_start[dict_count] = code_start;
@@ -442,12 +427,7 @@ void process_word(char* word) {
             // New word definition - copy directly to dictionary
             if (dict_count < MAX_WORDS) {
                 char* dst = get_dict_name(dict_count);
-                int j;
-                for (j = 0; j < 31; j++) {
-                    if (!word[j]) break;
-                    dst[j] = word[j];
-                }
-                dst[j] = 0;
+                str_copy(dst, word);
                 
                 dict_is_prim[dict_count] = 0;
                 dict_code_start[dict_count] = here;
