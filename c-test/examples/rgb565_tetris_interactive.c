@@ -405,11 +405,58 @@ int main() {
                     }
                 }
             }
-            // Rotate piece clockwise (UP or Z key)
+            // Rotate piece clockwise (UP or Z key) with wall kicks
             else if ((up && !last_up) || (z && !last_z)) {
                 int next_rotation = (current_rotation + 1) % 4;
-                if (is_valid_position(board, current_piece, next_rotation, current_x, current_y)) {
+                int kick_x = current_x;
+                int kick_y = current_y;
+                int rotation_success = 0;
+                
+                // Try rotation at current position
+                if (is_valid_position(board, current_piece, next_rotation, kick_x, kick_y)) {
+                    rotation_success = 1;
+                }
+                // Try wall kick left (1 space)
+                else if (is_valid_position(board, current_piece, next_rotation, kick_x - 1, kick_y)) {
+                    kick_x--;
+                    rotation_success = 1;
+                }
+                // Try wall kick right (1 space)
+                else if (is_valid_position(board, current_piece, next_rotation, kick_x + 1, kick_y)) {
+                    kick_x++;
+                    rotation_success = 1;
+                }
+                // Try wall kick left (2 spaces) - for I-piece
+                else if (is_valid_position(board, current_piece, next_rotation, kick_x - 2, kick_y)) {
+                    kick_x -= 2;
+                    rotation_success = 1;
+                }
+                // Try wall kick right (2 spaces) - for I-piece
+                else if (is_valid_position(board, current_piece, next_rotation, kick_x + 2, kick_y)) {
+                    kick_x += 2;
+                    rotation_success = 1;
+                }
+                // Try kick up (for pieces stuck at bottom)
+                else if (is_valid_position(board, current_piece, next_rotation, kick_x, kick_y - 1)) {
+                    kick_y--;
+                    rotation_success = 1;
+                }
+                // Try combined kicks
+                else if (is_valid_position(board, current_piece, next_rotation, kick_x - 1, kick_y - 1)) {
+                    kick_x--;
+                    kick_y--;
+                    rotation_success = 1;
+                }
+                else if (is_valid_position(board, current_piece, next_rotation, kick_x + 1, kick_y - 1)) {
+                    kick_x++;
+                    kick_y--;
+                    rotation_success = 1;
+                }
+                
+                if (rotation_success) {
                     current_rotation = next_rotation;
+                    current_x = kick_x;
+                    current_y = kick_y;
                     move_delay = 5;
                 }
             }
