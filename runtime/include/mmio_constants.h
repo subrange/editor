@@ -13,6 +13,17 @@
 #define MMIO_DISP_CTL      8
 #define MMIO_DISP_FLUSH    9
 
+// Keyboard input flags (bank 0, words 10..15)
+#define MMIO_KEY_UP        10
+#define MMIO_KEY_DOWN      11
+#define MMIO_KEY_LEFT      12
+#define MMIO_KEY_RIGHT     13
+#define MMIO_KEY_Z         14
+#define MMIO_KEY_X         15
+
+// Keyboard status bit
+#define KEY_PRESSED        (1 << 0)
+
 // Display modes
 #define DISP_MODE_OFF    0
 #define DISP_MODE_TTY    1

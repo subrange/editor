@@ -17,7 +17,16 @@ pub const HDR_DISP_MODE: usize     = 6;  // R/W: 0=OFF, 1=TTY, 2=TEXT40
 pub const HDR_DISP_STATUS: usize   = 7;  // Read: bit0=ready, bit1=flush_done
 pub const HDR_DISP_CTL: usize      = 8;  // R/W: bit0=ENABLE, bit1=CLEAR
 pub const HDR_DISP_FLUSH: usize    = 9;  // Write: trigger display flush
-// Words 10..31 are reserved for future use
+
+// Keyboard input flags (bank 0, words 10..15)
+pub const HDR_KEY_UP: usize        = 10; // Read: bit0=pressed (arrow up)
+pub const HDR_KEY_DOWN: usize      = 11; // Read: bit0=pressed (arrow down)
+pub const HDR_KEY_LEFT: usize      = 12; // Read: bit0=pressed (arrow left)
+pub const HDR_KEY_RIGHT: usize     = 13; // Read: bit0=pressed (arrow right)
+pub const HDR_KEY_Z: usize         = 14; // Read: bit0=pressed (Z key)
+pub const HDR_KEY_X: usize         = 15; // Read: bit0=pressed (X key)
+
+// Words 16..31 are reserved for future use
 
 // TEXT40 display constants
 pub const TEXT40_BASE_WORD: usize  = 32;         // Start of VRAM

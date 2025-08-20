@@ -39,4 +39,13 @@ void text40_set_attr(int x, int y, unsigned char attr);
 unsigned char text40_get_char(int x, int y);
 unsigned char text40_get_attr(int x, int y);
 
+// Keyboard input functions (TEXT40 mode only)
+int key_pressed(unsigned short key_addr);
+int key_up_pressed(void);
+int key_down_pressed(void);
+int key_left_pressed(void);
+int key_right_pressed(void);
+int key_z_pressed(void);
+int key_x_pressed(void);
+
 #endif // MMIO_H

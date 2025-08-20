@@ -1042,17 +1042,17 @@ L_text40_puts_15:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
 ; LOAD: Pointer t12 has bank info: Dynamic("gep_new_bank_f22_op24_t12")
     LI T0, -1
-    BEQ S1, T0, L_bc_c382dd7e_use_global
+    BEQ S1, T0, L_bc_2340a35b_use_global
     LI S3, -2
-    BEQ S1, S3, L_bc_c382dd7e_use_stack
+    BEQ S1, S3, L_bc_2340a35b_use_stack
     ADD S0, S1, R0
-    BEQ R0, R0, L_bc_c382dd7e_done
-L_bc_c382dd7e_use_global:
+    BEQ R0, R0, L_bc_2340a35b_done
+L_bc_2340a35b_use_global:
     ADD S0, GP, R0
-    BEQ R0, R0, L_bc_c382dd7e_done
-L_bc_c382dd7e_use_stack:
+    BEQ R0, R0, L_bc_2340a35b_done
+L_bc_2340a35b_use_stack:
     ADD S0, SB, R0
-L_bc_c382dd7e_done:
+L_bc_2340a35b_done:
 ; LOAD: Using bank register S0 for load
     LOAD S2, S0, T7
 ; Recompute alloca t9 at FP+6
@@ -1788,17 +1788,17 @@ L_text40_puts_color_27:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
 ; LOAD: Pointer t16 has bank info: Dynamic("gep_new_bank_f28_op28_t16")
     LI T2, -1
-    BEQ T7, T2, L_bc_3073cdc4_use_global
+    BEQ T7, T2, L_bc_3de63064_use_global
     LI S1, -2
-    BEQ T7, S1, L_bc_3073cdc4_use_stack
+    BEQ T7, S1, L_bc_3de63064_use_stack
     ADD S3, T7, R0
-    BEQ R0, R0, L_bc_3073cdc4_done
-L_bc_3073cdc4_use_global:
+    BEQ R0, R0, L_bc_3de63064_done
+L_bc_3de63064_use_global:
     ADD S3, GP, R0
-    BEQ R0, R0, L_bc_3073cdc4_done
-L_bc_3073cdc4_use_stack:
+    BEQ R0, R0, L_bc_3de63064_done
+L_bc_3de63064_use_stack:
     ADD S3, SB, R0
-L_bc_3073cdc4_done:
+L_bc_3de63064_done:
 ; LOAD: Using bank register S3 for load
     LOAD S0, S3, S2
 ; Recompute alloca t13 at FP+8
@@ -2100,17 +2100,17 @@ L_text40_puts_attr_31:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(14), bank: Mixed })
 ; LOAD: Pointer t14 has bank info: Dynamic("gep_new_bank_f30_op26_t14")
     LI S3, -1
-    BEQ S0, S3, L_bc_10ebf056_use_global
+    BEQ S0, S3, L_bc_9543ea97_use_global
     LI S2, -2
-    BEQ S0, S2, L_bc_10ebf056_use_stack
+    BEQ S0, S2, L_bc_9543ea97_use_stack
     ADD T3, S0, R0
-    BEQ R0, R0, L_bc_10ebf056_done
-L_bc_10ebf056_use_global:
+    BEQ R0, R0, L_bc_9543ea97_done
+L_bc_9543ea97_use_global:
     ADD T3, GP, R0
-    BEQ R0, R0, L_bc_10ebf056_done
-L_bc_10ebf056_use_stack:
+    BEQ R0, R0, L_bc_9543ea97_done
+L_bc_9543ea97_use_stack:
     ADD T3, SB, R0
-L_bc_10ebf056_done:
+L_bc_9543ea97_done:
 ; LOAD: Using bank register T3 for load
     LOAD S1, T3, T7
 ; Recompute alloca t11 at FP+7
@@ -2825,6 +2825,453 @@ L_text40_get_attr_45:
 ; Jump to epilogue
     BEQ R0, R0, L_text40_get_attr_99999
 L_text40_get_attr_99999:
+; Return scalar value
+; === Function Epilogue ===
+; Restore SP = FP
+    ADD SP, FP, R0
+; Restore callee-saved registers S3-S0
+    ADDI SC, FP, -1
+    LOAD S3, SB, SC
+    ADDI SC, FP, -2
+    LOAD S2, SB, SC
+    ADDI SC, FP, -3
+    LOAD S1, SB, SC
+    ADDI SC, FP, -4
+    LOAD S0, SB, SC
+; Restore old FP
+    ADDI SP, SP, -5
+    LOAD FP, SB, SP
+; Restore RA
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
+; Return to caller
+    ADD PCB, RAB, R0
+    JALR R0, R0, RA
+key_pressed:
+; === Function Prologue ===
+; Save RA at SP
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+; Save old FP
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+; Save callee-saved registers S0-S3
+    STORE S0, SB, SP
+    ADDI SP, SP, 1
+    STORE S1, SB, SP
+    ADDI SP, SP, 1
+    STORE S2, SB, SP
+    ADDI SP, SP, 1
+    STORE S3, SB, SP
+    ADDI SP, SP, 1
+; Set FP = SP
+    ADD FP, SP, R0
+; Allocate 9 slots for locals
+    ADDI SP, SP, 9
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+; Load param 0 from A0
+    ADD S3, A0, R0
+L_key_pressed_46:
+    ADD S2, FP, R0
+    STORE S3, SB, S2
+; Load instruction: t2 = load FatPtr(FatPointer { addr: Temp(1), bank: Stack })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(1), bank: Stack })
+; LOAD: Pointer load_src_ptr_f38_op2_t2 has bank info: Stack
+; LOAD: Using bank register Sb for load
+    LOAD S1, SB, S2
+; Spill live registers before call
+; Spill t0 to slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 9
+    STORE S3, SB, SC
+; Spill t2 to slot 1
+    ADD SC, FP, R0
+    ADDI SC, SC, 10
+    STORE S1, SB, SC
+; Setting up 1 register arguments
+; Arg 0 (scalar) to A0
+    ADD A0, S1, R0
+; Call function mmio_read
+    CALL mmio_read
+; Scalar return value for t3
+    LI S0, 1
+    LI T7, 0
+    SLL S0, S0, T7
+    AND RV0, RV0, S0
+    LI T6, 0
+    XOR T5, RV0, T6
+    LI T4, 0
+    SLTU RV0, T4, T5
+; Jump to epilogue
+    BEQ R0, R0, L_key_pressed_99999
+L_key_pressed_99999:
+; Return scalar value
+; === Function Epilogue ===
+; Restore SP = FP
+    ADD SP, FP, R0
+; Restore callee-saved registers S3-S0
+    ADDI SC, FP, -1
+    LOAD S3, SB, SC
+    ADDI SC, FP, -2
+    LOAD S2, SB, SC
+    ADDI SC, FP, -3
+    LOAD S1, SB, SC
+    ADDI SC, FP, -4
+    LOAD S0, SB, SC
+; Restore old FP
+    ADDI SP, SP, -5
+    LOAD FP, SB, SP
+; Restore RA
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
+; Return to caller
+    ADD PCB, RAB, R0
+    JALR R0, R0, RA
+key_up_pressed:
+; === Function Prologue ===
+; Save RA at SP
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+; Save old FP
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+; Save callee-saved registers S0-S3
+    STORE S0, SB, SP
+    ADDI SP, SP, 1
+    STORE S1, SB, SP
+    ADDI SP, SP, 1
+    STORE S2, SB, SP
+    ADDI SP, SP, 1
+    STORE S3, SB, SP
+    ADDI SP, SP, 1
+; Set FP = SP
+    ADD FP, SP, R0
+; Allocate 8 slots for locals
+    ADDI SP, SP, 8
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+L_key_up_pressed_47:
+    LI S3, 10
+; Spill live registers before call
+; Spill const_f40_op0_10 to slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 8
+    STORE S3, SB, SC
+; Setting up 1 register arguments
+; Arg 0 (scalar) to A0
+    ADD A0, S3, R0
+; Call function key_pressed
+    CALL key_pressed
+; Scalar return value for t0
+; Jump to epilogue
+    BEQ R0, R0, L_key_up_pressed_99999
+L_key_up_pressed_99999:
+; Return scalar value
+; === Function Epilogue ===
+; Restore SP = FP
+    ADD SP, FP, R0
+; Restore callee-saved registers S3-S0
+    ADDI SC, FP, -1
+    LOAD S3, SB, SC
+    ADDI SC, FP, -2
+    LOAD S2, SB, SC
+    ADDI SC, FP, -3
+    LOAD S1, SB, SC
+    ADDI SC, FP, -4
+    LOAD S0, SB, SC
+; Restore old FP
+    ADDI SP, SP, -5
+    LOAD FP, SB, SP
+; Restore RA
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
+; Return to caller
+    ADD PCB, RAB, R0
+    JALR R0, R0, RA
+key_down_pressed:
+; === Function Prologue ===
+; Save RA at SP
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+; Save old FP
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+; Save callee-saved registers S0-S3
+    STORE S0, SB, SP
+    ADDI SP, SP, 1
+    STORE S1, SB, SP
+    ADDI SP, SP, 1
+    STORE S2, SB, SP
+    ADDI SP, SP, 1
+    STORE S3, SB, SP
+    ADDI SP, SP, 1
+; Set FP = SP
+    ADD FP, SP, R0
+; Allocate 8 slots for locals
+    ADDI SP, SP, 8
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+L_key_down_pressed_48:
+    LI S3, 11
+; Spill live registers before call
+; Spill const_f42_op0_11 to slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 8
+    STORE S3, SB, SC
+; Setting up 1 register arguments
+; Arg 0 (scalar) to A0
+    ADD A0, S3, R0
+; Call function key_pressed
+    CALL key_pressed
+; Scalar return value for t0
+; Jump to epilogue
+    BEQ R0, R0, L_key_down_pressed_99999
+L_key_down_pressed_99999:
+; Return scalar value
+; === Function Epilogue ===
+; Restore SP = FP
+    ADD SP, FP, R0
+; Restore callee-saved registers S3-S0
+    ADDI SC, FP, -1
+    LOAD S3, SB, SC
+    ADDI SC, FP, -2
+    LOAD S2, SB, SC
+    ADDI SC, FP, -3
+    LOAD S1, SB, SC
+    ADDI SC, FP, -4
+    LOAD S0, SB, SC
+; Restore old FP
+    ADDI SP, SP, -5
+    LOAD FP, SB, SP
+; Restore RA
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
+; Return to caller
+    ADD PCB, RAB, R0
+    JALR R0, R0, RA
+key_left_pressed:
+; === Function Prologue ===
+; Save RA at SP
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+; Save old FP
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+; Save callee-saved registers S0-S3
+    STORE S0, SB, SP
+    ADDI SP, SP, 1
+    STORE S1, SB, SP
+    ADDI SP, SP, 1
+    STORE S2, SB, SP
+    ADDI SP, SP, 1
+    STORE S3, SB, SP
+    ADDI SP, SP, 1
+; Set FP = SP
+    ADD FP, SP, R0
+; Allocate 8 slots for locals
+    ADDI SP, SP, 8
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+L_key_left_pressed_49:
+    LI S3, 12
+; Spill live registers before call
+; Spill const_f44_op0_12 to slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 8
+    STORE S3, SB, SC
+; Setting up 1 register arguments
+; Arg 0 (scalar) to A0
+    ADD A0, S3, R0
+; Call function key_pressed
+    CALL key_pressed
+; Scalar return value for t0
+; Jump to epilogue
+    BEQ R0, R0, L_key_left_pressed_99999
+L_key_left_pressed_99999:
+; Return scalar value
+; === Function Epilogue ===
+; Restore SP = FP
+    ADD SP, FP, R0
+; Restore callee-saved registers S3-S0
+    ADDI SC, FP, -1
+    LOAD S3, SB, SC
+    ADDI SC, FP, -2
+    LOAD S2, SB, SC
+    ADDI SC, FP, -3
+    LOAD S1, SB, SC
+    ADDI SC, FP, -4
+    LOAD S0, SB, SC
+; Restore old FP
+    ADDI SP, SP, -5
+    LOAD FP, SB, SP
+; Restore RA
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
+; Return to caller
+    ADD PCB, RAB, R0
+    JALR R0, R0, RA
+key_right_pressed:
+; === Function Prologue ===
+; Save RA at SP
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+; Save old FP
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+; Save callee-saved registers S0-S3
+    STORE S0, SB, SP
+    ADDI SP, SP, 1
+    STORE S1, SB, SP
+    ADDI SP, SP, 1
+    STORE S2, SB, SP
+    ADDI SP, SP, 1
+    STORE S3, SB, SP
+    ADDI SP, SP, 1
+; Set FP = SP
+    ADD FP, SP, R0
+; Allocate 8 slots for locals
+    ADDI SP, SP, 8
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+L_key_right_pressed_50:
+    LI S3, 13
+; Spill live registers before call
+; Spill const_f46_op0_13 to slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 8
+    STORE S3, SB, SC
+; Setting up 1 register arguments
+; Arg 0 (scalar) to A0
+    ADD A0, S3, R0
+; Call function key_pressed
+    CALL key_pressed
+; Scalar return value for t0
+; Jump to epilogue
+    BEQ R0, R0, L_key_right_pressed_99999
+L_key_right_pressed_99999:
+; Return scalar value
+; === Function Epilogue ===
+; Restore SP = FP
+    ADD SP, FP, R0
+; Restore callee-saved registers S3-S0
+    ADDI SC, FP, -1
+    LOAD S3, SB, SC
+    ADDI SC, FP, -2
+    LOAD S2, SB, SC
+    ADDI SC, FP, -3
+    LOAD S1, SB, SC
+    ADDI SC, FP, -4
+    LOAD S0, SB, SC
+; Restore old FP
+    ADDI SP, SP, -5
+    LOAD FP, SB, SP
+; Restore RA
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
+; Return to caller
+    ADD PCB, RAB, R0
+    JALR R0, R0, RA
+key_z_pressed:
+; === Function Prologue ===
+; Save RA at SP
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+; Save old FP
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+; Save callee-saved registers S0-S3
+    STORE S0, SB, SP
+    ADDI SP, SP, 1
+    STORE S1, SB, SP
+    ADDI SP, SP, 1
+    STORE S2, SB, SP
+    ADDI SP, SP, 1
+    STORE S3, SB, SP
+    ADDI SP, SP, 1
+; Set FP = SP
+    ADD FP, SP, R0
+; Allocate 8 slots for locals
+    ADDI SP, SP, 8
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+L_key_z_pressed_51:
+    LI S3, 14
+; Spill live registers before call
+; Spill const_f48_op0_14 to slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 8
+    STORE S3, SB, SC
+; Setting up 1 register arguments
+; Arg 0 (scalar) to A0
+    ADD A0, S3, R0
+; Call function key_pressed
+    CALL key_pressed
+; Scalar return value for t0
+; Jump to epilogue
+    BEQ R0, R0, L_key_z_pressed_99999
+L_key_z_pressed_99999:
+; Return scalar value
+; === Function Epilogue ===
+; Restore SP = FP
+    ADD SP, FP, R0
+; Restore callee-saved registers S3-S0
+    ADDI SC, FP, -1
+    LOAD S3, SB, SC
+    ADDI SC, FP, -2
+    LOAD S2, SB, SC
+    ADDI SC, FP, -3
+    LOAD S1, SB, SC
+    ADDI SC, FP, -4
+    LOAD S0, SB, SC
+; Restore old FP
+    ADDI SP, SP, -5
+    LOAD FP, SB, SP
+; Restore RA
+    ADDI SP, SP, -1
+    LOAD RA, SB, SP
+; Return to caller
+    ADD PCB, RAB, R0
+    JALR R0, R0, RA
+key_x_pressed:
+; === Function Prologue ===
+; Save RA at SP
+    STORE RA, SB, SP
+    ADDI SP, SP, 1
+; Save old FP
+    STORE FP, SB, SP
+    ADDI SP, SP, 1
+; Save callee-saved registers S0-S3
+    STORE S0, SB, SP
+    ADDI SP, SP, 1
+    STORE S1, SB, SP
+    ADDI SP, SP, 1
+    STORE S2, SB, SP
+    ADDI SP, SP, 1
+    STORE S3, SB, SP
+    ADDI SP, SP, 1
+; Set FP = SP
+    ADD FP, SP, R0
+; Allocate 8 slots for locals
+    ADDI SP, SP, 8
+; Reserve 20 spill slots above locals
+    ADDI SP, SP, 20
+L_key_x_pressed_52:
+    LI S3, 15
+; Spill live registers before call
+; Spill const_f50_op0_15 to slot 0
+    ADD SC, FP, R0
+    ADDI SC, SC, 8
+    STORE S3, SB, SC
+; Setting up 1 register arguments
+; Arg 0 (scalar) to A0
+    ADD A0, S3, R0
+; Call function key_pressed
+    CALL key_pressed
+; Scalar return value for t0
+; Jump to epilogue
+    BEQ R0, R0, L_key_x_pressed_99999
+L_key_x_pressed_99999:
 ; Return scalar value
 ; === Function Epilogue ===
 ; Restore SP = FP

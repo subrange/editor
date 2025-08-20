@@ -161,3 +161,32 @@ unsigned char text40_get_attr(int x, int y) {
     }
     return 0;
 }
+
+// Keyboard input functions (TEXT40 mode only)
+int key_pressed(unsigned short key_addr) {
+    return (mmio_read(key_addr) & KEY_PRESSED) != 0;
+}
+
+int key_up_pressed(void) {
+    return key_pressed(MMIO_KEY_UP);
+}
+
+int key_down_pressed(void) {
+    return key_pressed(MMIO_KEY_DOWN);
+}
+
+int key_left_pressed(void) {
+    return key_pressed(MMIO_KEY_LEFT);
+}
+
+int key_right_pressed(void) {
+    return key_pressed(MMIO_KEY_RIGHT);
+}
+
+int key_z_pressed(void) {
+    return key_pressed(MMIO_KEY_Z);
+}
+
+int key_x_pressed(void) {
+    return key_pressed(MMIO_KEY_X);
+}

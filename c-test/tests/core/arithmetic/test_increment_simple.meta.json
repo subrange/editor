@@ -1,5 +1,5 @@
 {
-  "use_runtime": true,
   "description": "Simple test for increment operators",
+  "use_runtime": true,
   "expected": "1234\n"
 }

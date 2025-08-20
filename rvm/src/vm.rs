@@ -5,8 +5,20 @@ use crossterm::{
     terminal::{self, ClearType},
     cursor,
     style::{Color, SetForegroundColor, SetBackgroundColor, ResetColor},
+    event::{self, Event, KeyCode},
     ExecutableCommand,
 };
+
+#[derive(Debug, Default, Clone, Copy)]
+struct KeyboardState {
+    up: bool,
+    down: bool,
+    left: bool,
+    right: bool,
+    z: bool,
+    x: bool,
+    last_read_counter: u32,  // Counter to track when keys were last read
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instr {
@@ -96,6 +108,9 @@ pub struct VM {
     terminal_raw_mode: bool,
     terminal_saved_screen: bool,
     
+    // Keyboard state (for TEXT40 mode)
+    keyboard_state: KeyboardState,
+    
     // Debug information: maps instruction indices to function names
     pub debug_symbols: std::collections::HashMap<usize, String>,
 }
@@ -126,6 +141,7 @@ impl VM {
             display_flush_done: true,
             terminal_raw_mode: false,
             terminal_saved_screen: false,
+            keyboard_state: KeyboardState::default(),
             debug_symbols: HashMap::new(),
         }
     }
@@ -291,6 +307,8 @@ impl VM {
             VMState::Setup => return Err("VM not initialized".to_string()),
         }
         
+        // DON'T poll keyboard here - only poll when actually reading keyboard MMIO
+        
         // Calculate instruction address
         let pc = self.registers[Register::Pc as usize];
         let pcb = self.registers[Register::Pcb as usize];
@@ -392,7 +410,34 @@ impl VM {
                 Some(value)
             },
             HDR_DISP_FLUSH => Some(0), // Write-only, return 0
-            9..=31 => Some(0), // Reserved addresses return 0
+            HDR_KEY_UP | HDR_KEY_DOWN | HDR_KEY_LEFT | HDR_KEY_RIGHT | HDR_KEY_Z | HDR_KEY_X => {
+                // Poll keyboard only when reading keyboard addresses
+                if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
+                    self.poll_keyboard();
+                    
+                    // Auto-clear keys after they've been read a few times
+                    // This prevents keys from getting "stuck" but allows for repeated reads
+                    self.keyboard_state.last_read_counter += 1;
+                    if self.keyboard_state.last_read_counter > 10 {
+                        // Clear the keyboard state after ~10 reads without new input
+                        self.keyboard_state = KeyboardState::default();
+                    }
+                }
+                
+                // Return the appropriate key state
+                let value = match addr {
+                    HDR_KEY_UP => if self.keyboard_state.up { 1 } else { 0 },
+                    HDR_KEY_DOWN => if self.keyboard_state.down { 1 } else { 0 },
+                    HDR_KEY_LEFT => if self.keyboard_state.left { 1 } else { 0 },
+                    HDR_KEY_RIGHT => if self.keyboard_state.right { 1 } else { 0 },
+                    HDR_KEY_Z => if self.keyboard_state.z { 1 } else { 0 },
+                    HDR_KEY_X => if self.keyboard_state.x { 1 } else { 0 },
+                    _ => 0,
+                };
+                self.memory[addr] = value;
+                Some(value)
+            },
+            16..=31 => Some(0), // Reserved addresses return 0
             _ => None, // Not an MMIO address
         }
     }
@@ -468,7 +513,10 @@ impl VM {
                 }
                 true
             },
-            9..=31 => true, // Reserved addresses, ignore writes
+            HDR_KEY_UP | HDR_KEY_DOWN | HDR_KEY_LEFT | HDR_KEY_RIGHT | HDR_KEY_Z | HDR_KEY_X => {
+                true // Read-only keyboard flags, ignore writes
+            },
+            10..=31 => true, // Reserved addresses, ignore writes
             _ => false, // Not an MMIO address
         }
     }
@@ -490,6 +538,63 @@ impl VM {
         }
     }
     
+    // Poll keyboard events and update keyboard state (non-blocking)
+    fn poll_keyboard(&mut self) {
+        use std::time::Duration;
+        
+        // Only poll keyboard in TEXT40 mode with terminal raw mode
+        if self.display_mode != DISP_TEXT40 || !self.terminal_raw_mode {
+            return;
+        }
+        
+        // Poll for a single keyboard event with zero timeout (non-blocking)
+        // Only process one event at a time to maintain state between reads
+        if event::poll(Duration::from_millis(0)).unwrap_or(false) {
+            if let Ok(Event::Key(key_event)) = event::read() {
+                // Clear all keys first, then set the current key
+                // This gives a "last key pressed" behavior
+                self.keyboard_state.up = false;
+                self.keyboard_state.down = false;
+                self.keyboard_state.left = false;
+                self.keyboard_state.right = false;
+                self.keyboard_state.z = false;
+                self.keyboard_state.x = false;
+                self.keyboard_state.last_read_counter = 0;  // Reset counter on new input
+                
+                // Set the current key as pressed
+                match key_event.code {
+                    KeyCode::Up => {
+                        self.keyboard_state.up = true;
+                    },
+                    KeyCode::Down => {
+                        self.keyboard_state.down = true;
+                    },
+                    KeyCode::Left => {
+                        self.keyboard_state.left = true;
+                    },
+                    KeyCode::Right => {
+                        self.keyboard_state.right = true;
+                    },
+                    KeyCode::Char('z') | KeyCode::Char('Z') => {
+                        self.keyboard_state.z = true;
+                    },
+                    KeyCode::Char('x') | KeyCode::Char('X') => {
+                        self.keyboard_state.x = true;
+                    },
+                    _ => {
+                        // For other keys, don't change state
+                    }
+                }
+            }
+        }
+        // If no event, keep the current state (don't clear)
+    }
+    
+    // Clear keyboard state flags
+    fn clear_keyboard_state(&mut self) {
+        self.keyboard_state = KeyboardState::default();
+    }
+    
     // Enter TEXT40 terminal mode
     fn enter_text40_mode(&mut self) {
         use std::io::{self, Write};
@@ -506,6 +611,9 @@ impl VM {
         
         self.terminal_raw_mode = true;
         self.terminal_saved_screen = true;
+        
+        // Clear keyboard state when entering TEXT40 mode
+        self.clear_keyboard_state();
         
         // Clear the screen
         let _ = io::stderr().execute(terminal::Clear(ClearType::All));
@@ -1120,6 +1228,9 @@ impl VM {
         self.output_buffer.clear();
         self.input_buffer.clear();
         self.output_ready = true;
+        
+        // Clear keyboard state
+        self.clear_keyboard_state();
         
         // Reset display state (and exit TEXT40 mode if active)
         if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {

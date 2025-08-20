@@ -20,7 +20,13 @@ The Ripple VM implements a memory-mapped I/O (MMIO) system with a dedicated 32-w
 | 7       | `HDR_DISP_STATUS`   | R   | Display status (bit 0: ready, bit 1: flush done) |
 | 8       | `HDR_DISP_CTL`      | R/W | Display control (bit 0: enable, bit 1: clear)    |
 | 9       | `HDR_DISP_FLUSH`    | W   | Trigger display flush (write non-zero)           |
-| 10-31   | Reserved            | -   | Reserved for future use (return 0 on read)       |
+| 10      | `HDR_KEY_UP`        | R   | Arrow up key state (bit 0: 1=pressed, 0=released) |
+| 11      | `HDR_KEY_DOWN`      | R   | Arrow down key state (bit 0: 1=pressed, 0=released) |
+| 12      | `HDR_KEY_LEFT`      | R   | Arrow left key state (bit 0: 1=pressed, 0=released) |
+| 13      | `HDR_KEY_RIGHT`     | R   | Arrow right key state (bit 0: 1=pressed, 0=released) |
+| 14      | `HDR_KEY_Z`         | R   | Z key state (bit 0: 1=pressed, 0=released) |
+| 15      | `HDR_KEY_X`         | R   | X key state (bit 0: 1=pressed, 0=released) |
+| 16-31   | Reserved            | -   | Reserved for future use (return 0 on read)       |
 
 ### TEXT40 VRAM (Bank 0, Words 32-1031)
 
@@ -68,6 +74,24 @@ Regular data memory starts at word 1032, after the VRAM region.
 - Read/Write register at address 5
 - Controls low 16 bits of RNG seed
 - Writing sets the seed for reproducible sequences
+
+### Keyboard Input (TEXT40 Mode Only)
+
+**Overview**
+- Keyboard input flags are only active when display mode is set to TEXT40
+- Keys are polled when reading keyboard MMIO addresses
+- Flags indicate momentary key state (1=key event detected, 0=no event)
+- State is cleared before each poll, so keys must be held for continuous input
+
+**Arrow Keys (HDR_KEY_UP/DOWN/LEFT/RIGHT)**
+- Read-only registers at addresses 10-13
+- Bit 0 indicates key state
+- Used for navigation in games
+
+**Action Keys (HDR_KEY_Z/X)**
+- Read-only registers at addresses 14-15
+- Bit 0 indicates key state
+- Common game action buttons (e.g., jump, shoot)
 
 ### Display System
 
@@ -239,6 +263,21 @@ LI    T1, 4        ; HDR_RNG
 LOAD  A0, T0, T1   ; Random value in A0
 ```
 
+### Keyboard Input
+```asm
+; Check if up arrow is pressed
+LI    T0, 0        ; Bank 0
+LI    T1, 10       ; HDR_KEY_UP
+LOAD  T2, T0, T1
+ANDI  T2, T2, 1
+BEQ   T2, R0, not_pressed
+
+; Handle up arrow press
+; ... game logic ...
+
+not_pressed:
+```
+
 ## C Runtime Integration
 
 The C runtime library uses these MMIO addresses for standard I/O:
@@ -295,6 +334,12 @@ pub const HDR_DISP_MODE: usize     = 6;
 pub const HDR_DISP_STATUS: usize   = 7;
 pub const HDR_DISP_CTL: usize      = 8;
 pub const HDR_DISP_FLUSH: usize    = 9;
+pub const HDR_KEY_UP: usize        = 10;
+pub const HDR_KEY_DOWN: usize      = 11;
+pub const HDR_KEY_LEFT: usize      = 12;
+pub const HDR_KEY_RIGHT: usize     = 13;
+pub const HDR_KEY_Z: usize         = 14;
+pub const HDR_KEY_X: usize         = 15;
 
 // TEXT40 VRAM
 pub const TEXT40_BASE_WORD: usize  = 32;
