@@ -7,10 +7,15 @@
 #define STACK_SIZE 100
 #define MAX_WORDS 50
 #define CODE_SIZE 500
+#define RETURN_STACK_SIZE 50
 
 // Data stack
 int stack[STACK_SIZE];
 int sp = 0;
+
+// Return stack for loops and control flow
+int rstack[RETURN_STACK_SIZE];
+int rsp = 0;
 
 // Dictionary - using parallel arrays instead of struct with array
 char dict_names[1600];  // 50 * 32 = 1600 - Flattened array for names
@@ -25,6 +30,7 @@ int here = 0;
 // State
 int compile_mode = 0;
 int running = 1;
+int ip_current = 0;  // Current instruction pointer for execution
 
 // Global word buffer to avoid passing local arrays
 char global_word[32];
@@ -39,6 +45,20 @@ void push(int val) {
 int pop() {
     if (sp > 0) {
         return stack[--sp];
+    }
+    return 0;
+}
+
+// Return stack operations
+void rpush(int val) {
+    if (rsp < RETURN_STACK_SIZE) {
+        rstack[rsp++] = val;
+    }
+}
+
+int rpop() {
+    if (rsp > 0) {
+        return rstack[--rsp];
     }
     return 0;
 }
@@ -202,6 +222,56 @@ void exec_prim(int idx) {
             push(stack[sp-2]);
         }
     }
+    // Control flow support
+    else if (str_eq(name, "IF")) {
+        // Special marker for IF during execution
+        // Actual branching handled in execute function
+    }
+    else if (str_eq(name, "THEN")) {
+        // Marker for THEN
+    }
+    else if (str_eq(name, "ELSE")) {
+        // Marker for ELSE
+    }
+    else if (str_eq(name, "BEGIN")) {
+        // Marker for BEGIN
+    }
+    else if (str_eq(name, "WHILE")) {
+        // Marker for WHILE
+    }
+    else if (str_eq(name, "REPEAT")) {
+        // Marker for REPEAT
+    }
+    else if (str_eq(name, "DO")) {
+        // DO pops limit and index and pushes them to return stack
+        int limit = pop();
+        int index = pop();
+        rpush(limit);
+        rpush(index);
+    }
+    else if (str_eq(name, "LOOP")) {
+        // LOOP increments index and checks against limit
+        int index = rpop();
+        int limit = rpop();
+        index++;
+        if (index < limit) {
+            rpush(limit);
+            rpush(index);
+            // Will be handled in execute to jump back
+        }
+    }
+    else if (str_eq(name, "I")) {
+        // Push current loop index
+        if (rsp >= 1) {
+            push(rstack[rsp-1]);
+        }
+    }
+    else if (str_eq(name, "J")) {
+        // Push outer loop index
+        if (rsp >= 3) {
+            push(rstack[rsp-3]);
+        }
+    }
     // I/O
     else if (str_eq(name, ".")) {
         print_num(pop());
@@ -231,7 +301,48 @@ void exec_prim(int idx) {
     }
 }
 
-// Execute word
+// Find matching control flow word
+int find_matching(int start, char* start_word, char* end_word) {
+    int depth = 1;
+    int ip = start + 1;
+    
+    while (ip < here && depth > 0) {
+        if (code[ip] >= 0 && code[ip] < dict_count) {
+            char* name = get_dict_name(code[ip]);
+            if (str_eq(name, start_word)) {
+                depth++;
+            } else if (str_eq(name, end_word)) {
+                depth--;
+                if (depth == 0) return ip;
+            }
+        }
+        ip++;
+    }
+    return -1;
+}
+
+// Find ELSE between IF and THEN
+int find_else(int if_pos, int then_pos) {
+    int depth = 0;
+    int ip = if_pos + 1;
+    
+    while (ip < then_pos) {
+        if (code[ip] >= 0 && code[ip] < dict_count) {
+            char* name = get_dict_name(code[ip]);
+            if (str_eq(name, "IF")) {
+                depth++;
+            } else if (str_eq(name, "THEN")) {
+                depth--;
+            } else if (str_eq(name, "ELSE") && depth == 0) {
+                return ip;
+            }
+        }
+        ip++;
+    }
+    return -1;
+}
+
+// Execute word with control flow support
 void execute(int idx) {
     if (idx < 0 || idx >= dict_count) return;
     
@@ -242,7 +353,70 @@ void execute(int idx) {
         int ip = dict_code_start[idx];
         while (code[ip] != -1) {
             if (code[ip] >= 0 && code[ip] < dict_count) {
-                execute(code[ip]);
+                char* name = get_dict_name(code[ip]);
+                
+                // Handle control flow
+                if (str_eq(name, "IF")) {
+                    int cond = pop();
+                    int then_pos = find_matching(ip, "IF", "THEN");
+                    if (cond == 0 && then_pos >= 0) {
+                        int else_pos = find_else(ip, then_pos);
+                        if (else_pos >= 0) {
+                            ip = else_pos;
+                        } else {
+                            ip = then_pos;
+                        }
+                    }
+                }
+                else if (str_eq(name, "ELSE")) {
+                    // Jump to THEN
+                    int then_pos = find_matching(ip, "IF", "THEN");
+                    if (then_pos >= 0) {
+                        ip = then_pos;
+                    }
+                }
+                else if (str_eq(name, "THEN")) {
+                    // Just continue
+                }
+                else if (str_eq(name, "BEGIN")) {
+                    // Mark loop start
+                    rpush(ip);
+                }
+                else if (str_eq(name, "WHILE")) {
+                    int cond = pop();
+                    if (cond == 0) {
+                        // Exit loop, find REPEAT
+                        rpop(); // Remove BEGIN position
+                        int repeat_pos = find_matching(ip, "WHILE", "REPEAT");
+                        if (repeat_pos >= 0) {
+                            ip = repeat_pos;
+                        }
+                    }
+                }
+                else if (str_eq(name, "REPEAT")) {
+                    // Jump back to BEGIN
+                    int begin_pos = rpop();
+                    ip = begin_pos - 1; // -1 because ip++ at end
+                }
+                else if (str_eq(name, "DO")) {
+                    exec_prim(code[ip]);
+                    rpush(ip); // Save DO position for LOOP
+                }
+                else if (str_eq(name, "LOOP")) {
+                    int do_pos = rpop();
+                    int index = rpop();
+                    int limit = rpop();
+                    index++;
+                    if (index < limit) {
+                        rpush(limit);
+                        rpush(index);
+                        rpush(do_pos);
+                        ip = do_pos; // Jump back to DO
+                    }
+                }
+                else {
+                    execute(code[ip]);
+                }
             } else if (code[ip] >= 10000) {
                 push(code[ip] - 10000);
             }
@@ -388,6 +562,76 @@ void init_dict() {
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
+    
+    // IF
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'I'; ptr[1] = 'F'; ptr[2] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // THEN
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'T'; ptr[1] = 'H'; ptr[2] = 'E'; ptr[3] = 'N'; ptr[4] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // ELSE
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'E'; ptr[1] = 'L'; ptr[2] = 'S'; ptr[3] = 'E'; ptr[4] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // BEGIN
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'B'; ptr[1] = 'E'; ptr[2] = 'G'; ptr[3] = 'I'; ptr[4] = 'N'; ptr[5] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // WHILE
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'W'; ptr[1] = 'H'; ptr[2] = 'I'; ptr[3] = 'L'; ptr[4] = 'E'; ptr[5] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // REPEAT
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'R'; ptr[1] = 'E'; ptr[2] = 'P'; ptr[3] = 'E'; ptr[4] = 'A'; ptr[5] = 'T'; ptr[6] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // DO
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'D'; ptr[1] = 'O'; ptr[2] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // LOOP
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'L'; ptr[1] = 'O'; ptr[2] = 'O'; ptr[3] = 'P'; ptr[4] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // I
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'I'; ptr[1] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+    
+    // J
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'J'; ptr[1] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
 }
 
 // Process one word
@@ -477,6 +721,7 @@ int main() {
     puts("Arithmetic: + - * / MOD");
     puts("Comparison: = < >");
     puts("Stack: DUP DROP SWAP OVER ROT 2DUP");
+    puts("Control: IF THEN ELSE BEGIN WHILE REPEAT DO LOOP I J");
     puts("I/O: . CR .S WORDS BYE");
     puts("Definition: : name ... ;");
     puts("");
@@ -490,6 +735,11 @@ int main() {
         if (!compile_mode) {
             putchar('>');
             putchar(' ');
+        } else {
+            // Show continuation prompt during compilation
+            putchar('.');
+            putchar('.');
+            putchar(' ');
         }
         
         // Read line
@@ -498,6 +748,7 @@ int main() {
         while (i < 255) {
             ch = getchar();
             if (ch == '\n') {
+                putchar('\n');  // Echo newline
                 input[i] = 0;
                 break;
             }
