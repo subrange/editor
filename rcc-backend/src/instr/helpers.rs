@@ -157,12 +157,8 @@ fn get_bank_register_with_runtime_check(
             insts.extend(mgr.take_instructions());
             
             // We need to check if this is a tag and convert to the actual register
-            // Generate unique labels for this check
-            let op_id = naming.next_operation_id();
-            let func_id = naming.function_id();
-            let use_global_label = format!("L_{context}_use_global_f{func_id}_op{op_id}");
-            let use_stack_label = format!("L_{context}_use_stack_f{func_id}_op{op_id}");
-            let done_label = format!("L_{context}_bank_done_f{func_id}_op{op_id}");
+            // Generate unique labels using the naming module
+            let (use_global_label, use_stack_label, done_label) = naming.bank_check_labels(context);
             
             // Allocate a result register that will hold the final bank
             let result_name = naming.temp_with_context(context, "resolved_bank");

@@ -376,7 +376,7 @@ impl TypeAnalyzer {
         };
 
         // Check if symbol already exists
-        if self.symbol_table.borrow_mut().exists_in_current_scope(&func.name) {
+        if self.symbol_table.borrow().exists_in_current_scope(&func.name) {
             // Get the existing symbol's type
             if let Some(existing_symbol_id) = self.symbol_table.borrow().lookup(&func.name) {
                 if let Some(existing_type) = self.symbol_types.borrow().get(&existing_symbol_id) {

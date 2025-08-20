@@ -6,6 +6,7 @@
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use rcc_common::TempId;
+use uuid::Uuid;
 
 /// Global operation counter for unique IDs
 /// Using atomic to ensure thread safety if needed in the future
@@ -432,13 +433,36 @@ impl NameGenerator {
         let op_id = self.next_operation_id();
         format!("gep_global_f{}_op{}_{}", self.function_id, op_id, global_name)
     }
+    
+    // ===== Bank check label naming =====
+    
+    /// Generate labels for bank check operations (use_global, use_stack, done)
+    /// Returns a tuple of (use_global_label, use_stack_label, done_label)
+    pub fn bank_check_labels(&mut self, _context: &str) -> (String, String, String) {
+        // Use UUID for truly unique labels across all compilation units
+        let unique_id = Uuid::new_v4().simple().to_string();
+        let short_id = &unique_id[0..8]; // Use first 8 chars for shorter labels
+        
+        let use_global = format!("L_bc_{}_use_global", short_id);
+        let use_stack = format!("L_bc_{}_use_stack", short_id);
+        let done = format!("L_bc_{}_done", short_id);
+        (use_global, use_stack, done)
+    }
 }
+
+/// Global counter for translation units to ensure uniqueness across compilations
+static TRANSLATION_UNIT_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 /// Create a new global name generator instance
 /// Each function should get its own instance with a unique function ID
 pub fn new_function_naming() -> NameGenerator {
     let function_id = OPERATION_COUNTER.fetch_add(1, Ordering::SeqCst);
     NameGenerator::new(function_id)
+}
+
+/// Get a unique translation unit ID for this compilation session
+pub fn get_translation_unit_id() -> u32 {
+    TRANSLATION_UNIT_COUNTER.fetch_add(1, Ordering::SeqCst)
 }
 
 #[cfg(test)]

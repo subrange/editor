@@ -119,21 +119,21 @@ L_memset_2:
     ADDI T0, T0, 2
     LOAD T2, SB, T0
     LI S3, -1
-    BEQ S2, S3, L_store_f0_op28_use_global_f0_op29
+    BEQ S2, S3, L_bc_108d7f8c_use_global
 ; Spill t2 to slot 2
     ADD SC, FP, R0
     ADDI SC, SC, 15
     STORE S1, SB, SC
     LI S1, -2
-    BEQ S2, S1, L_store_f0_op28_use_stack_f0_op29
+    BEQ S2, S1, L_bc_108d7f8c_use_stack
     ADD T5, S2, R0
-    BEQ R0, R0, L_store_f0_op28_bank_done_f0_op29
-L_store_f0_op28_use_global_f0_op29:
+    BEQ R0, R0, L_bc_108d7f8c_done
+L_bc_108d7f8c_use_global:
     ADD T5, GP, R0
-    BEQ R0, R0, L_store_f0_op28_bank_done_f0_op29
-L_store_f0_op28_use_stack_f0_op29:
+    BEQ R0, R0, L_bc_108d7f8c_done
+L_bc_108d7f8c_use_stack:
     ADD T5, SB, R0
-L_store_f0_op28_bank_done_f0_op29:
+L_bc_108d7f8c_done:
     STORE T2, T5, T1
     BEQ R0, R0, L_memset_3
 ; Unconditional branch to L_memset_3
@@ -143,7 +143,7 @@ L_store_f0_op28_bank_done_f0_op29:
 L_memset_3:
 ; Load instruction: t14 = load FatPtr(FatPointer { addr: Temp(6), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Stack })
-; LOAD: Pointer load_src_ptr_f0_op33_t14 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f0_op32_t14 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t6 at FP+4
     ADD S3, FP, R0

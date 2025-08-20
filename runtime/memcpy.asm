@@ -193,17 +193,17 @@ L_memcpy_2:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
 ; LOAD: Pointer t19 has bank info: Dynamic("gep_new_bank_f0_op44_t19")
     LI T4, -1
-    BEQ T7, T4, L_load_f0_op45_t20_use_global_f0_op46
+    BEQ T7, T4, L_bc_a785f345_use_global
     LI T1, -2
-    BEQ T7, T1, L_load_f0_op45_t20_use_stack_f0_op46
+    BEQ T7, T1, L_bc_a785f345_use_stack
     ADD T3, T7, R0
-    BEQ R0, R0, L_load_f0_op45_t20_bank_done_f0_op46
-L_load_f0_op45_t20_use_global_f0_op46:
+    BEQ R0, R0, L_bc_a785f345_done
+L_bc_a785f345_use_global:
     ADD T3, GP, R0
-    BEQ R0, R0, L_load_f0_op45_t20_bank_done_f0_op46
-L_load_f0_op45_t20_use_stack_f0_op46:
+    BEQ R0, R0, L_bc_a785f345_done
+L_bc_a785f345_use_stack:
     ADD T3, SB, R0
-L_load_f0_op45_t20_bank_done_f0_op46:
+L_bc_a785f345_done:
 ; LOAD: Using bank register T3 for load
     LOAD T2, T3, T6
 ; Reload gep_new_bank_f0_op33_t16 from slot 9
@@ -211,17 +211,17 @@ L_load_f0_op45_t20_bank_done_f0_op46:
     ADDI SC, SC, 25
     LOAD T4, SB, SC
     LI T5, -1
-    BEQ T4, T5, L_store_f0_op50_use_global_f0_op51
+    BEQ T4, T5, L_bc_ebe08efa_use_global
     LI T0, -2
-    BEQ T4, T0, L_store_f0_op50_use_stack_f0_op51
+    BEQ T4, T0, L_bc_ebe08efa_use_stack
     ADD T1, T4, R0
-    BEQ R0, R0, L_store_f0_op50_bank_done_f0_op51
-L_store_f0_op50_use_global_f0_op51:
+    BEQ R0, R0, L_bc_ebe08efa_done
+L_bc_ebe08efa_use_global:
     ADD T1, GP, R0
-    BEQ R0, R0, L_store_f0_op50_bank_done_f0_op51
-L_store_f0_op50_use_stack_f0_op51:
+    BEQ R0, R0, L_bc_ebe08efa_done
+L_bc_ebe08efa_use_stack:
     ADD T1, SB, R0
-L_store_f0_op50_bank_done_f0_op51:
+L_bc_ebe08efa_done:
     STORE T2, T1, S0
     BEQ R0, R0, L_memcpy_3
 ; Unconditional branch to L_memcpy_3
@@ -231,7 +231,7 @@ L_store_f0_op50_bank_done_f0_op51:
 L_memcpy_3:
 ; Load instruction: t21 = load FatPtr(FatPointer { addr: Temp(10), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(10), bank: Stack })
-; LOAD: Pointer load_src_ptr_f0_op55_t21 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f0_op53_t21 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t10 at FP+7
     ADD T5, FP, R0
