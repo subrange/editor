@@ -150,16 +150,62 @@ impl IrBuilder {
             _ => BankTag::Mixed,         // Dynamic offset results in Mixed bank
         };
         
+        // Determine the source element type from the result_type
+        // If result_type is FatPtr<T>, then we're indexing an array/pointer of T
+        let source_element_type = if let Some(elem_type) = result_type.element_type() {
+            // The result points to type T, so we're indexing elements of type T
+            elem_type.clone()
+        } else {
+            // Fallback: if result isn't a pointer, use I16 (word-level addressing)
+            IrType::I16
+        };
+        
         let instr = Instruction::GetElementPtr { 
             result, 
             ptr: ptr.clone(), 
             indices: vec![offset], 
             result_type: result_type.clone(),
+            source_element_type,
+            is_struct_field: false,  // Regular pointer offset, not struct field
         };
         
         self.add_instruction(instr)?;
         
         // Return a fat pointer with the correct bank tag
+        Ok(Value::FatPtr(FatPointer {
+            addr: Box::new(Value::Temp(result)),
+            bank: result_bank,
+        }))
+    }
+    
+    /// Build a GEP for struct field access
+    /// The offset is the field offset in words (pre-computed by frontend)
+    /// The struct_type is the type of the struct being accessed
+    pub fn build_struct_field_gep(&mut self, struct_ptr: Value, field_offset: i64, struct_type: IrType, field_type: IrType) -> Result<Value, String> {
+        let result = self.new_temp();
+        
+        // Extract bank from struct pointer
+        let bank = if let Value::FatPtr(ref fat_ptr) = struct_ptr {
+            fat_ptr.bank
+        } else {
+            return Err(format!("Struct pointer must be a fat pointer, got: {struct_ptr:?}"));
+        };
+        
+        // For struct field access, the offset is constant and small
+        // so we keep the same bank tag
+        let result_bank = bank;
+        
+        let instr = Instruction::GetElementPtr { 
+            result, 
+            ptr: struct_ptr.clone(), 
+            indices: vec![Value::Constant(field_offset)],
+            result_type: field_type.clone(),
+            source_element_type: struct_type, // The struct type, not the field type!
+            is_struct_field: true,  // This is struct field access
+        };
+        
+        self.add_instruction(instr)?;
+        
         Ok(Value::FatPtr(FatPointer {
             addr: Box::new(Value::Temp(result)),
             bank: result_bank,
@@ -178,11 +224,23 @@ impl IrBuilder {
             }
         });
         
+        // Determine the source element type from the result_type
+        // If result_type is FatPtr<T>, then we're indexing an array/pointer of T
+        let source_element_type = if let Some(elem_type) = result_type.element_type() {
+            // The result points to type T, so we're indexing elements of type T
+            elem_type.clone()
+        } else {
+            // Fallback: if result isn't a pointer, use I16 (word-level addressing)
+            IrType::I16
+        };
+        
         let instr = Instruction::GetElementPtr { 
             result, 
             ptr: ptr.clone(), 
             indices: vec![offset], 
             result_type: result_type.clone(),
+            source_element_type,
+            is_struct_field: false,  // Regular pointer offset with explicit bank
         };
         
         self.add_instruction(instr)?;

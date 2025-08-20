@@ -51,11 +51,18 @@ pub enum Instruction {
     /// Get element pointer: result = getelementptr ptr, index
     /// Input ptr must be a FatPtr, result will be stored as temp but represents a fat pointer
     /// The backend must handle bank overflow when computing the final address
+    /// 
+    /// CRITICAL: The `source_element_type` tells us what we're indexing INTO:
+    /// - For array[i]: source is array element type, index gets multiplied by its size
+    /// - For struct.field: source is struct type, index is the field offset in words
+    /// - For ptr + n: source is pointed-to type, index gets multiplied by its size
     GetElementPtr {
         result: TempId,          // Result temp that will hold the computed address
         ptr: Value,              // Must be a FatPtr with bank info
         indices: Vec<Value>,     // Offsets to apply
         result_type: IrType,     // Type of the result pointer
+        source_element_type: IrType, // Type of element being indexed (what ptr points to)
+        is_struct_field: bool,   // True if this is struct field access (offset in words), false for array/pointer indexing
     },
     
     /// Allocate stack memory: result = alloca type, count
@@ -151,14 +158,17 @@ impl fmt::Display for Instruction {
                 // For stores, we print: store <value>, <type>* <ptr>
                 write!(f, "store {value}, i16* {ptr}")
             }
-            Instruction::GetElementPtr { result, ptr, indices, result_type: _ } => {
-                write!(f, "%{result} = getelementptr {ptr}")?;
+            Instruction::GetElementPtr { result, ptr, indices, result_type: _, source_element_type, is_struct_field } => {
+                write!(f, "%{result} = getelementptr {source_element_type}, {ptr}")?;
                 for index in indices {
                     write!(f, ", {index}")?;
                 }
                 // Bank info is in the ptr if it's a FatPtr
                 if let Value::FatPtr(ref fp) = ptr {
                     write!(f, " ; bank={:?}", fp.bank)?;
+                }
+                if *is_struct_field {
+                    write!(f, " ; struct-field")?;
                 }
                 Ok(())
             }

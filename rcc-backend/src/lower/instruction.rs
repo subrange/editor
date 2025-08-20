@@ -81,53 +81,28 @@ pub fn lower_instruction(
             insts.extend(store_insts);
         }
         
-        Instruction::GetElementPtr { result, ptr, indices, result_type } => {
-            debug!("V2: GEP: t{result} = gep {ptr:?} + {indices:?}");
+        Instruction::GetElementPtr { result, ptr, indices, result_type: _, source_element_type, is_struct_field } => {
+            debug!("V2: GEP: t{result} = gep {source_element_type:?}, {ptr:?} + {indices:?}, is_struct_field={is_struct_field}");
             
-            // CRITICAL: The element size must be computed based on what we're indexing INTO.
-            // The result_type tells us what we get AFTER indexing, but we need to know
-            // the size of elements in the container we're indexing.
-            //
-            // For GEP on ptr_to_array[idx]:
-            //   - We're indexing into an array
-            //   - Element size = size of array element
-            //
-            // For GEP on ptr_to_struct[field_offset]:
-            //   - The index IS the offset in words (pre-computed by frontend)
-            //   - Element size = 1 (no multiplication needed)
+            // CRITICAL: The is_struct_field flag tells us how to interpret the index:
+            // - true: index is the pre-computed field offset in words
+            // - false: index is array/pointer index that needs multiplication
             
-            // Compute element size based on the result type
-            // The key insight: if result is FatPtr<T>, we were indexing an array of T
+            // Compute element size based on whether this is struct field access
             let element_size = if indices.len() == 1 {
-                // Single index GEP
-                if let Some(result_elem) = result_type.element_type() {
-                    // Result is FatPtr<T>, so we were indexing an array of T
-                    // Element size is the size of T
-                    let size = result_elem.size_in_words()
+                if *is_struct_field {
+                    // For struct field access, the index IS the offset in words
+                    // No multiplication needed
+                    debug!("  GEP is struct field access (offset in words)");
+                    1
+                } else {
+                    // For array indexing and pointer arithmetic,
+                    // multiply index by the size of source_element_type
+                    let size = source_element_type.size_in_words()
                         .and_then(|s| if s > 0 { Some(s as i16) } else { None })
                         .unwrap_or(1);
-                    
-                    // Special case: struct field access
-                    // If we have a small constant index and the result points to a struct,
-                    // this is likely struct field access where the index is already the offset
-                    if let Value::Constant(idx) = &indices[0] {
-                        if *idx < 100 && matches!(result_elem, rcc_frontend::ir::IrType::Struct { .. }) {
-                            debug!("  GEP looks like struct field access (small index, struct result), using element_size = 1");
-                            1
-                        } else {
-                            debug!("  GEP into array, element size = {size} words (size of {:?})", result_elem);
-                            size
-                        }
-                    } else {
-                        // Dynamic index - definitely array access
-                        debug!("  GEP with dynamic index, element size = {size} words");
-                        size
-                    }
-                } else {
-                    // No element type - result might not be a pointer
-                    // This can happen for computed addresses or offsets
-                    debug!("  GEP result type {:?} is not a pointer, using element_size = 1", result_type);
-                    1
+                    debug!("  GEP is array indexing/pointer arithmetic, element size = {size} words (size of {source_element_type:?})");
+                    size
                 }
             } else {
                 // Multi-index GEP not supported

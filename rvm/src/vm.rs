@@ -1216,3 +1216,20 @@ impl Drop for VM {
         }
     }
 }
+
+/// Install a panic hook to ensure terminal cleanup
+pub fn install_terminal_cleanup_hook() {
+    use std::panic;
+    
+    let original_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        // Try to restore terminal before panicking
+        let _ = terminal::disable_raw_mode();
+        let _ = std::io::stderr().execute(cursor::Show);
+        let _ = std::io::stderr().execute(terminal::LeaveAlternateScreen);
+        let _ = std::io::stderr().execute(ResetColor);
+        
+        // Call the original panic hook
+        original_hook(panic_info);
+    }));
+}

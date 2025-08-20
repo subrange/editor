@@ -15,6 +15,31 @@ use vm::VM;
 use constants::{DEFAULT_BANK_SIZE, DEFAULT_MEMORY_SIZE};
 use debug::Debugger;
 use colored::*;
+use crossterm::{terminal, cursor, style::ResetColor, ExecutableCommand};
+
+/// Install signal handlers to ensure terminal cleanup on exit
+fn install_signal_handlers() {
+    use signal_hook::{consts::SIGTERM, consts::SIGINT, iterator::Signals};
+    use std::thread;
+    
+    // Try to install signal handlers, but don't fail if it doesn't work
+    // (e.g., on some platforms or in some environments)
+    if let Ok(mut signals) = Signals::new(&[SIGINT, SIGTERM]) {
+        thread::spawn(move || {
+            for _ in signals.forever() {
+                // Restore terminal before exiting
+                let _ = terminal::disable_raw_mode();
+                let _ = io::stderr().execute(cursor::Show);
+                let _ = io::stderr().execute(terminal::LeaveAlternateScreen);
+                let _ = io::stderr().execute(ResetColor);
+                let _ = io::stderr().flush();
+                
+                // Exit the process
+                process::exit(130); // 128 + SIGINT(2) = 130
+            }
+        });
+    }
+}
 
 fn print_usage() {
     eprintln!("Usage: rvm [OPTIONS] <binary-file>");
@@ -49,6 +74,10 @@ fn print_usage() {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Install terminal cleanup hooks
+    vm::install_terminal_cleanup_hook();
+    install_signal_handlers();
+    
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 2 {
@@ -293,6 +322,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Execution completed");
         println!("Final state: {:?}", vm.state);
     }
+    
+    // Explicitly ensure terminal is restored before exit
+    // This handles cases where Drop might not be called
+    let _ = terminal::disable_raw_mode();
+    let _ = io::stderr().execute(cursor::Show);
+    let _ = io::stderr().execute(terminal::LeaveAlternateScreen);
+    let _ = io::stderr().execute(ResetColor);
+    let _ = io::stderr().flush();
     
     Ok(())
 }

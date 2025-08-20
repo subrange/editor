@@ -313,6 +313,21 @@ pub fn generate_lvalue_address(
         } => {
             // For struct member lvalue, calculate the field address using GEP
             
+            // Get the struct type from the object
+            let struct_type = if *is_pointer {
+                // For -> operator, object type is Pointer<Struct>
+                match object.get_type() {
+                    Type::Pointer { target, .. } => &**target,
+                    _ => object.get_type(), // Shouldn't happen, but fallback
+                }
+            } else {
+                // For . operator, object type is Struct
+                object.get_type()
+            };
+            
+            // Convert struct type to IR type
+            let struct_ir_type = convert_type_default(struct_type)?;
+            
             // Get pointer to the struct
             let struct_ptr = if *is_pointer {
                 // Object is already a pointer (-> operator)
@@ -323,14 +338,14 @@ pub fn generate_lvalue_address(
                 generate_lvalue_address(gen, object)?
             };
             
-            // Field offset is a compile-time constant (in words)
-            let offset_val = Value::Constant(*offset as i64);
-            
-            // Generate GEP for field address
+            // Convert field type to IR type
             let field_type_ir = convert_type_default(expr_type)?;
-            Ok(gen.builder.build_pointer_offset(
+            
+            // Use build_struct_field_gep for proper struct field access
+            Ok(gen.builder.build_struct_field_gep(
                 struct_ptr,
-                offset_val,
+                *offset as i64,
+                struct_ir_type,
                 field_type_ir
             )?)
         }
