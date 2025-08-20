@@ -84,14 +84,32 @@ pub fn generate_declaration(
                 let mut expr_gen = gen.create_expression_generator();
                 let init_val = expr_gen.generate(init_expr)?;
                 
-                // Check if we're initializing a struct from a compound literal
-                // Compound literals return pointers, but struct variables need values
-                if matches!(var_type, Type::Struct { .. }) && matches!(init_expr, TypedExpr::CompoundLiteral { .. }) {
-                    // We have a struct variable and a compound literal initializer
-                    // The compound literal returns a pointer to the struct
-                    // Use the helper function to copy struct contents
-                    let mut expr_gen_for_copy = gen.create_expression_generator();
-                    crate::codegen::expressions::copy_struct(&mut expr_gen_for_copy, init_val, var_addr.clone(), var_type)?;
+                // Check if we're initializing a struct
+                if matches!(var_type, Type::Struct { .. }) {
+                    // For struct initialization, we need to handle different cases:
+                    // 1. Compound literals return pointers
+                    // 2. Function calls that return structs should copy the struct
+                    // 3. Other struct expressions (like variables) return pointers
+                    
+                    match init_expr {
+                        TypedExpr::Call { expr_type, .. } if matches!(expr_type, Type::Struct { .. }) => {
+                            // Function call returning a struct
+                            // The function returns a pointer to the struct, we need to copy it
+                            let mut expr_gen_for_copy = gen.create_expression_generator();
+                            crate::codegen::expressions::copy_struct(&mut expr_gen_for_copy, init_val, var_addr.clone(), var_type)?;
+                        }
+                        TypedExpr::CompoundLiteral { .. } => {
+                            // Compound literal returns a pointer to the struct
+                            let mut expr_gen_for_copy = gen.create_expression_generator();
+                            crate::codegen::expressions::copy_struct(&mut expr_gen_for_copy, init_val, var_addr.clone(), var_type)?;
+                        }
+                        _ => {
+                            // Other struct expressions (variables, etc.) return pointers
+                            // Copy the struct contents
+                            let mut expr_gen_for_copy = gen.create_expression_generator();
+                            crate::codegen::expressions::copy_struct(&mut expr_gen_for_copy, init_val, var_addr.clone(), var_type)?;
+                        }
+                    }
                 } else {
                     // Normal case: store the value directly
                     gen.builder.build_store(init_val, var_addr)?;

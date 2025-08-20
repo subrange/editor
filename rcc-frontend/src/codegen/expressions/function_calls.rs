@@ -49,6 +49,13 @@ pub fn generate_function_call(
                     addr: Box::new(Value::Temp(temp_id)),
                     bank: BankTag::Mixed,
                 }))
+            } else if matches!(return_type, Type::Struct { .. }) {
+                // For struct returns, the function returns a pointer to the struct
+                // Wrap it as a FatPtr with Stack bank
+                Ok(Value::FatPtr(FatPointer {
+                    addr: Box::new(Value::Temp(temp_id)),
+                    bank: BankTag::Stack,
+                }))
             } else {
                 Ok(Value::Temp(temp_id))
             }
