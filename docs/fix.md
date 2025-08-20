@@ -1,2 +1,3 @@
 - Struct initializers
 - Missing ^= assignment operators
+- static keyword1

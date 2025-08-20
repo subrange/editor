@@ -12,7 +12,7 @@ pub fn generate_pointer_arithmetic(
     gen: &mut TypedExpressionGenerator,
     ptr: &TypedExpr,
     offset: &TypedExpr,
-    _elem_type: &Type,
+    elem_type: &Type,
     is_add: bool,
     expr_type: &Type,
 ) -> Result<Value, CompilerError> {
@@ -20,8 +20,20 @@ pub fn generate_pointer_arithmetic(
     let ptr_val = gen.generate(ptr)?;
     let offset_val = gen.generate(offset)?;
     
-    // For pointer arithmetic, use GEP instruction
-    let ir_type = convert_type_default(expr_type)?;
+    // CRITICAL FIX: Check if we're doing arithmetic on a pointer to an array.
+    // If so, we need to handle array decay - the array should decay to a pointer
+    // to its first element for arithmetic purposes.
+    let ir_type = if let Type::Array { element_type, .. } = elem_type {
+        // Array decay: when doing arithmetic on a pointer to an array,
+        // treat it as arithmetic on a pointer to the array's element type
+        convert_type_default(&Type::Pointer {
+            target: element_type.clone(),
+            bank: None,
+        })?
+    } else {
+        // Normal case: use the expr_type from semantic analysis
+        convert_type_default(expr_type)?
+    };
     
     // Handle add vs subtract
     let final_offset = if is_add {

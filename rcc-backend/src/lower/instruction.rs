@@ -88,61 +88,95 @@ pub fn lower_instruction(
             // For struct field access, the index IS the offset in words, not an array index.
             // For array indexing, we need to multiply by the element size.
             
-            // Determine if this is struct field access or array indexing
-            // The key insight: struct field GEPs come from accessing fields of structs,
-            // while array GEPs come from pointer arithmetic or array indexing.
-            // 
-            // We can detect struct field access by checking if:
-            // 1. We have a single constant index
-            // 2. The base pointer type is a struct
+            // The element size should be based on what we're indexing INTO, not the result type.
+            // If we're doing GEP on a pointer to an array, we need the array's element size.
+            // If we're doing GEP on a pointer to a struct, the index is already the offset.
             
-            let element_size = if indices.len() == 1 && matches!(indices[0], Value::Constant(_)) {
-                // Single constant index - could be struct field or array access
-                // Check the base pointer type to determine which
-                
-                // For struct field access, the index is already the offset in words
-                // For array access, we need to multiply by element size
-                
-                // Since we can't easily determine the base pointer type here,
-                // we use a heuristic: if the result type is a pointer and the index
-                // is small (typical for struct field offsets), treat it as struct field access
-                
-                if let Some(elem_type) = result_type.element_type() {
-                    // Result is a pointer type
-                    if let Value::Constant(idx) = &indices[0] {
-                        // Small constant indices (< 100) are likely struct field offsets
-                        // Large indices are likely array accesses
-                        if *idx < 100 {
-                            debug!("  GEP looks like struct field access (small constant index), using element_size = 1");
-                            1
-                        } else {
-                            // Large index - likely array access
-                            let size_words = elem_type.size_in_words().unwrap_or(1) as i16;
-                            debug!("  GEP looks like array access (large constant index), element size = {size_words} words");
-                            if size_words == 0 { 1 } else { size_words }
-                        }
-                    } else {
-                        1 // Shouldn't happen due to matches! guard
-                    }
-                } else {
-                    // Not a pointer result - assume struct field access
-                    debug!("  GEP with non-pointer result, using element_size = 1");
-                    1
+            // Try to determine the type we're indexing into
+            let _base_type: Option<()> = match ptr {
+                Value::Temp(_t) => {
+                    // Check if we have type info for this temp
+                    // For now, we'll have to use heuristics
+                    None
                 }
-            } else if indices.len() == 1 && matches!(indices[0], Value::Temp(_)) {
-                // Dynamic index - this is array indexing
-                if let Some(elem_type) = result_type.element_type() {
-                    let size_words = elem_type.size_in_words().unwrap_or(1) as i16;
-                    debug!("  GEP with dynamic index (array access), element size = {size_words} words");
-                    if size_words == 0 { 1 } else { size_words }
-                } else {
-                    debug!("  GEP with dynamic index but no element type, using element_size = 1");
-                    1
+                Value::FatPtr(_fp) => {
+                    // Fat pointer - we don't have type info here
+                    None
+                }
+                _ => None
+            };
+            
+            let element_size = if indices.len() == 1 {
+                match &indices[0] {
+                    Value::Constant(idx) if *idx < 100 => {
+                        // Small constant index - likely struct field offset or array of small elements
+                        // Check the result type to get a hint
+                        if let Some(result_elem) = result_type.element_type() {
+                            // Result is FatPtr<T>
+                            // If T is a simple type like I16, and we have a small index,
+                            // this is likely array indexing into an array of I16
+                            match result_elem {
+                                rcc_frontend::ir::IrType::I16 | 
+                                rcc_frontend::ir::IrType::I8 | 
+                                rcc_frontend::ir::IrType::I32 => {
+                                    // Simple scalar result - probably array indexing
+                                    debug!("  GEP with small index into scalar array, using element_size = 1");
+                                    1
+                                }
+                                rcc_frontend::ir::IrType::Array { .. } => {
+                                    // Result is pointer to array - we're indexing an array of arrays
+                                    let size_words = result_elem.size_in_words()
+                                        .and_then(|s| if s > 0 { Some(s as i16) } else { None })
+                                        .unwrap_or(1);
+                                    debug!("  GEP into array of arrays, element size = {size_words} words");
+                                    size_words
+                                }
+                                _ => {
+                                    // Struct or other - treat index as offset
+                                    debug!("  GEP looks like struct field access, using element_size = 1");
+                                    1
+                                }
+                            }
+                        } else {
+                            // No element type - use 1
+                            debug!("  GEP with no result element type, using element_size = 1");
+                            1
+                        }
+                    }
+                    Value::Constant(_idx) => {
+                        // Large constant index - definitely array access
+                        if let Some(elem_type) = result_type.element_type() {
+                            let size_words = elem_type.size_in_words()
+                                .and_then(|s| if s > 0 { Some(s as i16) } else { None })
+                                .unwrap_or(1);
+                            debug!("  GEP with large constant index (array access), element size = {size_words} words");
+                            size_words
+                        } else {
+                            debug!("  GEP with large index but no element type, using element_size = 1");
+                            1
+                        }
+                    }
+                    Value::Temp(_) => {
+                        // Dynamic index - this is array indexing
+                        if let Some(elem_type) = result_type.element_type() {
+                            let size_words = elem_type.size_in_words()
+                                .and_then(|s| if s > 0 { Some(s as i16) } else { None })
+                                .unwrap_or(1);
+                            debug!("  GEP with dynamic index (array access), element size = {size_words} words");
+                            size_words
+                        } else {
+                            debug!("  GEP with dynamic index but no element type, using element_size = 1");
+                            1
+                        }
+                    }
+                    _ => {
+                        debug!("  GEP with unexpected index type, using element_size = 1");
+                        1
+                    }
                 }
             } else {
-                // Default case - use element_size = 1
-                debug!("  GEP default case, using element_size = 1");
-                1
+                // Multi-index GEP not supported
+                panic!("Multi-index GEP not supported by backend");
             };
             
             // Canonicalize pointer to resolve any global references

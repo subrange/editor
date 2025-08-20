@@ -199,55 +199,103 @@ impl BinaryOperationAnalyzer {
         right_type: &Type,
         location: &SourceLocation,
     ) -> Result<Type, CompilerError> {
+        // CRITICAL: Handle array decay - arrays decay to pointers in arithmetic contexts
+        // When p[0] returns an array, it should decay to a pointer for arithmetic
+        let left_decayed = if let Type::Array { element_type, .. } = left_type {
+            Type::Pointer {
+                target: element_type.clone(),
+                bank: None,
+            }
+        } else {
+            left_type.clone()
+        };
+        
+        let right_decayed = if let Type::Array { element_type, .. } = right_type {
+            Type::Pointer {
+                target: element_type.clone(),
+                bank: None,
+            }
+        } else {
+            right_type.clone()
+        };
+        
         // Case 1: Integer + Integer
-        if self.type_analyzer.borrow().is_integer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
-            return Ok(self.type_analyzer.borrow().arithmetic_result_type(left_type, right_type));
+        if self.type_analyzer.borrow().is_integer(&left_decayed) && self.type_analyzer.borrow().is_integer(&right_decayed) {
+            return Ok(self.type_analyzer.borrow().arithmetic_result_type(&left_decayed, &right_decayed));
         }
 
-        // Case 2: Pointer + Integer
-        if self.type_analyzer.borrow().is_pointer(left_type) && self.type_analyzer.borrow().is_integer(right_type) {
+        // Case 2: Pointer + Integer (after array decay)
+        if self.type_analyzer.borrow().is_pointer(&left_decayed) && self.type_analyzer.borrow().is_integer(&right_decayed) {
             // Verify the pointer target has a known size
-            if let Some(target) = self.type_analyzer.borrow().pointer_target(left_type) {
+            if let Some(target) = self.type_analyzer.borrow().pointer_target(&left_decayed) {
                 if target.size_in_words().is_none() {
                     return Err(SemanticError::InvalidOperation {
                         operation: "pointer arithmetic on incomplete type".to_string(),
-                        operand_type: left_type.clone(),
+                        operand_type: left_decayed.clone(),
                         location: location.clone(),
                     }
                     .into());
                 }
+                
+                // CRITICAL FIX: If pointer points to an array, arithmetic on it
+                // should yield a pointer to the array's element type, not to the array itself.
+                // For example: int (*p)[3] + 1 should give int*, not int (*)[3]
+                if let Type::Array { element_type, .. } = &target {
+                    return Ok(Type::Pointer {
+                        target: element_type.clone(),
+                        bank: if let Type::Pointer { bank, .. } = &left_decayed {
+                            bank.clone()
+                        } else {
+                            None
+                        }
+                    });
+                }
             }
-            return Ok(left_type.clone());
+            return Ok(left_decayed.clone());
         }
 
-        // Case 3: Integer + Pointer (only for Add, commutative)
-        if self.type_analyzer.borrow().is_integer(left_type) && self.type_analyzer.borrow().is_pointer(right_type) && op == BinaryOp::Add {
+        // Case 3: Integer + Pointer (only for Add, commutative, after array decay)
+        if self.type_analyzer.borrow().is_integer(&left_decayed) && self.type_analyzer.borrow().is_pointer(&right_decayed) && op == BinaryOp::Add {
             // Verify the pointer target has a known size
-            if let Some(target) = self.type_analyzer.borrow().pointer_target(right_type) {
+            if let Some(target) = self.type_analyzer.borrow().pointer_target(&right_decayed) {
                 if target.size_in_words().is_none() {
                     return Err(SemanticError::InvalidOperation {
                         operation: "pointer arithmetic on incomplete type".to_string(),
-                        operand_type: right_type.clone(),
+                        operand_type: right_decayed.clone(),
                         location: location.clone(),
                     }
                     .into());
                 }
+                
+                // CRITICAL FIX: If pointer points to an array, arithmetic on it
+                // should yield a pointer to the array's element type, not to the array itself.
+                // For example: int (*p)[3] + 1 should give int*, not int (*)[3]
+                if let Type::Array { element_type, .. } = &target {
+                    return Ok(Type::Pointer {
+                        target: element_type.clone(),
+                        bank: if let Type::Pointer { bank, .. } = &right_decayed {
+                            bank.clone()
+                        } else {
+                            None
+                        }
+                    });
+                }
             }
-            return Ok(right_type.clone());
+            return Ok(right_decayed.clone());
         }
 
-        // Case 4: Pointer - Pointer (only for Sub)
-        if self.type_analyzer.borrow().is_pointer(left_type) && self.type_analyzer.borrow().is_pointer(right_type) && op == BinaryOp::Sub {
+        // Case 4: Pointer - Pointer (only for Sub, after array decay)
+        if self.type_analyzer.borrow().is_pointer(&left_decayed) && self.type_analyzer.borrow().is_pointer(&right_decayed) && op == BinaryOp::Sub {
             // Both pointers must point to compatible types
-            let left_target = self.type_analyzer.borrow().pointer_target(left_type);
-            let right_target = self.type_analyzer.borrow().pointer_target(right_type);
+            let left_target = self.type_analyzer.borrow().pointer_target(&left_decayed);
+            let right_target = self.type_analyzer.borrow().pointer_target(&right_decayed);
 
             if let (Some(left_elem), Some(right_elem)) = (left_target, right_target) {
                 // Check if element types are compatible
                 if !self.are_types_compatible(&left_elem, &right_elem) {
                     return Err(SemanticError::InvalidOperation {
                         operation: "subtracting pointers to incompatible types".to_string(),
-                        operand_type: left_type.clone(),
+                        operand_type: left_decayed.clone(),
                         location: location.clone(),
                     }
                     .into());
@@ -257,7 +305,7 @@ impl BinaryOperationAnalyzer {
                 if left_elem.size_in_words().is_none() {
                     return Err(SemanticError::InvalidOperation {
                         operation: "pointer difference on incomplete type".to_string(),
-                        operand_type: left_type.clone(),
+                        operand_type: left_decayed.clone(),
                         location: location.clone(),
                     }
                     .into());
@@ -270,7 +318,7 @@ impl BinaryOperationAnalyzer {
 
         Err(SemanticError::InvalidOperation {
             operation: format!("{op}"),
-            operand_type: left_type.clone(),
+            operand_type: left_decayed.clone(),
             location: location.clone(),
         }
         .into())
