@@ -1,6 +1,7 @@
 use std::collections::{VecDeque, HashMap};
 use ripple_asm::Register;
 use crate::constants::*;
+use crate::display_rgb565::RGB565Display;
 use crossterm::{
     terminal::{self, ClearType},
     cursor,
@@ -111,6 +112,10 @@ pub struct VM {
     // Keyboard state (for TEXT40 mode)
     keyboard_state: KeyboardState,
     
+    // RGB565 display
+    pub rgb565_display: Option<RGB565Display>,
+    pub display_resolution: u16, // hi8=width, lo8=height
+    
     // Debug information: maps instruction indices to function names
     pub debug_symbols: std::collections::HashMap<usize, String>,
 }
@@ -142,6 +147,8 @@ impl VM {
             terminal_raw_mode: false,
             terminal_saved_screen: false,
             keyboard_state: KeyboardState::default(),
+            rgb565_display: None,
+            display_resolution: 0,
             debug_symbols: HashMap::new(),
         }
     }
@@ -437,7 +444,11 @@ impl VM {
                 self.memory[addr] = value;
                 Some(value)
             },
-            16..=31 => Some(0), // Reserved addresses return 0
+            HDR_DISP_RESOLUTION => {
+                self.memory[HDR_DISP_RESOLUTION] = self.display_resolution;
+                Some(self.display_resolution)
+            },
+            17..=31 => Some(0), // Reserved addresses return 0
             _ => None, // Not an MMIO address
         }
     }
@@ -478,7 +489,7 @@ impl VM {
                 true
             },
             HDR_DISP_MODE => {
-                let new_mode = value & 0x3; // Only keep lower 2 bits
+                let new_mode = value & 0x3; // Support 4 modes (0-3)
                 if new_mode != self.display_mode {
                     // Mode change - handle terminal setup/teardown
                     self.handle_display_mode_change(new_mode);
@@ -506,9 +517,12 @@ impl VM {
             HDR_DISP_FLUSH => {
                 if value != 0 {
                     self.display_flush_done = false;
-                    // In a real implementation, this would trigger display rendering
-                    // For now, we just simulate completion
-                    self.flush_text40_display();
+                    // Trigger display rendering based on mode
+                    if self.display_mode == DISP_TEXT40 {
+                        self.flush_text40_display();
+                    } else if self.display_mode == DISP_RGB565 {
+                        self.flush_rgb565_display();
+                    }
                     self.display_flush_done = true;
                 }
                 true
@@ -516,25 +530,66 @@ impl VM {
             HDR_KEY_UP | HDR_KEY_DOWN | HDR_KEY_LEFT | HDR_KEY_RIGHT | HDR_KEY_Z | HDR_KEY_X => {
                 true // Read-only keyboard flags, ignore writes
             },
-            10..=31 => true, // Reserved addresses, ignore writes
+            HDR_DISP_RESOLUTION => {
+                // Set display resolution for RGB565 mode
+                self.display_resolution = value;
+                self.memory[HDR_DISP_RESOLUTION] = value;
+                true
+            },
+            17..=31 => true, // Reserved addresses, ignore writes
             _ => false, // Not an MMIO address
         }
     }
     
-    // Handle display mode changes (entering/exiting TEXT40 mode)
+    // Handle display mode changes
     fn handle_display_mode_change(&mut self, new_mode: u16) {
-        
-        
         // Exit current mode
-        if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
-            // Restore terminal
-            self.exit_text40_mode();
+        match self.display_mode {
+            DISP_TEXT40 if self.terminal_raw_mode => {
+                self.exit_text40_mode();
+            },
+            DISP_RGB565 => {
+                // Shutdown RGB565 display
+                if let Some(mut display) = self.rgb565_display.take() {
+                    display.shutdown();
+                }
+            },
+            _ => {}
         }
         
         // Enter new mode
-        if new_mode == DISP_TEXT40 && !self.terminal_raw_mode {
-            // Setup terminal for TEXT40
-            self.enter_text40_mode();
+        match new_mode {
+            DISP_TEXT40 if !self.terminal_raw_mode => {
+                self.enter_text40_mode();
+            },
+            DISP_RGB565 => {
+                // Initialize RGB565 display
+                let width = ((self.display_resolution >> 8) & 0xFF) as u8;
+                let height = (self.display_resolution & 0xFF) as u8;
+                
+                eprintln!("Setting RGB565 mode with resolution {}x{}", width, height);
+                
+                if width > 0 && height > 0 {
+                    // Use existing display if available, or create new one
+                    if self.rgb565_display.is_none() {
+                        self.rgb565_display = Some(RGB565Display::new());
+                    }
+                    
+                    if let Some(ref mut display) = self.rgb565_display {
+                        if let Err(e) = display.init(width, height, self.bank_size as usize) {
+                            eprintln!("Failed to initialize RGB565 display: {}", e);
+                            // Reset to OFF mode on failure
+                            self.display_mode = DISP_OFF;
+                            return;
+                        }
+                        eprintln!("RGB565 display initialized successfully: {}x{}", width, height);
+                    }
+                } else {
+                    eprintln!("Invalid display resolution: {}x{}", width, height);
+                    self.display_mode = DISP_OFF;
+                }
+            },
+            _ => {}
         }
     }
     
@@ -637,6 +692,18 @@ impl VM {
         
         self.terminal_raw_mode = false;
         self.terminal_saved_screen = false;
+    }
+    
+    // Flush RGB565 display (swap buffers)
+    fn flush_rgb565_display(&mut self) {
+        if let Some(ref mut display) = self.rgb565_display {
+            display.flush();
+            if self.verbose {
+                eprintln!("RGB565: Flushed display");
+            }
+        } else {
+            eprintln!("Warning: flush_rgb565_display called but no display initialized");
+        }
     }
     
     // Render TEXT40 display to terminal
@@ -900,6 +967,23 @@ impl VM {
                             // Regular memory read for VRAM and other bank 0 addresses
                             self.registers[rd] = self.memory[addr_val as usize];
                         }
+                    } else if bank_val == 0 && self.display_mode == DISP_RGB565 {
+                        // Check if this is RGB565 framebuffer access
+                        if let Some(ref display) = self.rgb565_display {
+                            if let Some(value) = display.read_memory(addr_val as usize) {
+                                self.registers[rd] = value;
+                            } else {
+                                // Regular memory access
+                                let mem_addr = addr_val as usize;
+                                if mem_addr < self.memory.len() {
+                                    self.registers[rd] = self.memory[mem_addr];
+                                } else {
+                                    return Err(format!("LOAD: memory address out of bounds: {mem_addr}"));
+                                }
+                            }
+                        } else {
+                            self.registers[rd] = 0;
+                        }
                     } else {
                         // Regular memory access for non-bank-0
                         let mem_addr = (bank_val as usize * self.bank_size as usize) + addr_val as usize;
@@ -926,6 +1010,19 @@ impl VM {
                         if !self.handle_mmio_write(addr_val as usize, value) {
                             // Regular memory write for VRAM and other bank 0 addresses
                             self.memory[addr_val as usize] = value;
+                        }
+                    } else if bank_val == 0 && self.display_mode == DISP_RGB565 {
+                        // Check if this is RGB565 framebuffer access
+                        if let Some(ref mut display) = self.rgb565_display {
+                            display.write_memory(addr_val as usize, value);
+                        } else {
+                            // Regular memory write
+                            let mem_addr = addr_val as usize;
+                            if mem_addr < self.memory.len() {
+                                self.memory[mem_addr] = value;
+                            } else {
+                                return Err(format!("STORE: memory address out of bounds: {mem_addr}"));
+                            }
                         }
                     } else {
                         // Regular memory access for non-bank-0
@@ -1232,13 +1329,18 @@ impl VM {
         // Clear keyboard state
         self.clear_keyboard_state();
         
-        // Reset display state (and exit TEXT40 mode if active)
+        // Reset display state (and exit any active display mode)
         if self.display_mode == DISP_TEXT40 && self.terminal_raw_mode {
             self.exit_text40_mode();
+        } else if self.display_mode == DISP_RGB565 {
+            if let Some(mut display) = self.rgb565_display.take() {
+                display.shutdown();
+            }
         }
         self.display_mode = DISP_OFF;
         self.display_enabled = false;
         self.display_flush_done = true;
+        self.display_resolution = 0;
         
         // Clear all memory (reset to zeros)
         self.memory.fill(0);

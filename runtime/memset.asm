@@ -119,21 +119,21 @@ L_memset_2:
     ADDI T0, T0, 2
     LOAD T2, SB, T0
     LI S3, -1
-    BEQ S2, S3, L_bc_df6a252d_use_global
+    BEQ S2, S3, L_bc_fffab08a_use_global
 ; Spill t2 to slot 2
     ADD SC, FP, R0
     ADDI SC, SC, 15
     STORE S1, SB, SC
     LI S1, -2
-    BEQ S2, S1, L_bc_df6a252d_use_stack
+    BEQ S2, S1, L_bc_fffab08a_use_stack
     ADD T5, S2, R0
-    BEQ R0, R0, L_bc_df6a252d_done
-L_bc_df6a252d_use_global:
+    BEQ R0, R0, L_bc_fffab08a_done
+L_bc_fffab08a_use_global:
     ADD T5, GP, R0
-    BEQ R0, R0, L_bc_df6a252d_done
-L_bc_df6a252d_use_stack:
+    BEQ R0, R0, L_bc_fffab08a_done
+L_bc_fffab08a_use_stack:
     ADD T5, SB, R0
-L_bc_df6a252d_done:
+L_bc_fffab08a_done:
     STORE T2, T5, T1
     BEQ R0, R0, L_memset_3
 ; Unconditional branch to L_memset_3

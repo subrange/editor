@@ -21,6 +21,9 @@
 #define MMIO_KEY_Z         14
 #define MMIO_KEY_X         15
 
+// Display resolution for RGB565 mode
+#define MMIO_DISP_RESOLUTION 16
+
 // Keyboard status bit
 #define KEY_PRESSED        (1 << 0)
 
@@ -28,6 +31,7 @@
 #define DISP_MODE_OFF    0
 #define DISP_MODE_TTY    1
 #define DISP_MODE_TEXT40 2
+#define DISP_MODE_RGB565 3
 
 // Display control bits
 #define DISP_CTL_ENABLE (1 << 0)

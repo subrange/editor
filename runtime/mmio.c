@@ -44,6 +44,11 @@ void display_set_mode(unsigned short mode) {
     mmio_write(MMIO_DISP_MODE, mode);
 }
 
+void display_set_resolution(unsigned char width, unsigned char height) {
+    unsigned short resolution = ((unsigned short)width << 8) | height;
+    mmio_write(MMIO_DISP_RESOLUTION, resolution);
+}
+
 void display_enable(void) {
     mmio_write(MMIO_DISP_CTL, DISP_CTL_ENABLE);
 }
@@ -189,4 +194,29 @@ int key_z_pressed(void) {
 
 int key_x_pressed(void) {
     return key_pressed(MMIO_KEY_X);
+}
+
+// RGB565 color helpers
+unsigned short rgb565_from_rgb(unsigned char r, unsigned char g, unsigned char b) {
+    // Convert 8-bit RGB values to RGB565 format
+    unsigned short r5 = (r >> 3) & 0x1F;
+    unsigned short g6 = (g >> 2) & 0x3F;
+    unsigned short b5 = (b >> 3) & 0x1F;
+    return (r5 << 11) | (g6 << 5) | b5;
+}
+
+void rgb565_set_pixel(unsigned short x, unsigned short y, unsigned short color, unsigned short width) {
+    // Calculate pixel address in back buffer
+    unsigned short buffer_size = width * width; // Assuming square for simplicity
+    unsigned short addr = 32 + buffer_size + (y * width + x);
+    mmio_write(addr, color);
+}
+
+void rgb565_fill_rect(unsigned short x, unsigned short y, unsigned short w, unsigned short h, 
+                       unsigned short color, unsigned short screen_width) {
+    for (unsigned short dy = 0; dy < h; dy++) {
+        for (unsigned short dx = 0; dx < w; dx++) {
+            rgb565_set_pixel(x + dx, y + dy, color, screen_width);
+        }
+    }
 }

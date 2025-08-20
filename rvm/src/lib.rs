@@ -6,6 +6,7 @@ pub mod settings;
 pub mod constants;
 pub mod debug;
 pub mod asm_formatter;
+pub mod display_rgb565;
 
 // Re-export commonly used types
 pub use vm::{VM, Instr};

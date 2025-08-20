@@ -8,25 +8,26 @@ The Ripple VM implements a memory-mapped I/O (MMIO) system with a dedicated 32-w
 
 ### MMIO Header (Bank 0, Words 0-31)
 
-| Address | Name                | R/W | Description                                      |
-|---------|---------------------|-----|--------------------------------------------------|
-| 0       | `HDR_TTY_OUT`       | W   | TTY output (low 8 bits written to stdout)        |
-| 1       | `HDR_TTY_STATUS`    | R   | TTY status (bit 0: ready flag)                   |
-| 2       | `HDR_TTY_IN_POP`    | R   | Pop and read next input byte                     |
-| 3       | `HDR_TTY_IN_STATUS` | R   | Input status (bit 0: has byte available)         |
-| 4       | `HDR_RNG`           | R   | Read next PRNG value (auto-advances)             |
-| 5       | `HDR_RNG_SEED`      | R/W | RNG seed (low 16 bits)                           |
-| 6       | `HDR_DISP_MODE`     | R/W | Display mode (0=OFF, 1=TTY, 2=TEXT40)            |
-| 7       | `HDR_DISP_STATUS`   | R   | Display status (bit 0: ready, bit 1: flush done) |
-| 8       | `HDR_DISP_CTL`      | R/W | Display control (bit 0: enable, bit 1: clear)    |
-| 9       | `HDR_DISP_FLUSH`    | W   | Trigger display flush (write non-zero)           |
-| 10      | `HDR_KEY_UP`        | R   | Arrow up key state (bit 0: 1=pressed, 0=released) |
-| 11      | `HDR_KEY_DOWN`      | R   | Arrow down key state (bit 0: 1=pressed, 0=released) |
-| 12      | `HDR_KEY_LEFT`      | R   | Arrow left key state (bit 0: 1=pressed, 0=released) |
-| 13      | `HDR_KEY_RIGHT`     | R   | Arrow right key state (bit 0: 1=pressed, 0=released) |
-| 14      | `HDR_KEY_Z`         | R   | Z key state (bit 0: 1=pressed, 0=released) |
-| 15      | `HDR_KEY_X`         | R   | X key state (bit 0: 1=pressed, 0=released) |
-| 16-31   | Reserved            | -   | Reserved for future use (return 0 on read)       |
+| Address | Name                  | R/W | Description                                           |
+|---------|-----------------------|-----|-------------------------------------------------------|
+| 0       | `HDR_TTY_OUT`         | W   | TTY output (low 8 bits written to stdout)             |
+| 1       | `HDR_TTY_STATUS`      | R   | TTY status (bit 0: ready flag)                        |
+| 2       | `HDR_TTY_IN_POP`      | R   | Pop and read next input byte                          |
+| 3       | `HDR_TTY_IN_STATUS`   | R   | Input status (bit 0: has byte available)              |
+| 4       | `HDR_RNG`             | R   | Read next PRNG value (auto-advances)                  |
+| 5       | `HDR_RNG_SEED`        | R/W | RNG seed (low 16 bits)                                |
+| 6       | `HDR_DISP_MODE`       | R/W | Display mode (0=OFF, 1=TTY, 2=TEXT40, 3=RGB565)       |
+| 7       | `HDR_DISP_STATUS`     | R   | Display status (bit 0: ready, bit 1: flush done)      |
+| 8       | `HDR_DISP_CTL`        | R/W | Display control (bit 0: enable, bit 1: clear)         |
+| 9       | `HDR_DISP_FLUSH`      | W   | Trigger display flush (write non-zero)                |
+| 10      | `HDR_KEY_UP`          | R   | Arrow up key state (bit 0: 1=pressed, 0=released)     |
+| 11      | `HDR_KEY_DOWN`        | R   | Arrow down key state (bit 0: 1=pressed, 0=released)   |
+| 12      | `HDR_KEY_LEFT`        | R   | Arrow left key state (bit 0: 1=pressed, 0=released)   |
+| 13      | `HDR_KEY_RIGHT`       | R   | Arrow right key state (bit 0: 1=pressed, 0=released)  |
+| 14      | `HDR_KEY_Z`           | R   | Z key state (bit 0: 1=pressed, 0=released)            |
+| 15      | `HDR_KEY_X`           | R   | X key state (bit 0: 1=pressed, 0=released)            |
+| 16      | `HDR_DISP_RESOLUTION` | R/W | Display resolution for RGB565 (hi8=width, lo8=height) |
+| 17-31   | Reserved              | -   | Reserved for future use (return 0 on read)            |
 
 ### TEXT40 VRAM (Bank 0, Words 32-1031)
 
@@ -34,7 +35,7 @@ The Ripple VM implements a memory-mapped I/O (MMIO) system with a dedicated 32-w
 - **Layout**: 40x25 character cells
 - **Format**: Each word contains: `(attribute << 8) | ascii_char`
   - Low byte: ASCII character code
-  - High byte: Attributes (currently unused, set to 0)
+  - High byte: Attributes: bg and fg color, each 4 bits (16 colors total)
 
 ### General Memory (Bank 0, Word 1032+)
 
@@ -101,6 +102,7 @@ Regular data memory starts at word 1032, after the VRAM region.
   - 0: Display OFF
   - 1: TTY passthrough mode
   - 2: TEXT40 mode (40x25 character display)
+  - 3: RGB565 mode (graphics display)
 
 **Display Status (HDR_DISP_STATUS)**
 - Read-only register at address 7
@@ -116,6 +118,42 @@ Regular data memory starts at word 1032, after the VRAM region.
 - Write-only register at address 9
 - Writing non-zero triggers display update
 - Sets flush_done flag when complete
+- In RGB565 mode, swaps the front and back framebuffers
+
+**Display Resolution (HDR_DISP_RESOLUTION)**
+- Read/Write register at address 16
+- Used for RGB565 mode only
+- Format: high 8 bits = width, low 8 bits = height
+- Must be set BEFORE switching to RGB565 mode
+- Maximum resolution depends on bank size: `(bank_size - 32) / 2` pixels total
+
+### RGB565 Graphics Mode
+
+**Overview**
+- 16-bit color per pixel (5 bits red, 6 bits green, 5 bits blue)
+- Double-buffered for smooth animation
+- Resolution configurable up to bank size limits
+
+**Setup Procedure**
+1. Set desired resolution at HDR_DISP_RESOLUTION (address 16)
+2. Set display mode to 3 (RGB565) at HDR_DISP_MODE (address 6)
+3. If resolution doesn't fit in bank, VM will halt
+
+**Memory Layout in RGB565 Mode**
+- Words 0-31: MMIO headers (unchanged)
+- Words 32 to 32+WxH-1: Front buffer (displayed)
+- Words 32+WxH to 32+2xWxH-1: Back buffer (for drawing)
+
+**RGB565 Color Format**
+```
+Bit:  15 14 13 12 11 | 10 9 8 7 6 5 | 4 3 2 1 0
+      R  R  R  R  R  | G  G G G G G | B B B B B
+```
+
+**Drawing Workflow**
+1. Write pixels to back buffer memory addresses
+2. Write non-zero to HDR_DISP_FLUSH to swap buffers
+3. Back buffer becomes visible, old front buffer becomes new back buffer
 
 ## Implementation Details
 
@@ -358,6 +396,7 @@ pub const DISP_CLEAR: u16          = 0x0002;
 pub const DISP_OFF: u16            = 0;
 pub const DISP_TTY: u16            = 1;
 pub const DISP_TEXT40: u16         = 2;
+pub const DISP_RGB565: u16         = 3;
 ```
 
 ## Future Enhancements

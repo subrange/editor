@@ -5,11 +5,14 @@ mod vm;
 mod debugger_ui;
 mod mode;
 mod settings;
+mod display_rgb565;
 
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::process;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::{Duration, Instant};
 use vm::VM;
 use constants::{DEFAULT_BANK_SIZE, DEFAULT_MEMORY_SIZE};
@@ -54,6 +57,7 @@ fn print_usage() {
     eprintln!("  -d, --debug              Enable debug mode (step through execution)");
     eprintln!("  -t, --tui                Enable TUI debugger_ui mode");
     eprintln!("  -v, --verbose            Show VM state during execution");
+    eprintln!("  --visual                 Enable RGB565 visual display window");
     eprintln!("  -h, --help               Show this help message");
     eprintln!();
     eprintln!("TUI DEBUGGER MODE (-t):");
@@ -92,6 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut debug_mode = false;
     let mut tui_mode = false;
     let mut verbose = false;
+    let mut visual_mode = false;
     let mut file_path = None;
     
     let mut i = 1;
@@ -163,6 +168,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "-v" | "--verbose" => {
                 verbose = true;
             },
+            "--visual" => {
+                visual_mode = true;
+            },
             _ => {
                 if args[i].starts_with('-') {
                     eprintln!("Error: Unknown option: {}", args[i]);
@@ -223,7 +231,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     // Run the VM
-    if tui_mode {
+    let vm_moved_to_arc = if visual_mode {
+        // Visual mode: run VM in background thread, display on main thread
+        eprintln!("Starting in visual mode...");
+        
+        // Initialize a default RGB565 display that will be configured when the program runs
+        if vm.rgb565_display.is_none() {
+            vm.rgb565_display = Some(display_rgb565::RGB565Display::new());
+        }
+        
+        // Get the display state
+        let display_state = vm.rgb565_display.as_ref().unwrap().get_state();
+        
+        // Run VM in a background thread
+        let vm = Arc::new(Mutex::new(vm));
+        let vm_clone = Arc::clone(&vm);
+        let frequency_clone = frequency;
+        
+        let vm_thread = thread::spawn(move || {
+            let mut vm = vm_clone.lock().unwrap();
+            
+            // Run with frequency limiting if specified
+            if let Some(freq) = frequency_clone {
+                if let Err(e) = run_with_frequency(&mut vm, freq) {
+                    eprintln!("Runtime error: {}", e);
+                }
+            } else {
+                if let Err(e) = vm.run() {
+                    eprintln!("Runtime error: {}", e);
+                }
+            }
+            
+            eprintln!("VM execution completed. Close the window to exit.");
+            // Don't shutdown display immediately - let user close the window
+        });
+        
+        // Run display on main thread
+        if let Err(e) = display_rgb565::run_rgb565_display(display_state) {
+            eprintln!("Display error: {}", e);
+        }
+        
+        // Wait for VM thread to finish
+        let _ = vm_thread.join();
+        true // VM was moved to Arc
+    } else if tui_mode {
         // Use the TUI debugger_ui
         vm.debug_mode = true;
         let mut tui = tui_debugger::TuiDebugger::new();
@@ -231,6 +282,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("TUI error: {e}");
             process::exit(1);
         }
+        false // VM not moved to Arc
     } else if debug_mode {
         vm.debug_mode = true;  // Enable debug mode in VM
         Debugger::print_welcome();
@@ -299,6 +351,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+        false // VM not moved to Arc
     } else {
         // Run normally with optional frequency limiting
         if let Some(freq) = frequency {
@@ -310,17 +363,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Runtime error: {e}");
             process::exit(1);
         }
-    }
+        false // VM not moved to Arc
+    };
     
     // Output is now printed in real-time during execution
-    // Only get remaining buffered output if needed (for compatibility)
-    // but don't print it again since it was already printed
-    let _output = vm.get_output(); // Clear the buffer
-    
-    if verbose {
+    if verbose && !vm_moved_to_arc {
         println!();
         println!("Execution completed");
-        println!("Final state: {:?}", vm.state);
     }
     
     // Explicitly ensure terminal is restored before exit

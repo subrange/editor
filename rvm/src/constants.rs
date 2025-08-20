@@ -26,7 +26,10 @@ pub const HDR_KEY_RIGHT: usize     = 13; // Read: bit0=pressed (arrow right)
 pub const HDR_KEY_Z: usize         = 14; // Read: bit0=pressed (Z key)
 pub const HDR_KEY_X: usize         = 15; // Read: bit0=pressed (X key)
 
-// Words 16..31 are reserved for future use
+// Display resolution for RGB565 mode (bank 0, word 16)
+pub const HDR_DISP_RESOLUTION: usize = 16; // R/W: hi8=width, lo8=height (for RGB565 mode)
+
+// Words 17..31 are reserved for future use
 
 // TEXT40 display constants
 pub const TEXT40_BASE_WORD: usize  = 32;         // Start of VRAM
@@ -41,6 +44,7 @@ pub const TTY_HAS_BYTE: u16 = 1 << 0;   // bit0
 pub const DISP_OFF: u16    = 0;
 pub const DISP_TTY: u16    = 1;
 pub const DISP_TEXT40: u16 = 2;
+pub const DISP_RGB565: u16 = 3;
 
 // Display status bits
 pub const DISP_READY: u16      = 1 << 0;  // bit0
