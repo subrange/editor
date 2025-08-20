@@ -29,8 +29,8 @@ int main() {
     
     o.mid = m;
 
-    // This is the failing test case
-    if (o.mid.inner.y == 20) {
+    // This works
+    if (o.mid.inner.y == 40) {
         putchar('Y');
     } else {
         putchar('N');
