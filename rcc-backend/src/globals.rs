@@ -202,7 +202,7 @@ impl GlobalManager {
                             _ => {
                                 insts.push(AsmInst::Add(Reg::T0, Reg::Gp, Reg::R0)); // Default to GP
                             }
-                        };
+                        }
                         insts.push(AsmInst::Li(Reg::T1, (address + 1) as i16));
                         insts.push(AsmInst::Store(Reg::T0, Reg::Gp, Reg::T1));
                     }

@@ -5,7 +5,7 @@
 
 use rcc_frontend::ir::{Value, FatPointer};
 use rcc_frontend::BankTag;
-use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::regmgmt::{RegisterPressureManager, BankInfo, BankTagValue};
 use crate::naming::NameGenerator;
 use crate::globals::GlobalManager;
 use rcc_codegen::{Reg, AsmInst};
@@ -109,9 +109,12 @@ pub fn get_bank_register(bank_info: &BankInfo) -> Reg {
 
 /// Get bank register with proper reloading support
 /// 
-/// This version handles Dynamic bank info by using the register manager
-/// to get/reload the bank value as needed.
-pub fn get_bank_register_with_mgr(
+/// DEPRECATED: This function does NOT generate runtime checking for Dynamic banks.
+/// Use get_bank_register_with_runtime_check_safe instead which always handles Dynamic banks correctly.
+/// 
+/// This version only returns the raw register for Dynamic banks without checking if it's a tag.
+#[deprecated(note = "Use get_bank_register_with_runtime_check_safe instead for Dynamic banks")]
+fn get_bank_register_with_mgr(
     bank_info: &BankInfo,
     mgr: &mut RegisterPressureManager
 ) -> Reg {
@@ -120,8 +123,87 @@ pub fn get_bank_register_with_mgr(
         BankInfo::Stack => Reg::Sb,
         BankInfo::Register(reg) => *reg,
         BankInfo::Dynamic(name) => {
-            // Get the register for this named value, which will reload if spilled
-            mgr.get_register(name.clone())
+            // UNSAFE: Just returns the register without checking if it contains a tag
+            // This will fail if the register contains -1 (Global) or -2 (Stack) tags
+            let bank_reg = mgr.get_register(name.clone());
+            bank_reg
+        }
+    }
+}
+
+/// Get bank register with runtime tag checking
+/// 
+/// This function generates runtime code to check if a dynamic bank value
+/// is actually a tag (GLOBAL=-1, STACK=-2) and returns the appropriate
+/// register. This is needed when loading pointers from memory where we
+/// store tags instead of actual bank addresses.
+/// 
+/// Returns (final_bank_register, instructions_to_emit)
+fn get_bank_register_with_runtime_check(
+    bank_info: &BankInfo,
+    mgr: &mut RegisterPressureManager,
+    naming: &mut NameGenerator,
+    context: &str
+) -> (Reg, Vec<AsmInst>) {
+    let mut insts = vec![];
+    
+    match bank_info {
+        BankInfo::Global => (Reg::Gp, insts),
+        BankInfo::Stack => (Reg::Sb, insts),
+        BankInfo::Register(reg) => (*reg, insts),
+        BankInfo::Dynamic(name) => {
+            // Get the register containing the bank value (might be a tag)
+            let bank_val_reg = mgr.get_register(name.clone());
+            insts.extend(mgr.take_instructions());
+            
+            // We need to check if this is a tag and convert to the actual register
+            // Generate unique labels for this check
+            let op_id = naming.next_operation_id();
+            let func_id = naming.function_id();
+            let use_global_label = format!("L_{context}_use_global_f{func_id}_op{op_id}");
+            let use_stack_label = format!("L_{context}_use_stack_f{func_id}_op{op_id}");
+            let done_label = format!("L_{context}_bank_done_f{func_id}_op{op_id}");
+            
+            // Allocate a result register that will hold the final bank
+            let result_name = naming.temp_with_context(context, "resolved_bank");
+            let result_reg = mgr.get_register(result_name);
+            insts.extend(mgr.take_instructions());
+            
+            // Check if bank_val_reg == GLOBAL tag (-1)
+            let global_tag_name = naming.temp_with_context(context, "global_tag");
+            let global_tag_reg = mgr.get_register(global_tag_name);
+            insts.extend(mgr.take_instructions());
+            insts.push(AsmInst::Li(global_tag_reg, BankTagValue::GLOBAL));
+            insts.push(AsmInst::Beq(bank_val_reg, global_tag_reg, use_global_label.clone()));
+            
+            // Check if bank_val_reg == STACK tag (-2)
+            let stack_tag_name = naming.temp_with_context(context, "stack_tag");
+            let stack_tag_reg = mgr.get_register(stack_tag_name);
+            insts.extend(mgr.take_instructions());
+            insts.push(AsmInst::Li(stack_tag_reg, BankTagValue::STACK));
+            insts.push(AsmInst::Beq(bank_val_reg, stack_tag_reg, use_stack_label.clone()));
+            
+            // Not a tag - use the value as-is (it's a dynamic bank address)
+            insts.push(AsmInst::Add(result_reg, bank_val_reg, Reg::R0));
+            insts.push(AsmInst::Beq(Reg::R0, Reg::R0, done_label.clone()));
+            
+            // use_global_label: Use GP register
+            insts.push(AsmInst::Label(use_global_label));
+            insts.push(AsmInst::Add(result_reg, Reg::Gp, Reg::R0));
+            insts.push(AsmInst::Beq(Reg::R0, Reg::R0, done_label.clone()));
+            
+            // use_stack_label: Use SB register
+            insts.push(AsmInst::Label(use_stack_label));
+            insts.push(AsmInst::Add(result_reg, Reg::Sb, Reg::R0));
+            
+            // done_label: result_reg now contains the correct bank
+            insts.push(AsmInst::Label(done_label));
+            
+            // Free the temporary registers
+            mgr.free_register(global_tag_reg);
+            mgr.free_register(stack_tag_reg);
+            
+            (result_reg, insts)
         }
     }
 }
@@ -248,6 +330,32 @@ pub fn materialize_bank_to_register(
         }
         _ => {
             panic!("HELPERS: Unexpected bank tag type: {bank_tag:?}");
+        }
+    }
+}
+
+/// Get bank register with automatic runtime checking for Dynamic banks
+/// 
+/// This is the SAFE version that automatically generates runtime checking
+/// for Dynamic banks. Use this instead of get_bank_register_with_mgr.
+/// 
+/// Returns (bank_register, instructions_to_emit)
+pub fn get_bank_register_with_runtime_check_safe(
+    bank_info: &BankInfo,
+    mgr: &mut RegisterPressureManager,
+    naming: &mut NameGenerator,
+    context: &str
+) -> (Reg, Vec<AsmInst>) {
+    match bank_info {
+        BankInfo::Dynamic(_) => {
+            // Dynamic banks need runtime checking
+            get_bank_register_with_runtime_check(bank_info, mgr, naming, context)
+        }
+        _ => {
+            // Static banks can use the simple version
+            #[allow(deprecated)]
+            let reg = get_bank_register_with_mgr(bank_info, mgr);
+            (reg, vec![])
         }
     }
 }

@@ -4,12 +4,12 @@
 //! Supports both scalar stores and fat pointer stores (2-component).
 
 use rcc_frontend::ir::{Value};
-use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::regmgmt::{RegisterPressureManager, BankInfo, BankTagValue};
 use crate::naming::NameGenerator;
 use rcc_codegen::{AsmInst, Reg};
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;
-use super::helpers::{resolve_mixed_bank, resolve_bank_tag_to_info, get_bank_register_with_mgr, materialize_bank_to_register};
+use super::helpers::{resolve_mixed_bank, resolve_bank_tag_to_info, get_bank_register_with_runtime_check_safe, materialize_bank_to_register};
 
 /// Lower a Store instruction to assembly
 /// 
@@ -40,7 +40,19 @@ pub fn lower_store(
             let reg = mgr.get_register(name.clone());
 
             let bank_src: Option<(Reg, bool)> = mgr.get_pointer_bank(&name)
-                .map(|info| (get_bank_register_with_mgr(&info, mgr), false));
+                .map(|info| {
+                    // Use safe runtime checking for all bank types
+                    let context = naming.store_bank_check_context();
+                    let (resolved_reg, check_insts) = get_bank_register_with_runtime_check_safe(
+                        &info,
+                        mgr,
+                        naming,
+                        &context
+                    );
+                    let generated_code = !check_insts.is_empty();
+                    insts.extend(check_insts);
+                    (resolved_reg, generated_code) // owned=true if we generated code
+                });
 
             (reg, bank_src.is_some(), bank_src)
 
@@ -87,17 +99,21 @@ pub fn lower_store(
             // Return (bank_reg, owned) — owned = true if we allocated a temp that must be freed here
             let (bank_reg, bank_owned) = match fp.bank {
                 BankTag::Global => {
+                    // Store the Global bank tag value
+                    // When loaded back, this will be recognized as "use GP register"
                     let name = naming.store_fatptr_bank();
                     let r = mgr.get_register(name);
                     insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::Add(r, Reg::Gp, Reg::R0));
+                    insts.push(AsmInst::Li(r, BankTagValue::GLOBAL));
                     (r, true)
                 }
                 BankTag::Stack => {
+                    // Store the Stack bank tag value
+                    // When loaded back, this will be recognized as "use SB register"
                     let name = naming.store_fatptr_bank();
                     let r = mgr.get_register(name);
                     insts.extend(mgr.take_instructions());
-                    insts.push(AsmInst::Add(r, Reg::Sb, Reg::R0));
+                    insts.push(AsmInst::Li(r, BankTagValue::STACK));
                     (r, true)
                 }
                 BankTag::Mixed => {
@@ -130,12 +146,11 @@ pub fn lower_store(
                 }
                 BankTag::Null => {
                     // Storing a NULL pointer value is OK - we use a special bank value for NULL
-                    // We can use 0 or a special sentinel value to represent NULL bank
                     let name = naming.store_fatptr_bank();
                     let r = mgr.get_register(name);
                     insts.extend(mgr.take_instructions());
-                    // Use 0 as the bank value for NULL pointers
-                    insts.push(AsmInst::Li(r, 0));
+                    // Use the NULL bank tag
+                    insts.push(AsmInst::Li(r, BankTagValue::NULL));
                     (r, true)
                 }
                 other => panic!("Store: Unsupported bank type for fat pointer: {other:?}"),
@@ -209,7 +224,15 @@ pub fn lower_store(
     
     debug!("  Destination pointer {dest_ptr_name} has bank info: {dest_bank_info:?}");
     
-    let dest_bank_reg = get_bank_register_with_mgr(&dest_bank_info, mgr);
+    // Use safe runtime checking for all bank types
+    let context = naming.store_bank_check_context();
+    let (dest_bank_reg, check_insts) = get_bank_register_with_runtime_check_safe(
+        &dest_bank_info, 
+        mgr, 
+        naming, 
+        &context
+    );
+    insts.extend(check_insts);
     insts.extend(mgr.take_instructions());
     
     // Step 4: Generate STORE instruction(s)

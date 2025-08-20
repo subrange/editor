@@ -20,7 +20,7 @@
 
 // Public exports - only what consumers need
 pub use self::pressure::RegisterPressureManager;
-pub use self::bank::BankInfo;
+pub use self::bank::{BankInfo, BankTagValue};
 
 // Keep internal modules private
 mod allocator;

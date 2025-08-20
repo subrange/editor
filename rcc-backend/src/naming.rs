@@ -51,6 +51,11 @@ impl NameGenerator {
         id
     }
     
+    /// Get the function ID
+    pub fn function_id(&self) -> u32 {
+        self.function_id
+    }
+    
     // ===== Temp naming =====
     
     /// Get the standard name for a temp value
@@ -92,6 +97,13 @@ impl NameGenerator {
         format!("load_f{}_op{}_global_{}_addr", self.function_id, op_id, global_name)
     }
     
+    /// Get context name for load operation bank runtime checking
+    /// This generates a unique context string that includes the result temp
+    pub fn load_bank_check_context(&mut self, result_temp: TempId) -> String {
+        let op_id = self.next_operation_id();
+        format!("load_f{}_op{}_t{}", self.function_id, op_id, result_temp)
+    }
+    
     // ===== Store operation naming =====
     
     /// Get name for a constant value being stored
@@ -128,6 +140,13 @@ impl NameGenerator {
     pub fn store_global_addr(&mut self, global_name: &str) -> String {
         let op_id = self.next_operation_id();
         format!("store_f{}_op{}_global_{}_addr", self.function_id, op_id, global_name)
+    }
+    
+    /// Get context name for store operation bank runtime checking
+    /// This generates a unique context string for store operations
+    pub fn store_bank_check_context(&mut self) -> String {
+        let op_id = self.next_operation_id();
+        format!("store_f{}_op{}", self.function_id, op_id)
     }
     
     // ===== Pointer bank tracking naming =====

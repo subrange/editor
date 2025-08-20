@@ -381,11 +381,12 @@ impl<'a> TypedExpressionGenerator<'a> {
                         // The assignment operator will handle the actual copying
                         Ok(field_ptr)
                     }
-                    Type::Pointer { .. } => {
+                    Type::Pointer { target, .. } => {
                         // For pointer fields, load the value as a fat pointer
                         // The backend's load instruction will handle loading both components
-                        // Use a simplified pointer type for loading - all pointers are just 2 words
-                        let ptr_load_type = crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16));
+                        // Convert the pointee type to IR type for the FatPtr
+                        let pointee_ir_type = convert_type(target, rcc_common::SourceLocation::new_simple(0, 0))?;
+                        let ptr_load_type = crate::ir::IrType::FatPtr(Box::new(pointee_ir_type));
                         let temp_id = self.builder.build_load(field_ptr, ptr_load_type)
                             .map_err(|e| CodegenError::InternalError {
                                 message: e,

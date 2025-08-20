@@ -20,12 +20,8 @@ pub fn generate_identifier(
                 Ok(var_info.as_fat_ptr())
             } else {
                 // For non-struct parameters, load the value
-                // If it's a pointer type, use simplified FatPtr(I16) type for loading
-                let load_type = if var_info.ir_type.is_pointer() {
-                    crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16))
-                } else {
-                    var_info.ir_type.clone()
-                };
+                // Use the actual type for loading
+                let load_type = var_info.ir_type.clone();
                 
                 let result = gen
                     .builder
@@ -49,12 +45,8 @@ pub fn generate_identifier(
                 Ok(var_info.as_fat_ptr())
             } else {
                 // For non-struct variables, load the value
-                // If it's a pointer type, use simplified FatPtr(I16) type for loading
-                let load_type = if var_info.ir_type.is_pointer() {
-                    crate::ir::IrType::FatPtr(Box::new(crate::ir::IrType::I16))
-                } else {
-                    var_info.ir_type.clone()
-                };
+                // Use the actual type for loading
+                let load_type = var_info.ir_type.clone();
                 
                 let result = gen
                     .builder

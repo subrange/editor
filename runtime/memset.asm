@@ -50,7 +50,7 @@ memset:
 L_memset_1:
 ; Load instruction: t7 = load FatPtr(FatPointer { addr: Temp(6), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Stack })
-; LOAD: Pointer load_src_ptr_f0_op6_t7 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f0_op11_t7 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t6 at FP+4
     ADD T2, FP, R0
@@ -58,7 +58,7 @@ L_memset_1:
     LOAD T1, SB, T2
 ; Load instruction: t8 = load FatPtr(FatPointer { addr: Temp(5), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(5), bank: Stack })
-; LOAD: Pointer load_src_ptr_f0_op7_t8 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f0_op13_t8 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t5 at FP+3
     ADD T0, FP, R0
@@ -73,16 +73,17 @@ L_memset_1:
 L_memset_2:
 ; Load instruction: t10 = load FatPtr(FatPointer { addr: Temp(3), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(3), bank: Stack })
-; LOAD: Pointer load_src_ptr_f0_op8_t10 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f0_op15_t10 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t3 at FP+0
     ADD T3, FP, R0
     LOAD T4, SB, T3
     ADDI T5, T3, 1
     LOAD T6, SB, T5
+; Bank value in T6 - tags: -1 = Global, -2 = Stack, positive = dynamic
 ; Load instruction: t11 = load FatPtr(FatPointer { addr: Temp(6), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Stack })
-; LOAD: Pointer load_src_ptr_f0_op11_t11 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f0_op19_t11 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t6 at FP+4
     ADD S0, FP, R0
@@ -98,43 +99,59 @@ L_memset_2:
     ADDI SC, SC, 13
     STORE S3, SB, SC
     MOD S3, T1, T5
-; Base bank info: Dynamic("load_f0_op10_t10_bank_val")
-; Clearing binding for 'gep_new_bank_f0_op16_t12'
+; Base bank info: Dynamic("load_f0_op18_t10_bank_val")
+; Clearing binding for 'gep_new_bank_f0_op25_t12'
 ; Spill t1 to slot 1
     ADD SC, FP, R0
     ADDI SC, SC, 14
     STORE S2, SB, SC
-; Computing new bank gep_new_bank_f0_op16_t12 = load_f0_op10_t10_bank_val + bank_delta
+; Computing new bank gep_new_bank_f0_op25_t12 = load_f0_op18_t10_bank_val + bank_delta
     ADD S2, T6, T2
-; Result bank tracked as Dynamic(gep_new_bank_f0_op16_t12)
+; Result bank tracked as Dynamic(gep_new_bank_f0_op25_t12)
     ADD T1, S3, R0
-; GEP: Setting bank info for t12 to Dynamic("gep_new_bank_f0_op16_t12")
+; GEP: Setting bank info for t12 to Dynamic("gep_new_bank_f0_op25_t12")
 ; Load instruction: t13 = load FatPtr(FatPointer { addr: Temp(4), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Stack })
-; LOAD: Pointer load_src_ptr_f0_op17_t13 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f0_op26_t13 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t4 at FP+2
     ADD T0, FP, R0
     ADDI T0, T0, 2
     LOAD T2, SB, T0
-    STORE T2, S2, T1
+    LI S3, -1
+    BEQ S2, S3, L_store_f0_op28_use_global_f0_op29
+; Spill t2 to slot 2
+    ADD SC, FP, R0
+    ADDI SC, SC, 15
+    STORE S1, SB, SC
+    LI S1, -2
+    BEQ S2, S1, L_store_f0_op28_use_stack_f0_op29
+    ADD T5, S2, R0
+    BEQ R0, R0, L_store_f0_op28_bank_done_f0_op29
+L_store_f0_op28_use_global_f0_op29:
+    ADD T5, GP, R0
+    BEQ R0, R0, L_store_f0_op28_bank_done_f0_op29
+L_store_f0_op28_use_stack_f0_op29:
+    ADD T5, SB, R0
+L_store_f0_op28_bank_done_f0_op29:
+    STORE T2, T5, T1
     BEQ R0, R0, L_memset_3
 ; Unconditional branch to L_memset_3
 ; Invalidated 3 alloca bindings
-; Invalidating GEP bank gep_new_bank_f0_op16_t12 in S2
+; Invalidating GEP bank gep_new_bank_f0_op25_t12 in S2
 ; Invalidated 1 GEP bank bindings
 L_memset_3:
 ; Load instruction: t14 = load FatPtr(FatPointer { addr: Temp(6), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(6), bank: Stack })
-; LOAD: Pointer load_src_ptr_f0_op18_t14 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f0_op33_t14 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t6 at FP+4
-    ADD T5, FP, R0
-    ADDI T5, T5, 4
-    LOAD S3, SB, T5
+    ADD S3, FP, R0
+    ADDI S3, S3, 4
+    LOAD S1, SB, S3
     LI T0, 1
-    ADD S3, S3, T0
-    STORE S3, SB, T5
+    ADD S1, S1, T0
+    STORE S1, SB, S3
     BEQ R0, R0, L_memset_1
 ; Unconditional branch to L_memset_1
 ; Invalidated 1 alloca bindings

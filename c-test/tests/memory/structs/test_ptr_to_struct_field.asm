@@ -34,136 +34,167 @@ main:
 ; GEP: Setting bank info for t3 to Stack
     LI T7, 10
     STORE T7, SB, S0
-; Recompute alloca t0 at FP+0
-    ADD T6, FP, R0
-    ADDI T5, T6, 1
+    ADDI T6, S3, 1
 ; GEP: Setting bank info for t4 to Stack
-    LI T4, 20
-    STORE T4, SB, T5
-    ADD T3, S2, R0
+    LI T5, 20
+    STORE T5, SB, T6
+    ADD T4, S2, R0
 ; GEP: Setting bank info for t5 to Stack
-    LI T2, 5
-    STORE T2, SB, T3
-; Recompute alloca t1 at FP+2
-    ADD T1, FP, R0
-    ADDI T1, T1, 2
-    ADDI T0, T1, 2
+    LI T3, 5
+    STORE T3, SB, T4
+    ADDI T2, S2, 2
 ; GEP: Setting bank info for t6 to Stack
-; Recompute alloca t0 at FP+0
-    ADD S3, FP, R0
-    ADD T7, SB, R0
-    STORE S3, SB, T0
-    ADDI T6, T0, 1
-    STORE T7, SB, T6
-; Recompute alloca t1 at FP+2
-    ADD T4, FP, R0
-    ADDI T4, T4, 2
-    ADD S2, SB, R0
-    STORE T4, SB, S1
-    ADDI T2, S1, 1
-    STORE S2, SB, T2
+    LI T1, -2
+    STORE S3, SB, T2
+    ADDI T0, T2, 1
+    STORE T1, SB, T0
+    LI T7, -2
+    STORE S2, SB, S1
+    ADDI T5, S1, 1
+    STORE T7, SB, T5
 ; Load instruction: t7 = load FatPtr(FatPointer { addr: Temp(2), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(2), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f0_op7_t7 has bank info: Stack
 ; LOAD: Using bank register Sb for load
-    LOAD T1, SB, S1
-    ADDI T6, S1, 1
-    LOAD T7, SB, T6
-    ADDI T2, T1, 2
+    LOAD T3, SB, S1
+    ADDI T0, S1, 1
+    LOAD T1, SB, T0
+; Bank value in T1 - tags: -1 = Global, -2 = Stack, positive = dynamic
+    ADDI T5, T3, 2
 ; GEP: Setting bank info for t8 to Dynamic("load_f0_op9_t7_bank_val")
 ; Load instruction: t9 = load FatPtr(FatPointer { addr: Temp(8), bank: Mixed })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(8), bank: Mixed })
 ; LOAD: Pointer t8 has bank info: Dynamic("load_f0_op9_t7_bank_val")
-; LOAD: Using bank register T7 for load
-    LOAD S2, T7, T2
-    ADDI T6, T2, 1
-    LOAD T1, T7, T6
-    ADDI T6, S2, 1
-; GEP: Setting bank info for t10 to Dynamic("load_f0_op11_t9_bank_val")
-; Load instruction: t11 = load FatPtr(FatPointer { addr: Temp(10), bank: Mixed })
-; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(10), bank: Mixed })
-; LOAD: Pointer t10 has bank info: Dynamic("load_f0_op11_t9_bank_val")
-; LOAD: Using bank register T1 for load
-    LOAD S2, T1, T6
+    LI T0, -1
+    BEQ T1, T0, L_load_use_global_f0_op10
 ; Spill t3 to slot 0
     ADD SC, FP, R0
     ADDI SC, SC, 15
     STORE S0, SB, SC
-    LI S0, 20
+    LI S0, -2
+    BEQ T1, S0, L_load_use_stack_f0_op10
+    ADD T7, T1, R0
+    BEQ R0, R0, L_load_bank_done_f0_op10
+L_load_use_global_f0_op10:
+    ADD T7, GP, R0
+    BEQ R0, R0, L_load_bank_done_f0_op10
+L_load_use_stack_f0_op10:
+    ADD T7, SB, R0
+L_load_bank_done_f0_op10:
+; LOAD: Using bank register T7 for load
+    LOAD T0, T7, T5
+    ADDI S0, T5, 1
 ; Spill t4 to slot 1
     ADD SC, FP, R0
     ADDI SC, SC, 16
-    STORE T5, SB, SC
-    XOR T5, S2, S0
+    STORE T6, SB, SC
+    LOAD T6, T7, S0
+; Bank value in T6 - tags: -1 = Global, -2 = Stack, positive = dynamic
+    ADDI S0, T0, 1
+; GEP: Setting bank info for t10 to Dynamic("load_f0_op15_t9_bank_val")
+; Load instruction: t11 = load FatPtr(FatPointer { addr: Temp(10), bank: Mixed })
+; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(10), bank: Mixed })
+; LOAD: Pointer t10 has bank info: Dynamic("load_f0_op15_t9_bank_val")
 ; Spill t5 to slot 2
     ADD SC, FP, R0
     ADDI SC, SC, 17
-    STORE T3, SB, SC
-    LI T3, 1
-    SLTU S2, T5, T3
-    BEQ S2, R0, L_main_2
-; Branch to L_main_2 if condition is false
-    BEQ R0, R0, L_main_1
-; Unconditional branch to L_main_1 (condition was true)
-; Invalidated 3 alloca bindings
-L_main_1:
-    LI T5, 89
-; Spill live registers before call
+    STORE T4, SB, SC
+    LI S3, -1
+    BEQ T6, S3, L_load_use_global_f0_op16
 ; Spill t6 to slot 3
     ADD SC, FP, R0
     ADDI SC, SC, 18
-    STORE T0, SB, SC
-; Spill t8 to slot 4
+    STORE T2, SB, SC
+    LI T2, -2
+    BEQ T6, T2, L_load_use_stack_f0_op16
+    ADD T4, T6, R0
+    BEQ R0, R0, L_load_bank_done_f0_op16
+L_load_use_global_f0_op16:
+    ADD T4, GP, R0
+    BEQ R0, R0, L_load_bank_done_f0_op16
+L_load_use_stack_f0_op16:
+    ADD T4, SB, R0
+L_load_bank_done_f0_op16:
+; LOAD: Using bank register T4 for load
+    LOAD S3, T4, S0
+    LI T2, 20
+    XOR S2, S3, T2
+    LI S1, 1
+    SLTU S3, S2, S1
+    BEQ S3, R0, L_main_2
+; Branch to L_main_2 if condition is false
+    BEQ R0, R0, L_main_1
+; Unconditional branch to L_main_1 (condition was true)
+L_main_1:
+    LI S2, 89
+; Spill live registers before call
+; Spill t7 to slot 4
     ADD SC, FP, R0
     ADDI SC, SC, 19
-    STORE T2, SB, SC
-; Spill load_f0_op9_t7_bank_val to slot 5
+    STORE T3, SB, SC
+; Spill t8 to slot 5
     ADD SC, FP, R0
     ADDI SC, SC, 20
-    STORE T7, SB, SC
-; Spill t10 to slot 6
+    STORE T5, SB, SC
+; Spill load_f0_op9_t7_bank_val to slot 6
     ADD SC, FP, R0
     ADDI SC, SC, 21
-    STORE T6, SB, SC
-; Spill load_f0_op11_t9_bank_val to slot 7
+    STORE T1, SB, SC
+; Spill load_resolved_bank_0_f0_op11 to slot 7
     ADD SC, FP, R0
     ADDI SC, SC, 22
-    STORE T1, SB, SC
-; Spill const_f0_op14_89 to slot 8
+    STORE T7, SB, SC
+; Spill t9 to slot 8
     ADD SC, FP, R0
     ADDI SC, SC, 23
-    STORE T5, SB, SC
+    STORE T0, SB, SC
+; Spill t10 to slot 9
+    ADD SC, FP, R0
+    ADDI SC, SC, 24
+    STORE S0, SB, SC
+; Spill load_f0_op15_t9_bank_val to slot 10
+    ADD SC, FP, R0
+    ADDI SC, SC, 25
+    STORE T6, SB, SC
+; Spill load_resolved_bank_0_f0_op17 to slot 11
+    ADD SC, FP, R0
+    ADDI SC, SC, 26
+    STORE T4, SB, SC
+; Spill const_f0_op22_89 to slot 12
+    ADD SC, FP, R0
+    ADDI SC, SC, 27
+    STORE S2, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0
-    ADD A0, T5, R0
+    ADD A0, S2, R0
 ; Call function putchar
     CALL putchar
     BEQ R0, R0, L_main_3
 ; Unconditional branch to L_main_3
 L_main_2:
-    LI T3, 78
+    LI S1, 78
 ; Spill live registers before call
-; Spill const_f0_op15_78 to slot 9
+; Spill const_f0_op23_78 to slot 13
     ADD SC, FP, R0
-    ADDI SC, SC, 24
-    STORE T3, SB, SC
+    ADDI SC, SC, 28
+    STORE S1, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0
-    ADD A0, T3, R0
+    ADD A0, S1, R0
 ; Call function putchar
     CALL putchar
     BEQ R0, R0, L_main_3
 ; Unconditional branch to L_main_3
 L_main_3:
-    LI S0, 10
+    LI T2, 10
 ; Spill live registers before call
-; Spill const_f0_op16_10 to slot 10
+; Spill const_f0_op24_10 to slot 14
     ADD SC, FP, R0
-    ADDI SC, SC, 25
-    STORE S0, SB, SC
+    ADDI SC, SC, 29
+    STORE T2, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0
-    ADD A0, S0, R0
+    ADD A0, T2, R0
 ; Call function putchar
     CALL putchar
     LI RV0, 0

@@ -5,12 +5,12 @@
 
 use rcc_frontend::ir::{Value, IrType as Type};
 use rcc_common::TempId;
-use crate::regmgmt::{RegisterPressureManager, BankInfo};
+use crate::regmgmt::{RegisterPressureManager, BankInfo, BankTagValue};
 use crate::naming::NameGenerator;
 use rcc_codegen::AsmInst;
 use log::{debug, trace, warn};
 use rcc_frontend::BankTag;
-use super::helpers::{resolve_bank_tag_to_info, get_bank_register_with_mgr};
+use super::helpers::{resolve_bank_tag_to_info, get_bank_register_with_runtime_check_safe};
 
 /// Lower a Load instruction to assembly
 /// 
@@ -103,8 +103,17 @@ pub fn lower_load(
     debug!("  Pointer {ptr_name} has bank info: {bank_info:?}");
     insts.push(AsmInst::Comment(format!("LOAD: Pointer {ptr_name} has bank info: {bank_info:?}")));
     
-    // Use the new function that can handle Dynamic and reload if necessary
-    let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
+    // Use safe runtime checking for all bank types
+    // Use proper naming mechanism to generate unique context
+    let context = naming.load_bank_check_context(result_temp);
+    let (bank_reg, check_insts) = get_bank_register_with_runtime_check_safe(
+        &bank_info, 
+        mgr, 
+        naming, 
+        &context
+    );
+    insts.extend(check_insts);
+    
     insts.push(AsmInst::Comment(format!("LOAD: Using bank register {bank_reg:?} for load")));
     trace!("  Using {bank_reg:?} for bank");
     
@@ -137,13 +146,30 @@ pub fn lower_load(
         let bank_dest_reg = mgr.get_register(bank_value_name.clone());
         insts.extend(mgr.take_instructions());
         
+        // IMPORTANT: Both components of a FatPtr are stored at the same location,
+        // so they must be loaded using the same bank register!
         let bank_load = AsmInst::Load(bank_dest_reg, bank_reg, bank_addr_reg);
         trace!("  Generated bank LOAD: {bank_load:?}");
         insts.push(bank_load);
         
         // Store bank info for the loaded pointer
-        // IMPORTANT: We track the bank value by NAME so it can be reloaded if spilled
+        // IMPORTANT: We need to check if the loaded bank value is a special tag
+        // that indicates a static bank (Global/Stack) rather than a dynamic address
+        
+        // We need to generate code to check the loaded bank value at runtime
+        // and set up the proper bank register based on the tag
+        
+        // For now, we'll track it as Dynamic and let the runtime handle it
+        // TODO: Generate runtime code to check for bank tags and use appropriate registers
+        
         if result_type.is_pointer() {
+            // Add a comment about the bank tag interpretation
+            insts.push(AsmInst::Comment(format!(
+                "Bank value in {bank_dest_reg:?} - tags: {} = Global, {} = Stack, positive = dynamic",
+                BankTagValue::GLOBAL,
+                BankTagValue::STACK
+            )));
+            
             // Bind the bank value so it's tracked in the register manager
             mgr.bind_value_to_register(bank_value_name.clone(), bank_dest_reg);
             // Track that this pointer's bank is in a named value (not just a register)

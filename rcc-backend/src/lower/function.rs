@@ -12,14 +12,9 @@ use std::collections::HashMap;
 use log::{debug, info, trace};
 use crate::function::FunctionBuilder;
 use crate::globals::GlobalManager;
-use crate::instr::helpers::get_bank_register_with_mgr;
+use crate::instr::helpers::get_bank_register_with_runtime_check_safe;
 use crate::naming::NameGenerator;
 use crate::regmgmt::RegisterPressureManager;
-// use crate::RegisterPressureManager;
-// use crate::naming::NameGenerator;
-// use crate::globals::GlobalManager;
-// use crate::function::FunctionBuilder;
-// use crate::instr::helpers::get_bank_register_with_mgr;
 use super::instruction::lower_instruction;
 
 /// Compute stack offsets (relative to FP) for each alloca result
@@ -133,7 +128,8 @@ fn handle_return_instruction(
                             // This is a compiler bug - all pointers must have bank info
                             panic!("V2: COMPILER BUG: No bank info for pointer return value t{t}. All pointers must have tracked bank information!");
                         });
-                    let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
+                    let (bank_reg, check_insts) = get_bank_register_with_runtime_check_safe(&bank_info, mgr, naming, "return_pointer");
+                    builder.add_instructions(check_insts);
                     
                     let temp_reg = mgr.get_register(temp_name);
                     builder.add_instructions(mgr.take_instructions());
@@ -198,7 +194,9 @@ fn handle_return_instruction(
                                 .unwrap_or_else(|| {
                                     panic!("No bank info for Mixed pointer t{t}");
                                 });
-                            get_bank_register_with_mgr(&bank_info, mgr)
+                            let (bank_reg, check_insts) = get_bank_register_with_runtime_check_safe(&bank_info, mgr, naming, "return_mixed_pointer");
+                            builder.add_instructions(check_insts);
+                            bank_reg
                         } else {
                             panic!("Mixed bank requires temp value");
                         }

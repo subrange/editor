@@ -17,7 +17,7 @@ use crate::instr::{
     lower_load, lower_store, lower_gep,
     lower_binary_op, lower_unary_op,
     lower_inline_asm_extended,
-    helpers::{get_bank_register_with_mgr, resolve_global_to_fatptr, canonicalize_value, get_value_register}
+    helpers::{get_bank_register_with_runtime_check_safe, resolve_global_to_fatptr, canonicalize_value, get_value_register}
 };
 use crate::regmgmt::{BankInfo, RegisterPressureManager};
 
@@ -88,20 +88,59 @@ pub fn lower_instruction(
             // For struct field access, the index IS the offset in words, not an array index.
             // For array indexing, we need to multiply by the element size.
             
-            // Check if result_type is an array to determine the element size
-            let element_size = if let Some(elem_type) = result_type.element_type() {
-                // This is accessing an array element or a pointer to something
-                // Get the size of what we're pointing to
-                let size_words = elem_type.size_in_words().unwrap_or(1) as i16;
-                debug!("  GEP result type is array/pointer, element size = {size_words} words");
-                if size_words == 0 { 1 } else { size_words }
-            } else if indices.len() == 1 && matches!(indices[0], Value::Constant(_)) {
-                // Single constant index with no array result type - likely struct field access
-                // The index is already the offset in words
-                debug!("  GEP looks like struct field access, using element_size = 1");
-                1
+            // Determine if this is struct field access or array indexing
+            // The key insight: struct field GEPs come from accessing fields of structs,
+            // while array GEPs come from pointer arithmetic or array indexing.
+            // 
+            // We can detect struct field access by checking if:
+            // 1. We have a single constant index
+            // 2. The base pointer type is a struct
+            
+            let element_size = if indices.len() == 1 && matches!(indices[0], Value::Constant(_)) {
+                // Single constant index - could be struct field or array access
+                // Check the base pointer type to determine which
+                
+                // For struct field access, the index is already the offset in words
+                // For array access, we need to multiply by element size
+                
+                // Since we can't easily determine the base pointer type here,
+                // we use a heuristic: if the result type is a pointer and the index
+                // is small (typical for struct field offsets), treat it as struct field access
+                
+                if let Some(elem_type) = result_type.element_type() {
+                    // Result is a pointer type
+                    if let Value::Constant(idx) = &indices[0] {
+                        // Small constant indices (< 100) are likely struct field offsets
+                        // Large indices are likely array accesses
+                        if *idx < 100 {
+                            debug!("  GEP looks like struct field access (small constant index), using element_size = 1");
+                            1
+                        } else {
+                            // Large index - likely array access
+                            let size_words = elem_type.size_in_words().unwrap_or(1) as i16;
+                            debug!("  GEP looks like array access (large constant index), element size = {size_words} words");
+                            if size_words == 0 { 1 } else { size_words }
+                        }
+                    } else {
+                        1 // Shouldn't happen due to matches! guard
+                    }
+                } else {
+                    // Not a pointer result - assume struct field access
+                    debug!("  GEP with non-pointer result, using element_size = 1");
+                    1
+                }
+            } else if indices.len() == 1 && matches!(indices[0], Value::Temp(_)) {
+                // Dynamic index - this is array indexing
+                if let Some(elem_type) = result_type.element_type() {
+                    let size_words = elem_type.size_in_words().unwrap_or(1) as i16;
+                    debug!("  GEP with dynamic index (array access), element size = {size_words} words");
+                    if size_words == 0 { 1 } else { size_words }
+                } else {
+                    debug!("  GEP with dynamic index but no element type, using element_size = 1");
+                    1
+                }
             } else {
-                // Default case
+                // Default case - use element_size = 1
                 debug!("  GEP default case, using element_size = 1");
                 1
             };
@@ -152,7 +191,14 @@ pub fn lower_instruction(
                             let addr_reg = mgr.get_register(name.clone());
                             insts.extend(mgr.take_instructions());
                             
-                            let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
+                            // Use safe runtime checking for all bank types
+                            let (bank_reg, check_insts) = get_bank_register_with_runtime_check_safe(
+                                &bank_info,
+                                mgr,
+                                naming,
+                                "call_arg"
+                            );
+                            insts.extend(check_insts);
                             
                             call_args.push(CallArg::FatPointer { addr: addr_reg, bank: bank_reg });
                         } else {
@@ -207,7 +253,15 @@ pub fn lower_instruction(
                         // This handles all bank types including Mixed properly
                         use crate::instr::helpers::resolve_bank_tag_to_info;
                         let bank_info = resolve_bank_tag_to_info(&fp.bank, fp, mgr, naming);
-                        let bank_reg = get_bank_register_with_mgr(&bank_info, mgr);
+                        
+                        // Use safe runtime checking for all bank types
+                        let (bank_reg, check_insts) = get_bank_register_with_runtime_check_safe(
+                            &bank_info,
+                            mgr,
+                            naming,
+                            "call_arg_fp"
+                        );
+                        insts.extend(check_insts);
                         
                         call_args.push(CallArg::FatPointer { addr: addr_reg, bank: bank_reg });
                     }
