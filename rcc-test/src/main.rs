@@ -87,11 +87,12 @@ fn run() -> Result<()> {
             return Ok(());
         }
 
-        Some(Command::Run { ref programs, ref filter, ref frequency, visual }) => {
+        Some(Command::Run { ref programs, ref filter, ref frequency, visual, bank_size }) => {
             if !programs.is_empty() {
                 // Run as programs without test expectations
+                let run_bank_size = bank_size.unwrap_or(cli.bank_size);
                 for program in programs {
-                    exec_program(program, &cli, &tools, frequency.clone(), visual)?;
+                    exec_program(program, &cli, &tools, frequency.clone(), visual, run_bank_size)?;
                 }
             } else {
                 // Run as test suite with frequency if provided
@@ -795,10 +796,10 @@ fn check_untracked_tests(tests_file: &Path, verbose: bool) -> Result<()> {
     Ok(())
 }
 
-fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Option<String>, visual: bool) -> Result<()> {
+fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Option<String>, visual: bool, bank_size: usize) -> Result<()> {
     // Build runtime first
-    println!("Building runtime library...");
-    build_runtime(tools, cli.bank_size)?;
+    println!("Building runtime library (bank_size: {})...", bank_size);
+    build_runtime(tools, bank_size)?;
     
     // Find the program file
     let program_path = find_program_file(program_name)?;
@@ -816,7 +817,7 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Opt
     let bin_file = compile_c_to_binary(
         &actual_path,
         tools,
-        cli.bank_size,
+        bank_size,
         true, // use_runtime (always with runtime for examples)
         30,   // timeout_secs
     )?;

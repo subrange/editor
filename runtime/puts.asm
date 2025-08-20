@@ -48,17 +48,17 @@ L_puts_1:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(2), bank: Mixed })
 ; LOAD: Pointer t2 has bank info: Dynamic("load_f0_op8_t2_bank_val")
     LI T3, -1
-    BEQ T5, T3, L_bc_20bb6027_use_global
+    BEQ T5, T3, L_bc_2c3d5810_use_global
     LI T2, -2
-    BEQ T5, T2, L_bc_20bb6027_use_stack
+    BEQ T5, T2, L_bc_2c3d5810_use_stack
     ADD T4, T5, R0
-    BEQ R0, R0, L_bc_20bb6027_done
-L_bc_20bb6027_use_global:
+    BEQ R0, R0, L_bc_2c3d5810_done
+L_bc_2c3d5810_use_global:
     ADD T4, GP, R0
-    BEQ R0, R0, L_bc_20bb6027_done
-L_bc_20bb6027_use_stack:
+    BEQ R0, R0, L_bc_2c3d5810_done
+L_bc_2c3d5810_use_stack:
     ADD T4, SB, R0
-L_bc_20bb6027_done:
+L_bc_2c3d5810_done:
 ; LOAD: Using bank register T4 for load
     LOAD T1, T4, T7
     BEQ T1, R0, L_puts_3
@@ -81,17 +81,17 @@ L_puts_2:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(4), bank: Mixed })
 ; LOAD: Pointer t4 has bank info: Dynamic("load_f0_op16_t4_bank_val")
     LI T2, -1
-    BEQ T6, T2, L_bc_b2725261_use_global
+    BEQ T6, T2, L_bc_5d36642b_use_global
     LI T1, -2
-    BEQ T6, T1, L_bc_b2725261_use_stack
+    BEQ T6, T1, L_bc_5d36642b_use_stack
     ADD T3, T6, R0
-    BEQ R0, R0, L_bc_b2725261_done
-L_bc_b2725261_use_global:
+    BEQ R0, R0, L_bc_5d36642b_done
+L_bc_5d36642b_use_global:
     ADD T3, GP, R0
-    BEQ R0, R0, L_bc_b2725261_done
-L_bc_b2725261_use_stack:
+    BEQ R0, R0, L_bc_5d36642b_done
+L_bc_5d36642b_use_stack:
     ADD T3, SB, R0
-L_bc_b2725261_done:
+L_bc_5d36642b_done:
 ; LOAD: Using bank register T3 for load
     LOAD S0, T3, S1
 ; Spill live registers before call
@@ -107,25 +107,33 @@ L_bc_b2725261_done:
     ADD SC, FP, R0
     ADDI SC, SC, 12
     STORE T5, SB, SC
-; Spill load_f0_op9_t3_resolved_bank_0_f0_op10 to slot 3
+; Spill load_f0_op8_t2_bank_val to slot 3
     ADD SC, FP, R0
     ADDI SC, SC, 13
-    STORE T4, SB, SC
-; Spill t4 to slot 4
+    STORE T5, SB, SC
+; Spill load_f0_op9_t3_resolved_bank_0_f0_op10 to slot 4
     ADD SC, FP, R0
     ADDI SC, SC, 14
-    STORE S1, SB, SC
-; Spill load_f0_op16_t4_bank_val to slot 5
+    STORE T4, SB, SC
+; Spill t4 to slot 5
     ADD SC, FP, R0
     ADDI SC, SC, 15
-    STORE T6, SB, SC
-; Spill load_f0_op17_t5_resolved_bank_0_f0_op18 to slot 6
+    STORE S1, SB, SC
+; Spill load_f0_op16_t4_bank_val to slot 6
     ADD SC, FP, R0
     ADDI SC, SC, 16
-    STORE T3, SB, SC
-; Spill t5 to slot 7
+    STORE T6, SB, SC
+; Spill load_f0_op16_t4_bank_val to slot 7
     ADD SC, FP, R0
     ADDI SC, SC, 17
+    STORE T6, SB, SC
+; Spill load_f0_op17_t5_resolved_bank_0_f0_op18 to slot 8
+    ADD SC, FP, R0
+    ADDI SC, SC, 18
+    STORE T3, SB, SC
+; Spill t5 to slot 9
+    ADD SC, FP, R0
+    ADDI SC, SC, 19
     STORE S0, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0
@@ -153,21 +161,29 @@ L_bc_b2725261_done:
 L_puts_3:
     LI T4, 10
 ; Spill live registers before call
-; Spill t6 to slot 8
-    ADD SC, FP, R0
-    ADDI SC, SC, 18
-    STORE T2, SB, SC
-; Spill t7 to slot 9
-    ADD SC, FP, R0
-    ADDI SC, SC, 19
-    STORE T7, SB, SC
-; Spill load_f0_op24_t6_bank_val to slot 10
+; Spill t6 to slot 10
     ADD SC, FP, R0
     ADDI SC, SC, 20
-    STORE S3, SB, SC
-; Spill const_f0_op27_10 to slot 11
+    STORE T2, SB, SC
+; Spill load_f0_op24_t6_bank_val to slot 11
     ADD SC, FP, R0
     ADDI SC, SC, 21
+    STORE S3, SB, SC
+; Spill t7 to slot 12
+    ADD SC, FP, R0
+    ADDI SC, SC, 22
+    STORE T7, SB, SC
+; Spill load_f0_op24_t6_bank_val to slot 13
+    ADD SC, FP, R0
+    ADDI SC, SC, 23
+    STORE S3, SB, SC
+; Spill load_f0_op24_t6_bank_val to slot 14
+    ADD SC, FP, R0
+    ADDI SC, SC, 24
+    STORE S3, SB, SC
+; Spill const_f0_op27_10 to slot 15
+    ADD SC, FP, R0
+    ADDI SC, SC, 25
     STORE T4, SB, SC
 ; Setting up 1 register arguments
 ; Arg 0 (scalar) to A0

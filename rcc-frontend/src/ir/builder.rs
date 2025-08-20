@@ -70,6 +70,20 @@ impl IrBuilder {
         }
     }
     
+    /// Create a basic block and mark it as a loop condition block
+    pub fn create_loop_condition_block(&mut self, label_id: LabelId) -> Result<&mut BasicBlock, String> {
+        let mut block = BasicBlock::new(label_id);
+        block.is_loop_condition = true;
+        
+        if let Some(ref mut function) = self.current_function {
+            function.add_block(block);
+            self.current_block = Some(label_id);
+            Ok(function.get_block_mut(label_id).unwrap())
+        } else {
+            Err("No current function".to_string())
+        }
+    }
+    
     pub fn build_binary(&mut self, op: IrBinaryOp, lhs: Value, rhs: Value, result_type: IrType) -> Result<TempId, String> {
         let result = self.new_temp();
         let instr = Instruction::Binary { result, op, lhs, rhs, result_type };

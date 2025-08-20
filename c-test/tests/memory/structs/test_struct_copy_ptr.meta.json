@@ -1,5 +1,5 @@
 {
   "expected": "Y\n",
-  "description": "Test struct assignment with just pointer field",
-  "use_runtime": true
+  "use_runtime": true,
+  "description": "Test struct assignment with just pointer field"
 }

@@ -1,5 +1,5 @@
 {
-  "expected": "YYYY",
+  "description": "Nested compound literals",
   "use_runtime": true,
-  "description": "Nested compound literals"
+  "expected": "YYYY"
 }

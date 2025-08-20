@@ -80,6 +80,10 @@ pub enum Command {
         /// Enable visual display mode for graphics programs
         #[arg(long)]
         visual: bool,
+        
+        /// Bank size for assembler
+        #[arg(long)]
+        bank_size: Option<usize>,
     },
     
     /// Add a new test (creates .meta.json file)

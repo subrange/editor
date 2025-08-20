@@ -58,8 +58,8 @@ pub fn generate_while(
     // Jump to condition
     gen.builder.build_branch(cond_label)?;
     
-    // Condition check
-    gen.builder.create_block(cond_label)?;
+    // Condition check - mark as loop condition block
+    gen.builder.create_loop_condition_block(cond_label)?;
     let mut expr_gen = gen.create_expression_generator();
     let cond_val = expr_gen.generate(condition)?;
     gen.builder.build_branch_cond(cond_val, body_label, end_label)?;
@@ -103,8 +103,8 @@ pub fn generate_for(
     // Jump to condition
     gen.builder.build_branch(cond_label)?;
     
-    // Condition check
-    gen.builder.create_block(cond_label)?;
+    // Condition check - mark as loop condition block
+    gen.builder.create_loop_condition_block(cond_label)?;
     if let Some(cond_expr) = condition {
         let mut expr_gen = gen.create_expression_generator();
         let cond_val = expr_gen.generate(cond_expr)?;

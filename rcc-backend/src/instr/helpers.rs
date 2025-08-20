@@ -330,6 +330,52 @@ pub fn materialize_bank_to_register(
     }
 }
 
+/// Get bank value for passing as function argument
+/// 
+/// This function preserves bank tag values (-1 for Global, -2 for Stack)
+/// when preparing arguments for function calls. This is critical because
+/// the callee expects to receive tag values, not resolved register values.
+/// 
+/// Returns (register_containing_bank_value, instructions_to_emit)
+pub fn get_bank_value_for_argument(
+    bank_info: &BankInfo,
+    mgr: &mut RegisterPressureManager,
+    naming: &mut NameGenerator,
+    context: &str
+) -> (Reg, Vec<AsmInst>) {
+    let mut insts = vec![];
+    
+    match bank_info {
+        BankInfo::Global => {
+            // Pass the GLOBAL tag value (-1), not GP register
+            let name = naming.temp_with_context(context, "global_tag");
+            let r = mgr.get_register(name);
+            insts.extend(mgr.take_instructions());
+            insts.push(AsmInst::Li(r, BankTagValue::GLOBAL));
+            (r, insts)
+        }
+        BankInfo::Stack => {
+            // Pass the STACK tag value (-2), not SB register
+            let name = naming.temp_with_context(context, "stack_tag");
+            let r = mgr.get_register(name);
+            insts.extend(mgr.take_instructions());
+            insts.push(AsmInst::Li(r, BankTagValue::STACK));
+            (r, insts)
+        }
+        BankInfo::Register(reg) => {
+            // Already in a register, use as-is
+            (*reg, insts)
+        }
+        BankInfo::Dynamic(name) => {
+            // Dynamic values are already in the correct form (either tags or addresses)
+            // Just get the register containing the value
+            let bank_reg = mgr.get_register(name.clone());
+            insts.extend(mgr.take_instructions());
+            (bank_reg, insts)
+        }
+    }
+}
+
 /// Get bank register with automatic runtime checking for Dynamic banks
 /// 
 /// This is the SAFE version that automatically generates runtime checking

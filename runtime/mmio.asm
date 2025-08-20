@@ -1149,17 +1149,17 @@ L_text40_puts_16:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(12), bank: Mixed })
 ; LOAD: Pointer t12 has bank info: Dynamic("gep_new_bank_f24_op24_t12")
     LI T0, -1
-    BEQ S1, T0, L_bc_251d766c_use_global
+    BEQ S1, T0, L_bc_6dd8eaa8_use_global
     LI S3, -2
-    BEQ S1, S3, L_bc_251d766c_use_stack
+    BEQ S1, S3, L_bc_6dd8eaa8_use_stack
     ADD S0, S1, R0
-    BEQ R0, R0, L_bc_251d766c_done
-L_bc_251d766c_use_global:
+    BEQ R0, R0, L_bc_6dd8eaa8_done
+L_bc_6dd8eaa8_use_global:
     ADD S0, GP, R0
-    BEQ R0, R0, L_bc_251d766c_done
-L_bc_251d766c_use_stack:
+    BEQ R0, R0, L_bc_6dd8eaa8_done
+L_bc_6dd8eaa8_use_stack:
     ADD S0, SB, R0
-L_bc_251d766c_done:
+L_bc_6dd8eaa8_done:
 ; LOAD: Using bank register S0 for load
     LOAD S2, S0, T7
 ; Recompute alloca t9 at FP+6
@@ -1219,40 +1219,48 @@ L_text40_puts_17:
     ADD SC, FP, R0
     ADDI SC, SC, 19
     STORE T1, SB, SC
+; Spill load_f24_op17_t10_bank_val to slot 5
+    ADD SC, FP, R0
+    ADDI SC, SC, 20
+    STORE T2, SB, SC
     LI T1, 255
     AND T4, T4, T1
 ; Spill live registers before call
-; Spill t11 to slot 5
-    ADD SC, FP, R0
-    ADDI SC, SC, 20
-    STORE T6, SB, SC
-; Spill load_f24_op17_t10_bank_val to slot 6
+; Spill t11 to slot 6
     ADD SC, FP, R0
     ADDI SC, SC, 21
-    STORE T2, SB, SC
-; Spill t12 to slot 7
+    STORE T6, SB, SC
+; Spill load_f24_op17_t10_bank_val to slot 7
     ADD SC, FP, R0
     ADDI SC, SC, 22
-    STORE T7, SB, SC
-; Spill gep_new_bank_f24_op24_t12 to slot 8
+    STORE T2, SB, SC
+; Spill t12 to slot 8
     ADD SC, FP, R0
     ADDI SC, SC, 23
-    STORE S1, SB, SC
-; Spill load_f24_op25_t13_resolved_bank_24_f24_op26 to slot 9
+    STORE T7, SB, SC
+; Spill gep_new_bank_f24_op24_t12 to slot 9
     ADD SC, FP, R0
     ADDI SC, SC, 24
-    STORE S0, SB, SC
-; Spill t18 to slot 10
+    STORE S1, SB, SC
+; Spill gep_new_bank_f24_op24_t12 to slot 10
     ADD SC, FP, R0
     ADDI SC, SC, 25
-    STORE T5, SB, SC
-; Spill t19 to slot 11
+    STORE S1, SB, SC
+; Spill load_f24_op25_t13_resolved_bank_24_f24_op26 to slot 11
     ADD SC, FP, R0
     ADDI SC, SC, 26
-    STORE T0, SB, SC
-; Spill t21 to slot 12
+    STORE S0, SB, SC
+; Spill t18 to slot 12
     ADD SC, FP, R0
     ADDI SC, SC, 27
+    STORE T5, SB, SC
+; Spill t19 to slot 13
+    ADD SC, FP, R0
+    ADDI SC, SC, 28
+    STORE T0, SB, SC
+; Spill t21 to slot 14
+    ADD SC, FP, R0
+    ADDI SC, SC, 29
     STORE T4, SB, SC
 ; Setting up 3 register arguments
 ; Arg 0 (scalar) to A0
@@ -1897,17 +1905,17 @@ L_text40_puts_color_28:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(16), bank: Mixed })
 ; LOAD: Pointer t16 has bank info: Dynamic("gep_new_bank_f30_op28_t16")
     LI T2, -1
-    BEQ T7, T2, L_bc_6ab74b86_use_global
+    BEQ T7, T2, L_bc_715d555e_use_global
     LI S1, -2
-    BEQ T7, S1, L_bc_6ab74b86_use_stack
+    BEQ T7, S1, L_bc_715d555e_use_stack
     ADD S3, T7, R0
-    BEQ R0, R0, L_bc_6ab74b86_done
-L_bc_6ab74b86_use_global:
+    BEQ R0, R0, L_bc_715d555e_done
+L_bc_715d555e_use_global:
     ADD S3, GP, R0
-    BEQ R0, R0, L_bc_6ab74b86_done
-L_bc_6ab74b86_use_stack:
+    BEQ R0, R0, L_bc_715d555e_done
+L_bc_715d555e_use_stack:
     ADD S3, SB, R0
-L_bc_6ab74b86_done:
+L_bc_715d555e_done:
 ; LOAD: Using bank register S3 for load
     LOAD S0, S3, S2
 ; Recompute alloca t13 at FP+8
@@ -1967,6 +1975,10 @@ L_text40_puts_color_29:
     ADD SC, FP, R0
     ADDI SC, SC, 23
     STORE T1, SB, SC
+; Spill load_f30_op21_t14_bank_val to slot 7
+    ADD SC, FP, R0
+    ADDI SC, SC, 24
+    STORE T4, SB, SC
     LI T1, 255
     AND T5, T5, T1
 ; Load instruction: t26 = load FatPtr(FatPointer { addr: Temp(8), bank: Stack })
@@ -1976,55 +1988,59 @@ L_text40_puts_color_29:
 ; Recompute alloca t8 at FP+4
     ADD T1, FP, R0
     ADDI T1, T1, 4
-; Spill t15 to slot 7
+; Spill t15 to slot 8
     ADD SC, FP, R0
-    ADDI SC, SC, 24
+    ADDI SC, SC, 25
     STORE T6, SB, SC
     LOAD T6, SB, T1
 ; Load instruction: t27 = load FatPtr(FatPointer { addr: Temp(9), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(9), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f30_op46_t27 has bank info: Stack
 ; LOAD: Using bank register Sb for load
-; Spill load_f30_op21_t14_bank_val to slot 8
+; Spill load_f30_op21_t14_bank_val to slot 9
     ADD SC, FP, R0
-    ADDI SC, SC, 25
+    ADDI SC, SC, 26
     STORE T4, SB, SC
 ; Recompute alloca t9 at FP+5
     ADD T4, FP, R0
     ADDI T4, T4, 5
-; Spill t16 to slot 9
-    ADD SC, FP, R0
-    ADDI SC, SC, 26
-    STORE S2, SB, SC
-    LOAD S2, SB, T4
-; Spill live registers before call
-; Spill gep_new_bank_f30_op28_t16 to slot 10
+; Spill t16 to slot 10
     ADD SC, FP, R0
     ADDI SC, SC, 27
-    STORE T7, SB, SC
-; Spill load_f30_op29_t17_resolved_bank_30_f30_op30 to slot 11
+    STORE S2, SB, SC
+; Spill gep_new_bank_f30_op28_t16 to slot 11
     ADD SC, FP, R0
     ADDI SC, SC, 28
-    STORE S3, SB, SC
-; Spill t22 to slot 12
+    STORE T7, SB, SC
+    LOAD S2, SB, T4
+; Spill live registers before call
+; Spill gep_new_bank_f30_op28_t16 to slot 12
     ADD SC, FP, R0
     ADDI SC, SC, 29
-    STORE T0, SB, SC
-; Spill t23 to slot 13
+    STORE T7, SB, SC
+; Spill load_f30_op29_t17_resolved_bank_30_f30_op30 to slot 13
     ADD SC, FP, R0
     ADDI SC, SC, 30
-    STORE T2, SB, SC
-; Spill t25 to slot 14
+    STORE S3, SB, SC
+; Spill t22 to slot 14
     ADD SC, FP, R0
     ADDI SC, SC, 31
-    STORE T5, SB, SC
-; Spill t26 to slot 15
+    STORE T0, SB, SC
+; Spill t23 to slot 15
     ADD SC, FP, R0
     ADDI SC, SC, 32
-    STORE T6, SB, SC
-; Spill t27 to slot 16
+    STORE T2, SB, SC
+; Spill t25 to slot 16
     ADD SC, FP, R0
     ADDI SC, SC, 33
+    STORE T5, SB, SC
+; Spill t26 to slot 17
+    ADD SC, FP, R0
+    ADDI SC, SC, 34
+    STORE T6, SB, SC
+; Spill t27 to slot 18
+    ADD SC, FP, R0
+    ADDI SC, SC, 35
     STORE S2, SB, SC
 ; Pushing 1 arguments to stack
 ; Push arg 4 (scalar) to stack
@@ -2211,17 +2227,17 @@ L_text40_puts_attr_32:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(14), bank: Mixed })
 ; LOAD: Pointer t14 has bank info: Dynamic("gep_new_bank_f32_op26_t14")
     LI S3, -1
-    BEQ S0, S3, L_bc_2fb3e081_use_global
+    BEQ S0, S3, L_bc_d198fcad_use_global
     LI S2, -2
-    BEQ S0, S2, L_bc_2fb3e081_use_stack
+    BEQ S0, S2, L_bc_d198fcad_use_stack
     ADD T3, S0, R0
-    BEQ R0, R0, L_bc_2fb3e081_done
-L_bc_2fb3e081_use_global:
+    BEQ R0, R0, L_bc_d198fcad_done
+L_bc_d198fcad_use_global:
     ADD T3, GP, R0
-    BEQ R0, R0, L_bc_2fb3e081_done
-L_bc_2fb3e081_use_stack:
+    BEQ R0, R0, L_bc_d198fcad_done
+L_bc_d198fcad_use_stack:
     ADD T3, SB, R0
-L_bc_2fb3e081_done:
+L_bc_d198fcad_done:
 ; LOAD: Using bank register T3 for load
     LOAD S1, T3, T7
 ; Recompute alloca t11 at FP+7
@@ -2281,6 +2297,10 @@ L_text40_puts_attr_33:
     ADD SC, FP, R0
     ADDI SC, SC, 21
     STORE T2, SB, SC
+; Spill load_f32_op19_t12_bank_val to slot 6
+    ADD SC, FP, R0
+    ADDI SC, SC, 22
+    STORE T4, SB, SC
     LI T2, 255
     AND S3, S3, T2
 ; Load instruction: t24 = load FatPtr(FatPointer { addr: Temp(7), bank: Stack })
@@ -2290,43 +2310,47 @@ L_text40_puts_attr_33:
 ; Recompute alloca t7 at FP+4
     ADD T2, FP, R0
     ADDI T2, T2, 4
-; Spill t13 to slot 6
+; Spill t13 to slot 7
     ADD SC, FP, R0
-    ADDI SC, SC, 22
+    ADDI SC, SC, 23
     STORE T6, SB, SC
     LOAD T6, SB, T2
 ; Spill live registers before call
-; Spill load_f32_op19_t12_bank_val to slot 7
-    ADD SC, FP, R0
-    ADDI SC, SC, 23
-    STORE T4, SB, SC
-; Spill t14 to slot 8
+; Spill load_f32_op19_t12_bank_val to slot 8
     ADD SC, FP, R0
     ADDI SC, SC, 24
-    STORE T7, SB, SC
-; Spill gep_new_bank_f32_op26_t14 to slot 9
+    STORE T4, SB, SC
+; Spill t14 to slot 9
     ADD SC, FP, R0
     ADDI SC, SC, 25
-    STORE S0, SB, SC
-; Spill load_f32_op27_t15_resolved_bank_32_f32_op28 to slot 10
+    STORE T7, SB, SC
+; Spill gep_new_bank_f32_op26_t14 to slot 10
     ADD SC, FP, R0
     ADDI SC, SC, 26
-    STORE T3, SB, SC
-; Spill t20 to slot 11
+    STORE S0, SB, SC
+; Spill gep_new_bank_f32_op26_t14 to slot 11
     ADD SC, FP, R0
     ADDI SC, SC, 27
-    STORE T0, SB, SC
-; Spill t21 to slot 12
+    STORE S0, SB, SC
+; Spill load_f32_op27_t15_resolved_bank_32_f32_op28 to slot 12
     ADD SC, FP, R0
     ADDI SC, SC, 28
-    STORE T1, SB, SC
-; Spill t23 to slot 13
+    STORE T3, SB, SC
+; Spill t20 to slot 13
     ADD SC, FP, R0
     ADDI SC, SC, 29
-    STORE S3, SB, SC
-; Spill t24 to slot 14
+    STORE T0, SB, SC
+; Spill t21 to slot 14
     ADD SC, FP, R0
     ADDI SC, SC, 30
+    STORE T1, SB, SC
+; Spill t23 to slot 15
+    ADD SC, FP, R0
+    ADDI SC, SC, 31
+    STORE S3, SB, SC
+; Spill t24 to slot 16
+    ADD SC, FP, R0
+    ADDI SC, SC, 32
     STORE T6, SB, SC
 ; Setting up 4 register arguments
 ; Arg 0 (scalar) to A0

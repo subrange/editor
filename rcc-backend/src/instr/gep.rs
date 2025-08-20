@@ -300,19 +300,25 @@ pub fn lower_gep(
         insts.push(AsmInst::Comment(format!("Base bank info: {base_bank_info:?}")));
         match base_bank_info {
             BankInfo::Dynamic(name) => {
-                // Get the current bank register for the named value
-                let current_bank = mgr.get_register(name.clone());
-                insts.extend(mgr.take_instructions());
                 let new_bank_name = naming.gep_new_bank(result_temp);
                 
-                // CRITICAL FIX: Clear any existing binding for this bank name
+                // CRITICAL FIX: Always clear the old binding first to ensure fresh computation
+                // This prevents using stale values from previous iterations
                 mgr.clear_value_binding(&new_bank_name);
-                insts.extend(mgr.take_instructions());  // Take clearing instructions
+                insts.extend(mgr.take_instructions());
                 
+                // Get the current bank register for the named value
+                // This will reload from spill slot if necessary
+                let current_bank = mgr.get_register(name.clone());
+                insts.extend(mgr.take_instructions());
+                
+                // Always allocate a fresh register for the new bank value
                 let new_bank_reg = mgr.get_register(new_bank_name.clone());
                 insts.extend(mgr.take_instructions());
+                
                 insts.push(AsmInst::Comment(format!("Computing new bank {new_bank_name} = {name} + bank_delta")));
                 insts.push(AsmInst::Add(new_bank_reg, current_bank, bank_delta_reg));
+                
                 // Bind the bank value to its register so it can be tracked/reloaded
                 mgr.bind_value_to_register(new_bank_name.clone(), new_bank_reg);
                 // CRITICAL: Use Dynamic so the bank can be reloaded if spilled

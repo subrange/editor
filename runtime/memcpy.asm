@@ -167,22 +167,26 @@ L_memcpy_2:
     ADD SC, FP, R0
     ADDI SC, SC, 22
     STORE T4, SB, SC
-; Spill t15 to slot 7
+; Spill load_f0_op26_t14_bank_val to slot 7
     ADD SC, FP, R0
     ADDI SC, SC, 23
+    STORE T2, SB, SC
+; Spill t15 to slot 8
+    ADD SC, FP, R0
+    ADDI SC, SC, 24
     STORE T1, SB, SC
     LI T1, 4096
     DIV T4, T6, T1
-; Spill load_f0_op26_t14_bank_val to slot 8
+; Spill load_f0_op26_t14_bank_val to slot 9
     ADD SC, FP, R0
-    ADDI SC, SC, 24
+    ADDI SC, SC, 25
     STORE T2, SB, SC
     MOD T2, T6, T1
 ; Base bank info: Dynamic("load_f0_op37_t17_bank_val")
 ; Clearing binding for 'gep_new_bank_f0_op44_t19'
-; Spill gep_new_bank_f0_op33_t16 to slot 9
+; Spill gep_new_bank_f0_op33_t16 to slot 10
     ADD SC, FP, R0
-    ADDI SC, SC, 25
+    ADDI SC, SC, 26
     STORE T7, SB, SC
 ; Computing new bank gep_new_bank_f0_op44_t19 = load_f0_op37_t17_bank_val + bank_delta
     ADD T7, S1, T4
@@ -193,35 +197,35 @@ L_memcpy_2:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(19), bank: Mixed })
 ; LOAD: Pointer t19 has bank info: Dynamic("gep_new_bank_f0_op44_t19")
     LI T4, -1
-    BEQ T7, T4, L_bc_48ce09ae_use_global
+    BEQ T7, T4, L_bc_100961b4_use_global
     LI T1, -2
-    BEQ T7, T1, L_bc_48ce09ae_use_stack
+    BEQ T7, T1, L_bc_100961b4_use_stack
     ADD T3, T7, R0
-    BEQ R0, R0, L_bc_48ce09ae_done
-L_bc_48ce09ae_use_global:
+    BEQ R0, R0, L_bc_100961b4_done
+L_bc_100961b4_use_global:
     ADD T3, GP, R0
-    BEQ R0, R0, L_bc_48ce09ae_done
-L_bc_48ce09ae_use_stack:
+    BEQ R0, R0, L_bc_100961b4_done
+L_bc_100961b4_use_stack:
     ADD T3, SB, R0
-L_bc_48ce09ae_done:
+L_bc_100961b4_done:
 ; LOAD: Using bank register T3 for load
     LOAD T2, T3, T6
-; Reload gep_new_bank_f0_op33_t16 from slot 9
+; Reload gep_new_bank_f0_op33_t16 from slot 10
     ADD SC, FP, R0
-    ADDI SC, SC, 25
+    ADDI SC, SC, 26
     LOAD T4, SB, SC
     LI T5, -1
-    BEQ T4, T5, L_bc_56d3c9b7_use_global
+    BEQ T4, T5, L_bc_ebed4201_use_global
     LI T0, -2
-    BEQ T4, T0, L_bc_56d3c9b7_use_stack
+    BEQ T4, T0, L_bc_ebed4201_use_stack
     ADD T1, T4, R0
-    BEQ R0, R0, L_bc_56d3c9b7_done
-L_bc_56d3c9b7_use_global:
+    BEQ R0, R0, L_bc_ebed4201_done
+L_bc_ebed4201_use_global:
     ADD T1, GP, R0
-    BEQ R0, R0, L_bc_56d3c9b7_done
-L_bc_56d3c9b7_use_stack:
+    BEQ R0, R0, L_bc_ebed4201_done
+L_bc_ebed4201_use_stack:
     ADD T1, SB, R0
-L_bc_56d3c9b7_done:
+L_bc_ebed4201_done:
     STORE T2, T1, S0
     BEQ R0, R0, L_memcpy_3
 ; Unconditional branch to L_memcpy_3
@@ -234,10 +238,14 @@ L_memcpy_3:
     ADD T5, FP, R0
     ADDI T5, T5, 7
     LOAD T0, SB, T5
-; Spill t17 to slot 10
+; Spill t17 to slot 11
     ADD SC, FP, R0
-    ADDI SC, SC, 26
+    ADDI SC, SC, 27
     STORE S3, SB, SC
+; Spill load_f0_op37_t17_bank_val to slot 12
+    ADD SC, FP, R0
+    ADDI SC, SC, 28
+    STORE S1, SB, SC
     LI S3, 1
     ADD T0, T0, S3
     STORE T0, SB, T5

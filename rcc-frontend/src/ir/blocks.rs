@@ -13,6 +13,10 @@ pub struct BasicBlock {
     pub instructions: Vec<Instruction>,
     pub predecessors: Vec<LabelId>,
     pub successors: Vec<LabelId>,
+    /// Marks if this block is a loop condition check block
+    /// Such blocks need special handling in the backend to preserve bank bindings
+    #[serde(default)]
+    pub is_loop_condition: bool,
 }
 
 impl BasicBlock {
@@ -22,6 +26,7 @@ impl BasicBlock {
             instructions: Vec::new(),
             predecessors: Vec::new(),
             successors: Vec::new(),
+            is_loop_condition: false,
         }
     }
     

@@ -1,7 +1,6 @@
 // Minimal Forth without structs containing arrays
 // Uses parallel arrays to avoid compiler limitations
-
-#include <stdio.h>
+ #include <stdio.h>
 
 // Configuration
 #define STACK_SIZE 100
@@ -51,19 +50,20 @@ char* get_dict_name(int idx) {
 // String compare
 int str_eq(char* a, char* b) {
     int i = 0;
-    while (a[i] && b[i]) {
-        if (a[i] != b[i]) return 0;
+    while (1) {
+        if (!a[i] && !b[i]) return 1;  // Both ended, equal
+        if (!a[i] || !b[i]) return 0;  // One ended, not equal
+        if (a[i] != b[i]) return 0;    // Different chars
         i++;
     }
-    return a[i] == b[i];
 }
 
 // String copy
 void str_copy(char* dst, char* src) {
-    int i = 0;
-    while (src[i] && i < 31) {
+    int i;
+    for (i = 0; i < 31; i++) {
+        if (!src[i]) break;
         dst[i] = src[i];
-        i++;
     }
     dst[i] = 0;
 }
@@ -125,10 +125,10 @@ void add_word(char* name, int is_prim, int code_start) {
     if (dict_count < MAX_WORDS) {
         // Manually copy to avoid str_copy issues
         char* dst = get_dict_name(dict_count);
-        int i = 0;
-        while (name[i] && i < 31) {
+        int i;
+        for (i = 0; i < 31; i++) {
+            if (!name[i]) break;
             dst[i] = name[i];
-            i++;
         }
         dst[i] = 0;
         
@@ -163,6 +163,27 @@ void exec_prim(int idx) {
         int a = pop();
         if (b != 0) push(a / b);
     }
+    else if (str_eq(name, "MOD")) {
+        int b = pop();
+        int a = pop();
+        if (b != 0) push(a % b);
+    }
+    // Comparison ops
+    else if (str_eq(name, "=")) {
+        int b = pop();
+        int a = pop();
+        push(a == b ? -1 : 0);  // Forth uses -1 for true
+    }
+    else if (str_eq(name, "<")) {
+        int b = pop();
+        int a = pop();
+        push(a < b ? -1 : 0);
+    }
+    else if (str_eq(name, ">")) {
+        int b = pop();
+        int a = pop();
+        push(a > b ? -1 : 0);
+    }
     // Stack ops
     else if (str_eq(name, "DUP")) {
         if (sp > 0) push(stack[sp-1]);
@@ -175,6 +196,25 @@ void exec_prim(int idx) {
             int temp = stack[sp-1];
             stack[sp-1] = stack[sp-2];
             stack[sp-2] = temp;
+        }
+    }
+    else if (str_eq(name, "OVER")) {
+        if (sp >= 2) {
+            push(stack[sp-2]);
+        }
+    }
+    else if (str_eq(name, "ROT")) {
+        if (sp >= 3) {
+            int temp = stack[sp-3];
+            stack[sp-3] = stack[sp-2];
+            stack[sp-2] = stack[sp-1];
+            stack[sp-1] = temp;
+        }
+    }
+    else if (str_eq(name, "2DUP")) {
+        if (sp >= 2) {
+            push(stack[sp-2]);
+            push(stack[sp-2]);
         }
     }
     // I/O
@@ -259,6 +299,34 @@ void init_dict() {
     dict_code_start[dict_count] = 0;
     dict_count++;
     
+    // MOD
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'M'; ptr[1] = 'O'; ptr[2] = 'D'; ptr[3] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
+    // =
+    ptr = get_dict_name(dict_count);
+    ptr[0] = '='; ptr[1] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
+    // <
+    ptr = get_dict_name(dict_count);
+    ptr[0] = '<'; ptr[1] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
+    // >
+    ptr = get_dict_name(dict_count);
+    ptr[0] = '>'; ptr[1] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
     // DUP
     ptr = get_dict_name(dict_count);
     ptr[0] = 'D'; ptr[1] = 'U'; ptr[2] = 'P'; ptr[3] = 0;
@@ -280,6 +348,27 @@ void init_dict() {
     dict_code_start[dict_count] = 0;
     dict_count++;
     
+    // OVER
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'O'; ptr[1] = 'V'; ptr[2] = 'E'; ptr[3] = 'R'; ptr[4] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
+    // ROT
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'R'; ptr[1] = 'O'; ptr[2] = 'T'; ptr[3] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
+    // 2DUP
+    ptr = get_dict_name(dict_count);
+    ptr[0] = '2'; ptr[1] = 'D'; ptr[2] = 'U'; ptr[3] = 'P'; ptr[4] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
     // .
     ptr = get_dict_name(dict_count);
     ptr[0] = '.'; ptr[1] = 0;
@@ -353,10 +442,10 @@ void process_word(char* word) {
             // New word definition - copy directly to dictionary
             if (dict_count < MAX_WORDS) {
                 char* dst = get_dict_name(dict_count);
-                int j = 0;
-                while (word[j] && j < 31) {
+                int j;
+                for (j = 0; j < 31; j++) {
+                    if (!word[j]) break;
                     dst[j] = word[j];
-                    j++;
                 }
                 dst[j] = 0;
                 
@@ -405,7 +494,11 @@ int get_word(char* input, int* pos, char* word) {
 
 int main() {
     puts("Minimal Forth");
-    puts("Commands: + - * / DUP DROP SWAP . CR .S WORDS BYE");
+    puts("Arithmetic: + - * / MOD");
+    puts("Comparison: = < >");
+    puts("Stack: DUP DROP SWAP OVER ROT 2DUP");
+    puts("I/O: . CR .S WORDS BYE");
+    puts("Definition: : name ... ;");
     puts("");
     
     init_dict();

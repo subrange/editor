@@ -17,7 +17,7 @@ use crate::instr::{
     lower_load, lower_store, lower_gep,
     lower_binary_op, lower_unary_op,
     lower_inline_asm_extended,
-    helpers::{get_bank_register_with_runtime_check_safe, resolve_global_to_fatptr, canonicalize_value, get_value_register}
+    helpers::{resolve_global_to_fatptr, canonicalize_value, get_value_register}
 };
 use crate::regmgmt::{BankInfo, RegisterPressureManager};
 
@@ -155,8 +155,9 @@ pub fn lower_instruction(
                             let addr_reg = mgr.get_register(name.clone());
                             insts.extend(mgr.take_instructions());
                             
-                            // Use safe runtime checking for all bank types
-                            let (bank_reg, check_insts) = get_bank_register_with_runtime_check_safe(
+                            // Use the new function that preserves bank tags for arguments
+                            use crate::instr::helpers::get_bank_value_for_argument;
+                            let (bank_reg, check_insts) = get_bank_value_for_argument(
                                 &bank_info,
                                 mgr,
                                 naming,
@@ -215,11 +216,11 @@ pub fn lower_instruction(
                         
                         // Use the helper function to resolve bank tag to bank info
                         // This handles all bank types including Mixed properly
-                        use crate::instr::helpers::resolve_bank_tag_to_info;
+                        use crate::instr::helpers::{resolve_bank_tag_to_info, get_bank_value_for_argument};
                         let bank_info = resolve_bank_tag_to_info(&fp.bank, fp, mgr, naming);
                         
-                        // Use safe runtime checking for all bank types
-                        let (bank_reg, check_insts) = get_bank_register_with_runtime_check_safe(
+                        // Use the new function that preserves bank tags for arguments
+                        let (bank_reg, check_insts) = get_bank_value_for_argument(
                             &bank_info,
                             mgr,
                             naming,

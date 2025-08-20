@@ -1,4 +1,4 @@
 {
-  "expected": "S:0.1.2BE\n",
-  "use_runtime": true
+  "use_runtime": true,
+  "expected": "S:0.1.2BE\n"
 }

@@ -320,6 +320,26 @@ impl RegisterPressureManager {
             self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Sc, self.local_count + slot));
             self.instructions.push(AsmInst::Load(reg, Reg::Sb, Reg::Sc));
             
+            // Check if this value has an associated bank that was spilled
+            if let Some(&bank_slot) = self.fat_ptr_bank_slots.get(&for_value) {
+                if let Some(bank_info) = self.get_pointer_bank(&for_value) {
+                    if let BankInfo::Dynamic(bank_name) = bank_info {
+                        debug!("  '{for_value}' has spilled bank '{bank_name}' in slot {bank_slot}, reloading");
+                        
+                        // Get a register for the bank
+                        let bank_reg = self.get_register(bank_name.clone());
+                        
+                        // Reload the bank value
+                        self.instructions.push(AsmInst::Comment(format!("Reload {bank_name} from slot {bank_slot}")));
+                        self.instructions.push(AsmInst::Add(Reg::Sc, Reg::Fp, Reg::R0));
+                        self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Sc, self.local_count + bank_slot));
+                        self.instructions.push(AsmInst::Load(bank_reg, Reg::Sb, Reg::Sc));
+                        
+                        debug!("  Reloaded bank '{}' into {:?} from slot {}", bank_name, bank_reg, bank_slot);
+                    }
+                }
+            }
+            
             // Update tracking
             self.reg_contents.insert(reg, for_value.clone());
             self.lru_queue.push_back(reg);
@@ -388,6 +408,35 @@ impl RegisterPressureManager {
             self.instructions.push(AsmInst::Add(Reg::Sc, Reg::Fp, Reg::R0));
             self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Sc, self.local_count + slot));
             self.instructions.push(AsmInst::Store(reg, Reg::Sb, Reg::Sc));
+            
+            // Check if this value has associated bank info that needs spilling
+            if let Some(bank_info) = self.get_pointer_bank(&value) {
+                if let BankInfo::Dynamic(bank_name) = &bank_info {
+                    debug!("  '{value}' has Dynamic bank '{bank_name}', spilling bank too");
+                    
+                    // Check if bank value is in a register
+                    if let Some((&bank_reg, _)) = self.reg_contents.iter().find(|(_, v)| *v == bank_name) {
+                        // Allocate a slot for the bank if not already allocated
+                        let bank_slot = self.fat_ptr_bank_slots.get(&value).copied()
+                            .unwrap_or_else(|| {
+                                let s = self.next_spill_slot;
+                                self.next_spill_slot += 1;
+                                self.fat_ptr_bank_slots.insert(value.clone(), s);
+                                trace!("  Allocated bank spill slot {s} for '{value}'");
+                                s
+                            });
+                        
+                        // Spill the bank register
+                        self.instructions.push(AsmInst::Comment(format!("Spill {bank_name} to slot {bank_slot}")));
+                        self.instructions.push(AsmInst::Add(Reg::Sc, Reg::Fp, Reg::R0));
+                        self.instructions.push(AsmInst::AddI(Reg::Sc, Reg::Sc, self.local_count + bank_slot));
+                        self.instructions.push(AsmInst::Store(bank_reg, Reg::Sb, Reg::Sc));
+                        
+                        debug!("  Spilled bank '{}' from {:?} to slot {} (FP+{})", 
+                               bank_name, bank_reg, bank_slot, self.local_count + bank_slot);
+                    }
+                }
+            }
             
             debug!("Spilled '{}' from {:?} to slot {} (FP+{})", value, reg, slot, self.local_count + slot);
         } else {
