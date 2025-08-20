@@ -18,23 +18,23 @@ int get_piece_data(int piece, int rotation, int idx) {
     int x = idx % 4;
     int y = idx / 4;
     
-    // Apply rotation transformation
+    // Apply rotation transformation (CLOCKWISE)
     if (rotation == 1) {
-        // 90 degrees clockwise: (x,y) -> (3-y,x)
-        int nx = 3 - y;
-        int ny = x;
+        // 90 degrees clockwise: (x,y) -> (y, 3-x)
+        int nx = y;
+        int ny = 3 - x;
         x = nx;
         y = ny;
         idx = y * 4 + x;
     } else if (rotation == 2) {
-        // 180 degrees: (x,y) -> (3-x,3-y)
+        // 180 degrees: (x,y) -> (3-x, 3-y)
         x = 3 - x;
         y = 3 - y;
         idx = y * 4 + x;
     } else if (rotation == 3) {
-        // 270 degrees clockwise: (x,y) -> (y,3-x)
-        int nx = y;
-        int ny = 3 - x;
+        // 270 degrees clockwise: (x,y) -> (3-y, x)
+        int nx = 3 - y;
+        int ny = x;
         x = nx;
         y = ny;
         idx = y * 4 + x;
@@ -241,12 +241,40 @@ void draw_ghost_piece(unsigned char *board, int piece, int rotation, int px, int
                 if (get_piece_cell(piece, rotation, x, y)) {
                     int screen_x = BOARD_X + (px + x) * BLOCK_SIZE;
                     int screen_y = BOARD_Y + (ghost_y + y) * BLOCK_SIZE;
+                    // Draw ghost piece as bright outline
                     draw_rect(screen_x, screen_y, BLOCK_SIZE, BLOCK_SIZE,
-                             rgb565(60, 60, 60));
+                             rgb565(150, 150, 150));  // Much brighter gray
+                    // Add inner dark fill to make it look hollow
+                    fill_rect(screen_x + 1, screen_y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2,
+                             rgb565(20, 20, 30));
                 }
             }
         }
     }
+}
+
+// Draw next piece preview
+void draw_next_piece(int piece) {
+    // Next piece preview box
+    fill_rect(50, 2, 12, 12, rgb565(30, 30, 50));
+    fill_rect(51, 3, 10, 10, rgb565(10, 10, 20));
+    
+    // Draw the next piece in the preview box (smaller scale)
+    unsigned short color = get_piece_color(piece);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            if (get_piece_cell(piece, 0, x, y)) {
+                // Draw smaller blocks (2x2 instead of 3x3)
+                fill_rect(52 + x * 2, 4 + y * 2, 2, 2, color);
+            }
+        }
+    }
+    
+    // "NEXT" label
+    set_pixel(51, 1, RGB_WHITE);
+    set_pixel(53, 1, RGB_WHITE);
+    set_pixel(55, 1, RGB_WHITE);
+    set_pixel(57, 1, RGB_WHITE);
 }
 
 // Draw UI
@@ -266,37 +294,52 @@ void draw_ui(int score, int lines, int level) {
     }
     
     // Level indicator
-    fill_rect(50, 10, 12, 20, rgb565(30, 30, 50));
+    fill_rect(50, 16, 12, 20, rgb565(30, 30, 50));
     int level_height = (level * 2);
     if (level_height > 18) level_height = 18;
-    fill_rect(51, 28 - level_height, 10, level_height, RGB_GREEN);
+    fill_rect(51, 34 - level_height, 10, level_height, RGB_GREEN);
     
     // Control hints
-    fill_rect(50, 35, 12, 25, rgb565(30, 30, 50));
+    fill_rect(50, 39, 12, 21, rgb565(30, 30, 50));
     // Arrow indicators
-    set_pixel(55, 38, RGB_WHITE); // Up
-    set_pixel(54, 39, RGB_WHITE);
-    set_pixel(56, 39, RGB_WHITE);
+    set_pixel(55, 42, RGB_WHITE); // Up
+    set_pixel(54, 43, RGB_WHITE);
+    set_pixel(56, 43, RGB_WHITE);
     
-    set_pixel(52, 43, RGB_WHITE); // Left
-    set_pixel(53, 42, RGB_WHITE);
-    set_pixel(53, 44, RGB_WHITE);
+    set_pixel(52, 47, RGB_WHITE); // Left
+    set_pixel(53, 46, RGB_WHITE);
+    set_pixel(53, 48, RGB_WHITE);
     
-    set_pixel(58, 43, RGB_WHITE); // Right
-    set_pixel(57, 42, RGB_WHITE);
-    set_pixel(57, 44, RGB_WHITE);
+    set_pixel(58, 47, RGB_WHITE); // Right
+    set_pixel(57, 46, RGB_WHITE);
+    set_pixel(57, 48, RGB_WHITE);
     
-    set_pixel(55, 48, RGB_WHITE); // Down
-    set_pixel(54, 47, RGB_WHITE);
-    set_pixel(56, 47, RGB_WHITE);
+    set_pixel(55, 52, RGB_WHITE); // Down
+    set_pixel(54, 51, RGB_WHITE);
+    set_pixel(56, 51, RGB_WHITE);
+    
+    // X indicator
+    set_pixel(53, 56, RGB_WHITE);
+    set_pixel(54, 57, RGB_WHITE);
+    set_pixel(55, 58, RGB_WHITE);
+    set_pixel(56, 57, RGB_WHITE);
+    set_pixel(57, 56, RGB_WHITE);
 }
 
 int main() {
     // Initialize display
     graphics_init(64, 64);
     
-    // Initialize RNG
-    rng_set_seed(12345);
+    // Initialize RNG with a more random seed
+    // Use initial keyboard state as entropy source
+    unsigned short seed = 12345;
+    seed = seed ^ (key_left_pressed() << 1);
+    seed = seed ^ (key_right_pressed() << 2);
+    seed = seed ^ (key_up_pressed() << 3);
+    seed = seed ^ (key_down_pressed() << 4);
+    seed = seed ^ (key_z_pressed() << 5);
+    seed = seed ^ (key_x_pressed() << 6);
+    rng_set_seed(seed);
     
     // Local game state (avoiding globals)
     unsigned char board[200];
@@ -308,6 +351,7 @@ int main() {
     
     // Game variables
     int current_piece = rng_get() % 7;
+    int next_piece = rng_get() % 7;  // Next piece preview
     int current_x = 3;
     int current_y = 0;
     int current_rotation = 0;
@@ -322,7 +366,10 @@ int main() {
     int last_right = 0;
     int last_up = 0;
     int last_down = 0;
+    int last_z = 0;
+    int last_x = 0;
     int move_delay = 0;
+    int repeat_delay = 0;  // For key repeat
     
     // Main game loop
     for (int frame = 0; frame < 5000 && !game_over; frame++) {
@@ -334,31 +381,49 @@ int main() {
         int right = key_right_pressed();
         int up = key_up_pressed();
         int down = key_down_pressed();
+        int z = key_z_pressed();
+        int x = key_x_pressed();
         
         if (move_delay == 0) {
-            // Move left
-            if (left && !last_left) {
-                if (is_valid_position(board, current_piece, current_rotation, current_x - 1, current_y)) {
-                    current_x--;
-                    move_delay = 3;
+            // Move left (initial press or repeat)
+            if (left) {
+                if (!last_left || repeat_delay == 0) {
+                    if (is_valid_position(board, current_piece, current_rotation, current_x - 1, current_y)) {
+                        current_x--;
+                        move_delay = 3;
+                        repeat_delay = last_left ? 2 : 8;  // Faster repeat after initial delay
+                    }
                 }
             }
-            // Move right
-            else if (right && !last_right) {
-                if (is_valid_position(board, current_piece, current_rotation, current_x + 1, current_y)) {
-                    current_x++;
-                    move_delay = 3;
+            // Move right (initial press or repeat)
+            else if (right) {
+                if (!last_right || repeat_delay == 0) {
+                    if (is_valid_position(board, current_piece, current_rotation, current_x + 1, current_y)) {
+                        current_x++;
+                        move_delay = 3;
+                        repeat_delay = last_right ? 2 : 8;  // Faster repeat after initial delay
+                    }
                 }
             }
-            // Rotate piece
-            else if (up && !last_up) {
+            // Rotate piece clockwise (UP or Z key)
+            else if ((up && !last_up) || (z && !last_z)) {
                 int next_rotation = (current_rotation + 1) % 4;
                 if (is_valid_position(board, current_piece, next_rotation, current_x, current_y)) {
                     current_rotation = next_rotation;
                     move_delay = 5;
                 }
             }
-            // Fast drop
+            // Instant drop (X key)
+            else if (x && !last_x) {
+                // Drop piece all the way down
+                while (is_valid_position(board, current_piece, current_rotation, current_x, current_y + 1)) {
+                    current_y++;
+                    score += 2;  // Bonus points for hard drop
+                }
+                // Force immediate placement
+                drop_timer = 100;  // Will trigger placement on next frame
+            }
+            // Fast drop (DOWN key)
             else if (down) {
                 if (is_valid_position(board, current_piece, current_rotation, current_x, current_y + 1)) {
                     current_y++;
@@ -371,11 +436,23 @@ int main() {
         
         if (move_delay > 0) move_delay--;
         
+        // Update repeat delay
+        if (repeat_delay > 0) {
+            repeat_delay--;
+        }
+        
+        // Reset repeat delay if key released
+        if (!left && !right) {
+            repeat_delay = 0;
+        }
+        
         // Store last key states
         last_left = left;
         last_right = right;
         last_up = up;
         last_down = down;
+        last_z = z;
+        last_x = x;
         
         // Auto drop
         drop_timer++;
@@ -398,8 +475,9 @@ int main() {
                     if (level > 10) level = 10;
                 }
                 
-                // Spawn new piece
-                current_piece = rng_get() % 7;
+                // Spawn new piece (use the next_piece)
+                current_piece = next_piece;
+                next_piece = rng_get() % 7;  // Generate new next piece
                 current_x = 3;
                 current_y = 0;
                 current_rotation = 0;
@@ -414,6 +492,7 @@ int main() {
         
         // Draw everything
         draw_ui(score, lines, level);
+        draw_next_piece(next_piece);
         draw_board(board);
         draw_ghost_piece(board, current_piece, current_rotation, current_x, current_y);
         draw_current_piece(current_piece, current_rotation, current_x, current_y, get_piece_color(current_piece));
