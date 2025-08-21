@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 // Heap configuration
-#define HEAP_START_BANK 3      // Heap starts at bank 3 (after code, globals, stack)
+#define HEAP_START_BANK 5      // Heap starts at bank 3 (after code, globals, stack)
 #define HEAP_END_BANK 255      // Maximum bank we can use for heap
 #define BANK_SIZE 32767         // Size of each bank in words (16-bit) - maximum possible
 

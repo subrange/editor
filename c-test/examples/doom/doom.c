@@ -3,6 +3,7 @@
 #include <graphics.h>
 #include <mmio.h>
 #include <string.h>
+#include <stdlib.h>
 
 // NOTE: Int is 16 bits.
 
@@ -95,9 +96,16 @@ void to_bank_addr_plus_bytes(int hi, int lo, int bytes, unsigned int *bank, unsi
     *addr = a & 0xFFFF;                 // Address is low part masked to 16 bits
 }
 
-int screen[320 * 200]; // Dummy screen buffer for graphics — this will not work, need heap. 
-
 int main() {
+
+    int* image_start = (int*)malloc(32000);
+    int* image_end   = (int*)malloc(32000);
+//
+//    if (image_start == NULL) {
+//        puts("Failed to allocate memory for image.");
+//        return 1;
+//    }
+
     int ptr = 0;
         unsigned int packed_header[2];
         storage_read_buffer(0, ptr, packed_header, 2);
@@ -215,18 +223,20 @@ int main() {
         unsigned int first_col_start_bank_words, first_col_start_addr_words;
         int BYTE_OFFSET = 0; // 2 bytes per word
         to_bank_addr_plus_bytes(patch_header_bank_bytes, patch_header_addr_bytes, first_col_offset + BYTE_OFFSET, &first_col_start_bank_words, &first_col_start_addr_words);
-//        puts("First column start address (words):");
-//        pad_hex(first_col_start_bank_words);
-//        pad_hex(first_col_start_addr_words >> 8);
-//        pad_hex(first_col_start_addr_words & 0xFF);
-//        br();
+        puts("First column start address (words):");
+        pad_hex(first_col_start_bank_words);
+        pad_hex(first_col_start_addr_words >> 8);
+        pad_hex(first_col_start_addr_words & 0xFF);
+        br();
         int first_col_start_lo = storage_read_at(first_col_start_bank_words, first_col_start_addr_words);
         // just dump it as hex for now
         puts("First column start address (bytes):");
 //        pad_hex(first_col_start_bank_words);
         pad_hex(first_col_start_lo >> 8);
-        pad_hex(first_col_start_lo & 0xFF);
+//        pad_hex(first_col_start_lo & 0xFF);
         br();
+
+        // So now "just" need to copy it to the image buffer in "image_start" and "image_end" and then display it.
 
         // Need to read titlepic with storage_read_at
 }
