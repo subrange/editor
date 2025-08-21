@@ -100,6 +100,8 @@ impl MacroExpander {
         self.input = input.to_string();
         self.expansion_chain.clear();
         self.enable_circular_dependency_detection = options.enable_circular_dependency_detection;
+        self.label_counter = 0;  // Reset label counter for each expansion
+        self.label_map.clear();   // Clear label map as well
         
         // Tokenize and parse
         let mut lexer = Lexer::new(input, !options.strip_comments);
