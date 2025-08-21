@@ -14,8 +14,7 @@ int puts(const char *s);
 // Blocks until a character is available
 int getchar(void);
 
-// TODO: Future additions
-// int printf(const char *format, ...);
+void printf(char *fmt, int *args);
 // char *gets(char *s);
 
 #endif // STDIO_H

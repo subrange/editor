@@ -129,8 +129,22 @@ impl VM {
             HDR_STORE_DATA => {
                 // Read word from storage at current (block, addr)
                 if let Some(ref mut storage) = self.storage {
+                    // Get the actual current position from storage (before read)
+                    let block = storage.get_block();
+                    let addr = storage.get_addr();
+                    
                     let value = storage.read_word();
                     self.memory[HDR_STORE_DATA] = value;
+                    
+                    // Log the read operation with the address that was actually used
+                    let full_addr = ((block as u32) << 16) | (addr as u32);
+                    println!("Storage READ: addr {:#010x} (block={:#06x}, addr={:#06x}) -> value {:#06x}", 
+                             full_addr, block, addr, value);
+                    
+                    // Update memory to reflect the new position after auto-increment
+                    self.memory[HDR_STORE_BLOCK] = storage.get_block();
+                    self.memory[HDR_STORE_ADDR] = storage.get_addr();
+                    
                     Some(value)
                 } else {
                     Some(0)  // No storage available
@@ -246,6 +260,7 @@ impl VM {
                 if let Some(ref mut storage) = self.storage {
                     storage.set_block(value);
                 }
+                self.memory[HDR_STORE_BLOCK] = value;  // Store the value for logging
                 true
             },
             HDR_STORE_ADDR => {
@@ -253,6 +268,7 @@ impl VM {
                 if let Some(ref mut storage) = self.storage {
                     storage.set_addr(value);
                 }
+                self.memory[HDR_STORE_ADDR] = value;  // Store the value for logging
                 true
             },
             HDR_STORE_DATA => {

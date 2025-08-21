@@ -186,35 +186,79 @@ impl VM {
         // ☠️💀🔥 CATASTROPHIC CHECK: PROGRAM MUST FIT IN ONE BLOCK 🔥💀☠️
         if instruction_count > self.bank_size as usize {
             eprintln!("\n");
+            eprintln!("💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩");
+            eprintln!("🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨");
             eprintln!("╔══════════════════════════════════════════════════════════════════╗");
-            eprintln!("║                     💀💀💀 FATAL ERROR 💀💀💀                    ║");
+            eprintln!("║              💀💀💀 SUPER DUPER ERROR!!! 💀💀💀                 ║");
+            eprintln!("║                  🎪 ABSOLUTELY BONKERS! 🎪                      ║");
             eprintln!("║                                                                  ║");
-            eprintln!("║     🔥 PROGRAM TOO LARGE TO FIT IN A SINGLE BLOCK! 🔥          ║");
+            eprintln!("║     🔥🔥 PROGRAM TOO THICC FOR SINGLE BLOCK! 🔥🔥              ║");
             eprintln!("║                                                                  ║");
-            eprintln!("║     Program size: {} instructions                               ", instruction_count);
-            eprintln!("║     Block size:   {} instructions                               ", self.bank_size);
-            eprintln!("║     Overflow:     {} instructions                               ", instruction_count - self.bank_size as usize);
+            eprintln!("║     🍔 Program size: {} instructions (CHONKY!)                  ", instruction_count);
+            eprintln!("║     🥗 Block size:   {} instructions (smol bean)                ", self.bank_size);
+            eprintln!("║     💩 Overflow:     {} instructions (POOPY OVERFLOW) 💩        ", instruction_count - self.bank_size as usize);
             eprintln!("║                                                                  ║");
-            eprintln!("║     ⚠️  THE UNIVERSE IS COLLAPSING ⚠️                           ║");
-            eprintln!("║     🌡️  HEAT DEATH IMMINENT 🌡️                                  ║");
-            eprintln!("║     ☢️  ENTROPIC CASCADE INITIATED ☢️                           ║");
-            eprintln!("║     🕳️  BLACK HOLE FORMING 🕳️                                   ║");
-            eprintln!("║     ⏰  TIME ITSELF IS UNRAVELING ⏰                            ║");
+            eprintln!("║                    💩💩💩 OH CRAP! 💩💩💩                      ║");
+            eprintln!("║              Your code has pooped the bed!                      ║");
             eprintln!("║                                                                  ║");
-            eprintln!("║     This VM enforces strict single-block execution.             ║");
-            eprintln!("║     Your program has exceeded the fundamental limits            ║");
-            eprintln!("║     of space-time itself. The fabric of reality                 ║");
-            eprintln!("║     cannot sustain this computational burden.                   ║");
+            eprintln!("║     🌌 THE UNIVERSE SAID: \"NOPE!\" 🌌                          ║");
+            eprintln!("║     🦖 DINOSAURS ARE COMING BACK 🦖                             ║");
+            eprintln!("║     🍕 PIZZA IS GETTING COLD 🍕                                 ║");
+            eprintln!("║     🐧 PENGUINS ARE MIGRATING TO MARS 🐧                        ║");
+            eprintln!("║     🌮 TACOS ARE RAINING FROM THE SKY 🌮                        ║");
+            eprintln!("║     🦄 UNICORNS ARE REAL NOW 🦄                                 ║");
+            eprintln!("║     💩 EVERYTHING IS POO NOW 💩                                 ║");
+            eprintln!("║     🎭 REALITY.EXE HAS STOPPED WORKING 🎭                       ║");
             eprintln!("║                                                                  ║");
-            eprintln!("║     🛸 ESCAPE PODS LAUNCHED 🛸                                  ║");
-            eprintln!("║     💣 SELF-DESTRUCT IN 5...4...3...2...1... 💣                ║");
+            eprintln!("║          HERE'S A REALLY BAD ASCII DRAGON:                      ║");
+            eprintln!("║                   ,     \\    /      ,                           ║");
+            eprintln!("║                  / \\    )\\__/(     / \\                          ║");
+            eprintln!("║                 /   \\  (_\\  /_)   /   \\                         ║");
+            eprintln!("║            ____/_____\\__\\@  @/___/_____\\____                    ║");
+            eprintln!("║           |             |\\../|              |                   ║");
+            eprintln!("║           |              \\VV/               |                   ║");
+            eprintln!("║           |         OH NO ITS BROKEN        |                   ║");
+            eprintln!("║           |_________________________________|                   ║");
+            eprintln!("║            |    /\\ /      \\\\       \\ /\\    |                    ║");
+            eprintln!("║            |  /   V        ))       V   \\  |                    ║");
+            eprintln!("║            |/     `       //        '     \\|                    ║");
+            eprintln!("║            `              V                '                    ║");
+            eprintln!("║                                                                  ║");
+            eprintln!("║     ⚡ INITIATING EMERGENCY POO PROTOCOL ⚡                      ║");
+            eprintln!("║     🚁 HELICOPTER NOISES: SOI SOI SOI SOI 🚁                    ║");
+            eprintln!("║     🎵 PLAYING SAD TROMBONE: WOMP WOMP 🎵                       ║");
+            eprintln!("║     🤖 ROBOTS ARE CRYING OIL TEARS 🤖                           ║");
+            eprintln!("║     🌈 RAINBOW MACHINE BROKE (AND POOPED) 🌈                    ║");
+            eprintln!("║                                                                  ║");
+            eprintln!("║     📢 ATTENTION ALL EPIC GAMERS 📢                             ║");
+            eprintln!("║     Your code is in great danger and needs YOUR help           ║");
+            eprintln!("║     to fit in the block! All it needs is your credit           ║");
+            eprintln!("║     card number... (just kidding, refactor your code)          ║");
+            eprintln!("║                                                                  ║");
+            eprintln!("║     🛸 ALIENS ARE LAUGHING AT YOUR POOPY CODE 🛸               ║");
+            eprintln!("║     🔮 CRYSTAL BALL SAYS: \"BIG OOF\" 🔮                        ║");
+            eprintln!("║     🎰 YOU ROLLED NAT 1 ON COMPILATION 🎰                       ║");
+            eprintln!("║     💩 POO COUNTER: {} MEGA-POOS 💩                             ", (instruction_count - self.bank_size as usize) / 100 + 1);
+            eprintln!("║     💣 YEET SEQUENCE: 5...4...3...2...1... 💣                   ║");
             eprintln!("║                                                                  ║");
             eprintln!("╚══════════════════════════════════════════════════════════════════╝");
+            eprintln!("🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨");
+            eprintln!("💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩");
             eprintln!("\n");
-            eprintln!("💥💥💥 BOOM 💥💥💥\n");
+            eprintln!("        HERE'S A TERRIBLE ASCII EXPLOSION:");
+            eprintln!("                    💩");
+            eprintln!("              💩    💩    💩");
+            eprintln!("         💩   \\  💀💀💀  /   💩");
+            eprintln!("       💩  ___--  RIP  --___  💩");
+            eprintln!("         💩   /  YOUR  \\   💩");
+            eprintln!("              💩  CODE  💩");
+            eprintln!("                    💩");
+            eprintln!("");
+            eprintln!("💥💥💥 KABOOM! KAPOW! BAZINGA! POO-SPLOSION! 💥💥💥");
+            eprintln!("              GAME OVER, INSERT COIN\n");
             
             return Err(format!(
-                "🔥💀 CATASTROPHIC FAILURE: Program ({} instructions) exceeds block size ({} instructions). THE HEAT DEATH OF THE UNIVERSE HAS BEGUN! 💀🔥",
+                "💩🔥💀🎪 SUPER DUPER MEGA ULTRA POO ERROR: Program ({} instructions) is too THICC for block ({} instructions). UNIVERSE.EXE HAS CRASHED AND POOPED ITSELF! SEND HELP AND TOILET PAPER! 🎪💀🔥💩",
                 instruction_count, self.bank_size
             ));
         }

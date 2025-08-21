@@ -2,12 +2,17 @@
 // Uses parallel arrays to avoid compiler limitations
 #include <stdio.h>
 #include <string.h>
+#include <mmio.h>
 
 // Configuration
 #define STACK_SIZE 100
 #define MAX_WORDS 50
 #define CODE_SIZE 500
 #define RETURN_STACK_SIZE 50
+
+// Storage configuration
+#define STORAGE_BLOCK 0       // Block number for dictionary storage
+#define STORAGE_MAGIC 0xF042  // Magic number to identify valid storage
 
 // Data stack
 int stack[STACK_SIZE];
@@ -105,18 +110,17 @@ int parse_num(char* s, int* result) {
     int val = 0;
     int i = 0;
     int sign = 1;
-    
+
     if (s[0] == '-') {
         sign = -1;
         i = 1;
     }
-    
-    while (s[i]) {
+
+    for (; s[i] != 0; i++) {
         if (s[i] < '0' || s[i] > '9') return 0;
         val = val * 10 + (s[i] - '0');
-        i++;
     }
-    
+
     *result = val * sign;
     return 1;
 }
@@ -131,22 +135,10 @@ int find_word(char* name) {
     return -1;
 }
 
-// Add word to dictionary (not used for user words anymore)
-void add_word(char* name, int is_prim, int code_start) {
-    if (dict_count < MAX_WORDS) {
-        char* dst = get_dict_name(dict_count);
-        str_copy(dst, name);
-        
-        dict_is_prim[dict_count] = is_prim;
-        dict_code_start[dict_count] = code_start;
-        dict_count++;
-    }
-}
-
 // Execute primitive
 void exec_prim(int idx) {
     char* name = get_dict_name(idx);
-    
+
     // Arithmetic
     if (str_eq(name, "+")) {
         int b = pop();
@@ -299,13 +291,108 @@ void exec_prim(int idx) {
     else if (str_eq(name, "BYE")) {
         running = 0;
     }
+    // New dictionary management words
+    else if (str_eq(name, "FORGET")) {
+        // FORGET requires the name to be on the stack as a special marker
+        // It will be handled in process_word
+    }
+    else if (str_eq(name, "LIST")) {
+        // LIST <name> - show definition of word
+        // Handled in process_word since we need to parse the next word
+    }
+    else if (str_eq(name, "STORE")) {
+        // Save dictionary to storage
+        // Write magic number
+        storage_write_at(STORAGE_BLOCK, 0, STORAGE_MAGIC);
+        // Write dictionary count
+        storage_write_at(STORAGE_BLOCK, 1, dict_count);
+        // Write code size
+        storage_write_at(STORAGE_BLOCK, 2, here);
+
+        // Write dictionary entries
+        int addr = 3;
+        for (int i = 0; i < dict_count; i++) {
+            char* name_ptr = get_dict_name(i);
+            // Write name (32 bytes = 16 words)
+            for (int j = 0; j < 16; j++) {
+                unsigned short word_val = ((unsigned short)(name_ptr[j*2] & 0xFF) << 8) |
+                                          (name_ptr[j*2+1] & 0xFF);
+                storage_write_at(STORAGE_BLOCK, addr++, word_val);
+            }
+            // Write is_prim flag
+            storage_write_at(STORAGE_BLOCK, addr++, dict_is_prim[i]);
+            // Write code_start
+            storage_write_at(STORAGE_BLOCK, addr++, dict_code_start[i]);
+        }
+
+        // Write code array
+        for (int i = 0; i < here; i++) {
+            storage_write_at(STORAGE_BLOCK, addr++, code[i]);
+        }
+
+        // Commit changes
+        storage_commit();
+        puts("Dictionary saved");
+    }
+    else if (str_eq(name, "LOAD")) {
+        // Load dictionary from storage
+        // Check magic number
+        unsigned short magic = storage_read_at(STORAGE_BLOCK, 0);
+        if (magic != STORAGE_MAGIC) {
+            puts("No saved dictionary found");
+            return;
+        }
+
+        // Read dictionary count and code size
+        int saved_dict_count = storage_read_at(STORAGE_BLOCK, 1);
+        int saved_here = storage_read_at(STORAGE_BLOCK, 2);
+
+        if (saved_dict_count > MAX_WORDS || saved_here > CODE_SIZE) {
+            puts("Saved dictionary too large");
+            return;
+        }
+
+        // Clear current user definitions (keep primitives)
+        int prim_count = 0;
+        for (int i = 0; i < dict_count; i++) {
+            if (dict_is_prim[i]) prim_count = i + 1;
+            else break;
+        }
+        dict_count = prim_count;
+        here = 0;
+
+        // Read dictionary entries
+        int addr = 3;
+        for (int i = prim_count; i < saved_dict_count; i++) {
+            char* name_ptr = get_dict_name(i);
+            // Read name (32 bytes = 16 words)
+            for (int j = 0; j < 16; j++) {
+                unsigned short word_val = storage_read_at(STORAGE_BLOCK, addr++);
+                name_ptr[j*2] = (word_val >> 8) & 0xFF;
+                name_ptr[j*2+1] = word_val & 0xFF;
+            }
+            // Read is_prim flag
+            dict_is_prim[i] = storage_read_at(STORAGE_BLOCK, addr++);
+            // Read code_start
+            dict_code_start[i] = storage_read_at(STORAGE_BLOCK, addr++);
+        }
+        dict_count = saved_dict_count;
+
+        // Read code array
+        for (int i = 0; i < saved_here; i++) {
+            code[i] = storage_read_at(STORAGE_BLOCK, addr++);
+        }
+        here = saved_here;
+
+        puts("Dictionary loaded");
+    }
 }
 
 // Find matching control flow word
 int find_matching(int start, char* start_word, char* end_word) {
     int depth = 1;
     int ip = start + 1;
-    
+
     while (ip < here && depth > 0) {
         if (code[ip] >= 0 && code[ip] < dict_count) {
             char* name = get_dict_name(code[ip]);
@@ -325,7 +412,7 @@ int find_matching(int start, char* start_word, char* end_word) {
 int find_else(int if_pos, int then_pos) {
     int depth = 0;
     int ip = if_pos + 1;
-    
+
     while (ip < then_pos) {
         if (code[ip] >= 0 && code[ip] < dict_count) {
             char* name = get_dict_name(code[ip]);
@@ -345,7 +432,7 @@ int find_else(int if_pos, int then_pos) {
 // Execute word with control flow support
 void execute(int idx) {
     if (idx < 0 || idx >= dict_count) return;
-    
+
     if (dict_is_prim[idx]) {
         exec_prim(idx);
     } else {
@@ -354,7 +441,7 @@ void execute(int idx) {
         while (code[ip] != -1) {
             if (code[ip] >= 0 && code[ip] < dict_count) {
                 char* name = get_dict_name(code[ip]);
-                
+
                 // Handle control flow
                 if (str_eq(name, "IF")) {
                     int cond = pop();
@@ -429,35 +516,35 @@ void execute(int idx) {
 void init_dict() {
     // Directly set names in the dictionary array to avoid issues with local buffers
     char* ptr;
-    
+
     // +
     ptr = get_dict_name(dict_count);
     ptr[0] = '+'; ptr[1] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // -
     ptr = get_dict_name(dict_count);
     ptr[0] = '-'; ptr[1] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // *
     ptr = get_dict_name(dict_count);
     ptr[0] = '*'; ptr[1] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // /
     ptr = get_dict_name(dict_count);
     ptr[0] = '/'; ptr[1] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // MOD
     ptr = get_dict_name(dict_count);
     ptr[0] = 'M'; ptr[1] = 'O'; ptr[2] = 'D'; ptr[3] = 0;
@@ -492,21 +579,21 @@ void init_dict() {
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // DROP
     ptr = get_dict_name(dict_count);
     ptr[0] = 'D'; ptr[1] = 'R'; ptr[2] = 'O'; ptr[3] = 'P'; ptr[4] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // SWAP
     ptr = get_dict_name(dict_count);
     ptr[0] = 'S'; ptr[1] = 'W'; ptr[2] = 'A'; ptr[3] = 'P'; ptr[4] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // OVER
     ptr = get_dict_name(dict_count);
     ptr[0] = 'O'; ptr[1] = 'V'; ptr[2] = 'E'; ptr[3] = 'R'; ptr[4] = 0;
@@ -534,104 +621,165 @@ void init_dict() {
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // CR
     ptr = get_dict_name(dict_count);
     ptr[0] = 'C'; ptr[1] = 'R'; ptr[2] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // .S
     ptr = get_dict_name(dict_count);
     ptr[0] = '.'; ptr[1] = 'S'; ptr[2] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
-    // WORDS
+//
+//    // WORDS
     ptr = get_dict_name(dict_count);
     ptr[0] = 'W'; ptr[1] = 'O'; ptr[2] = 'R'; ptr[3] = 'D'; ptr[4] = 'S'; ptr[5] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // BYE
     ptr = get_dict_name(dict_count);
     ptr[0] = 'B'; ptr[1] = 'Y'; ptr[2] = 'E'; ptr[3] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
+    // FORGET
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'F'; ptr[1] = 'O'; ptr[2] = 'R'; ptr[3] = 'G'; ptr[4] = 'E'; ptr[5] = 'T'; ptr[6] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
+    // LIST
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'L'; ptr[1] = 'I'; ptr[2] = 'S'; ptr[3] = 'T'; ptr[4] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
+//    // STORE
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'S'; ptr[1] = 'T'; ptr[2] = 'O'; ptr[3] = 'R'; ptr[4] = 'E'; ptr[5] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
+    // LOAD
+    ptr = get_dict_name(dict_count);
+    ptr[0] = 'L'; ptr[1] = 'O'; ptr[2] = 'A'; ptr[3] = 'D'; ptr[4] = 0;
+    dict_is_prim[dict_count] = 1;
+    dict_code_start[dict_count] = 0;
+    dict_count++;
+
     // IF
     ptr = get_dict_name(dict_count);
     ptr[0] = 'I'; ptr[1] = 'F'; ptr[2] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // THEN
     ptr = get_dict_name(dict_count);
     ptr[0] = 'T'; ptr[1] = 'H'; ptr[2] = 'E'; ptr[3] = 'N'; ptr[4] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // ELSE
     ptr = get_dict_name(dict_count);
     ptr[0] = 'E'; ptr[1] = 'L'; ptr[2] = 'S'; ptr[3] = 'E'; ptr[4] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // BEGIN
     ptr = get_dict_name(dict_count);
     ptr[0] = 'B'; ptr[1] = 'E'; ptr[2] = 'G'; ptr[3] = 'I'; ptr[4] = 'N'; ptr[5] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // WHILE
     ptr = get_dict_name(dict_count);
     ptr[0] = 'W'; ptr[1] = 'H'; ptr[2] = 'I'; ptr[3] = 'L'; ptr[4] = 'E'; ptr[5] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // REPEAT
     ptr = get_dict_name(dict_count);
     ptr[0] = 'R'; ptr[1] = 'E'; ptr[2] = 'P'; ptr[3] = 'E'; ptr[4] = 'A'; ptr[5] = 'T'; ptr[6] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // DO
     ptr = get_dict_name(dict_count);
     ptr[0] = 'D'; ptr[1] = 'O'; ptr[2] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // LOOP
     ptr = get_dict_name(dict_count);
     ptr[0] = 'L'; ptr[1] = 'O'; ptr[2] = 'O'; ptr[3] = 'P'; ptr[4] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // I
     ptr = get_dict_name(dict_count);
     ptr[0] = 'I'; ptr[1] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
-    
+
     // J
     ptr = get_dict_name(dict_count);
     ptr[0] = 'J'; ptr[1] = 0;
     dict_is_prim[dict_count] = 1;
     dict_code_start[dict_count] = 0;
     dict_count++;
+}
+
+// Helper function to show word definition
+void show_word_definition(int idx) {
+    if (idx < 0 || idx >= dict_count) {
+        puts("Word not found");
+        return;
+    }
+
+    char* name = get_dict_name(idx);
+    if (dict_is_prim[idx]) {
+        puts(name);
+        puts(" (primitive)");
+    } else {
+        puts(": ");
+        puts(name);
+        puts(" ");
+
+        // Show the code
+        int ip = dict_code_start[idx];
+        while (code[ip] != -1) {
+            if (code[ip] >= 0 && code[ip] < dict_count) {
+                puts(get_dict_name(code[ip]));
+                puts(" ");
+            } else if (code[ip] >= 10000) {
+                print_num(code[ip] - 10000);
+                putchar(' ');
+            }
+            ip++;
+        }
+        puts(";");
+    }
+    putchar('\n');
 }
 
 // Process one word
@@ -641,7 +789,7 @@ void process_word(char* word) {
         compile_mode = 1;
         return;
     }
-    
+
     if (str_eq(word, ";")) {
         if (compile_mode) {
             code[here++] = -1;
@@ -649,7 +797,7 @@ void process_word(char* word) {
         }
         return;
     }
-    
+
     // Look up word
     int idx = find_word(word);
     if (idx >= 0) {
@@ -672,7 +820,7 @@ void process_word(char* word) {
             if (dict_count < MAX_WORDS) {
                 char* dst = get_dict_name(dict_count);
                 str_copy(dst, word);
-                
+
                 dict_is_prim[dict_count] = 0;
                 dict_code_start[dict_count] = here;
                 dict_count++;
@@ -688,33 +836,37 @@ void process_word(char* word) {
 // Get next word from input
 int get_word(char* input, int* pos, char* word) {
     int i = 0;
-    
+
     // Skip whitespace
     while (input[*pos] == ' ' || input[*pos] == '\t') {
         (*pos)++;
     }
-    
+
     // Check end
     if (input[*pos] == 0 || input[*pos] == '\n') {
         return 0;
     }
-    
+
     // Copy word
     while (i < 31) {
         char ch = input[*pos];
-        
+
         if (!ch || ch == ' ' || ch == '\t' || ch == '\n') {
             break;
         }
-        
+
         word[i] = ch;
         i++;
         (*pos)++;
     }
     word[i] = 0;
-    
+
     return i > 0;
 }
+
+// Global flag for special word processing
+int forget_next = 0;
+int list_next = 0;
 
 int main() {
     puts("Minimal Forth");
@@ -723,14 +875,15 @@ int main() {
     puts("Stack: DUP DROP SWAP OVER ROT 2DUP");
     puts("Control: IF THEN ELSE BEGIN WHILE REPEAT DO LOOP I J");
     puts("I/O: . CR .S WORDS BYE");
+    puts("Dictionary: FORGET <word> LIST <word> STORE LOAD");
     puts("Definition: : name ... ;");
     puts("");
-    
+
     init_dict();
-    
+
     char input[256];
     char word[32];
-    
+
     while (running) {
         if (!compile_mode) {
             putchar('>');
@@ -741,7 +894,7 @@ int main() {
             putchar('.');
             putchar(' ');
         }
-        
+
         // Read line
         int i = 0;
         int ch;
@@ -756,18 +909,54 @@ int main() {
             input[i++] = ch;
         }
         input[i] = 0;
-        
+
         // Process words
         int pos = 0;
         while (get_word(input, &pos, word)) {
-            process_word(word);
+            // Handle special cases for FORGET and LIST
+            if (forget_next) {
+                forget_next = 0;
+                int idx = find_word(word);
+                if (idx >= 0 && !dict_is_prim[idx]) {
+                    // Find first primitive after this word
+                    int prim_count = 0;
+                    for (int i = 0; i <= idx; i++) {
+                        if (dict_is_prim[i]) prim_count = i + 1;
+                    }
+
+                    // Reset dictionary to just before this word
+                    if (idx > prim_count) {
+                        // Reclaim code space used by forgotten words
+                        here = dict_code_start[idx];
+                        dict_count = idx;
+                        puts("Forgotten: ");
+                        puts(word);
+                        putchar('\n');
+                    } else {
+                        puts("Cannot forget primitive");
+                    }
+                } else {
+                    puts("Word not found or is primitive");
+                }
+            } else if (list_next) {
+                list_next = 0;
+                int idx = find_word(word);
+                show_word_definition(idx);
+            } else if (str_eq(word, "FORGET")) {
+                forget_next = 1;
+            } else if (str_eq(word, "LIST")) {
+                list_next = 1;
+            } else {
+                process_word(word);
+            }
         }
-        
+
         if (!compile_mode) {
             puts(" ok");
         }
     }
-    
+
+
     puts("Goodbye!");
     return 0;
 }

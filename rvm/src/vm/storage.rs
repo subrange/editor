@@ -129,25 +129,35 @@ impl Storage {
             return Ok(());  // Already loaded
         }
         
+        println!("Storage: Loading block {:#06x} from backing file", block_num);
+        
         if let Some(ref mut file) = self.backing_file {
             let offset = block_num as u64 * BLOCK_SIZE_BYTES as u64;
+            println!("Storage: Seeking to offset {:#x} ({})", offset, offset);
             file.seek(SeekFrom::Start(offset))?;
             
             let mut buffer = vec![0u8; BLOCK_SIZE_BYTES];
             match file.read_exact(&mut buffer) {
                 Ok(_) => {
                     // Successfully read the block
+                    println!("Storage: Successfully read block {:#06x}, first 16 bytes: {:02x?}", 
+                             block_num, &buffer[0..16.min(buffer.len())]);
                     let block = Block::from_bytes(&buffer);
                     self.blocks.insert(block_num, block);
                 }
                 Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
                     // Block doesn't exist yet, create an empty one
+                    println!("Storage: Block {:#06x} doesn't exist in file (EOF), creating empty block", block_num);
                     self.blocks.insert(block_num, Block::new());
                 }
-                Err(e) => return Err(e),
+                Err(e) => {
+                    println!("Storage: Error reading block {:#06x}: {:?}", block_num, e);
+                    return Err(e);
+                }
             }
         } else {
             // No backing file, create empty block
+            println!("Storage: No backing file, creating empty block {:#06x}", block_num);
             self.blocks.insert(block_num, Block::new());
         }
         
@@ -183,17 +193,39 @@ impl Storage {
         self.current_addr = addr;
     }
     
+    /// Get the current block number
+    pub fn get_block(&self) -> u16 {
+        self.current_block
+    }
+    
+    /// Get the current word address within the block
+    pub fn get_addr(&self) -> u16 {
+        self.current_addr
+    }
+    
     /// Read a word at the current (block, addr)
     pub fn read_word(&mut self) -> u16 {
         // Ensure the block is loaded
-        if self.load_block(self.current_block).is_err() {
+        if let Err(e) = self.load_block(self.current_block) {
+            println!("Storage: Failed to load block {:#06x}: {:?}", self.current_block, e);
             return 0;  // Return 0 on error
         }
         
         let value = self.blocks
             .get(&self.current_block)
-            .map(|block| block.data[self.current_addr as usize])
-            .unwrap_or(0);
+            .map(|block| {
+                let val = block.data[self.current_addr as usize];
+                // Debug: Show reads from high addresses (like 0xb7xx)
+                if self.current_addr >= 0xb7b0 && self.current_addr <= 0xb7c0 {
+                    println!("Storage: Block {:#06x}, addr {:#06x}: data[{}] = {:#06x}", 
+                             self.current_block, self.current_addr, self.current_addr, val);
+                }
+                val
+            })
+            .unwrap_or_else(|| {
+                println!("Storage: Block {:#06x} not found in cache!", self.current_block);
+                0
+            });
         
         // Auto-increment address
         self.current_addr = self.current_addr.wrapping_add(1);
