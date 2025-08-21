@@ -167,17 +167,17 @@ L_make_fat_ptr_4:
     LOAD S2, SB, S3
 ; Bank value in S2 - tags: -1 = Global, -2 = Stack, positive = dynamic
     LI S1, -1
-    BEQ S2, S1, L_bc_29d32ea8_use_global
+    BEQ S2, S1, L_bc_24e5a8c1_use_global
     LI T6, -2
-    BEQ S2, T6, L_bc_29d32ea8_use_stack
+    BEQ S2, T6, L_bc_24e5a8c1_use_stack
     ADD T7, S2, R0
-    BEQ R0, R0, L_bc_29d32ea8_done
-L_bc_29d32ea8_use_global:
+    BEQ R0, R0, L_bc_24e5a8c1_done
+L_bc_24e5a8c1_use_global:
     ADD T7, GP, R0
-    BEQ R0, R0, L_bc_29d32ea8_done
-L_bc_29d32ea8_use_stack:
+    BEQ R0, R0, L_bc_24e5a8c1_done
+L_bc_24e5a8c1_use_stack:
     ADD T7, SB, R0
-L_bc_29d32ea8_done:
+L_bc_24e5a8c1_done:
     MOVE RV0, T0
     MOVE RV1, T7
 ; Jump to epilogue
@@ -272,7 +272,7 @@ L_malloc_8:
 ; Recompute alloca t1 at FP+0
     ADD T3, FP, R0
     LOAD T2, SB, T3
-    LI T1, 4096
+    LI T1, -32768
     SLT T2, T1, T2
     BEQ T2, R0, L_malloc_11
 ; Branch to L_malloc_11 if condition is false
@@ -288,21 +288,21 @@ L_malloc_9:
     BEQ R0, R0, L_malloc_11
 ; Unconditional branch to L_malloc_11
 L_malloc_11:
-; Load instruction: t6 = load Global("current_heap_offset")
-; Canonicalizing global variable: current_heap_offset
-    LI S3, 1
-; LOAD: Pointer load_src_ptr_f4_op11_t6 has bank info: Global
-; LOAD: Using bank register Gp for load
-    LOAD S2, GP, S3
-; Load instruction: t7 = load FatPtr(FatPointer { addr: Temp(1), bank: Stack })
+; Load instruction: t6 = load FatPtr(FatPointer { addr: Temp(1), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(1), bank: Stack })
-; LOAD: Pointer load_src_ptr_f4_op13_t7 has bank info: Stack
+; LOAD: Pointer load_src_ptr_f4_op10_t6 has bank info: Stack
 ; LOAD: Using bank register Sb for load
 ; Recompute alloca t1 at FP+0
-    ADD T6, FP, R0
-    LOAD T5, SB, T6
-    ADD S2, S2, T5
-    LI T7, 4096
+    ADD S3, FP, R0
+    LOAD S2, SB, S3
+; Load instruction: t7 = load Global("current_heap_offset")
+; Canonicalizing global variable: current_heap_offset
+    LI T6, 1
+; LOAD: Pointer load_src_ptr_f4_op13_t7 has bank info: Global
+; LOAD: Using bank register Gp for load
+    LOAD T5, GP, T6
+    LI T7, -32768
+    SUB T7, T7, T5
     SLT S2, T7, S2
     BEQ S2, R0, L_malloc_14
 ; Branch to L_malloc_14 if condition is false
@@ -329,8 +329,8 @@ L_malloc_12:
     LI T7, 0
     STORE T3, GP, T7
     LI S2, 0
-    LI T6, 1
-    STORE S2, GP, T6
+    LI S3, 1
+    STORE S2, GP, S3
 ; Load instruction: t14 = load Global("current_heap_bank")
 ; Canonicalizing global variable: current_heap_bank
     LI T1, 0
@@ -355,15 +355,15 @@ L_malloc_17:
     BEQ R0, R0, L_malloc_14
 ; Unconditional branch to L_malloc_14
 L_malloc_14:
-    ADD T6, FP, R0
-    ADDI T6, T6, 1
+    ADD S3, FP, R0
+    ADDI S3, S3, 1
 ; Load instruction: t17 = load Global("current_heap_offset")
 ; Canonicalizing global variable: current_heap_offset
     LI T7, 1
 ; LOAD: Pointer load_src_ptr_f4_op31_t17 has bank info: Global
 ; LOAD: Using bank register Gp for load
     LOAD T5, GP, T7
-    STORE T5, SB, T6
+    STORE T5, SB, S3
 ; Spill return_null_bank_4_f4_op6 to slot 1
     ADD SC, FP, R0
     ADDI SC, SC, 12
@@ -379,12 +379,12 @@ L_malloc_14:
     ADD SC, FP, R0
     ADDI SC, SC, 13
     STORE T0, SB, SC
-; Spill load_f4_op10_t6_addr to slot 3
+; Spill load_f4_op12_t7_addr to slot 3
     ADD SC, FP, R0
     ADDI SC, SC, 14
-    STORE S3, SB, SC
-    LOAD S3, GP, T0
-    STORE S3, SB, T4
+    STORE T6, SB, SC
+    LOAD T6, GP, T0
+    STORE T6, SB, T4
 ; Load instruction: t20 = load FatPtr(FatPointer { addr: Global("current_heap_offset"), bank: Global })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Global("current_heap_offset"), bank: Global })
     LI S0, 1
@@ -421,7 +421,7 @@ L_malloc_14:
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(16), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f4_op45_t23 has bank info: Stack
 ; LOAD: Using bank register Sb for load
-    LOAD T3, SB, T6
+    LOAD T3, SB, S3
 ; Load instruction: t24 = load FatPtr(FatPointer { addr: Temp(18), bank: Stack })
 ; Canonicalizing fat pointer: FatPtr(FatPointer { addr: Temp(18), bank: Stack })
 ; LOAD: Pointer load_src_ptr_f4_op47_t24 has bank info: Stack
@@ -451,7 +451,7 @@ L_malloc_14:
 ; Spill t19 to slot 13
     ADD SC, FP, R0
     ADDI SC, SC, 24
-    STORE S3, SB, SC
+    STORE T6, SB, SC
 ; Spill load_f4_op38_t20_addr to slot 14
     ADD SC, FP, R0
     ADDI SC, SC, 25
@@ -805,7 +805,7 @@ L_calloc_27:
     ADD SC, FP, R0
     ADDI SC, SC, 22
     STORE S1, SB, SC
-    LI S1, 4096
+    LI S1, -1536
     DIV RV0, S3, S1
 ; Spill load_f8_op35_t22_bank_val to slot 7
     ADD SC, FP, R0
@@ -825,17 +825,17 @@ L_calloc_27:
 ; GEP: Setting bank info for t33 to Dynamic("gep_new_bank_f8_op58_t33")
     LI S2, 0
     LI S1, -1
-    BEQ T3, S1, L_bc_e75d0e16_use_global
+    BEQ T3, S1, L_bc_b002445b_use_global
     LI T4, -2
-    BEQ T3, T4, L_bc_e75d0e16_use_stack
+    BEQ T3, T4, L_bc_b002445b_use_stack
     ADD RV0, T3, R0
-    BEQ R0, R0, L_bc_e75d0e16_done
-L_bc_e75d0e16_use_global:
+    BEQ R0, R0, L_bc_b002445b_done
+L_bc_b002445b_use_global:
     ADD RV0, GP, R0
-    BEQ R0, R0, L_bc_e75d0e16_done
-L_bc_e75d0e16_use_stack:
+    BEQ R0, R0, L_bc_b002445b_done
+L_bc_b002445b_use_stack:
     ADD RV0, SB, R0
-L_bc_e75d0e16_done:
+L_bc_b002445b_done:
     STORE S2, RV0, S3
     BEQ R0, R0, L_calloc_28
 ; Unconditional branch to L_calloc_28
@@ -886,7 +886,7 @@ L_calloc_25:
     ADDI SC, SC, 26
     STORE T6, SB, SC
     LI T6, -1
-    BEQ T7, T6, L_bc_d233d911_use_global
+    BEQ T7, T6, L_bc_dd164833_use_global
 ; Spill t31 to slot 11
     ADD SC, FP, R0
     ADDI SC, SC, 27
@@ -896,15 +896,15 @@ L_calloc_25:
     ADDI SC, SC, 28
     STORE T1, SB, SC
     LI T5, -2
-    BEQ T7, T5, L_bc_d233d911_use_stack
+    BEQ T7, T5, L_bc_dd164833_use_stack
     ADD S1, T7, R0
-    BEQ R0, R0, L_bc_d233d911_done
-L_bc_d233d911_use_global:
+    BEQ R0, R0, L_bc_dd164833_done
+L_bc_dd164833_use_global:
     ADD S1, GP, R0
-    BEQ R0, R0, L_bc_d233d911_done
-L_bc_d233d911_use_stack:
+    BEQ R0, R0, L_bc_dd164833_done
+L_bc_dd164833_use_stack:
     ADD S1, SB, R0
-L_bc_d233d911_done:
+L_bc_dd164833_done:
     MOVE RV0, T2
     MOVE RV1, S1
 ; Jump to epilogue

@@ -6,7 +6,7 @@ RASM = ../src/ripple-asm/target/release/rasm
 RLINK = ../src/ripple-asm/target/release/rlink
 
 # Assembler settings (can be overridden from command line)
-BANK_SIZE ?= 16384  # Default: 16KB (doubled from 8192 to handle larger programs)
+BANK_SIZE ?= 64000  # Default: 16KB (doubled from 8192 to handle larger programs)
 MAX_IMMEDIATE = 65535
 
 # Source files
@@ -33,12 +33,12 @@ all: $(RUNTIME_LIB)
 # Compile C files to assembly
 %.asm: %.c
 	@echo "Compiling $< to assembly..."
-	@$(RCC) compile $< -o $@ -I./include
+	@$(RCC) compile $< -o $@ -I./include --bank-size $(BANK_SIZE)
 
 # Compile qfixed source
 qfixed.asm: src/qfixed.c
 	@echo "Compiling qfixed.c to assembly..."
-	@$(RCC) compile $< -o $@ -I./include
+	@$(RCC) compile $< -o $@ -I./include --bank-size $(BANK_SIZE)
 
 # Assemble C-generated assembly to object files
 $(C_OBJ_FILES): %.pobj: %.asm
@@ -63,7 +63,7 @@ clean:
 # Test target - build a test program with runtime
 test: $(RUNTIME_LIB) crt0.pobj
 	@echo "Building test program with runtime..."
-	@$(RCC) compile ../c-test/tests-runtime/test_runtime_simple.c -o test_main.asm
+	@$(RCC) compile ../c-test/tests-runtime/test_runtime_simple.c -o test_main.asm --bank-size $(BANK_SIZE)
 	@$(RASM) assemble test_main.asm -o test_main.pobj --bank-size $(BANK_SIZE) --max-immediate $(MAX_IMMEDIATE)
 	@echo "Linking crt0 + runtime archive + test program..."
 	@$(RLINK) crt0.pobj $(RUNTIME_LIB) test_main.pobj -f macro --standalone -o test_standalone.bf

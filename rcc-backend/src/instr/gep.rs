@@ -2,7 +2,7 @@
 //!
 //! Handles pointer arithmetic with proper bank overflow handling.
 //! GEP is critical for array/struct access and must correctly handle
-//! crossing bank boundaries (4096 instruction / 16384 byte boundaries).
+//! crossing bank boundaries (4096 instruction / 64000 byte boundaries).
 
 use super::helpers::resolve_bank_tag_to_info;
 use crate::naming::NameGenerator;

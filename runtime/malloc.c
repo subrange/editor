@@ -7,7 +7,7 @@
 // Heap configuration
 #define HEAP_START_BANK 3      // Heap starts at bank 3 (after code, globals, stack)
 #define HEAP_END_BANK 255      // Maximum bank we can use for heap
-#define BANK_SIZE 65535         // Size of each bank in words (16-bit) - match compiler default
+#define BANK_SIZE 32767         // Size of each bank in words (16-bit) - maximum possible
 
 // Heap state - stored in globals
 static unsigned int current_heap_bank = HEAP_START_BANK;
@@ -55,7 +55,8 @@ void* malloc(int size) {
     }
     
     // Check if allocation fits in current bank
-    if (current_heap_offset + size > BANK_SIZE) {
+    // Use subtraction to avoid overflow when BANK_SIZE is at maximum (65535)
+    if (size > BANK_SIZE - current_heap_offset) {
         // Doesn't fit - move to next bank
         current_heap_bank++;
         current_heap_offset = 0;

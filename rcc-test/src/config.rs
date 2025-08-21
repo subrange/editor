@@ -79,7 +79,7 @@ impl Default for RunConfig {
         Self {
             backend: Backend::Rvm,
             timeout_secs: 2,
-            bank_size: 16384,
+            bank_size: 64000,
             verbose: false,
             no_cleanup: true,  // Changed to always preserve files
             parallel: true,

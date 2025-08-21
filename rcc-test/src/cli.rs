@@ -27,7 +27,7 @@ pub struct Cli {
     pub timeout: u64,
 
     /// Bank size for assembler
-    #[arg(long, default_value = "16384")]
+    #[arg(long, default_value = "64000")]
     pub bank_size: usize,
 
     /// Show output from test programs as they run

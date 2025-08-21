@@ -42,6 +42,6 @@ pub use lower::{lower_module_v2, lower_function_v2};
 
 /// Bank size in instructions (from ASSEMBLY_FORMAT.md)
 /// Each bank holds 4096 instructions
-/// Since each instruction is 4 cells, that's 16384 cells per bank
+/// Since each instruction is 4 cells, that's 64000 cells per bank
 pub const BANK_SIZE_INSTRUCTIONS: u16 = 4096;
-pub const BANK_SIZE_CELLS: u16 = 16384; // 4096 * 4
+pub const BANK_SIZE_CELLS: u16 = 64000; // 4096 * 4
