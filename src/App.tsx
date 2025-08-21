@@ -13,7 +13,7 @@ import {EditorStore} from "./components/editor/stores/editor.store.ts";
 import {useEffect, useState, useCallback} from "react";
 import {ProgressiveMacroTokenizer} from "./components/editor/services/macro-tokenizer-progressive.ts";
 import {createAsyncMacroExpander, createAsyncMacroExpanderWasm} from "./services/macro-expander/create-macro-expander.ts";
-import {CpuChipIcon, ArrowPathIcon, DocumentTextIcon, CommandLineIcon} from "@heroicons/react/24/solid";
+import {CpuChipIcon, ArrowPathIcon, DocumentTextIcon, CommandLineIcon, CodeBracketIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 
 import {settingsStore} from "./stores/settings.store";
@@ -142,6 +142,7 @@ function EditorPanel() {
     const [showMacroEditor, setShowMacroEditor] = useLocalStorageState("showMacroEditor", false);
     const [showMainEditor, setShowMainEditor] = useLocalStorageState("showMainEditor", true);
     const [leftPanelWidth, setLeftPanelWidth] = useLocalStorageState("editorLeftPanelWidth", 50); // percentage
+    const [mainEditorMode, setMainEditorMode] = useLocalStorageState<'brainfuck' | 'assembly'>("mainEditorMode", 'brainfuck');
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoExpand = settings?.macro.autoExpand ?? false;
     const useWasmExpander = settings?.macro.useWasmExpander ?? false;
@@ -150,6 +151,27 @@ function EditorPanel() {
     // Subscribe to minimap states
     const [mainEditorMinimapEnabled, setMainEditorMinimapEnabled] = useState(false);
     const [macroEditorMinimapEnabled, setMacroEditorMinimapEnabled] = useState(true);
+    
+    // Update main editor tokenizer when mode changes
+    useEffect(() => {
+        if (!mainEditor) return;
+        
+        if (mainEditorMode === 'assembly') {
+            mainEditor.setTokenizer(new AssemblyTokenizer());
+        } else {
+            mainEditor.setTokenizer(new WorkerTokenizer(() => {
+                console.log("retokenized");
+                mainEditor.editorState.next({...mainEditor.editorState.value});
+            }));
+        }
+        
+        // Force retokenization
+        const currentState = mainEditor.editorState.value;
+        mainEditor.editorState.next({
+            ...currentState,
+            lines: [...currentState.lines]
+        });
+    }, [mainEditor, mainEditorMode]);
     
     useEffect(() => {
         if (mainEditor) {
@@ -305,6 +327,15 @@ function EditorPanel() {
             <div className="v grow-1 bg-zinc-950">
                 <div className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
                     Main Editor
+                    
+                    <div className="w-px h-6 bg-zinc-700 mx-1"/>
+                    
+                    <IconButton
+                        icon={CodeBracketIcon}
+                        label={mainEditorMode === 'assembly' ? "Assembly Mode" : "Brainfuck Mode"}
+                        onClick={() => setMainEditorMode(mainEditorMode === 'assembly' ? 'brainfuck' : 'assembly')}
+                        variant={mainEditorMode === 'assembly' ? "warning" : "default"}
+                    />
                     
                     <div className="w-px h-6 bg-zinc-700 mx-1"/>
                     

@@ -1589,6 +1589,10 @@ export class EditorStore {
         return this.tokenizer;
     }
     
+    public setTokenizer(tokenizer: ITokenizer): void {
+        this.tokenizer = tokenizer;
+    }
+    
     public getId(): string {
         return this.id;
     }

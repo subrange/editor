@@ -72,6 +72,7 @@ pub enum BuiltinFunction {
     For,
     Reverse,
     Preserve,
+    Label,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

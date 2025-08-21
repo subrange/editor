@@ -24,12 +24,21 @@ const initialState: TokenizerState = {
     instructions: new Set([
         'NOP', 'ADD', 'SUB', 'AND', 'OR', 'XOR', 'SLL', 'SRL', 'SLT', 'SLTU',
         'ADDI', 'ANDI', 'ORI', 'XORI', 'LI', 'SLLI', 'SRLI', 'LOAD', 'STORE',
-        'JAL', 'JALR', 'BEQ', 'BNE', 'BLT', 'BGE', 'HALT', 'BRK',
-        'MOVE', 'PUSH', 'POP', 'CALL', 'RET', 'INC', 'DEC', 'NEG', 'NOT'
+        'JAL', 'JALR', 'BEQ', 'BNE', 'BLT', 'BGE', 'BRK',
+        'MUL', 'DIV', 'MOD', 'MULI', 'DIVI', 'MODI',
+        // Pseudo-instructions
+        'HALT', 'MOVE', 'PUSH', 'POP', 'CALL', 'RET', 'INC', 'DEC', 'NEG', 'NOT'
     ]),
     registers: new Set([
-        'R0', 'PC', 'PCB', 'RA', 'RAB', 'R3', 'R4', 'R5', 'R6', 'R7', 
-        'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15'
+        'R0', 'PC', 'PCB', 'RA', 'RAB', 'RV0', 'RV1', 
+        'A0', 'A1', 'A2', 'A3', 'X0', 'X1', 'X2', 'X3',
+        'T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7',
+        'S0', 'S1', 'S2', 'S3', 'SC', 'SB', 'SP', 'FP', 'GP',
+        // Also include R-prefixed versions for compatibility
+        'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 
+        'R11', 'R12', 'R13', 'R14', 'R15', 'R16', 'R17', 'R18',
+        'R19', 'R20', 'R21', 'R22', 'R23', 'R24', 'R25', 'R26',
+        'R27', 'R28', 'R29', 'R30', 'R31'
     ]),
     initialized: false
 };
@@ -201,7 +210,8 @@ export class AssemblyTokenizer implements ITokenizer {
 
             // Registers
             if (!matched) {
-                const regMatch = text.slice(position).match(/^(R\d+|PC|PCB|RA|RAB)\b/i);
+                // Match all register patterns: R0-R31, PC, PCB, RA, RAB, RV0-1, A0-3, X0-3, T0-7, S0-3, SC, SB, SP, FP, GP
+                const regMatch = text.slice(position).match(/^(R\d{1,2}|PC|PCB|RA|RAB|RV[01]|A[0-3]|X[0-3]|T[0-7]|S[0-3C]|SB|SP|FP|GP|V[01])\b/i);
                 if (regMatch && REGISTERS.has(regMatch[0].toUpperCase())) {
                     tokens.push({
                         type: 'register',
