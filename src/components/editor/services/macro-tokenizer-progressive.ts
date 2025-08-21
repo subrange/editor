@@ -260,34 +260,51 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                 }
             }
 
-            // Check for built-in function ({repeat, {if, {for, {reverse)
+            // Check for built-in function ({repeat, {if, {for, {reverse, {preserve) and {: shorthand
             if (!matched) {
-                const builtinMatch = text.slice(position).match(/^\{(repeat|if|for|reverse)\b/);
-                if (builtinMatch) {
+                // First check for {: shorthand for preserve
+                if (text.slice(position, position + 2) === '{:') {
                     // Increment brace depth for the opening brace
                     this.state.braceDepth++;
                     
                     tokens.push({
-                        type: 'builtin_function',  // Always treat these as builtin functions
-                        value: builtinMatch[0],
+                        type: 'builtin_function',
+                        value: '{:',
                         start: position,
-                        end: position + builtinMatch[0].length,
+                        end: position + 2,
                         error: error
                     });
-                    position += builtinMatch[0].length;
-                    
-                    // Special handling for {for to extract loop variable
-                    if (builtinMatch[1] === 'for') {
-                        // Look ahead for the pattern: (variable in
-                        const forPattern = text.slice(position).match(/^\s*\(\s*([a-zA-Z_]\w*)\s+in\b/);
-                        if (forPattern) {
-                            const loopVar = forPattern[1];
-                            this.state.forLoopScopes.push({ variable: loopVar, depth: this.state.braceDepth });
-                            this.state.forLoopVariables.add(loopVar);
-                        }
-                    }
-                    
+                    position += 2;
                     matched = true;
+                } else {
+                    // Check for regular builtin functions
+                    const builtinMatch = text.slice(position).match(/^\{(repeat|if|for|reverse|preserve)\b/);
+                    if (builtinMatch) {
+                        // Increment brace depth for the opening brace
+                        this.state.braceDepth++;
+                        
+                        tokens.push({
+                            type: 'builtin_function',  // Always treat these as builtin functions
+                            value: builtinMatch[0],
+                            start: position,
+                            end: position + builtinMatch[0].length,
+                            error: error
+                        });
+                        position += builtinMatch[0].length;
+                        
+                        // Special handling for {for to extract loop variable
+                        if (builtinMatch[1] === 'for') {
+                            // Look ahead for the pattern: (variable in
+                            const forPattern = text.slice(position).match(/^\s*\(\s*([a-zA-Z_]\w*)\s+in\b/);
+                            if (forPattern) {
+                                const loopVar = forPattern[1];
+                                this.state.forLoopScopes.push({ variable: loopVar, depth: this.state.braceDepth });
+                                this.state.forLoopVariables.add(loopVar);
+                            }
+                        }
+                        
+                        matched = true;
+                    }
                 }
             }
 
@@ -436,7 +453,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
             if (!matched && (text[position] === '{' || text[position] === '}')) {
                 // Track brace depth for scope management
                 // Only increment if this isn't part of a builtin function (which we already handled)
-                const isBuiltinFunction = text[position] === '{' && text.slice(position).match(/^\{(repeat|if|for|reverse)\b/);
+                const isBuiltinFunction = text[position] === '{' && (text.slice(position, position + 2) === '{:' || text.slice(position).match(/^\{(repeat|if|for|reverse|preserve)\b/));
                 
                 if (text[position] === '{' && !isBuiltinFunction) {
                     this.state.braceDepth++;
@@ -713,7 +730,9 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                 console.log(`Macro expansion completed in ${expansionTime}ms:`, {
                     errors: result.errors.length,
                     tokens: result.tokens.length,
-                    macros: result.macros.length
+                    macros: result.macros.length,
+                    expanded: result.expanded,
+                    expandedLength: result.expanded.length
                 });
 
                 this.state.expanded = result.expanded;
@@ -779,7 +798,7 @@ export const progressiveMacroTokenStyles: Record<MacroToken['type'] | 'truncatio
     macro_name: 'text-rose-400/85',                  // Macro name in definition
     macro_invocation: 'text-violet-300/85 italic',   // Verified macro invocations (@macro)
     hash_macro_invocation: 'text-green-400/75 italic', // Hash macro invocations (#macro)
-    builtin_function: 'text-sky-400/85',             // Built-in functions like repeat, if, for, reverse
+    builtin_function: 'text-sky-400/85',             // Built-in functions like repeat, if, for, reverse, preserve, {:
     parameter: 'text-pink-300/80 italic',            // Parameter references
     number: 'text-amber-400/80',                     // Numeric literals
     continuation: 'text-yellow-400',                 // Line continuation backslash

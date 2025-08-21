@@ -371,7 +371,7 @@ impl Parser {
                 self.advance(); // consume {
                 if self.check(TokenType::Identifier) {
                     let name = self.peek().value.clone();
-                    if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse") {
+                    if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse" | "preserve") {
                         if let Some(builtin) = self.parse_builtin_function() {
                             return Some(ContentNode::BuiltinFunction(builtin));
                         }
@@ -393,7 +393,7 @@ impl Parser {
                     position: token.position.clone(),
                 }))
             }
-            TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse => {
+            TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::ColonShorthand => {
                 self.parse_builtin_function().map(ContentNode::BuiltinFunction)
             }
             TokenType::Whitespace | TokenType::Text | TokenType::Identifier | TokenType::Number => {
@@ -479,6 +479,64 @@ impl Parser {
                 self.advance();
                 ("reverse".to_string(), BuiltinFunction::Reverse)
             }
+            TokenType::BuiltinPreserve => {
+                self.advance();
+                ("preserve".to_string(), BuiltinFunction::Preserve)
+            }
+            TokenType::ColonShorthand => {
+                // {: shorthand doesn't use parentheses, content goes directly until }
+                self.advance();
+                let start_content = self.current;
+                let mut content = Vec::new();
+                let mut brace_depth = 1;
+                
+                // Collect everything until the matching closing brace
+                while !self.is_at_end() && brace_depth > 0 {
+                    if self.check(TokenType::RBrace) {
+                        brace_depth -= 1;
+                        if brace_depth == 0 {
+                            self.advance(); // consume the closing brace
+                            break;
+                        }
+                    } else if self.check(TokenType::LBrace) {
+                        brace_depth += 1;
+                    }
+                    
+                    // Collect the token value as preserved text
+                    let token = self.advance();
+                    content.push(token.value.clone());
+                }
+                
+                // Create a text expression with the preserved content
+                let preserved_text = content.join("");
+                let text_node = ExpressionNode::Text(TextNode {
+                    value: preserved_text,
+                    position: self.tokens[start_content].position.clone(),
+                });
+                
+                let end_pos = self.tokens[self.current.saturating_sub(1)].position.end;
+                
+                // Add builtin function token
+                self.macro_tokens.push(MacroToken {
+                    token_type: MacroTokenType::BuiltinFunction,
+                    range: Range {
+                        start: start_pos,
+                        end: end_pos,
+                    },
+                    name: "preserve".to_string(),
+                });
+                
+                return Some(BuiltinFunctionNode {
+                    name: BuiltinFunction::Preserve,
+                    arguments: vec![text_node],
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
+                });
+            }
             TokenType::Identifier => {
                 // Handle when we're coming from a regular { followed by identifier
                 let name_str = self.advance().value.clone();
@@ -487,6 +545,7 @@ impl Parser {
                     "if" => BuiltinFunction::If,
                     "for" => BuiltinFunction::For,
                     "reverse" => BuiltinFunction::Reverse,
+                    "preserve" => BuiltinFunction::Preserve,
                     _ => {
                         let pos = self.peek().position.clone();
                         self.add_error(&format!("Unknown builtin function: {}", name_str), pos);
@@ -502,6 +561,7 @@ impl Parser {
             }
         };
         
+        // Preserve with explicit {preserve(...)} still requires parentheses
         if !self.consume(TokenType::LParen) {
             let pos = self.peek().position.clone();
             self.add_error("Expected '(' after function name", pos);
@@ -510,6 +570,9 @@ impl Parser {
         
         let arguments = if name == BuiltinFunction::For {
             self.parse_for_arguments()
+        } else if name == BuiltinFunction::Preserve {
+            // For preserve, we need to keep exact content including whitespace
+            self.parse_preserve_arguments()
         } else {
             self.parse_argument_list()
         };
@@ -546,6 +609,40 @@ impl Parser {
                 column: start_column,
             },
         })
+    }
+    
+    fn parse_preserve_arguments(&mut self) -> Vec<ExpressionNode> {
+        // For preserve, collect everything until the closing paren as-is
+        let start_pos = self.current;
+        let mut content = Vec::new();
+        let mut paren_depth = 0;
+        
+        while !self.is_at_end() {
+            if self.check(TokenType::LParen) {
+                paren_depth += 1;
+                let token = self.advance();
+                content.push(token.value.clone());
+            } else if self.check(TokenType::RParen) {
+                if paren_depth == 0 {
+                    // This is our closing paren, don't consume it
+                    break;
+                }
+                paren_depth -= 1;
+                let token = self.advance();
+                content.push(token.value.clone());
+            } else {
+                let token = self.advance();
+                content.push(token.value.clone());
+            }
+        }
+        
+        // Join all tokens preserving original spacing
+        let preserved_text = content.join("");
+        // eprintln!("parse_preserve_arguments collected: '{:?}' -> '{}'", content, preserved_text);
+        vec![ExpressionNode::Text(TextNode {
+            value: preserved_text,
+            position: self.tokens[start_pos].position.clone(),
+        })]
     }
     
     fn parse_for_arguments(&mut self) -> Vec<ExpressionNode> {
@@ -653,7 +750,7 @@ impl Parser {
         }
         
         // Check for builtin functions
-        if matches!(self.peek().token_type, TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse) {
+        if matches!(self.peek().token_type, TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::ColonShorthand) {
             if let Some(builtin) = self.parse_builtin_function() {
                 return Some(ExpressionNode::BuiltinFunction(builtin));
             }
@@ -665,7 +762,7 @@ impl Parser {
             self.advance(); // consume {
             if self.check(TokenType::Identifier) {
                 let name = self.peek().value.clone();
-                if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse") {
+                if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse" | "preserve") {
                     // Reset position for parse_builtin_function
                     self.current = saved_pos;
                     self.advance(); // consume { again

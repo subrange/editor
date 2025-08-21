@@ -71,6 +71,7 @@ pub enum BuiltinFunction {
     If,
     For,
     Reverse,
+    Preserve,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

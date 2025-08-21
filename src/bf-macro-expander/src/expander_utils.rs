@@ -199,7 +199,7 @@ impl MacroExpander {
                 }
                 ContentNode::BuiltinFunction(builtin) => {
                     result.push('{');
-                    result.push_str(&format!("{:?}", builtin.name).to_lowercase());
+                    result.push_str(builtin.name.to_string());
                     result.push('(');
                     result.push_str(&self.expressions_to_string(&builtin.arguments));
                     result.push_str(")}");
@@ -233,8 +233,8 @@ impl MacroExpander {
                 result
             }
             ExpressionNode::BuiltinFunction(builtin) => {
-                format!("{{{:?}({})}}", 
-                    builtin.name.to_string().to_lowercase(),
+                format!("{{{}({})}}", 
+                    builtin.name.to_string(),
                     self.expressions_to_string(&builtin.arguments))
             }
             ExpressionNode::ArrayLiteral(array) => {
@@ -250,7 +250,13 @@ impl MacroExpander {
     pub fn collapse_empty_lines(&self, code: &str) -> String {
         let lines: Vec<&str> = code.split('\n').collect();
         let non_empty_lines: Vec<&str> = lines.into_iter()
-            .filter(|line| line.chars().any(|c| matches!(c, '>' | '<' | '+' | '-' | '.' | '[' | ']' | '$')))
+            .filter(|line| {
+                // Keep lines with brainfuck commands
+                let has_bf_commands = line.chars().any(|c| matches!(c, '>' | '<' | '+' | '-' | '.' | '[' | ']' | '$'));
+                // Also keep any line that isn't just whitespace (for preserved content)
+                let has_content = !line.trim().is_empty();
+                has_bf_commands || has_content
+            })
             .collect();
         
         non_empty_lines.join("\n")
@@ -263,7 +269,11 @@ impl MacroExpander {
         
         let mut new_line_index = 0;
         for (old_line_index, line) in lines.iter().enumerate() {
-            if line.chars().any(|c| matches!(c, '>' | '<' | '+' | '-' | '.' | '[' | ']' | '$')) {
+            // Keep lines with brainfuck commands OR any non-empty content (for preserved content)
+            let has_bf_commands = line.chars().any(|c| matches!(c, '>' | '<' | '+' | '-' | '.' | '[' | ']' | '$'));
+            let has_content = !line.trim().is_empty();
+            
+            if has_bf_commands || has_content {
                 non_empty_lines.push(*line);
                 line_mapping.insert(old_line_index + 1, new_line_index + 1); // Convert to 1-based
                 new_line_index += 1;
@@ -348,6 +358,7 @@ impl BuiltinFunction {
             BuiltinFunction::If => "if",
             BuiltinFunction::For => "for",
             BuiltinFunction::Reverse => "reverse",
+            BuiltinFunction::Preserve => "preserve",
         }
     }
 }

@@ -17,6 +17,8 @@ pub enum TokenType {
     BuiltinIf,
     BuiltinFor,
     BuiltinReverse,
+    BuiltinPreserve,
+    ColonShorthand,  // {: shorthand for preserve
     
     // Delimiters
     LParen,
@@ -112,8 +114,12 @@ impl Lexer {
             '(' => Some(self.make_token(TokenType::LParen, "(", start)),
             ')' => Some(self.make_token(TokenType::RParen, ")", start)),
             '{' => {
-                // Check for builtin functions
-                if self.match_string("repeat") {
+                // Check for builtin functions and shorthand
+                if self.peek() == ':' {
+                    // {: shorthand for preserve
+                    self.advance();
+                    Some(self.make_token(TokenType::ColonShorthand, "{:", start))
+                } else if self.match_string("repeat") {
                     Some(self.make_token(TokenType::BuiltinRepeat, "{repeat", start))
                 } else if self.match_string("if") {
                     Some(self.make_token(TokenType::BuiltinIf, "{if", start))
@@ -121,6 +127,8 @@ impl Lexer {
                     Some(self.make_token(TokenType::BuiltinFor, "{for", start))
                 } else if self.match_string("reverse") {
                     Some(self.make_token(TokenType::BuiltinReverse, "{reverse", start))
+                } else if self.match_string("preserve") {
+                    Some(self.make_token(TokenType::BuiltinPreserve, "{preserve", start))
                 } else {
                     Some(self.make_token(TokenType::LBrace, "{", start))
                 }

@@ -16,6 +16,8 @@ export const TokenType = {
   BUILTIN_IF: 'BUILTIN_IF',          // {if
   BUILTIN_FOR: 'BUILTIN_FOR',        // {for
   BUILTIN_REVERSE: 'BUILTIN_REVERSE',  // {reverse
+  BUILTIN_PRESERVE: 'BUILTIN_PRESERVE',  // {preserve
+  COLON_SHORTHAND: 'COLON_SHORTHAND',    // {: (shorthand for preserve)
   
   // Delimiters
   LPAREN: 'LPAREN',           // (
@@ -146,7 +148,12 @@ export class MacroLexer {
       return this.createToken(TokenType.COMMENT_MULTI, '/*' + value + '*/', start, this.position);
     }
 
-    // Check for builtin functions
+    // Check for builtin functions and shorthand
+    // Check {: shorthand first
+    if (this.match('{:')) {
+      return this.createToken(TokenType.COLON_SHORTHAND, '{:', start, this.position);
+    }
+    
     if (this.match('{repeat')) {
       return this.createToken(TokenType.BUILTIN_REPEAT, '{repeat', start, this.position);
     }
@@ -161,6 +168,10 @@ export class MacroLexer {
 
     if (this.match('{reverse')) {
       return this.createToken(TokenType.BUILTIN_REVERSE, '{reverse', start, this.position);
+    }
+    
+    if (this.match('{preserve')) {
+      return this.createToken(TokenType.BUILTIN_PRESERVE, '{preserve', start, this.position);
     }
 
     // Check for @ symbol

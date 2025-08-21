@@ -150,6 +150,7 @@ impl MacroExpander {
             BuiltinFunction::If => self.expand_if(node, context, generate_source_map, source_range),
             BuiltinFunction::For => self.expand_for(node, context, generate_source_map, source_range),
             BuiltinFunction::Reverse => self.expand_reverse(node, context, generate_source_map, source_range),
+            BuiltinFunction::Preserve => self.expand_preserve(node, context, generate_source_map, source_range),
         }
     }
     
@@ -383,6 +384,26 @@ impl MacroExpander {
                 }
             }
         }
+    }
+    
+    fn expand_preserve(&mut self, node: &BuiltinFunctionNode, context: &mut ExpansionContext, generate_source_map: bool, source_range: PositionRange) {
+        if node.arguments.len() != 1 {
+            self.errors.push(MacroExpansionError {
+                error_type: MacroExpansionErrorType::SyntaxError,
+                message: format!("preserve() expects exactly 1 argument, got {}", node.arguments.len()),
+                location: Some(SourceLocation {
+                    line: node.position.line.saturating_sub(1),
+                    column: node.position.column.saturating_sub(1),
+                    length: node.position.end - node.position.start,
+                }),
+            });
+            self.append_to_expanded(&self.node_to_string(&[ContentNode::BuiltinFunction(node.clone())]), context, generate_source_map, Some(source_range));
+            return;
+        }
+        
+        // The preserve function simply outputs its argument as-is, without any macro expansion
+        let preserved_content = self.expand_expression_to_string(&node.arguments[0], context);
+        self.append_to_expanded(&preserved_content, context, generate_source_map, Some(source_range));
     }
     
     fn extract_array_values(&mut self, array_node: &ExpressionNode, context: &mut ExpansionContext, is_tuple_pattern: bool) -> Vec<String> {

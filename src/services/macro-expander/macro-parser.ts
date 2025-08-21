@@ -50,7 +50,7 @@ export interface MacroInvocationNode extends ASTNode {
 
 export interface BuiltinFunctionNode extends ASTNode {
   type: 'BuiltinFunction';
-  name: 'repeat' | 'if' | 'for' | 'reverse';
+  name: 'repeat' | 'if' | 'for' | 'reverse' | 'preserve';
   arguments: ExpressionNode[];
 }
 
