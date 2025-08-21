@@ -35,6 +35,7 @@ interface MacroTokenizerState {
     forLoopVariables: Set<string>; // Track loop variables from {for} constructs
     braceDepth: number; // Track nesting depth to manage scope
     forLoopScopes: Array<{ variable: string; depth: number }>; // Stack of for loop scopes
+    builtinBraceStack?: number[]; // Stack to track which braces are from builtin functions
     sourceMap?: import('../../../services/macro-expander/source-map.ts').SourceMap;
 }
 
@@ -49,7 +50,8 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
         braceDepth: 0,
         forLoopScopes: [],
         inBraceMacroDefinition: false,
-        macroDefinitionBraceDepth: 0
+        macroDefinitionBraceDepth: 0,
+        builtinBraceStack: []
     };
     
     private asyncExpander: MacroExpanderWorkerClient | MacroExpanderWasmWorkerClient | null = null;
@@ -113,6 +115,11 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
         if (this.state.inBraceMacroDefinition) {
             // Use the stored parameters from the brace macro
             this.state.currentLineParams = this.state.braceMacroParams;
+            this.state.inMacroDefinition = true;  // Ensure we're marked as in a definition
+            // Debug: Log what parameters we have
+            if (this.state.braceMacroParams && this.state.braceMacroParams.size > 0) {
+                console.log(`Line ${lineIndex}: In brace macro with params:`, Array.from(this.state.braceMacroParams));
+            }
         } else if (this.state.continuedMacroDefinition) {
             // Old backslash-based continuation
             this.state.inMacroDefinition = true;
@@ -135,7 +142,8 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                     });
                 }
                 
-            } else {
+            } else if (!this.state.inBraceMacroDefinition) {
+                // Only clear these if we're not in a brace-based macro
                 this.state.inMacroDefinition = false;
                 this.state.currentLineParams = undefined;
             }
@@ -266,6 +274,9 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                 if (text.slice(position, position + 2) === '{:') {
                     // Increment brace depth for the opening brace
                     this.state.braceDepth++;
+                    
+                    // Important: Don't reset macro parameters when entering {:
+                    // We're still inside the macro definition, just in a preserve block
                     
                     tokens.push({
                         type: 'builtin_function',
@@ -463,16 +474,33 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                         // This is the start of a brace-based macro definition
                         this.state.inBraceMacroDefinition = true;
                         this.state.macroDefinitionBraceDepth = 1;
-                        this.state.braceMacroParams = new Set(this.state.currentLineParams);
+                        // Copy the parameters properly - currentLineParams is already a Set
+                        this.state.braceMacroParams = this.state.currentLineParams ? new Set(this.state.currentLineParams) : new Set();
+                        console.log('Starting brace macro definition with params:', this.state.braceMacroParams ? Array.from(this.state.braceMacroParams) : 'none');
                     } else if (this.state.inBraceMacroDefinition) {
                         // Track nested braces within macro definition
                         this.state.macroDefinitionBraceDepth!++;
                     }
                 } else if (text[position] === '}') {
+                    // Check if this is closing a builtin function
+                    // Look back to see if we have a builtin pattern before this }
+                    let isClosingBuiltin = false;
+                    
+                    // Simple check: if the previous non-whitespace content looks like a builtin
+                    // This is a bit hacky but works for our case
+                    const beforePos = text.lastIndexOf('{', position - 1);
+                    if (beforePos !== -1) {
+                        const between = text.slice(beforePos, position);
+                        // Check if it's a builtin pattern
+                        if (between.match(/^{(:|br|label\s+\w+|preserve|repeat|if|for|reverse)/)) {
+                            isClosingBuiltin = true;
+                        }
+                    }
+                    
                     this.state.braceDepth--;
                     
-                    // Check if we're closing a macro definition
-                    if (this.state.inBraceMacroDefinition && this.state.macroDefinitionBraceDepth) {
+                    // Only decrement macro definition depth if this is NOT closing a builtin
+                    if (!isClosingBuiltin && this.state.inBraceMacroDefinition && this.state.macroDefinitionBraceDepth) {
                         this.state.macroDefinitionBraceDepth--;
                         if (this.state.macroDefinitionBraceDepth === 0) {
                             // End of macro definition
@@ -522,12 +550,23 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
             }
 
             // Check for numbers (including hexadecimal and character literals)
+            // But only if they're not part of a larger word
             if (!matched) {
                 const charLiteralMatch = text.slice(position).match(/^'.'/);
                 const hexMatch = text.slice(position).match(/^0[xX][0-9a-fA-F]+/);
                 const decimalMatch = text.slice(position).match(/^\d+/);
                 
-                if (charLiteralMatch) {
+                // Check if the number is followed by a word character (making it part of an identifier)
+                const isPartOfWord = (match: RegExpMatchArray | null) => {
+                    if (!match) return false;
+                    const nextPos = position + match[0].length;
+                    return nextPos < text.length && /[a-zA-Z_]/.test(text[nextPos]);
+                };
+                
+                // Also check if we're preceded by a letter/underscore (like R3)
+                const isPrecededByLetter = position > 0 && /[a-zA-Z_]/.test(text[position - 1]);
+                
+                if (charLiteralMatch && !isPartOfWord(charLiteralMatch)) {
                     tokens.push({
                         type: 'number',
                         value: charLiteralMatch[0],
@@ -537,7 +576,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                     });
                     position += charLiteralMatch[0].length;
                     matched = true;
-                } else if (hexMatch) {
+                } else if (hexMatch && !isPartOfWord(hexMatch) && !isPrecededByLetter) {
                     tokens.push({
                         type: 'number',
                         value: hexMatch[0],
@@ -547,7 +586,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                     });
                     position += hexMatch[0].length;
                     matched = true;
-                } else if (decimalMatch) {
+                } else if (decimalMatch && !isPartOfWord(decimalMatch) && !isPrecededByLetter) {
                     tokens.push({
                         type: 'number',
                         value: decimalMatch[0],
@@ -583,7 +622,9 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                     const identifier = identMatch[0];
                     
                     // Check if it's a macro parameter or a for loop variable
-                    const isMacroParam = this.state.currentLineParams && this.state.currentLineParams.has(identifier);
+                    // Check both currentLineParams and braceMacroParams (for brace-based macros)
+                    const isMacroParam = (this.state.currentLineParams && this.state.currentLineParams.has(identifier)) ||
+                                        (this.state.braceMacroParams && this.state.braceMacroParams.has(identifier));
                     const isForLoopVar = this.state.forLoopVariables.has(identifier);
                     
                     if (isMacroParam || isForLoopVar) {
