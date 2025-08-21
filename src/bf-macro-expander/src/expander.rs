@@ -70,9 +70,11 @@ pub struct MacroExpander {
     pub(crate) errors: Vec<MacroExpansionError>,
     pub(crate) tokens: Vec<MacroToken>,
     pub(crate) expansion_chain: HashSet<String>,
-    pub(crate) max_expansion_depth: usize,
+    pub max_expansion_depth: usize,
     pub(crate) input: String,
     pub(crate) enable_circular_dependency_detection: bool,
+    pub(crate) label_counter: usize,
+    pub(crate) label_map: HashMap<String, String>,
 }
 
 impl MacroExpander {
@@ -85,6 +87,8 @@ impl MacroExpander {
             max_expansion_depth: 100,
             input: String::new(),
             enable_circular_dependency_detection: false,
+            label_counter: 0,
+            label_map: HashMap::new(),
         }
     }
     
@@ -541,6 +545,9 @@ impl MacroExpander {
             }
             parameter_values = Some(values);
         }
+        
+        // Clear label map for this macro invocation to ensure unique labels
+        self.label_map.clear();
         
         // Push macro context
         context.macro_call_stack.push(MacroCallStackEntry {

@@ -151,6 +151,8 @@ impl MacroExpander {
             BuiltinFunction::For => self.expand_for(node, context, generate_source_map, source_range),
             BuiltinFunction::Reverse => self.expand_reverse(node, context, generate_source_map, source_range),
             BuiltinFunction::Preserve => self.expand_preserve(node, context, generate_source_map, source_range),
+            BuiltinFunction::Label => self.expand_label(node, context, generate_source_map, source_range),
+            BuiltinFunction::Br => self.expand_br(node, context, generate_source_map, source_range),
         }
     }
     
@@ -401,9 +403,48 @@ impl MacroExpander {
             return;
         }
         
-        // The preserve function simply outputs its argument as-is, without any macro expansion
-        let preserved_content = self.expand_expression_to_string(&node.arguments[0], context);
+        // The preserve function outputs its argument as-is, without expansion
+        // Just convert to string representation without expanding
+        let preserved_content = self.expression_to_string(&node.arguments[0]);
         self.append_to_expanded(&preserved_content, context, generate_source_map, Some(source_range));
+    }
+    
+    fn expand_label(&mut self, node: &BuiltinFunctionNode, context: &mut ExpansionContext, generate_source_map: bool, source_range: PositionRange) {
+        if node.arguments.len() != 1 {
+            self.errors.push(MacroExpansionError {
+                error_type: MacroExpansionErrorType::SyntaxError,
+                message: format!("label() expects exactly 1 argument, got {}", node.arguments.len()),
+                location: Some(SourceLocation {
+                    line: node.position.line.saturating_sub(1),
+                    column: node.position.column.saturating_sub(1),
+                    length: node.position.end - node.position.start,
+                }),
+            });
+            self.append_to_expanded(&self.node_to_string(&[ContentNode::BuiltinFunction(node.clone())]), context, generate_source_map, Some(source_range));
+            return;
+        }
+        
+        // Get the label name from the argument
+        let label_name = self.expression_to_string(&node.arguments[0]);
+        
+        // Check if this label already has a generated name in the current macro invocation
+        let generated_label = if let Some(existing) = self.label_map.get(&label_name) {
+            existing.clone()
+        } else {
+            // Generate a new unique label
+            self.label_counter += 1;
+            let new_label = format!("{}_{}", label_name, self.label_counter);
+            self.label_map.insert(label_name.clone(), new_label.clone());
+            new_label
+        };
+        
+        // Output the generated label
+        self.append_to_expanded(&generated_label, context, generate_source_map, Some(source_range));
+    }
+    
+    fn expand_br(&mut self, _node: &BuiltinFunctionNode, context: &mut ExpansionContext, generate_source_map: bool, source_range: PositionRange) {
+        // {br} simply outputs a newline
+        self.append_to_expanded("\n", context, generate_source_map, Some(source_range));
     }
     
     fn extract_array_values(&mut self, array_node: &ExpressionNode, context: &mut ExpansionContext, is_tuple_pattern: bool) -> Vec<String> {

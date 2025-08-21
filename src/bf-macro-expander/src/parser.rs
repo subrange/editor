@@ -393,7 +393,7 @@ impl Parser {
                     position: token.position.clone(),
                 }))
             }
-            TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::ColonShorthand => {
+            TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::BuiltinLabel | TokenType::BuiltinBr | TokenType::ColonShorthand => {
                 self.parse_builtin_function().map(ContentNode::BuiltinFunction)
             }
             TokenType::Whitespace | TokenType::Text | TokenType::Identifier | TokenType::Number => {
@@ -483,6 +483,77 @@ impl Parser {
                 self.advance();
                 ("preserve".to_string(), BuiltinFunction::Preserve)
             }
+            TokenType::BuiltinLabel => {
+                // {label doesn't require parentheses, collect content until }
+                self.advance();
+                
+                // Collect tokens until we hit the closing brace
+                let mut label_name = String::new();
+                while !self.is_at_end() && !self.check(TokenType::RBrace) {
+                    let token = self.advance();
+                    label_name.push_str(&token.value);
+                }
+                
+                // Consume the closing brace
+                if !self.consume(TokenType::RBrace) {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Expected '}' after label name", pos);
+                }
+                
+                let end_pos = self.tokens[self.current.saturating_sub(1)].position.end;
+                
+                // Create label node with the name as an argument
+                // Use a safe position reference
+                let arg_position = if start_pos < self.tokens.len() {
+                    self.tokens[start_pos].position.clone()
+                } else {
+                    ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    }
+                };
+                
+                let label_arg = ExpressionNode::Text(TextNode {
+                    value: label_name.trim().to_string(),
+                    position: arg_position,
+                });
+                
+                return Some(BuiltinFunctionNode {
+                    name: BuiltinFunction::Label,
+                    arguments: vec![label_arg],
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
+                });
+            }
+            TokenType::BuiltinBr => {
+                // {br doesn't require parentheses or arguments
+                self.advance();
+                
+                // Consume the closing brace
+                if !self.consume(TokenType::RBrace) {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Expected '}' after br", pos);
+                }
+                
+                let end_pos = self.tokens[self.current.saturating_sub(1)].position.end;
+                
+                return Some(BuiltinFunctionNode {
+                    name: BuiltinFunction::Br,
+                    arguments: vec![],
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
+                });
+            }
             TokenType::ColonShorthand => {
                 // {: shorthand doesn't use parentheses, content goes directly until }
                 self.advance();
@@ -546,6 +617,8 @@ impl Parser {
                     "for" => BuiltinFunction::For,
                     "reverse" => BuiltinFunction::Reverse,
                     "preserve" => BuiltinFunction::Preserve,
+                    "label" => BuiltinFunction::Label,
+                    "br" => BuiltinFunction::Br,
                     _ => {
                         let pos = self.peek().position.clone();
                         self.add_error(&format!("Unknown builtin function: {}", name_str), pos);
@@ -750,7 +823,7 @@ impl Parser {
         }
         
         // Check for builtin functions
-        if matches!(self.peek().token_type, TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::ColonShorthand) {
+        if matches!(self.peek().token_type, TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::BuiltinLabel | TokenType::BuiltinBr | TokenType::ColonShorthand) {
             if let Some(builtin) = self.parse_builtin_function() {
                 return Some(ExpressionNode::BuiltinFunction(builtin));
             }

@@ -73,6 +73,7 @@ pub enum BuiltinFunction {
     Reverse,
     Preserve,
     Label,
+    Br,  // Line break
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

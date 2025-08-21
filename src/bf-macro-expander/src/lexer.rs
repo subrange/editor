@@ -19,6 +19,7 @@ pub enum TokenType {
     BuiltinReverse,
     BuiltinPreserve,
     BuiltinLabel,
+    BuiltinBr,
     ColonShorthand,  // {: shorthand for preserve
     
     // Delimiters
@@ -132,6 +133,8 @@ impl Lexer {
                     Some(self.make_token(TokenType::BuiltinPreserve, "{preserve", start))
                 } else if self.match_string("label") {
                     Some(self.make_token(TokenType::BuiltinLabel, "{label", start))
+                } else if self.match_string("br") {
+                    Some(self.make_token(TokenType::BuiltinBr, "{br", start))
                 } else {
                     Some(self.make_token(TokenType::LBrace, "{", start))
                 }

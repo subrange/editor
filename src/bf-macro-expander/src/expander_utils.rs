@@ -217,7 +217,7 @@ impl MacroExpander {
             .join(", ")
     }
     
-    fn expression_to_string(&self, expr: &ExpressionNode) -> String {
+    pub fn expression_to_string(&self, expr: &ExpressionNode) -> String {
         match expr {
             ExpressionNode::Number(num) => num.value.to_string(),
             ExpressionNode::Identifier(ident) => ident.name.clone(),
@@ -359,6 +359,8 @@ impl BuiltinFunction {
             BuiltinFunction::For => "for",
             BuiltinFunction::Reverse => "reverse",
             BuiltinFunction::Preserve => "preserve",
+            BuiltinFunction::Label => "label",
+            BuiltinFunction::Br => "br",
         }
     }
 }

@@ -278,7 +278,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
                     matched = true;
                 } else {
                     // Check for regular builtin functions
-                    const builtinMatch = text.slice(position).match(/^\{(repeat|if|for|reverse|preserve)\b/);
+                    const builtinMatch = text.slice(position).match(/^\{(repeat|if|for|reverse|preserve|label|br)\b/);
                     if (builtinMatch) {
                         // Increment brace depth for the opening brace
                         this.state.braceDepth++;
@@ -453,7 +453,7 @@ export class ProgressiveMacroTokenizer implements ITokenizer {
             if (!matched && (text[position] === '{' || text[position] === '}')) {
                 // Track brace depth for scope management
                 // Only increment if this isn't part of a builtin function (which we already handled)
-                const isBuiltinFunction = text[position] === '{' && (text.slice(position, position + 2) === '{:' || text.slice(position).match(/^\{(repeat|if|for|reverse|preserve)\b/));
+                const isBuiltinFunction = text[position] === '{' && (text.slice(position, position + 2) === '{:' || text.slice(position).match(/^\{(repeat|if|for|reverse|preserve|label|br)\b/));
                 
                 if (text[position] === '{' && !isBuiltinFunction) {
                     this.state.braceDepth++;
