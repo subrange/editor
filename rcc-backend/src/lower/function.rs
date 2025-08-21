@@ -201,6 +201,22 @@ fn handle_return_instruction(
                             panic!("Mixed bank requires temp value");
                         }
                     }
+                    BankTag::Null => {
+                        // NULL pointer - return 0 for bank
+                        let bank_name = naming.temp_with_context("return", "null_bank");
+                        let bank_reg = mgr.get_register(bank_name);
+                        builder.add_instructions(mgr.take_instructions());
+                        builder.add_instruction(AsmInst::Li(bank_reg, 0));
+                        bank_reg
+                    }
+                    BankTag::Heap(bank) => {
+                        // Heap with specific bank number
+                        let bank_name = naming.temp_with_context("return", "heap_bank");
+                        let bank_reg = mgr.get_register(bank_name);
+                        builder.add_instructions(mgr.take_instructions());
+                        builder.add_instruction(AsmInst::Li(bank_reg, bank as i16));
+                        bank_reg
+                    }
                     _ => panic!("Unsupported bank tag for return: {:?}", fp.bank),
                 };
                 

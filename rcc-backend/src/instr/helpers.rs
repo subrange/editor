@@ -122,6 +122,9 @@ fn get_bank_register_with_mgr(
         BankInfo::Global => Reg::Gp,
         BankInfo::Stack => Reg::Sb,
         BankInfo::Register(reg) => *reg,
+        BankInfo::Heap(bank) => {
+            panic!("BankInfo::Heap({}) requires explicit register allocation - cannot use get_bank_register_with_mgr", bank)
+        }
         BankInfo::Dynamic(name) => {
             // UNSAFE: Just returns the register without checking if it contains a tag
             // This will fail if the register contains -1 (Global) or -2 (Stack) tags
@@ -151,6 +154,14 @@ fn get_bank_register_with_runtime_check(
         BankInfo::Global => (Reg::Gp, insts),
         BankInfo::Stack => (Reg::Sb, insts),
         BankInfo::Register(reg) => (*reg, insts),
+        BankInfo::Heap(bank) => {
+            // For heap banks, we need to allocate a register and load the bank number
+            let result_name = naming.temp_with_context(context, "heap_bank");
+            let result_reg = mgr.get_register(result_name);
+            insts.extend(mgr.take_instructions());
+            insts.push(AsmInst::Li(result_reg, *bank as i16));
+            (result_reg, insts)
+        }
         BankInfo::Dynamic(name) => {
             // Get the register containing the bank value (might be a tag)
             let bank_val_reg = mgr.get_register(name.clone());
@@ -240,6 +251,7 @@ pub fn resolve_bank_tag_to_info(
         BankTag::Stack => BankInfo::Stack,
         BankTag::Mixed => resolve_mixed_bank(fp, mgr, naming),
         BankTag::Null => panic!("NULL pointer dereference: attempted to access NULL pointer"),
+        BankTag::Heap(bank) => BankInfo::Heap(*bank),
         other => panic!("Helpers: Unsupported bank type for fat pointer: {other:?}"),
     }
 }
@@ -324,6 +336,14 @@ pub fn materialize_bank_to_register(
         BankTag::Null => {
             panic!("NULL pointer dereference: attempted to use NULL pointer")
         }
+        BankTag::Heap(bank) => {
+            // Load the heap bank number into a register
+            let name = naming.temp_with_context(context, "bank_heap");
+            let r = mgr.get_register(name);
+            insts.extend(mgr.take_instructions());
+            insts.push(AsmInst::Li(r, *bank as i16));
+            (r, insts, true)
+        }
         _ => {
             panic!("HELPERS: Unexpected bank tag type: {bank_tag:?}");
         }
@@ -360,6 +380,14 @@ pub fn get_bank_value_for_argument(
             let r = mgr.get_register(name);
             insts.extend(mgr.take_instructions());
             insts.push(AsmInst::Li(r, BankTagValue::STACK));
+            (r, insts)
+        }
+        BankInfo::Heap(bank) => {
+            // Pass the heap bank number directly
+            let name = naming.temp_with_context(context, "heap_bank");
+            let r = mgr.get_register(name);
+            insts.extend(mgr.take_instructions());
+            insts.push(AsmInst::Li(r, *bank as i16));
             (r, insts)
         }
         BankInfo::Register(reg) => {

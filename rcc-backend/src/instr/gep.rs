@@ -207,6 +207,14 @@ pub fn lower_gep(
                         );
                     }
                 }
+                BankInfo::Heap(bank) => {
+                    if bank_crossing != 0 {
+                        // Heap bank crossing - update to new bank
+                        let new_bank = (bank as i16 + bank_crossing) as u16;
+                        result_bank_info = BankInfo::Heap(new_bank);
+                        debug!("  Updated heap bank from {} to {}", bank, new_bank);
+                    }
+                }
                 BankInfo::Dynamic(_) => {
                     // Named values track their bank dynamically
                     trace!("  Bank is tracked via named value");
@@ -374,6 +382,34 @@ pub fn lower_gep(
                 result_bank_info = BankInfo::Dynamic(new_bank_name.clone());
                 insts.push(AsmInst::Comment(format!("Result bank tracked as Dynamic({new_bank_name})")));
                 debug!("  Updated stack-based pointer bank to trackable named value");
+            }
+            BankInfo::Heap(heap_bank) => {
+                // Heap bank: new_bank = heap_bank + bank_delta
+                let new_bank_name = naming.gep_new_bank(result_temp);
+                
+                // Clear any existing binding for this bank name
+                mgr.clear_value_binding(&new_bank_name);
+                insts.extend(mgr.take_instructions());
+                
+                let new_bank_reg = mgr.get_register(new_bank_name.clone());
+                insts.extend(mgr.take_instructions());
+                
+                // Load the heap bank number first
+                let heap_bank_name = naming.temp_with_context("gep", "heap_bank_base");
+                let heap_bank_reg = mgr.get_register(heap_bank_name);
+                insts.extend(mgr.take_instructions());
+                insts.push(AsmInst::Li(heap_bank_reg, heap_bank as i16));
+                
+                insts.push(AsmInst::Comment(format!("Computing new bank {new_bank_name} = heap@{} + bank_delta", heap_bank)));
+                insts.push(AsmInst::Add(new_bank_reg, heap_bank_reg, bank_delta_reg));
+                
+                mgr.free_register(heap_bank_reg);
+                
+                // Bind the bank value to its register so it can be tracked/reloaded
+                mgr.bind_value_to_register(new_bank_name.clone(), new_bank_reg);
+                result_bank_info = BankInfo::Dynamic(new_bank_name.clone());
+                insts.push(AsmInst::Comment(format!("Result bank tracked as Dynamic({new_bank_name})")));
+                debug!("  Updated heap-based pointer bank to trackable named value");
             }
         }
 

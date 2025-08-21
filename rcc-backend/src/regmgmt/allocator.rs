@@ -110,6 +110,9 @@ impl RegAllocV2 {
                 trace!("Using SB for stack bank");
                 Reg::Sb  // Stack bank register
             }
+            Some(BankInfo::Heap(_)) => {
+                panic!("Cannot get bank register for Heap bank in allocator - heap banks require explicit register allocation");
+            }
             Some(BankInfo::Register(reg)) => {
                 trace!("Using {reg:?} for dynamic bank");
                 *reg

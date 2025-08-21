@@ -142,6 +142,14 @@ pub fn lower_store(
                             insts.append(&mut materialized_insts);
                             (r, owned)
                         }
+                        BankInfo::Heap(bank) => {
+                            // Store the heap bank number directly
+                            let name = naming.store_fatptr_bank();
+                            let r = mgr.get_register(name);
+                            insts.extend(mgr.take_instructions());
+                            insts.push(AsmInst::Li(r, bank as i16));
+                            (r, true)
+                        }
                     }
                 }
                 BankTag::Null => {
@@ -151,6 +159,14 @@ pub fn lower_store(
                     insts.extend(mgr.take_instructions());
                     // Use the NULL bank tag
                     insts.push(AsmInst::Li(r, BankTagValue::NULL));
+                    (r, true)
+                }
+                BankTag::Heap(bank) => {
+                    // Store the heap bank number directly
+                    let name = naming.store_fatptr_bank();
+                    let r = mgr.get_register(name);
+                    insts.extend(mgr.take_instructions());
+                    insts.push(AsmInst::Li(r, bank as i16));
                     (r, true)
                 }
                 other => panic!("Store: Unsupported bank type for fat pointer: {other:?}"),

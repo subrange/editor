@@ -59,6 +59,9 @@ pub enum BankInfo {
     /// Stack bank (bank 1) - use SB (R28, must be initialized!)
     Stack,
     
+    /// Heap bank with specific bank number (banks 3+)
+    Heap(u16),
+    
     /// Dynamic bank in a register
     Register(Reg),
     
@@ -75,7 +78,9 @@ impl BankInfo {
             BankInfo::Global => Reg::Gp,
             BankInfo::Stack => Reg::Sb,
             BankInfo::Register(reg) => *reg,
-
+            BankInfo::Heap(_) => {
+                panic!("Cannot get register for Heap bank without allocation - heap banks require explicit register allocation")
+            }
             BankInfo::Dynamic(name) => {
                 panic!("Cannot get register for Dynamic('{name}') without RegisterPressureManager - use get_bank_register_with_mgr")
             }

@@ -1,5 +1,5 @@
 {
-  "description": "Basic Forth functionality test",
   "use_runtime": true,
+  "description": "Basic Forth functionality test",
   "expected": "YYYYY\n"
 }
