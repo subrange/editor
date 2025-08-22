@@ -457,7 +457,14 @@ impl MacroExpander {
             _ => {
                 let expanded = self.expand_expression_to_string(array_node, context).trim().to_string();
                 
-                if is_tuple_pattern && expanded.starts_with('{') && expanded.ends_with('}') && !self.looks_like_array_of_arrays(&expanded) {
+                // Check if it's a string literal "ABC" and convert to character array
+                if expanded.starts_with('"') && expanded.ends_with('"') && expanded.len() >= 2 {
+                    // Convert string literal to character array with ASCII codes
+                    let string_content = &expanded[1..expanded.len()-1];
+                    string_content.chars()
+                        .map(|ch| (ch as u8).to_string())
+                        .collect()
+                } else if is_tuple_pattern && expanded.starts_with('{') && expanded.ends_with('}') && !self.looks_like_array_of_arrays(&expanded) {
                     // Single tuple to destructure
                     vec![expanded]
                 } else if self.looks_like_array_of_arrays(&expanded) {
