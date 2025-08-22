@@ -425,15 +425,22 @@ impl MacroExpander {
         }
         
         // Get the label name from the argument
-        let label_name = self.expression_to_string(&node.arguments[0]);
+        let label_name = self.expression_to_string(&node.arguments[0]).trim().to_string();
+        
+        eprintln!("DEBUG: expand_label called with '{}', label_map has {} entries", label_name, self.label_map.len());
+        for (k, v) in &self.label_map {
+            eprintln!("  {} -> {}", k, v);
+        }
         
         // Check if this label already has a generated name in the current macro invocation
         let generated_label = if let Some(existing) = self.label_map.get(&label_name) {
+            eprintln!("DEBUG: Found existing label '{}' -> '{}'", label_name, existing);
             existing.clone()
         } else {
             // Generate a new unique label
             self.label_counter += 1;
             let new_label = format!("{}_{}", label_name, self.label_counter);
+            eprintln!("DEBUG: Creating new label '{}' -> '{}'", label_name, new_label);
             self.label_map.insert(label_name.clone(), new_label.clone());
             new_label
         };

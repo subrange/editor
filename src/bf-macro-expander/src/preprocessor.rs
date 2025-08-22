@@ -312,10 +312,83 @@ impl Preprocessor {
     }
 }
 
+/// Parse #line directives to build a source map
+pub fn parse_line_directives(input: &str) -> (String, LineMap) {
+    let mut clean_lines = Vec::new();
+    let mut line_map = LineMap::new();
+    let mut current_file = "<input>".to_string();
+    let mut current_source_line = 1;
+    let mut output_line = 1;
+    
+    for line in input.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("#line") {
+            // Parse: #line 123 "filename"
+            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+            if parts.len() >= 3 {
+                if let Ok(line_num) = parts[1].parse::<usize>() {
+                    current_source_line = line_num;
+                    if parts.len() > 2 {
+                        current_file = parts[2..].join(" ").trim_matches('"').to_string();
+                    }
+                }
+            }
+        } else {
+            clean_lines.push(line);
+            line_map.add_mapping(output_line, current_file.clone(), current_source_line);
+            current_source_line += 1;
+            output_line += 1;
+        }
+    }
+    
+    (clean_lines.join("\n"), line_map)
+}
+
 /// Remove #line directives from preprocessed output (for final expansion)
 pub fn strip_line_directives(input: &str) -> String {
     input.lines()
         .filter(|line| !line.trim().starts_with("#line"))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+#[derive(Debug, Clone)]
+pub struct LineMapping {
+    pub output_line: usize,
+    pub source_file: String,
+    pub source_line: usize,
+}
+
+pub struct LineMap {
+    mappings: Vec<LineMapping>,
+}
+
+impl LineMap {
+    pub fn new() -> Self {
+        Self {
+            mappings: Vec::new(),
+        }
+    }
+    
+    pub fn add_mapping(&mut self, output_line: usize, source_file: String, source_line: usize) {
+        self.mappings.push(LineMapping {
+            output_line,
+            source_file,
+            source_line,
+        });
+    }
+    
+    pub fn get_source_location(&self, output_line: usize) -> Option<(String, usize)> {
+        // Find the last mapping that applies to this line
+        for mapping in self.mappings.iter().rev() {
+            if mapping.output_line <= output_line {
+                let offset = output_line - mapping.output_line;
+                return Some((
+                    mapping.source_file.clone(),
+                    mapping.source_line + offset,
+                ));
+            }
+        }
+        None
+    }
 }

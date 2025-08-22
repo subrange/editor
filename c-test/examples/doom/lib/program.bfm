@@ -76,10 +76,9 @@
 #define ascii(s) {for(c in s, c{: })}
 #define asciiz(s) {for(c in s, c{: })} {:0}
 
-#define program(body) {
-    {br}
-    @crt0
-    {br}
-    body
-    {br}
+#define poke(val, bank, addr, scratch) {
+  @set(scratch, val)
+  {:store } scratch {:, } bank {:, } addr {br}
 }
+
+@crt0

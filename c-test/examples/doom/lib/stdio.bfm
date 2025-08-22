@@ -1,0 +1,20 @@
+#pragma once
+
+@leaf(putchar,
+  @a({:store s0, r0, r0})
+)
+
+@proc(puts,
+  @set(sc, 0)
+
+  {label loop}:{br}
+  {:load sc, }  @arg1 {:, } @arg2 {br}
+  {:beq r0, r0, } {label loop} {br}
+  @call1(putchar, @reg, sc)
+  {:addi sc, sc, 1}{br}
+  {:beq r0, r0, } {label loop} {br}
+  {label end}:{br}
+  @call1(putchar, @imm, 10)
+  @set(sc, 0)
+  @retval(sc, r0)
+)

@@ -1,0 +1,14 @@
+#define inner {
+  inner_code{br}
+}
+
+#define outer {
+  {label foo}:{br}
+  @inner
+  jump {label foo}{br}
+  @inner
+  jump {label foo}{br}
+  {label bar}:{br}
+}
+
+@outer

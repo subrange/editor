@@ -1,0 +1,8 @@
+#define test {
+  .{label foo}:{br}
+  jump .{label foo}{br}
+  jump .{label foo}{br}
+  .{label bar}:{br}
+}
+
+@test

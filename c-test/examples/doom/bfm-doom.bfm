@@ -1,18 +1,20 @@
 #include "lib/program.bfm"
+#include "lib/stdio.bfm"
 
-@program(
-  @leaf(putchar,
-    @a({:store s0, r0, r0})
-  )
+@proc(add,
+  {:add sc, } @arg1 {:, } @arg2 {br}
+  @retval(sc, r0)
+)
 
-  @proc(add,
-    {:add sc, } @arg1 {:, } @arg2 {br}
-    @retval(sc, r0)
-  )
+@proc(main,
+  @call1(putchar, @imm, @asciiz("A"))
+  @call2(add, @imm, 5, @imm, 10)
+  @call2(add, @reg, rv0, @reg, rv0)
 
-  @proc(main,
-    @call1(putchar, @imm, @asciiz("A"))
-    @call2(add, @imm, 5, @imm, 10)
-    @call2(add, @reg, rv0, @reg, rv0)
-  )
+  @set(s0, 2)
+  @set(s1, 10)
+
+  @poke(65, s0, s1, x0)
+  
+  @call2(puts, @reg, s0, @reg, s1)
 )

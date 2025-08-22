@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
-use crate::preprocessor::{Preprocessor, strip_line_directives};
+use crate::preprocessor::{Preprocessor, parse_line_directives, LineMap};
 use crate::source_map::SourceMapBuilder;
 use crate::types::*;
 use std::collections::{HashMap, HashSet};
@@ -119,11 +119,24 @@ impl MacroExpander {
             }
         };
         
-        // Strip line directives for macro expansion
-        let clean_input = strip_line_directives(&preprocessed);
+        // Parse line directives to build source map
+        let (clean_input, line_map) = parse_line_directives(&preprocessed);
         
         // Now run normal macro expansion
-        self.expand(&clean_input, options)
+        let mut result = self.expand(&clean_input, options);
+        
+        // Translate error locations using the line map
+        for error in &mut result.errors {
+            if let Some(ref mut location) = error.location {
+                if let Some((file, line)) = line_map.get_source_location(location.line + 1) {
+                    // Update the error message to include file name
+                    error.message = format!("{}: {}", file, error.message);
+                    location.line = line.saturating_sub(1); // Convert back to 0-based
+                }
+            }
+        }
+        
+        result
     }
     
     pub fn expand(&mut self, input: &str, options: MacroExpanderOptions) -> MacroExpanderResult {
@@ -582,8 +595,12 @@ impl MacroExpander {
             parameter_values = Some(values);
         }
         
-        // Clear label map for this macro invocation to ensure unique labels
-        self.label_map.clear();
+        // Only clear label map if this is truly the first macro in the expansion chain
+        // (i.e., we're starting a new top-level expansion, not a nested call)
+        if context.macro_call_stack.is_empty() && context.expansion_depth == 0 {
+            eprintln!("DEBUG: Clearing label_map for initial macro '{}'", node.name);
+            self.label_map.clear();
+        }
         
         // Push macro context
         context.macro_call_stack.push(MacroCallStackEntry {
@@ -732,6 +749,4 @@ impl MacroExpander {
             }
         }
     }
-    
-    // Part 2 continues in next message...
 }

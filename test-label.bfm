@@ -1,0 +1,8 @@
+#define test_labels {
+  .{label loop}:{br}
+  goto .{label loop}{br}
+  goto .{label loop}{br}
+  .{label end}:{br}
+}
+
+@test_labels
