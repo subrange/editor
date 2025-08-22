@@ -6,6 +6,17 @@
 #define set(reg, val) {:li } reg {:,} val {br}
 #define mov(reg, val) {:add } reg {:,} val {:,} r0 {br}
 
+#define poke(val, bank, addr) {
+  {:store } val {:, } bank {:, } addr {br}
+}
+
+#define peek(set, bank, addr) {
+  {:load } set {:, } bank {:, } addr  {br}
+}
+
+#define push(reg)   @poke(reg, sb, sp) @inc(sp)
+#define pop(reg)    @dec(sp) @peek(reg, sb, sp)
+
 #define arg1 s0
 #define arg2 s1
 #define arg3 s2
@@ -13,6 +24,24 @@
 
 #define reg 0
 #define imm 1
+
+#define while(cond, code) {
+  {label loop}:{br}
+  cond {:, } {label cont} {br}
+  {:beq r0, r0, } {label end} {br}
+  {label cont}: {br}
+  code {br}
+  {:beq r0, r0, } {label loop} {br}
+  {label end}: {br}
+}
+
+#define ne(reg1, reg2) {:bne } reg1 {:, } reg2
+#define eq(reg1, reg2) {:beq } reg1 {:, } reg2
+#define lt(reg1, reg2) {:blt } reg1 {:, } reg2
+#define ge(reg1, reg2) {:bge } reg1 {:, } reg2
+
+#define inc(reg) {:addi } reg {:, } reg {:, } 1 {br}
+#define dec(reg) {:addi } reg {:, } reg {:, } -1 {br}
 
 #define setarg(source, arg, dst) {if(source, @set(dst, arg), @mov(dst, arg))}
 #define call(func) {:call } func {br}
@@ -46,21 +75,29 @@
 #define halt {:HALT}
 #define ret @a({:jalr rab, rab, ra})
 #define retval(reg1, reg2) {
-  @a({:addi rv0, reg1, 0})
-  @a({:addi rv1, reg2, 0})
+  @mov(rv0, reg1)
+  @mov(rv1, reg2)
 }
 
 #define prologue {
-  @a({:store ra, sb, sp})
-  @a({:addi sp, sp, 1})
-  @a({:store fp, sb, sp})
-  @a({:add fp, sp, r0})
+  @push(ra)
+  @push(fp)
+  @push(@arg1)
+  @push(@arg2)
+  @push(@arg3)
+  @push(@arg4)
+
+  @mov(fp, sp)
 }
 
 #define epilogue {
-  @a({:load fp, sb, sp})
-  @a({:addi sp, sp, -1})
-  @a({:load ra, sb, sp})
+  @pop(@arg4)
+  @pop(@arg3)
+  @pop(@arg2)
+  @pop(@arg1)
+  @pop(fp)
+  @pop(ra)
+  
   @ret
 }
 
@@ -73,12 +110,7 @@
   @epilogue
 }
 
-#define ascii(s) {for(c in s, c{: })}
+#define ascii(s)  {for(c in s, c{: })}
 #define asciiz(s) {for(c in s, c{: })} {:0}
-
-#define poke(val, bank, addr, scratch) {
-  @set(scratch, val)
-  {:store } scratch {:, } bank {:, } addr {br}
-}
 
 @crt0

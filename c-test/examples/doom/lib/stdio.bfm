@@ -1,19 +1,23 @@
 #pragma once
 
+#include "mmio.bfm"
+
 @leaf(putchar,
-  @a({:store s0, r0, r0})
+  @mmio_write(@arg1, #HDR_TTY_OUT)
 )
 
 @proc(puts,
-  @set(sc, 0)
+  @mov(x0, @arg2)
+  @mov(x1, @arg1)
 
-  {label loop}:{br}
-  {:load sc, }  @arg1 {:, } @arg2 {br}
-  {:beq r0, r0, } {label loop} {br}
-  @call1(putchar, @reg, sc)
-  {:addi sc, sc, 1}{br}
-  {:beq r0, r0, } {label loop} {br}
-  {label end}:{br}
+  @peek(sc, x1, x0)
+
+  @while(@ne(sc, r0),
+    @call1(putchar, @reg, sc)
+    @inc(x0)
+    @peek(sc, x1, x0)
+  )
+
   @call1(putchar, @imm, 10)
   @set(sc, 0)
   @retval(sc, r0)

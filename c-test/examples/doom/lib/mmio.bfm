@@ -1,0 +1,27 @@
+#pragma once
+
+#define HDR_TTY_OUT         0x0
+#define HDR_TTY_STATUS      0x1
+#define HDR_TTY_IN_POP      0x2
+#define HDR_TTY_IN_STATUS   0x3
+#define HDR_RNG             0x4
+#define HDR_RNG_SEED        0x5
+#define HDR_DISP_MODE       0x6
+#define HDR_DISP_STATUS     0x7
+#define HDR_DISP_CTL        0x8
+#define HDR_DISP_FLUSH      0x9
+#define HDR_KEY_UP          0xA
+#define HDR_KEY_DOWN        0xB
+#define HDR_KEY_LEFT        0xC
+#define HDR_KEY_RIGHT       0xD
+#define HDR_KEY_Z           0xE
+#define HDR_KEY_X           0xF
+#define HDR_DISP_RESOLUTION 0x10
+#define HDR_STORE_BLOCK     0x11
+#define HDR_STORE_ADDR      0x12
+#define HDR_STORE_DATA      0x13
+#define HDR_STORE_CTL       0x14
+
+#define mmio_write(value, pin) @poke(value, r0, pin)
+#define mmio_read(set, pin) @peek(set, r0, pin)
+

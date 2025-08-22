@@ -7,14 +7,21 @@
 )
 
 @proc(main,
-  @call1(putchar, @imm, @asciiz("A"))
-  @call2(add, @imm, 5, @imm, 10)
-  @call2(add, @reg, rv0, @reg, rv0)
+  @mov(t0, gp)
 
-  @set(s0, 2)
-  @set(s1, 10)
+  @set(t1, 10)
+  @set(t2, 65)
+  @poke(t2, t0, t1) @a(; A)
 
-  @poke(65, s0, s1, x0)
+  @set(t1, 11)
+  @set(t2, 66)
+  @poke(t2, t0, t1) @a(; B)
+
+  @set(t1, 12)
+  @set(t2, 67)
+  @poke(t2, t0, t1) @a(; C)
   
-  @call2(puts, @reg, s0, @reg, s1)
+  @set(t1, 10) @a(; \n)
+
+  @call2(puts, @reg, t0, @reg, t1)
 )
