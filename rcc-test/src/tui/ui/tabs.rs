@@ -8,6 +8,7 @@ use ratatui::{
 use std::path::Path;
 use crate::tui::app::{TuiApp, FocusedPane};
 use crate::tui::ui::colors::parse_output_with_colors;
+use crate::tui::bfm_formatter;
 use rcc_frontend::c_formatter;
 
 pub fn draw_source_code(f: &mut Frame, area: Rect, app: &TuiApp) {
@@ -22,11 +23,24 @@ pub fn draw_source_code(f: &mut Frame, area: Rect, app: &TuiApp) {
         if full_path.exists() {
             match std::fs::read_to_string(&full_path) {
                 Ok(code) => {
-                    // Create colored lines with line numbers
-                    let lines: Vec<Line> = c_formatter::format_c_code_with_line_numbers(&code)
-                        .into_iter()
-                        .map(Line::from)
-                        .collect();
+                    // Check file extension to determine formatter
+                    let is_bfm = full_path.extension()
+                        .and_then(|ext| ext.to_str())
+                        .map(|ext| ext == "bfm" || ext == "bfmacro")
+                        .unwrap_or(false);
+                    
+                    // Create colored lines with line numbers using appropriate formatter
+                    let lines: Vec<Line> = if is_bfm {
+                        bfm_formatter::format_bfm_code_with_line_numbers(&code)
+                            .into_iter()
+                            .map(Line::from)
+                            .collect()
+                    } else {
+                        c_formatter::format_c_code_with_line_numbers(&code)
+                            .into_iter()
+                            .map(Line::from)
+                            .collect()
+                    };
                     
                     let paragraph = Paragraph::new(lines)
                         .block(

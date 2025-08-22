@@ -1761,6 +1761,7 @@ dependencies = [
  "ratatui 0.26.3",
  "rayon",
  "rcc-frontend",
+ "regex",
  "ripple-asm",
  "rvm",
  "serde",

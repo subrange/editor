@@ -1,0 +1,14 @@
+
+
+#define puts(str) {
+  {for(s in str,
+    {:LI T0, }s{br}
+    {:STORE T0, R0, R0}{br}
+  )}
+  {:LI T0, 10}{br}
+  {:STORE T0, R0, R0}{br}
+}
+
+@puts({'A', 'B', 'C'})
+
+{:HALT}
