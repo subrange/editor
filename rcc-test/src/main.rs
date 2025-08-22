@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::*;
 use rcc_test::cli::{Cli, Command};
-use rcc_test::compiler::{build_runtime, compile_c_to_binary, ToolPaths};
-use rcc_test::config::{self, RunConfig};
+use rcc_test::compiler::{build_runtime, compile_c_to_binary, compile_bfm_to_binary, ToolPaths};
+use rcc_test::config::{self, RunConfig, TestType};
 use rcc_test::runner::{cleanup_build_dir, TestRunner};
 use rcc_test::tui::runner::TuiRunner;
 use std::path::{Path, PathBuf};
@@ -349,6 +349,13 @@ fn add_test(
         (file, is_failure)
     };
     
+    // For BFM files, never use runtime
+    let use_runtime = if file.extension() == Some(std::ffi::OsStr::new("bfm")) {
+        false
+    } else {
+        use_runtime
+    };
+    
     // Add to appropriate section
     let is_new = if is_known_failure || expected.is_none() {
         // Add to known failures
@@ -584,14 +591,23 @@ fn debug_test(test_name: &str, cli: &Cli, tools: &ToolPaths) -> Result<()> {
     
     println!("Compiling: {}", actual_test_path.display());
     
-    // Compile the test using the shared function
-    let bin_file = compile_c_to_binary(
-        &actual_test_path,
-        tools,
-        cli.bank_size,
-        true, // use_runtime
-        30,   // timeout_secs
-    )?;
+    // Compile the test using the appropriate function based on file type
+    let bin_file = if actual_test_path.extension() == Some(std::ffi::OsStr::new("bfm")) {
+        compile_bfm_to_binary(
+            &actual_test_path,
+            tools,
+            cli.bank_size,
+            30,   // timeout_secs
+        )?
+    } else {
+        compile_c_to_binary(
+            &actual_test_path,
+            tools,
+            cli.bank_size,
+            true, // use_runtime for C files
+            30,   // timeout_secs
+        )?
+    };
     
     println!("{}", format!("Successfully built {}", bin_file.display()).green());
     
@@ -647,12 +663,18 @@ fn rename_test(tests_file: &Path, old_name: &str, new_name: &str) -> Result<()> 
             if let Some(stem) = failure.file.file_stem() {
                 if stem.to_str() == Some(old_name) || failure.file.to_str() == Some(old_name) {
                     // Convert to TestCase for uniform handling
+                    let test_type = if failure.file.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                        TestType::Bfm
+                    } else {
+                        TestType::C
+                    };
                     found_test = Some(config::TestCase {
                         file: failure.file.clone(),
                         expected: None,
-                        use_runtime: true,
+                        use_runtime: test_type == TestType::C,
                         description: failure.description.clone(),
                         skipped: false,
+                        test_type,
                     });
                     found_index = Some(idx);
                     is_known_failure = true;
@@ -828,14 +850,23 @@ fn exec_program(program_name: &str, cli: &Cli, tools: &ToolPaths, frequency: Opt
     
     println!("Compiling: {}", actual_path.display());
     
-    // Compile the program using the shared function
-    let bin_file = compile_c_to_binary(
-        &actual_path,
-        tools,
-        bank_size,
-        true, // use_runtime (always with runtime for examples)
-        30,   // timeout_secs
-    )?;
+    // Compile the program using the appropriate function based on file type
+    let bin_file = if actual_path.extension() == Some(std::ffi::OsStr::new("bfm")) {
+        compile_bfm_to_binary(
+            &actual_path,
+            tools,
+            bank_size,
+            30,   // timeout_secs
+        )?
+    } else {
+        compile_c_to_binary(
+            &actual_path,
+            tools,
+            bank_size,
+            true, // use_runtime (always with runtime for C examples)
+            30,   // timeout_secs
+        )?
+    };
     
     println!("{}", format!("Successfully built {}", bin_file.display()).green());
     
@@ -930,7 +961,7 @@ impl TestFinder {
     const TEST_ROOT: &'static str = "c-test";
     const BUILD_DIR: &'static str = "build";
     
-    /// Find a C file by name in the test directories
+    /// Find a C or BFM file by name in the test directories
     fn find_c_file(name: &str) -> Result<PathBuf> {
         // First check if it's a direct path
         let direct_path = Path::new(name);
@@ -939,11 +970,25 @@ impl TestFinder {
         }
         
         // Normalize the name
-        let name = name.strip_suffix(".c").unwrap_or(name);
-        let filename = format!("{name}.c");
+        let name = name.strip_suffix(".c")
+            .or_else(|| name.strip_suffix(".bfm"))
+            .unwrap_or(name);
         
-        // Search recursively
-        if let Ok(found) = Self::find_file_recursive(Path::new(Self::TEST_ROOT), &filename) {
+        // Try to find both .c and .bfm files
+        let c_filename = format!("{name}.c");
+        let bfm_filename = format!("{name}.bfm");
+        
+        // Search recursively for .c file first
+        if let Ok(found) = Self::find_file_recursive(Path::new(Self::TEST_ROOT), &c_filename) {
+            // Return relative path from c-test/
+            if let Ok(relative) = found.strip_prefix(Self::TEST_ROOT) {
+                return Ok(relative.to_path_buf());
+            }
+            return Ok(found);
+        }
+        
+        // Then search for .bfm file
+        if let Ok(found) = Self::find_file_recursive(Path::new(Self::TEST_ROOT), &bfm_filename) {
             // Return relative path from c-test/
             if let Ok(relative) = found.strip_prefix(Self::TEST_ROOT) {
                 return Ok(relative.to_path_buf());
@@ -984,7 +1029,7 @@ impl TestFinder {
         Err(anyhow::anyhow!("File not found"))
     }
     
-    /// Find all untracked C files in the test directories
+    /// Find all untracked C and BFM files in the test directories
     fn find_untracked_c_files(tracked_files: &std::collections::HashSet<PathBuf>) -> Result<Vec<PathBuf>> {
         let mut untracked = Vec::new();
         Self::find_untracked_recursive(Path::new(Self::TEST_ROOT), tracked_files, &mut untracked)?;
@@ -1012,8 +1057,9 @@ impl TestFinder {
                 }
                 // Recursively search subdirectories
                 Self::find_untracked_recursive(&path, tracked_files, untracked_files)?;
-            } else if path.extension() == Some(std::ffi::OsStr::new("c")) {
-                // Check if this C file is tracked
+            } else if path.extension() == Some(std::ffi::OsStr::new("c")) || 
+                      path.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                // Check if this C or BFM file is tracked
                 if !tracked_files.contains(&path) {
                     untracked_files.push(path);
                 }

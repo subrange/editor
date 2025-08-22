@@ -2,8 +2,8 @@ use std::path::Path;
 use std::time::Instant;
 use anyhow::Result;
 use crate::tui::app::{TuiApp, AppMode, TestResult};
-use crate::compiler::compile_c_file;
-use crate::config::{RunConfig, Backend, TestCase};
+use crate::compiler::{compile_c_file, compile_bfm_file};
+use crate::config::{RunConfig, Backend, TestCase, TestType};
 
 pub fn run_single_test(app: &mut TuiApp, test_name: &str) -> Result<()> {
     app.clear_output();
@@ -113,18 +113,34 @@ fn compile_and_run_test(app: &TuiApp, test_name: &str, test: Option<&TestCase>) 
     };
     
     let use_runtime = test.map(|t| t.use_runtime).unwrap_or(true);
+    let test_type = test.map(|t| t.test_type).unwrap_or(TestType::C);
     
-    // This function properly handles compiler panics/errors
-    let compilation_result = match compile_c_file(
-        &actual_test_path,
-        &app.tools,
-        &run_config,
-        use_runtime,
-    ) {
-        Ok(result) => result,
-        Err(e) => {
-            // Handle errors (like file not found) without propagating
-            return Err(anyhow::anyhow!("Failed to compile: {}", e));
+    // Choose compilation method based on test type
+    let compilation_result = match test_type {
+        TestType::Bfm => {
+            match compile_bfm_file(
+                &actual_test_path,
+                &app.tools,
+                &run_config,
+            ) {
+                Ok(result) => result,
+                Err(e) => {
+                    return Err(anyhow::anyhow!("Failed to compile BFM: {}", e));
+                }
+            }
+        }
+        TestType::C => {
+            match compile_c_file(
+                &actual_test_path,
+                &app.tools,
+                &run_config,
+                use_runtime,
+            ) {
+                Ok(result) => result,
+                Err(e) => {
+                    return Err(anyhow::anyhow!("Failed to compile: {}", e));
+                }
+            }
         }
     };
     

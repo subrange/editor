@@ -152,6 +152,67 @@ pub struct CompilationResult {
     pub error_message: Option<String>,
 }
 
+/// Compile a BFM file to binary without running it
+/// BFM files are expanded to .asm, then assembled and linked without C runtime
+pub fn compile_bfm_to_binary(
+    bfm_file: &Path,
+    tools: &ToolPaths,
+    bank_size: usize,
+    timeout_secs: u64,
+) -> Result<PathBuf> {
+    let basename = bfm_file
+        .file_stem()
+        .context("Invalid BFM file path")?
+        .to_str()
+        .context("Non-UTF8 filename")?;
+
+    let asm_file = tools.build_dir.join(format!("{basename}.asm"));
+    let pobj_file = tools.build_dir.join(format!("{basename}.pobj"));
+    let bin_file = tools.build_dir.join(format!("{basename}.bin"));
+
+    // Step 1: Expand BFM to ASM using bfm expand
+    let cmd = format!(
+        "bfm expand {} -o {}",
+        bfm_file.display(),
+        asm_file.display()
+    );
+
+    let result = run_command_sync(&cmd, timeout_secs)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("BFM expansion failed: {}", result.stderr);
+    }
+
+    // Step 2: Assemble to object
+    let cmd = format!(
+        "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
+        tools.rasm.display(),
+        asm_file.display(),
+        pobj_file.display(),
+        bank_size
+    );
+
+    let result = run_command_sync(&cmd, timeout_secs)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Assembly failed: {}", result.stderr);
+    }
+
+    // Step 3: Link to binary (completely standalone, no crt0)
+    let link_cmd = format!(
+        "{} {} -f binary --bank-size {} --standalone -o {}",
+        tools.rlink.display(),
+        pobj_file.display(),
+        bank_size,
+        bin_file.display()
+    );
+
+    let result = run_command_sync(&link_cmd, timeout_secs)?;
+    if result.exit_code != 0 {
+        anyhow::bail!("Linking failed: {}", result.stderr);
+    }
+
+    Ok(bin_file)
+}
+
 /// Compile a C file to binary without running it
 /// This is used by debug_test and exec_program commands
 pub fn compile_c_to_binary(
@@ -244,6 +305,84 @@ pub fn compile_c_to_binary(
     }
 
     Ok(bin_file)
+}
+
+/// Compile a BFM file to executable
+pub fn compile_bfm_file(
+    bfm_file: &Path,
+    tools: &ToolPaths,
+    config: &RunConfig,
+) -> Result<CompilationResult> {
+    let basename = bfm_file
+        .file_stem()
+        .context("Invalid BFM file path")?
+        .to_str()
+        .context("Non-UTF8 filename")?;
+
+    let asm_file = tools.build_dir.join(format!("{basename}.asm"));
+    let pobj_file = tools.build_dir.join(format!("{basename}.pobj"));
+
+    // Clean up previous files
+    let _ = std::fs::remove_file(&asm_file);
+    let _ = std::fs::remove_file(&pobj_file);
+
+    // Step 1: Expand BFM to ASM using bfm expand
+    let cmd = format!(
+        "bfm expand {} -o {}",
+        bfm_file.display(),
+        asm_file.display()
+    );
+
+    let result = run_command_sync(&cmd, config.timeout_secs)?;
+    if result.exit_code != 0 {
+        return Ok(CompilationResult {
+            success: false,
+            output: String::new(),
+            has_provenance_warning: false,
+            error_message: Some(format!("BFM expansion failed: {}", result.stderr)),
+        });
+    }
+
+    // Step 2: Assemble to object
+    let cmd = format!(
+        "{} assemble {} -o {} --bank-size {} --max-immediate 65535",
+        tools.rasm.display(),
+        asm_file.display(),
+        pobj_file.display(),
+        config.bank_size
+    );
+
+    let result = run_command_sync(&cmd, config.timeout_secs)?;
+    if result.exit_code != 0 {
+        return Ok(CompilationResult {
+            success: false,
+            output: String::new(),
+            has_provenance_warning: false,
+            error_message: Some(format!("Assembly failed: {}", result.stderr)),
+        });
+    }
+
+    // Step 3: Link and run (BFM tests are standalone)
+    match config.backend {
+        Backend::Rvm => {
+            compile_and_run_rvm_standalone(
+                basename,
+                &pobj_file,
+                tools,
+                config,
+                false, // No provenance warnings for BFM
+            )
+        }
+        Backend::Brainfuck => {
+            compile_and_run_bf_standalone(
+                basename,
+                &pobj_file,
+                tools,
+                config,
+                false, // No provenance warnings for BFM
+            )
+        }
+    }
 }
 
 /// Compile a C file to executable
@@ -369,6 +508,90 @@ pub fn compile_c_file(
     }
 }
 
+fn compile_and_run_rvm_standalone(
+    basename: &str,
+    pobj_file: &Path,
+    tools: &ToolPaths,
+    config: &RunConfig,
+    has_provenance_warning: bool,
+) -> Result<CompilationResult> {
+    let bin_file = tools.build_dir.join(format!("{basename}.bin"));
+
+    // Link to binary (standalone, no runtime)
+    let link_cmd = format!(
+        "{} {} -f binary --bank-size {} --standalone -o {}",
+        tools.rlink.display(),
+        pobj_file.display(),
+        config.bank_size,
+        bin_file.display()
+    );
+
+    let result = run_command_sync(&link_cmd, config.timeout_secs)?;
+    if result.exit_code != 0 {
+        return Ok(CompilationResult {
+            success: false,
+            output: String::new(),
+            has_provenance_warning,
+            error_message: Some(format!("Linking failed: {}", result.stderr)),
+        });
+    }
+
+    // Run on RVM
+    let mut rvm_args = vec![bin_file.display().to_string(), "--memory".to_string(), "4294967296".to_string()];
+    
+    // Add frequency if provided
+    if let Some(ref freq) = config.frequency {
+        rvm_args.push("--frequency".to_string());
+        rvm_args.push(freq.clone());
+    }
+    
+    // Add disk path if provided
+    if let Some(ref disk) = config.disk_path {
+        rvm_args.push("--disk".to_string());
+        rvm_args.push(disk.display().to_string());
+    }
+    
+    // Add debug flag if needed
+    if config.debug_mode {
+        rvm_args.push("-t".to_string());
+    }
+    
+    let run_cmd = format!(
+        "{} {}",
+        tools.rvm.display(),
+        rvm_args.join(" ")
+    );
+
+    let result = run_command_sync(&run_cmd, config.timeout_secs)?;
+    
+    // Save disassembly for debugging
+    let _ = run_command_sync(
+        &format!(
+            "{} disassemble {} -o {}",
+            tools.rasm.display(),
+            bin_file.display(),
+            tools.build_dir.join(format!("{basename}.disassembly.asm")).display()
+        ),
+        10,
+    );
+
+    if result.timed_out {
+        Ok(CompilationResult {
+            success: false,
+            output: result.stdout,
+            has_provenance_warning,
+            error_message: Some(result.stderr),
+        })
+    } else {
+        Ok(CompilationResult {
+            success: true,
+            output: result.stdout,
+            has_provenance_warning,
+            error_message: None,
+        })
+    }
+}
+
 fn compile_and_run_rvm(
     basename: &str,
     pobj_file: &Path,
@@ -450,6 +673,77 @@ fn compile_and_run_rvm(
         10,
     );
 
+    if result.timed_out {
+        Ok(CompilationResult {
+            success: false,
+            output: result.stdout,
+            has_provenance_warning,
+            error_message: Some(result.stderr),
+        })
+    } else {
+        Ok(CompilationResult {
+            success: true,
+            output: result.stdout,
+            has_provenance_warning,
+            error_message: None,
+        })
+    }
+}
+
+fn compile_and_run_bf_standalone(
+    basename: &str,
+    pobj_file: &Path,
+    tools: &ToolPaths,
+    config: &RunConfig,
+    has_provenance_warning: bool,
+) -> Result<CompilationResult> {
+    let bf_file = tools.build_dir.join(format!("{basename}.bfm"));
+    let expanded_file = tools.build_dir.join(format!("{basename}_expanded.bf"));
+
+    // Link to macro format (standalone)
+    let link_cmd = format!(
+        "{} {} -f macro --standalone --bank-size {} -o {}",
+        tools.rlink.display(),
+        pobj_file.display(),
+        config.bank_size,
+        bf_file.display()
+    );
+
+    let result = run_command_sync(&link_cmd, config.timeout_secs)?;
+    if result.exit_code != 0 {
+        return Ok(CompilationResult {
+            success: false,
+            output: String::new(),
+            has_provenance_warning,
+            error_message: Some(format!("Linking failed: {}", result.stderr)),
+        });
+    }
+
+    // Expand macros
+    let expand_cmd = format!(
+        "bfm expand {} -o {}",
+        bf_file.display(),
+        expanded_file.display()
+    );
+
+    let result = run_command_sync(&expand_cmd, config.timeout_secs)?;
+    if result.exit_code != 0 {
+        return Ok(CompilationResult {
+            success: false,
+            output: String::new(),
+            has_provenance_warning,
+            error_message: Some(format!("Macro expansion failed: {}", result.stderr)),
+        });
+    }
+
+    // Run brainfuck
+    let run_cmd = format!(
+        "bf {} --cell-size 16 --tape-size 150000000",
+        expanded_file.display()
+    );
+
+    let result = run_command_sync(&run_cmd, config.timeout_secs)?;
+    
     if result.timed_out {
         Ok(CompilationResult {
             success: false,

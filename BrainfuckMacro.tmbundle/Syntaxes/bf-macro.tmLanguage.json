@@ -3,11 +3,12 @@
   "name": "Brainfuck Macro",
   "scopeName": "source.bfmacro",
   "fileTypes": ["bfm", "bfmacro", "bf"],
+  "uuid": "B5E5B8C6-6E2E-4E87-9F7A-2A8C3B4D5E6F",
   "patterns": [
     { "include": "#comments" },
     { "include": "#macro-definition" },
-    { "include": "#macro-invocation" },
     { "include": "#builtin-functions" },
+    { "include": "#macro-invocation" },
     { "include": "#brainfuck-operators" },
     { "include": "#numbers" },
     { "include": "#identifiers" }
@@ -16,11 +17,11 @@
     "comments": {
       "patterns": [
         {
-          "name": "comment.line.double-slash.bfmacro",
+          "name": "comment.line.double-slash",
           "match": "//.*$"
         },
         {
-          "name": "comment.block.bfmacro",
+          "name": "comment.block",
           "begin": "/\\*",
           "end": "\\*/"
         }
@@ -31,14 +32,14 @@
         {
           "match": "(#define)\\s+([a-zA-Z_]\\w*)\\s*(\\(([^)]*)\\))?",
           "captures": {
-            "1": { "name": "keyword.other.define.bfmacro" },
-            "2": { "name": "entity.name.function.macro.bfmacro" },
-            "3": { "name": "punctuation.definition.parameters.bfmacro" },
+            "1": { "name": "keyword.control.directive.define" },
+            "2": { "name": "entity.name.function.preprocessor" },
+            "3": { "name": "punctuation.definition.parameters" },
             "4": { 
               "patterns": [
                 {
                   "match": "[a-zA-Z_]\\w*",
-                  "name": "variable.parameter.bfmacro"
+                  "name": "variable.parameter.function"
                 }
               ]
             }
@@ -49,27 +50,27 @@
     "macro-invocation": {
       "patterns": [
         {
-          "name": "meta.function-call.macro.bfmacro",
+          "name": "meta.function-call.macro",
           "begin": "(@)([a-zA-Z_]\\w*)(\\()",
           "end": "\\)",
           "beginCaptures": {
-            "1": { "name": "punctuation.definition.macro.bfmacro" },
-            "2": { "name": "entity.name.function.macro.bfmacro" },
-            "3": { "name": "punctuation.definition.parameters.begin.bfmacro" }
+            "1": { "name": "keyword.operator.macro" },
+            "2": { "name": "entity.name.function.preprocessor" },
+            "3": { "name": "punctuation.definition.parameters.begin" }
           },
           "endCaptures": {
-            "0": { "name": "punctuation.definition.parameters.end.bfmacro" }
+            "0": { "name": "punctuation.definition.parameters.end" }
           },
           "patterns": [
             { "include": "#macro-arguments" }
           ]
         },
         {
-          "name": "entity.name.function.macro.bfmacro",
+          "name": "entity.name.function.preprocessor",
           "match": "@[a-zA-Z_]\\w*"
         },
         {
-          "name": "entity.name.function.macro.hash.bfmacro",
+          "name": "entity.name.function.preprocessor",
           "match": "#[a-zA-Z_]\\w*(?!define)"
         }
       ]
@@ -80,7 +81,7 @@
         { "include": "#numbers" },
         { "include": "#identifiers" },
         {
-          "name": "punctuation.separator.arguments.bfmacro",
+          "name": "punctuation.separator.arguments",
           "match": ","
         }
       ]
@@ -88,11 +89,11 @@
     "builtin-functions": {
       "patterns": [
         {
-          "name": "meta.builtin.preserve.bfmacro",
+          "name": "meta.builtin.preserve",
           "begin": "\\{(:)",
           "end": "\\}",
           "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.preserve.bfmacro" }
+            "1": { "name": "keyword.control.flow.preserve" }
           },
           "patterns": [
             { "include": "#builtin-functions" },
@@ -100,80 +101,80 @@
           ]
         },
         {
-          "name": "meta.builtin.label.bfmacro",
+          "name": "meta.builtin.label",
           "begin": "\\{(label)\\s+",
           "end": "\\}",
           "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.label.bfmacro" }
+            "1": { "name": "keyword.control.flow.label" }
           },
           "patterns": [
             {
               "match": "[a-zA-Z_]\\w*",
-              "name": "entity.name.label.bfmacro"
+              "name": "entity.name.label"
             }
           ]
         },
         {
-          "name": "meta.builtin.br.bfmacro",
+          "name": "meta.builtin.br",
           "match": "\\{(br)\\}",
           "captures": {
-            "1": { "name": "keyword.control.builtin.br.bfmacro" }
+            "1": { "name": "keyword.control.flow.break" }
           }
         },
         {
-          "name": "meta.builtin.repeat.bfmacro",
+          "name": "meta.builtin.repeat",
           "begin": "\\{(repeat)\\s*\\(",
           "end": "\\)\\s*\\}",
           "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.repeat.bfmacro" }
+            "1": { "name": "keyword.control.loop.repeat" }
           },
           "patterns": [
             { "include": "#builtin-arguments" }
           ]
         },
         {
-          "name": "meta.builtin.if.bfmacro",
+          "name": "meta.builtin.if",
           "begin": "\\{(if)\\s*\\(",
           "end": "\\)\\s*\\}",
           "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.if.bfmacro" }
+            "1": { "name": "keyword.control.conditional.if" }
           },
           "patterns": [
             { "include": "#builtin-arguments" }
           ]
         },
         {
-          "name": "meta.builtin.for.bfmacro",
+          "name": "meta.builtin.for",
           "begin": "\\{(for)\\s*\\(",
           "end": "\\)\\s*\\}",
           "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.for.bfmacro" }
+            "1": { "name": "keyword.control.loop.for" }
           },
           "patterns": [
             {
               "match": "\\b(in)\\b",
-              "name": "keyword.control.in.bfmacro"
+              "name": "keyword.control.loop.in"
             },
             { "include": "#builtin-arguments" }
           ]
         },
         {
-          "name": "meta.builtin.reverse.bfmacro",
+          "name": "meta.builtin.reverse",
           "begin": "\\{(reverse)\\s*\\(",
           "end": "\\)\\s*\\}",
           "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.reverse.bfmacro" }
+            "1": { "name": "keyword.control.flow.reverse" }
           },
           "patterns": [
             { "include": "#builtin-arguments" }
           ]
         },
         {
-          "name": "meta.builtin.preserve.bfmacro",
+          "name": "meta.builtin.preserve",
           "begin": "\\{(preserve)\\s*\\(",
           "end": "\\)\\s*\\}",
           "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.preserve.bfmacro" }
+            "1": { "name": "keyword.control.flow.preserve" }
           },
           "patterns": [
             { "include": "#preserve-content" }
@@ -188,7 +189,7 @@
         { "include": "#numbers" },
         { "include": "#identifiers" },
         {
-          "name": "punctuation.separator.arguments.bfmacro",
+          "name": "punctuation.separator.arguments",
           "match": ","
         }
       ]
@@ -198,54 +199,54 @@
         { "include": "#builtin-functions" },
         {
           "match": "[^{}]+",
-          "name": "string.unquoted.preserve.bfmacro"
+          "name": "string.unquoted"
         }
       ]
     },
     "brainfuck-operators": {
       "patterns": [
         {
-          "name": "keyword.operator.increment.bfmacro",
+          "name": "keyword.operator.arithmetic.increment",
           "match": "\\++"
         },
         {
-          "name": "keyword.operator.decrement.bfmacro",
+          "name": "keyword.operator.arithmetic.decrement",
           "match": "--"
         },
         {
-          "name": "keyword.operator.add.bfmacro",
+          "name": "keyword.operator.arithmetic.plus",
           "match": "\\+"
         },
         {
-          "name": "keyword.operator.subtract.bfmacro",
+          "name": "keyword.operator.arithmetic.minus",
           "match": "-"
         },
         {
-          "name": "keyword.operator.move.left.bfmacro",
+          "name": "keyword.operator.memory.pointer",
           "match": "<+"
         },
         {
-          "name": "keyword.operator.move.right.bfmacro",
+          "name": "keyword.operator.memory.pointer",
           "match": ">+"
         },
         {
-          "name": "keyword.operator.input.bfmacro",
+          "name": "keyword.operator.io.input",
           "match": ","
         },
         {
-          "name": "keyword.operator.output.bfmacro",
+          "name": "keyword.operator.io.output",
           "match": "\\."
         },
         {
-          "name": "keyword.control.loop.begin.bfmacro",
+          "name": "keyword.control.flow.loop.begin",
           "match": "\\["
         },
         {
-          "name": "keyword.control.loop.end.bfmacro",
+          "name": "keyword.control.flow.loop.end",
           "match": "\\]"
         },
         {
-          "name": "keyword.control.break.bfmacro",
+          "name": "keyword.control.flow.break",
           "match": "\\$"
         }
       ]
@@ -253,15 +254,15 @@
     "numbers": {
       "patterns": [
         {
-          "name": "constant.character.bfmacro",
+          "name": "constant.character.literal",
           "match": "'[^']'"
         },
         {
-          "name": "constant.numeric.hex.bfmacro",
+          "name": "constant.numeric.integer.hexadecimal",
           "match": "\\b0[xX][0-9a-fA-F]+\\b"
         },
         {
-          "name": "constant.numeric.decimal.bfmacro",
+          "name": "constant.numeric.integer.decimal",
           "match": "\\b\\d+\\b"
         }
       ]
@@ -269,7 +270,7 @@
     "identifiers": {
       "patterns": [
         {
-          "name": "variable.other.bfmacro",
+          "name": "variable.other.readwrite",
           "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
         }
       ]

@@ -16,6 +16,24 @@ pub struct TestMetadata {
     pub category: Option<String>,
     #[serde(default)]
     pub skipped: bool,
+    #[serde(default)]
+    pub test_type: TestType,
+}
+
+/// Type of test file
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum TestType {
+    #[serde(rename = "c")]
+    C,
+    #[serde(rename = "bfm")]
+    Bfm,
+}
+
+impl Default for TestType {
+    fn default() -> Self {
+        TestType::C
+    }
 }
 
 /// Test configuration discovered from .meta.json files
@@ -35,6 +53,8 @@ pub struct TestCase {
     pub description: Option<String>,
     #[serde(default)]
     pub skipped: bool,
+    #[serde(default)]
+    pub test_type: TestType,
 }
 
 /// A known failure test case
@@ -194,13 +214,21 @@ fn scan_directory_for_tests(
             }
             // Recursively scan subdirectories
             scan_directory_for_tests(&path, tests, known_failures)?;
-        } else if path.extension() == Some(std::ffi::OsStr::new("c")) {
+        } else if path.extension() == Some(std::ffi::OsStr::new("c")) || 
+                  path.extension() == Some(std::ffi::OsStr::new("bfm")) {
             // Check for corresponding .meta.json file
             let meta_path = path.with_extension("meta.json");
             if meta_path.exists() {
                 // Load metadata
                 let meta_content = std::fs::read_to_string(&meta_path)?;
-                let metadata: TestMetadata = serde_json::from_str(&meta_content)?;
+                let mut metadata: TestMetadata = serde_json::from_str(&meta_content)?;
+                
+                // Determine test type from file extension if not specified
+                if path.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                    metadata.test_type = TestType::Bfm;
+                    // BFM tests never use runtime
+                    metadata.use_runtime = false;
+                }
                 
                 // Get relative path from c-test directory
                 let relative_path = if path.starts_with("c-test/") {
@@ -229,6 +257,7 @@ fn scan_directory_for_tests(
                         use_runtime: metadata.use_runtime,
                         description: metadata.description,
                         skipped: metadata.skipped,
+                        test_type: metadata.test_type,
                     });
                 }
             }
@@ -254,11 +283,18 @@ fn scan_directory_for_orphans(
             }
             // Recursively scan subdirectories
             scan_directory_for_orphans(&path, orphans)?;
-        } else if path.extension() == Some(std::ffi::OsStr::new("c")) {
+        } else if path.extension() == Some(std::ffi::OsStr::new("c")) || 
+                  path.extension() == Some(std::ffi::OsStr::new("bfm")) {
             // Check for corresponding .meta.json file
             let meta_path = path.with_extension("meta.json");
             if !meta_path.exists() {
                 // This is an orphan test - create a TestCase with minimal info
+                let test_type = if path.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                    TestType::Bfm
+                } else {
+                    TestType::C
+                };
+                
                 let relative_path = if path.starts_with("c-test/") {
                     path.strip_prefix("c-test/")?.to_path_buf()
                 } else if let Ok(rel) = path.strip_prefix(std::env::current_dir()?.join("c-test")) {
@@ -276,9 +312,10 @@ fn scan_directory_for_orphans(
                 orphans.push(TestCase {
                     file: relative_path,
                     expected: None,
-                    use_runtime: true, // Default to using runtime
+                    use_runtime: test_type == TestType::C, // BFM never uses runtime
                     description: Some("[ORPHAN] Test without metadata".to_string()),
                     skipped: false, // Default to not skipped
+                    test_type,
                 });
             }
         }
@@ -291,12 +328,18 @@ fn scan_directory_for_orphans(
 pub fn save_tests(config: &TestConfig, _path: &Path) -> Result<()> {
     // Save regular tests
     for test in &config.tests {
-        save_test_metadata(&test.file, &test.expected, test.use_runtime, &test.description, false, test.skipped)?;
+        save_test_metadata(&test.file, &test.expected, test.use_runtime, &test.description, false, test.skipped, test.test_type)?;
     }
     
     // Save known failures
     for failure in &config.known_failures {
-        save_test_metadata(&failure.file, &None, true, &failure.description, true, false)?;
+        // Determine test type from file extension
+        let test_type = if failure.file.extension() == Some(std::ffi::OsStr::new("bfm")) {
+            TestType::Bfm
+        } else {
+            TestType::C
+        };
+        save_test_metadata(&failure.file, &None, test_type == TestType::C, &failure.description, true, false, test_type)?;
     }
     
     Ok(())
@@ -310,6 +353,7 @@ fn save_test_metadata(
     description: &Option<String>,
     known_failure: bool,
     skipped: bool,
+    test_type: TestType,
 ) -> Result<()> {
     // Construct the full path
     let full_path = if file.is_relative() && !file.starts_with("c-test") {
@@ -323,13 +367,21 @@ fn save_test_metadata(
     // Create metadata
     let mut metadata = HashMap::new();
     
+    // Add test type if it's BFM (C is default)
+    if test_type == TestType::Bfm {
+        metadata.insert("test_type", serde_json::Value::String("bfm".to_string()));
+    }
+    
     if known_failure {
         metadata.insert("known_failure", serde_json::Value::Bool(true));
     } else {
         if let Some(exp) = expected {
             metadata.insert("expected", serde_json::Value::String(exp.clone()));
         }
-        metadata.insert("use_runtime", serde_json::Value::Bool(use_runtime));
+        // Only save use_runtime for C tests (BFM always false)
+        if test_type == TestType::C {
+            metadata.insert("use_runtime", serde_json::Value::Bool(use_runtime));
+        }
     }
     
     if let Some(desc) = description {
@@ -353,7 +405,9 @@ pub fn find_test<'a>(
     config: &'a TestConfig,
     name: &str,
 ) -> Option<&'a TestCase> {
-    let name = name.strip_suffix(".c").unwrap_or(name);
+    let name = name.strip_suffix(".c")
+        .or_else(|| name.strip_suffix(".bfm"))
+        .unwrap_or(name);
     
     config.tests.iter().find(|test| {
         let file_stem = test.file
@@ -385,12 +439,19 @@ pub fn add_test(
         }
     }
     
+    let test_type = if file.extension() == Some(std::ffi::OsStr::new("bfm")) {
+        TestType::Bfm
+    } else {
+        TestType::C
+    };
+    
     config.tests.push(TestCase {
         file,
         expected,
-        use_runtime,
+        use_runtime: test_type == TestType::C && use_runtime, // BFM never uses runtime
         description,
         skipped: false, // Default to not skipped when adding new tests
+        test_type,
     });
     true // Added new
 }

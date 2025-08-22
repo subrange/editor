@@ -6,8 +6,8 @@ use crossterm::{cursor, execute, terminal::{disable_raw_mode, enable_raw_mode, E
 use ratatui::{backend::Backend, Terminal};
 use crate::tui::app::TuiApp;
 use crate::tui::event::EventHandler;
-use crate::compiler::compile_c_file;
-use crate::config::{RunConfig, Backend as CompilerBackend};
+use crate::compiler::{compile_c_file, compile_bfm_file};
+use crate::config::{RunConfig, Backend as CompilerBackend, TestType};
 
 pub fn debug_test<B: Backend>(
     app: &mut TuiApp,
@@ -40,17 +40,29 @@ pub fn debug_test<B: Backend>(
                 disk_path: RunConfig::default().disk_path,
             };
             
-            // Get test details to determine if runtime is needed
+            // Get test details to determine if runtime is needed and test type
             let test = app.get_selected_test_details();
             let use_runtime = test.as_ref().map(|t| t.use_runtime).unwrap_or(true);
+            let test_type = test.as_ref().map(|t| t.test_type).unwrap_or(TestType::C);
             
-            // Compile the test using the same function as the test runner
-            let compilation_result = compile_c_file(
-                &actual_test_path,
-                &app.tools,
-                &run_config,
-                use_runtime,
-            );
+            // Compile the test using the appropriate function based on test type
+            let compilation_result = match test_type {
+                TestType::Bfm => {
+                    compile_bfm_file(
+                        &actual_test_path,
+                        &app.tools,
+                        &run_config,
+                    )
+                }
+                TestType::C => {
+                    compile_c_file(
+                        &actual_test_path,
+                        &app.tools,
+                        &run_config,
+                        use_runtime,
+                    )
+                }
+            };
             
             match compilation_result {
                 Ok(result) if !result.success => {

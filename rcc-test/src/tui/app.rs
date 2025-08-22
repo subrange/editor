@@ -1,7 +1,7 @@
 use std::collections::{HashMap, BTreeMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc;
-use crate::config::{TestConfig, TestCase, KnownFailure, discover_orphan_tests};
+use crate::config::{TestConfig, TestCase, KnownFailure, TestType, discover_orphan_tests};
 use crate::compiler::ToolPaths;
 
 fn fuzzy_match(text: &str, pattern: &str) -> bool {
@@ -83,12 +83,18 @@ impl CategoryView {
         if !failures.is_empty() {
             let mut failure_tests = Vec::new();
             for failure in failures {
+                let test_type = if failure.file.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                    TestType::Bfm
+                } else {
+                    TestType::C
+                };
                 failure_tests.push(TestCase {
                     file: failure.file.clone(),
                     expected: None,
-                    use_runtime: true,
+                    use_runtime: test_type == TestType::C,
                     description: failure.description.clone(),
                     skipped: false,
+                    test_type,
                 });
             }
             categories.insert("Known Failures".to_string(), failure_tests);
@@ -1025,13 +1031,19 @@ impl TuiApp {
                 serde_json::from_str::<crate::config::TestMetadata>(&content)?
             } else {
                 // Create new metadata for orphan test
+                let test_type = if test_file.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                    TestType::Bfm
+                } else {
+                    TestType::C
+                };
                 crate::config::TestMetadata {
                     expected: None,
-                    use_runtime: true,
+                    use_runtime: test_type == TestType::C,
                     description: None,
                     known_failure: false,
                     category: None,
                     skipped: false,
+                    test_type,
                 }
             };
             
@@ -1055,12 +1067,18 @@ impl TuiApp {
             // If this was an orphan, it's no longer one
             if let Some(idx) = self.orphan_tests.iter().position(|t| t.file == *test_file) {
                 let orphan = self.orphan_tests.remove(idx);
+                let test_type = if orphan.file.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                    TestType::Bfm
+                } else {
+                    TestType::C
+                };
                 self.test_config.tests.push(TestCase {
                     file: orphan.file,
                     expected: metadata.expected,
-                    use_runtime: metadata.use_runtime,
+                    use_runtime: test_type == TestType::C && metadata.use_runtime,
                     description: metadata.description,
                     skipped: metadata.skipped,
+                    test_type,
                 });
                 
                 // Rebuild categories
@@ -1511,13 +1529,19 @@ impl TuiApp {
         
         // Create metadata file
         let meta_path = test_path.with_extension("meta.json");
+        let test_type = if test_path.extension() == Some(std::ffi::OsStr::new("bfm")) {
+            TestType::Bfm
+        } else {
+            TestType::C
+        };
         let metadata = crate::config::TestMetadata {
             expected: Some("Y\n".to_string()), // Default expected output from template (test passes)
-            use_runtime: true,
+            use_runtime: test_type == TestType::C,
             description: Some(self.new_test_description.clone()),
             known_failure: false,
             category: None,
             skipped: false,
+            test_type,
         };
         
         let meta_content = serde_json::to_string_pretty(&metadata)?;
@@ -1545,6 +1569,7 @@ impl TuiApp {
             use_runtime: metadata.use_runtime,
             description: metadata.description,
             skipped: metadata.skipped,
+            test_type: metadata.test_type,
         };
         
         // Find the correct position to insert (alphabetically by file path)
@@ -1566,9 +1591,10 @@ impl TuiApp {
         let new_test = TestCase {
             file: relative_path,
             expected: Some("Y\n".to_string()),
-            use_runtime: true,
+            use_runtime: metadata.use_runtime,
             description: Some(self.new_test_description.clone()),
             skipped: false,
+            test_type: metadata.test_type,
         };
         self.jump_to_test(&new_test);
         
@@ -1882,13 +1908,18 @@ impl TuiApp {
     pub fn save_metadata(&mut self) -> anyhow::Result<()> {
         if let Some(test_file) = &self.metadata_input.test_file {
             // Create metadata
+            let test_type = if test_file.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                TestType::Bfm
+            } else {
+                TestType::C
+            };
             let metadata = crate::config::TestMetadata {
                 expected: if self.metadata_input.is_known_failure || self.metadata_input.expected_output.is_empty() {
                     None  // Don't set expected if it's empty or a known failure
                 } else {
                     Some(self.metadata_input.expected_output.clone())
                 },
-                use_runtime: self.metadata_input.use_runtime,
+                use_runtime: test_type == TestType::C && self.metadata_input.use_runtime,
                 description: if self.metadata_input.description.is_empty() {
                     None
                 } else {
@@ -1897,6 +1928,7 @@ impl TuiApp {
                 known_failure: self.metadata_input.is_known_failure,
                 category: None,
                 skipped: false,
+                test_type,
             };
 
             // Save the metadata file
@@ -1927,6 +1959,7 @@ impl TuiApp {
                         use_runtime: metadata.use_runtime,
                         description: metadata.description,
                         skipped: metadata.skipped,
+                        test_type: metadata.test_type,
                     });
                 }
                 

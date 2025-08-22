@@ -1,0 +1,4 @@
+
+LI T0, 65
+STORE T0, R0, R0
+HALT

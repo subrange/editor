@@ -1,5 +1,5 @@
 {
-  "use_runtime": true,
+  "description": "Test basic storage read/write operations",
   "expected": "YYYYY\n",
-  "description": "Test basic storage read/write operations"
+  "use_runtime": true
 }

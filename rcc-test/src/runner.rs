@@ -1,5 +1,5 @@
-use crate::compiler::{compile_c_file, ToolPaths};
-use crate::config::{KnownFailure, RunConfig, TestCase, TestConfig};
+use crate::compiler::{compile_c_file, compile_bfm_file, ToolPaths};
+use crate::config::{KnownFailure, RunConfig, TestCase, TestConfig, TestType};
 use crate::reporter::{ProgressReporter, TestResult, TestStatus, TestSummary};
 use anyhow::Result;
 use rayon::prelude::*;
@@ -105,27 +105,44 @@ impl TestRunner {
                 test_cases.push(test.clone());
                 found = true;
             } else {
-                // Try to find the file directly
+                // Try to find the file directly (check both .c and .bfm extensions)
                 let possible_paths = [
                     format!("c-test/tests/{name}.c"),
+                    format!("c-test/tests/{name}.bfm"),
                     format!("c-test/examples/{name}.c"),
+                    format!("c-test/examples/{name}.bfm"),
                     format!("c-test/tests-known-failures/{name}.c"),
+                    format!("c-test/tests-known-failures/{name}.bfm"),
                     format!("c-test/known-failures/{name}.c"),
+                    format!("c-test/known-failures/{name}.bfm"),
                     format!("tests/{name}.c"),
+                    format!("tests/{name}.bfm"),
                     format!("examples/{name}.c"),
+                    format!("examples/{name}.bfm"),
                     format!("tests-known-failures/{name}.c"),
+                    format!("tests-known-failures/{name}.bfm"),
                     format!("known-failures/{name}.c"),
+                    format!("known-failures/{name}.bfm"),
+                    // Also check for abfm-test subdirectory
+                    format!("c-test/tests/abfm-test/{name}.bfm"),
                 ];
 
                 for path_str in &possible_paths {
                     let path = Path::new(path_str);
                     if path.exists() {
+                        let test_type = if path.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                            TestType::Bfm
+                        } else {
+                            TestType::C
+                        };
+                        
                         test_cases.push(TestCase {
                             file: path.to_path_buf(),
                             expected: None,
-                            use_runtime: true,
+                            use_runtime: test_type == TestType::C,
                             description: Some("Ad-hoc test".to_string()),
                             skipped: false,
+                            test_type,
                         });
                         found = true;
                         break;
@@ -237,13 +254,20 @@ impl TestRunner {
             };
         }
 
-        // Compile and run
-        let result = compile_c_file(
-            &test_path,
-            &self.tools,
-            &self.config,
-            test.use_runtime,
-        );
+        // Compile and run based on test type
+        let result = match test.test_type {
+            TestType::Bfm => compile_bfm_file(
+                &test_path,
+                &self.tools,
+                &self.config,
+            ),
+            TestType::C => compile_c_file(
+                &test_path,
+                &self.tools,
+                &self.config,
+                test.use_runtime,
+            ),
+        };
 
         let duration_ms = start.elapsed().as_millis() as u64;
 
@@ -348,12 +372,26 @@ impl TestRunner {
                 }
 
                 // Try to compile - we expect it to fail
-                let result = compile_c_file(
-                    &test_path,
-                    &self.tools,
-                    &self.config,
-                    true, // assume runtime usage
-                );
+                // Determine test type from file extension
+                let test_type = if test_path.extension() == Some(std::ffi::OsStr::new("bfm")) {
+                    TestType::Bfm
+                } else {
+                    TestType::C
+                };
+                
+                let result = match test_type {
+                    TestType::Bfm => compile_bfm_file(
+                        &test_path,
+                        &self.tools,
+                        &self.config,
+                    ),
+                    TestType::C => compile_c_file(
+                        &test_path,
+                        &self.tools,
+                        &self.config,
+                        true, // assume runtime usage for C
+                    ),
+                };
 
                 match result {
                     Ok(compilation_result) => {
