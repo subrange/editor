@@ -6,6 +6,7 @@ pub mod source_map;
 pub mod expander;
 pub mod expander_helpers;
 pub mod expander_utils;
+pub mod preprocessor;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;

@@ -4,15 +4,64 @@
   "scopeName": "source.bfmacro",
   "fileTypes": ["bfm", "bfmacro", "bf"],
   "patterns": [
+    { "include": "#preprocessor" },
     { "include": "#comments" },
     { "include": "#macro-definition" },
     { "include": "#macro-invocation" },
     { "include": "#builtin-functions" },
     { "include": "#brainfuck-operators" },
+    { "include": "#strings" },
     { "include": "#numbers" },
     { "include": "#identifiers" }
   ],
   "repository": {
+    "preprocessor": {
+      "patterns": [
+        {
+          "name": "meta.preprocessor.include.bfmacro",
+          "match": "(#include)\\s+([\"<])([^\">\n]+)([>\"])",
+          "captures": {
+            "1": { "name": "keyword.control.directive.include.bfmacro" },
+            "2": { "name": "punctuation.definition.string.begin.bfmacro" },
+            "3": { "name": "string.quoted.include.bfmacro" },
+            "4": { "name": "punctuation.definition.string.end.bfmacro" }
+          }
+        },
+        {
+          "name": "meta.preprocessor.pragma.bfmacro",
+          "match": "(#pragma)\\s+(once)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.directive.pragma.bfmacro" },
+            "2": { "name": "keyword.control.directive.pragma.once.bfmacro" }
+          }
+        },
+        {
+          "name": "meta.preprocessor.define.guard.bfmacro",
+          "match": "(#define)\\s+([A-Z_][A-Z0-9_]*(?:_H|_INCLUDED|_GUARD)?)",
+          "captures": {
+            "1": { "name": "keyword.control.directive.define.bfmacro" },
+            "2": { "name": "entity.name.constant.preprocessor.bfmacro" }
+          }
+        },
+        {
+          "name": "meta.preprocessor.conditional.bfmacro",
+          "match": "(#(?:ifndef|ifdef|endif))(?:\\s+([A-Z_][A-Z0-9_]*))?",
+          "captures": {
+            "1": { "name": "keyword.control.directive.conditional.bfmacro" },
+            "2": { "name": "entity.name.constant.preprocessor.bfmacro" }
+          }
+        },
+        {
+          "name": "meta.preprocessor.line.bfmacro",
+          "match": "(#line)\\s+(\\d+)\\s+(\"[^\"]*\")",
+          "captures": {
+            "1": { "name": "keyword.control.directive.line.bfmacro" },
+            "2": { "name": "constant.numeric.line.bfmacro" },
+            "3": { "name": "string.quoted.double.bfmacro" }
+          }
+        }
+      ]
+    },
     "comments": {
       "patterns": [
         {
@@ -247,6 +296,21 @@
         {
           "name": "keyword.control.break.bfmacro",
           "match": "\\$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.bfmacro",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.bfmacro",
+              "match": "\\\\[\"\\\\nrt]"
+            }
+          ]
         }
       ]
     },

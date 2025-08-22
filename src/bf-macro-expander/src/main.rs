@@ -2,6 +2,7 @@ use bf_macro_expander::{create_macro_expander, MacroExpanderOptions};
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::io::{self, Read};
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "bfm")]
@@ -23,6 +24,10 @@ enum Commands {
         /// Output file path (use - for stdout)
         #[arg(short, long, default_value = "-")]
         output: String,
+        
+        /// Include paths for #include directives
+        #[arg(short = 'I', long = "include", value_name = "PATH")]
+        include_paths: Vec<String>,
         
         /// Strip comments from output
         #[arg(long, default_value_t = true)]
@@ -92,7 +97,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
         Commands::Expand { 
             input, 
-            output, 
+            output,
+            include_paths, 
             strip_comments, 
             collapse_empty_lines,
             source_map,
@@ -109,7 +115,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             
             let mut expander = create_macro_expander();
-            let result = expander.expand(&content, options);
+            
+            // If input is from file, use expand_with_includes to support #include
+            let result = if input != "-" {
+                let source_path = Path::new(&input);
+                let include_dirs: Vec<PathBuf> = include_paths.iter()
+                    .map(|p| PathBuf::from(p))
+                    .collect();
+                expander.expand_with_includes(&content, options, Some(source_path), include_dirs)
+            } else {
+                expander.expand(&content, options)
+            };
             
             // Check for errors
             if !result.errors.is_empty() {

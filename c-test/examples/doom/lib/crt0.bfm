@@ -1,0 +1,11 @@
+#pragma once
+
+#define crt0 {
+  @set(sb, 2)
+  @set(sp, 1)
+  @set(fp, 1)
+  @set(gp, 1)
+
+  @call(main)
+  @halt
+}

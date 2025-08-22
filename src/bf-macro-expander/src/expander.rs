@@ -1,9 +1,11 @@
 use crate::ast::*;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
+use crate::preprocessor::{Preprocessor, strip_line_directives};
 use crate::source_map::SourceMapBuilder;
 use crate::types::*;
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
 // Helper function to safely calculate position length
 fn safe_position_length(start: usize, end: usize) -> usize {
@@ -90,6 +92,38 @@ impl MacroExpander {
             label_counter: 0,
             label_map: HashMap::new(),
         }
+    }
+    
+    pub fn expand_with_includes(&mut self, input: &str, options: MacroExpanderOptions, 
+                                source_file: Option<&Path>, include_paths: Vec<PathBuf>) -> MacroExpanderResult {
+        // Preprocess includes first
+        let mut preprocessor = Preprocessor::new(include_paths);
+        let preprocessed = match preprocessor.preprocess(input, source_file) {
+            Ok(content) => content,
+            Err(errors) => {
+                // Convert preprocessor errors to macro expansion errors
+                for error in errors {
+                    self.errors.push(MacroExpansionError {
+                        error_type: MacroExpansionErrorType::SyntaxError,
+                        message: error,
+                        location: None,
+                    });
+                }
+                return MacroExpanderResult {
+                    expanded: String::new(),
+                    errors: self.errors.clone(),
+                    tokens: Vec::new(),
+                    macros: Vec::new(),
+                    source_map: None,
+                };
+            }
+        };
+        
+        // Strip line directives for macro expansion
+        let clean_input = strip_line_directives(&preprocessed);
+        
+        // Now run normal macro expansion
+        self.expand(&clean_input, options)
     }
     
     pub fn expand(&mut self, input: &str, options: MacroExpanderOptions) -> MacroExpanderResult {

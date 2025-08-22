@@ -1,0 +1,85 @@
+#pragma once
+
+#include "crt0.bfm"
+
+#define a(code) code {br}
+#define set(reg, val) {:li } reg {:,} val {br}
+#define mov(reg, val) {:add } reg {:,} val {:,} r0 {br}
+
+#define arg1 s0
+#define arg2 s1
+#define arg3 s2
+#define arg4 s3
+
+#define reg 0
+#define imm 1
+
+#define setarg(source, arg, dst) {if(source, @set(dst, arg), @mov(dst, arg))}
+#define call(func) {:call } func {br}
+
+#define call1(func, source1, arg1) {
+  @setarg(source1, arg1, @arg1)
+  @call(func)
+}
+
+#define call2(func, source1, arg1, source2, arg2) {
+  @setarg(source1, arg1, @arg1)
+  @setarg(source2, arg2, @arg2)
+  @call(func)
+}
+
+#define call3(func, source1, arg1, source2, arg2, source3, arg3) {
+  @setarg(source1, arg1, @arg1)
+  @setarg(source2, arg2, @arg2)
+  @setarg(source3, arg3, @arg3)
+  @call(func)
+}
+
+#define call4(func, source1, arg1, source2, arg2, source3, arg3, source4, arg4) {
+  @setarg(source1, arg1, @arg1)
+  @setarg(source2, arg2, @arg2)
+  @setarg(source3, arg3, @arg3)
+  @setarg(source4, arg4, @arg4)
+  @call(func)
+}
+
+#define halt {:HALT}
+#define ret @a({:jalr rab, rab, ra})
+#define retval(reg1, reg2) {
+  @a({:addi rv0, reg1, 0})
+  @a({:addi rv1, reg2, 0})
+}
+
+#define prologue {
+  @a({:store ra, sb, sp})
+  @a({:addi sp, sp, 1})
+  @a({:store fp, sb, sp})
+  @a({:add fp, sp, r0})
+}
+
+#define epilogue {
+  @a({:load fp, sb, sp})
+  @a({:addi sp, sp, -1})
+  @a({:load ra, sb, sp})
+  @ret
+}
+
+#define leaf(name, body) name:{br} body{br} @ret
+
+#define proc(name, body) {
+  name:{br}
+  @prologue
+  body{br}
+  @epilogue
+}
+
+#define ascii(s) {for(c in s, c{: })}
+#define asciiz(s) {for(c in s, c{: })} {:0}
+
+#define program(body) {
+    {br}
+    @crt0
+    {br}
+    body
+    {br}
+}
