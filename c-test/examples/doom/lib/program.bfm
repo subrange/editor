@@ -5,6 +5,8 @@
 #define ASCII_0 48
 #define ASCII_A_MINUS_10 55
 
+#define MAX_UINT 65535
+
 #define a(code) code {br}
 #define set(reg, val) {:li } reg {:,} val {br}
 #define mov(reg, val) {:add } reg {:,} val {:,} r0 {br}
@@ -14,13 +16,11 @@
 
 #define not(reg) {:xori } reg {:, } reg {:, } 1 {br}
 
-#define addi(reg1, reg2, imm) {
-  {:addi } reg1 {:, } reg2 {:, } imm {br}
-}
+#define addi(reg1, reg2, imm) {:addi } reg1 {:, } reg2 {:, } imm {br}
+#define add(reg1, reg2, reg3) {:add } reg1 {:, } reg2 {:, } reg3 {br}
 
-#define add(reg1, reg2, reg3) {
-  {:add } reg1 {:, } reg2 {:, } reg3 {br}
-}
+#define divi(out, reg1, imm) {:divi } out {:, } reg1 {:, } imm {br}
+#define modi(out, reg1, imm) {:modi } out {:, } reg1 {:, } imm {br}
 
 #define poke(val, bank, addr) {
   {:store } val {:, } bank {:, } addr {br}

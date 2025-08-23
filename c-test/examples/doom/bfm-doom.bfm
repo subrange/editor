@@ -12,15 +12,48 @@
 
 @proc(print_uint,
   @mov(t0, @arg1)
+  
   @set(sc, 10)
-
   @sltu(sc, t0, sc)
-
-  @a(brk)
 
   @ifelse(sc,
     @call1(print_digit, @reg, t0),
-    @set(t1, '?') @call1(putchar, @reg, t1)
+
+    @set(sc, 100)
+    @sltu(sc, t0, sc)
+    
+    @ifelse(sc,
+      @divi(sc, t0, 10) @call1(print_digit, @reg, sc)
+      @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
+      ,
+      
+      @set(sc, 1000)
+      @sltu(sc, t0, sc)
+
+      @ifelse(sc,
+        @divi(sc, t0, 100) @call1(print_digit, @reg, sc)
+        @divi(sc, t0, 10) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+        @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
+        ,
+
+        @set(sc, 10000)
+        @sltu(sc, t0, sc)
+
+        @ifelse(sc,
+          @divi(sc, t0, 1000) @call1(print_digit, @reg, sc)
+          @divi(sc, t0, 100) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+          @divi(sc, t0, 10) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+          @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
+          ,
+
+          @divi(sc, t0, 10000) @call1(print_digit, @reg, sc)
+          @divi(sc, t0, 1000) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+          @divi(sc, t0, 100) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+          @divi(sc, t0, 10) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+          @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
+        )
+      )
+    )
   )
 )
 
@@ -32,6 +65,6 @@
   @local_addr_i(t1, 0) 
   @call2(puts, @reg, sb, @reg, t1)
 
-  @set(t3, 5)
+  @set(t3, 65535)
   @call1(print_uint, @reg, t3)
 )
