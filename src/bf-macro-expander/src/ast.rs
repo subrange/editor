@@ -94,6 +94,7 @@ pub enum ExpressionNode {
     BrainfuckCommand(BrainfuckCommandNode),
     ArrayLiteral(ArrayLiteralNode),
     TuplePattern(TuplePatternNode),
+    ForPattern(ForPatternNode),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -111,6 +112,13 @@ pub struct IdentifierNode {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TuplePatternNode {
     pub elements: Vec<String>,
+    pub position: ASTPosition,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ForPatternNode {
+    pub variable: Box<ExpressionNode>,  // Can be Identifier or TuplePattern
+    pub index_variable: Option<String>,  // Optional index variable name
     pub position: ASTPosition,
 }
 

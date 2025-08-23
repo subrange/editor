@@ -22,3 +22,34 @@
   @set(sc, 0)
   @retval(sc, r0)
 )
+
+@proc(digit_hex_ascii,
+  @set(sc, 10)
+  @sltu(sc, @arg1, sc)
+
+  @ifelse(sc,
+    @addi(rv0, @arg1, #ASCII_0),
+    @addi(rv0, @arg1, #ASCII_A_MINUS_10)
+  )
+
+  @retval(rv0, r0)
+)
+
+#define _print_hex_nibble(n) {
+  {:srli } sc {:, } t0 {:, } n {br}
+  @a({:andi sc, sc, 0xF})
+  @call1(digit_hex_ascii, @reg, sc)                      
+  @call1(putchar, @reg, rv0)
+}
+
+@proc(print_hex16,
+  @mov(t0, @arg1)
+
+  @call1(putchar, @imm, '0')
+  @call1(putchar, @imm, 'x')
+
+  @_print_hex_nibble(12)
+  @_print_hex_nibble(8)
+  @_print_hex_nibble(4)
+  @_print_hex_nibble(0)
+)

@@ -140,6 +140,15 @@ impl MacroExpander {
                     position: array.position.clone(),
                 })
             }
+            ExpressionNode::ForPattern(pattern) => {
+                // Substitute within the inner pattern
+                let substituted_var = self.substitute_in_expression(pattern.variable.as_ref(), substitutions);
+                ExpressionNode::ForPattern(ForPatternNode {
+                    variable: Box::new(substituted_var),
+                    index_variable: pattern.index_variable.clone(),
+                    position: pattern.position.clone(),
+                })
+            }
             _ => expr.clone()
         }
     }
@@ -258,9 +267,29 @@ impl MacroExpander {
         let array_node = &node.arguments[1];
         let body_node = &node.arguments[2];
         
-        let var_names = match var_node {
-            ExpressionNode::Identifier(ident) => vec![ident.name.clone()],
-            ExpressionNode::TuplePattern(tuple) => tuple.elements.clone(),
+        let (var_names, index_var) = match var_node {
+            ExpressionNode::Identifier(ident) => (vec![ident.name.clone()], None),
+            ExpressionNode::TuplePattern(tuple) => (tuple.elements.clone(), None),
+            ExpressionNode::ForPattern(pattern) => {
+                // Extract variable names from the inner pattern
+                let inner_names = match pattern.variable.as_ref() {
+                    ExpressionNode::Identifier(ident) => vec![ident.name.clone()],
+                    ExpressionNode::TuplePattern(tuple) => tuple.elements.clone(),
+                    _ => {
+                        self.errors.push(MacroExpansionError {
+                            error_type: MacroExpansionErrorType::SyntaxError,
+                            message: format!("Invalid variable pattern in for loop"),
+                            location: Some(SourceLocation {
+                                line: node.position.line.saturating_sub(1),
+                                column: node.position.column.saturating_sub(1),
+                                length: node.position.end - node.position.start,
+                            }),
+                        });
+                        return;
+                    }
+                };
+                (inner_names, pattern.index_variable.clone())
+            }
             _ => {
                 self.errors.push(MacroExpansionError {
                     error_type: MacroExpansionErrorType::SyntaxError,
@@ -275,12 +304,21 @@ impl MacroExpander {
             }
         };
         
-        let is_tuple_pattern = matches!(var_node, ExpressionNode::TuplePattern(_));
+        let is_tuple_pattern = match var_node {
+            ExpressionNode::TuplePattern(_) => true,
+            ExpressionNode::ForPattern(pattern) => matches!(pattern.variable.as_ref(), ExpressionNode::TuplePattern(_)),
+            _ => false,
+        };
         
         let values = self.extract_array_values(array_node, context, is_tuple_pattern);
         
-        for value in values {
+        for (index, value) in values.into_iter().enumerate() {
             let mut temp_substitutions = HashMap::new();
+            
+            // Add index variable if present
+            if let Some(idx_var) = &index_var {
+                temp_substitutions.insert(idx_var.clone(), index.to_string());
+            }
             
             if is_tuple_pattern {
                 let tuple_elements = self.parse_tuple_elements(&value);

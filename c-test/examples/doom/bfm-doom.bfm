@@ -1,20 +1,37 @@
 #include "lib/program.bfm"
 #include "lib/stdio.bfm"
 
-@proc(add,
-  {:add sc, } @arg1 {:, } @arg2 {br}
-  @retval(sc, r0)
+@proc(print_digit,
+  @set(sc, 10)
+  @sltu(sc, @arg1, sc)
+  @ifelse(sc,
+    @addi(sc, @arg1, '0') @call1(putchar, @reg, sc),
+    @set(sc, '?') @call1(putchar, @reg, sc)
+  )
+)
+
+@proc(print_uint,
+  @mov(t0, @arg1)
+  @set(sc, 10)
+
+  @sltu(sc, t0, sc)
+
+  @a(brk)
+
+  @ifelse(sc,
+    @call1(print_digit, @reg, t0),
+    @set(t1, '?') @call1(putchar, @reg, t1)
+  )
 )
 
 @procN(main, 4,
   @mov(t0, sb)
 
-  @set(t1, 'H') @local_store(0, t1)
-  @set(t1, 'I') @local_store(1, t1)
-  @set(t1, '!') @local_store(2, t1)
-  @set(t1, 0)   @local_store(3, t1)
-
-  @local_addr(t1, 0)
-
+  @set(t3, 0)
+  @local_arr(t1, t2, t3, "HI!", 3)
+  @local_addr_i(t1, 0) 
   @call2(puts, @reg, sb, @reg, t1)
+
+  @set(t3, 5)
+  @call1(print_uint, @reg, t3)
 )

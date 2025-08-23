@@ -720,8 +720,10 @@ impl Parser {
     
     fn parse_for_arguments(&mut self) -> Vec<ExpressionNode> {
         let mut args = Vec::new();
+        let start_pos = self.peek().position.clone();
         
         // Parse variable or tuple pattern
+        let mut main_pattern = None;
         if self.check(TokenType::LParen) {
             // Tuple pattern
             self.advance(); // consume (
@@ -747,20 +749,45 @@ impl Parser {
             }
             
             let pos = self.peek().position.clone();
-            args.push(ExpressionNode::TuplePattern(TuplePatternNode {
+            main_pattern = Some(ExpressionNode::TuplePattern(TuplePatternNode {
                 elements,
                 position: pos,
             }));
         } else if self.check(TokenType::Identifier) {
             // Single variable
             let token = self.advance();
-            args.push(ExpressionNode::Identifier(IdentifierNode {
+            main_pattern = Some(ExpressionNode::Identifier(IdentifierNode {
                 name: token.value.clone(),
                 position: token.position.clone(),
             }));
         }
         
         self.skip_whitespace();
+        
+        // Check for optional index variable (comma before 'in')
+        let mut index_var = None;
+        if self.check(TokenType::Comma) {
+            self.advance(); // consume comma
+            self.skip_whitespace();
+            
+            if self.check(TokenType::Identifier) {
+                index_var = Some(self.advance().value.clone());
+                self.skip_whitespace();
+            }
+        }
+        
+        // If we have an index variable, wrap in ForPattern
+        if let Some(pattern) = main_pattern {
+            if index_var.is_some() {
+                args.push(ExpressionNode::ForPattern(ForPatternNode {
+                    variable: Box::new(pattern),
+                    index_variable: index_var,
+                    position: start_pos.clone(),
+                }));
+            } else {
+                args.push(pattern);
+            }
+        }
         
         // Expect 'in' keyword
         if !self.check(TokenType::In) {

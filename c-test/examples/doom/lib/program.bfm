@@ -2,12 +2,24 @@
 
 #include "crt0.bfm"
 
+#define ASCII_0 48
+#define ASCII_A_MINUS_10 55
+
 #define a(code) code {br}
 #define set(reg, val) {:li } reg {:,} val {br}
 #define mov(reg, val) {:add } reg {:,} val {:,} r0 {br}
+#define sltu(out, reg1, reg2) {:sltu } out, {:, } reg1 {:, } reg2 {br}
+
+#define jmp(label) {:beq r0, r0, } label {br}
+
+#define not(reg) {:xori } reg {:, } reg {:, } 1 {br}
 
 #define addi(reg1, reg2, imm) {
   {:addi } reg1 {:, } reg2 {:, } imm {br}
+}
+
+#define add(reg1, reg2, reg3) {
+  {:add } reg1 {:, } reg2 {:, } reg3 {br}
 }
 
 #define poke(val, bank, addr) {
@@ -37,6 +49,24 @@
   code {br}
   {:beq r0, r0, } {label loop} {br}
   {label end}: {br}
+}
+
+#define ifelse(cond, true_branch, false_branch) {
+  {:bne } cond {:, } r0, {label efelsetruebranch} {br}
+  {label ifelsefalsebranch}: {br}
+  false_branch {br}
+  @jmp({label endifelse}){br}
+  {label efelsetruebranch}: {br}
+  true_branch {br}
+  {label endifelse}: {br} 
+}
+
+#define if(cond, true_branch) {
+  {:bne } cond {:, } r0, {label iftruebranch} {br}
+  @jmp({label endif}){br}
+  {label iftruebranch}: {br}
+  true_branch {br}
+  {label endif}: {br} 
 }
 
 #define ne(reg1, reg2) {:bne } reg1 {:, } reg2
@@ -128,9 +158,24 @@
 #define ascii(s)  {for(c in s, c{: })}
 #define asciiz(s) {for(c in s, c{: })} {:0}
 
-#define local_addr(tmp, i)   @addi(tmp, fp, i)
+#define local_addr_i(tmp, imm)   @addi(tmp, fp, imm)
+#define local_addr_r(tmp, reg)   @add(tmp, fp, reg)
 
-#define local_load(dst, i)   @local_addr(t0, i) @peek(dst, sb, t0)
-#define local_store(i, src)  @local_addr(t0, i) @poke(src, sb, t0)
+#define local_store_i(imm, src)  @local_addr_i(t0, imm) @poke(src, sb, t0)
+#define local_store_r(reg, src)  @local_addr_r(t0, reg) @poke(src, sb, t0)
+
+#define local_load_i(dst, imm)   @local_addr_i(t0, imm) @peek(dst, sb, t0)
+#define local_load_r(dst, reg)   @local_addr_r(t0, reg) @peek(dst, sb, t0)
+
+#define local_arr(tmp, idx_reg, offs_reg, s, slen) {
+  {for(c, i in s,
+    @set(tmp, c)
+    @addi(idx_reg, offs_reg, i)
+    @local_store_r(idx_reg, tmp)
+  )}
+  @set(tmp, 0)
+  @addi(idx_reg, offs_reg, slen)
+  @local_store_r(idx_reg, tmp)
+}
 
 @crt0

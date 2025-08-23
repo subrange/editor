@@ -338,6 +338,7 @@ impl ExpressionNode {
             ExpressionNode::BrainfuckCommand(node) => &node.position,
             ExpressionNode::ArrayLiteral(node) => &node.position,
             ExpressionNode::TuplePattern(node) => &node.position,
+            ExpressionNode::ForPattern(node) => &node.position,
         }
     }
 }
