@@ -6,6 +6,10 @@
 #define set(reg, val) {:li } reg {:,} val {br}
 #define mov(reg, val) {:add } reg {:,} val {:,} r0 {br}
 
+#define addi(reg1, reg2, imm) {
+  {:addi } reg1 {:, } reg2 {:, } imm {br}
+}
+
 #define poke(val, bank, addr) {
   {:store } val {:, } bank {:, } addr {br}
 }
@@ -17,10 +21,10 @@
 #define push(reg)   @poke(reg, sb, sp) @inc(sp)
 #define pop(reg)    @dec(sp) @peek(reg, sb, sp)
 
-#define arg1 s0
-#define arg2 s1
-#define arg3 s2
-#define arg4 s3
+#define arg1 a0
+#define arg2 a1
+#define arg3 a2
+#define arg4 a3
 
 #define reg 0
 #define imm 1
@@ -79,22 +83,26 @@
   @mov(rv1, reg2)
 }
 
-#define prologue {
+#define prologue(locals) {
   @push(ra)
   @push(fp)
-  @push(@arg1)
-  @push(@arg2)
-  @push(@arg3)
-  @push(@arg4)
+  @push(s0)
+  @push(s1)
+  @push(s2)
+  @push(s3)
 
   @mov(fp, sp)
+
+  @addi(sp, sp, locals)  
 }
 
-#define epilogue {
-  @pop(@arg4)
-  @pop(@arg3)
-  @pop(@arg2)
-  @pop(@arg1)
+#define epilogue(locals) {
+  @addi(sp, sp, {:-locals})
+
+  @pop(s3)
+  @pop(s2)
+  @pop(s1)
+  @pop(s0)
   @pop(fp)
   @pop(ra)
   
@@ -105,12 +113,24 @@
 
 #define proc(name, body) {
   name:{br}
-  @prologue
+  @prologue(0)
   body{br}
-  @epilogue
+  @epilogue(0)
+}
+
+#define procN(name, locals, body) {
+  name:{br}
+  @prologue(locals)
+  body{br}
+  @epilogue(locals)
 }
 
 #define ascii(s)  {for(c in s, c{: })}
 #define asciiz(s) {for(c in s, c{: })} {:0}
+
+#define local_addr(tmp, i)   @addi(tmp, fp, i)
+
+#define local_load(dst, i)   @local_addr(t0, i) @peek(dst, sb, t0)
+#define local_store(i, src)  @local_addr(t0, i) @poke(src, sb, t0)
 
 @crt0

@@ -7,15 +7,15 @@
 )
 
 @proc(puts,
-  @mov(x0, @arg2)
-  @mov(x1, @arg1)
+  @mov(t0, @arg2)
+  @mov(t1, @arg1)
 
-  @peek(sc, x1, x0)
+  @peek(sc, t1, t0)
 
   @while(@ne(sc, r0),
     @call1(putchar, @reg, sc)
-    @inc(x0)
-    @peek(sc, x1, x0)
+    @inc(t0)
+    @peek(sc, t1, t0)
   )
 
   @call1(putchar, @imm, 10)

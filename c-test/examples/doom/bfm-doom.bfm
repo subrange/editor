@@ -6,22 +6,15 @@
   @retval(sc, r0)
 )
 
-@proc(main,
-  @mov(t0, gp)
+@procN(main, 4,
+  @mov(t0, sb)
 
-  @set(t1, 10)
-  @set(t2, 65)
-  @poke(t2, t0, t1) @a(; A)
+  @set(t1, 'H') @local_store(0, t1)
+  @set(t1, 'I') @local_store(1, t1)
+  @set(t1, '!') @local_store(2, t1)
+  @set(t1, 0)   @local_store(3, t1)
 
-  @set(t1, 11)
-  @set(t2, 66)
-  @poke(t2, t0, t1) @a(; B)
+  @local_addr(t1, 0)
 
-  @set(t1, 12)
-  @set(t2, 67)
-  @poke(t2, t0, t1) @a(; C)
-  
-  @set(t1, 10) @a(; \n)
-
-  @call2(puts, @reg, t0, @reg, t1)
+  @call2(puts, @reg, sb, @reg, t1)
 )
