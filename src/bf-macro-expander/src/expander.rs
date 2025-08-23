@@ -147,7 +147,7 @@ impl MacroExpander {
         self.input = input.to_string();
         self.expansion_chain.clear();
         self.enable_circular_dependency_detection = options.enable_circular_dependency_detection;
-        self.label_counter = 0;  // Reset label counter for each expansion
+        // Don't reset label_counter - keep it incrementing to ensure unique labels
         self.label_map.clear();   // Clear label map as well
         
         // Tokenize and parse
@@ -595,12 +595,9 @@ impl MacroExpander {
             parameter_values = Some(values);
         }
         
-        // Only clear label map if this is truly the first macro in the expansion chain
-        // (i.e., we're starting a new top-level expansion, not a nested call)
-        if context.macro_call_stack.is_empty() && context.expansion_depth == 0 {
-            eprintln!("DEBUG: Clearing label_map for initial macro '{}'", node.name);
-            self.label_map.clear();
-        }
+        // Save current label_map and create a fresh one for this macro invocation
+        let saved_label_map = self.label_map.clone();
+        self.label_map.clear();
         
         // Push macro context
         context.macro_call_stack.push(MacroCallStackEntry {
@@ -616,8 +613,9 @@ impl MacroExpander {
             self.expand_body_nodes(&macro_def.body, context, generate_source_map);
         }
         
-        // Pop macro context
+        // Pop macro context and restore label_map
         context.macro_call_stack.pop();
+        self.label_map = saved_label_map;
         context.expansion_depth -= 1;
         if self.enable_circular_dependency_detection {
             self.expansion_chain.remove(&invocation_signature);
