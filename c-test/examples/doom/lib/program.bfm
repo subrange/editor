@@ -13,6 +13,8 @@
 #define sltu(out, reg1, reg2) {:sltu } out, {:, } reg1 {:, } reg2 {br}
 
 #define jmp(label) {:beq r0, r0, } label {br}
+#define jz(reg, label) {:beq } reg {:, } r0 {:, } label {br}
+#define jeq(reg1, reg2, label) {:beq } reg1 {:, } reg2 {:, } label {br}
 
 #define not(reg) {:xori } reg {:, } reg {:, } 1 {br}
 
@@ -22,12 +24,39 @@
 #define divi(out, reg1, imm) {:divi } out {:, } reg1 {:, } imm {br}
 #define modi(out, reg1, imm) {:modi } out {:, } reg1 {:, } imm {br}
 
+#define muli(out, reg1, imm) {:muli } out {:, } reg1 {:, } imm {br}
+#define mul(out, reg1, reg2) {:mul } out {:, } reg1 {:, } reg2 {br}
+
+#define andi(out, reg1, imm) {:andi } out {:, } reg1 {:, } imm {br}
+#define and(out, reg1, reg2) {:and } out {:, } reg1 {:, } reg2 {br}
+
+#define srli(out, reg1, imm) {:srli } out {:, } reg1 {:, } imm {br}
+#define srl(out, reg1, reg2) {:srl } out {:, } reg1 {:, } reg2 {br}
+#define slli(out, reg1, imm) {:slli } out {:, } reg1 {:, } imm {br}
+#define sll(out, reg1, reg2) {:sll } out {:, } reg1 {:, } reg2 {br}
+
+#define ori(out, reg1, imm) {:ori } out {:, } reg1 {:, } imm {br}
+#define or(out, reg1, reg2) {:or } out {:, } reg1 {:, } reg2 {br}
+
+#define xori(out, reg1, imm) {:xori } out {:, } reg1 {:, } imm {br}
+#define xor(out, reg1, reg2) {:xor } out {:, } reg1 {:, } reg2 {br}
+
 #define poke(val, bank, addr) {
   {:store } val {:, } bank {:, } addr {br}
 }
 
+#define poke_imm(val, bank, imm) {
+  @set(sc, imm)
+  {:store } val {:, } bank {:, } sc {br}
+}
+
 #define peek(set, bank, addr) {
   {:load } set {:, } bank {:, } addr  {br}
+}
+
+#define peek_imm(set, bank, imm) {
+  @set(sc, imm)
+  {:load } set {:, } bank {:, } sc {br}
 }
 
 #define push(reg)   @poke(reg, sb, sp) @inc(sp)
@@ -49,6 +78,12 @@
   code {br}
   {:beq r0, r0, } {label loop} {br}
   {label end}: {br}
+}
+
+#define loop(code) {
+   @while(@eq(r0, r0),
+    code
+   )
 }
 
 #define ifelse(cond, true_branch, false_branch) {
@@ -79,6 +114,11 @@
 
 #define setarg(source, arg, dst) {if(source, @set(dst, arg), @mov(dst, arg))}
 #define call(func) {:call } func {br}
+
+#define let(dst0, body) body {br} @mov(dst0, rv0)
+#define let2(dst0, dst1, body) body {br} @mov(dst0, rv0) @mov(dst1, rv1)
+
+#define com(c) {:;} c {br}
 
 #define call1(func, source1, arg1) {
   @setarg(source1, arg1, @arg1)

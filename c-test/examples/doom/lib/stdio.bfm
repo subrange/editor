@@ -6,6 +6,13 @@
   @mmio_write(@arg1, #HDR_TTY_OUT)
 )
 
+#define debug(msg) {
+  {for(c in msg, @set(x0, c) 
+    @call1(putchar, @reg, x0)
+  )}
+  @call1(putchar, @imm, 10)
+}
+
 @proc(puts,
   @mov(t0, @arg2)
   @mov(t1, @arg1)
@@ -53,3 +60,60 @@
   @_print_hex_nibble(4)
   @_print_hex_nibble(0)
 )
+
+@proc(print_hex16_no_prefix,
+  @mov(t0, @arg1)
+
+  @_print_hex_nibble(12)
+  @_print_hex_nibble(8)
+  @_print_hex_nibble(4)
+  @_print_hex_nibble(0)
+)
+
+@proc(print_hex32,
+  @mov(t0, @arg1)
+  @mov(t1, @arg2)
+  @call1(print_hex16, @reg, t0)
+  @call1(print_hex16_no_prefix, @reg, t1)
+)
+
+@proc(print_digit,
+  @set(sc, 10)
+  @sltu(sc, @arg1, sc)
+  @ifelse(sc,
+    @addi(sc, @arg1, '0') @call1(putchar, @reg, sc),
+    @set(sc, '?') @call1(putchar, @reg, sc)
+  )
+)
+
+#define iflt_imm(a, imm, code) {
+  @set(sc, imm)
+  @sltu(sc, a, sc)
+  @if(sc, code)
+}
+
+@proc(print_uint,
+  @mov(t0, @arg1)
+
+  @iflt_imm(t0, 10,    @jmp({label units}))
+  @iflt_imm(t0, 100,   @jmp({label tens}))
+  @iflt_imm(t0, 1000,  @jmp({label hundreds}))
+  @iflt_imm(t0, 10000, @jmp({label thousands}))
+  @jmp({label tens_of_thousands})
+
+  {label tens_of_thousands}: {br}
+  @divi(sc, t0, 10000) @call1(print_digit, @reg, sc)
+  {label thousands}: {br}
+  @divi(sc, t0, 1000) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+  {label hundreds}: {br}
+  @divi(sc, t0, 100) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+  {label tens}: {br}
+  @divi(sc, t0, 10) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
+  {label units}: {br}
+  @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
+)
+
+#define lbrk {
+  @set(x0, 10)
+  @mmio_write(x0, #HDR_TTY_OUT)
+}

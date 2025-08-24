@@ -1873,6 +1873,7 @@ dependencies = [
  "clap",
  "colored",
  "crossterm 0.27.0",
+ "log",
  "pixels",
  "ratatui 0.26.3",
  "ripple-asm",

@@ -138,8 +138,8 @@ impl VM {
                     
                     // Log the read operation with the address that was actually used
                     let full_addr = ((block as u32) << 16) | (addr as u32);
-                    println!("Storage READ: addr {:#010x} (block={:#06x}, addr={:#06x}) -> value {:#06x}", 
-                             full_addr, block, addr, value);
+                    log::debug!("Storage READ: addr {:#010x} (block={:#06x}, addr={:#06x}) -> value {:#06x}", 
+                                full_addr, block, addr, value);
                     
                     // Update memory to reflect the new position after auto-increment
                     self.memory[HDR_STORE_BLOCK] = storage.get_block();

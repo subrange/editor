@@ -1,70 +1,191 @@
 #include "lib/program.bfm"
 #include "lib/stdio.bfm"
 
-@proc(print_digit,
-  @set(sc, 10)
-  @sltu(sc, @arg1, sc)
-  @ifelse(sc,
-    @addi(sc, @arg1, '0') @call1(putchar, @reg, sc),
-    @set(sc, '?') @call1(putchar, @reg, sc)
-  )
+#define LOCALS 4
+
+#define VAR_LUMP_COUNT 0
+#define VAR_TITLEPIC_HEADER_BANK 1
+#define VAR_TITLEPIC_HEADER_ADDR 2
+
+#define VAR_POST_Y 3
+#define VAR_POST_LENGTH 4
+#define VAR_TITLEPIC_HEADER_BANK_OFFSET 5
+#define VAR_TITLEPIC_HEADER_ADDR_OFFSET 6
+
+@proc(to_file_offset_words,
+  @mov(s0, @arg1)
+  @mov(s1, @arg2)
+  @mov(s2, @arg3)
+
+  @add(s1, s1, s2) @a(; addr)
+  @divi(s1, s1, 2)
+  @divi(s3, s0, 2) @a(; bank)
+
+  @andi(sc, s0, 1)
+  @if(sc, @ori(s1, s1, 0x8000)) @a(; set MSB if odd)
+
+  @retval(s3, s1)
 )
 
-@proc(print_uint,
-  @mov(t0, @arg1)
+@proc(get_titlepic_table_pos,
+  @mov(s0, @arg1)
+  @mov(s1, @arg2)
+  @set(s2, 0)
+  @mov(s3, @arg3)
+  @while(@ne(s2, s3),
+    @muli(t0, s2, 16)
+    @addi(t0, t0, 8)
+
+    @let2(x1, x2, @call3(to_file_offset_words, @reg, s0, @reg, s1, @reg, t0))
+    @call2(storage_read_at_le_unpack, @reg, x1, @reg, x2)
+
+    @xori(t0, rv0, 'T') @a({:; if (rv0 == 'T' && rv1 == 'I') })
+    @xori(t1, rv1, 'I')
+    @or(t0, t0, t1)
+    @jz(t0, {label end})
+
+    @inc(s2)
+  )
+
+  {label end}:
+  @retval(x1, x2)
+)
+
+@proc(get_titlepic_header_pos,
+  @mov(s0, @arg1)
+  @mov(s1, @arg2)
+
+  @addi(s1, s1, -4)
+  @let2(s0, s1, @call2(storage_read_at_u32_le, @reg, s0, @reg, s1))
+
+  @retval(s0, s1)
+)
+
+@proc(iwad,
+  @call2(storage_read_at_le_unpack, @imm, 0, @imm, 0)
+  @call1(putchar, @reg, rv0)
+  @call1(putchar, @reg, rv1)
+
+  @call2(storage_read_at_le_unpack, @imm, 0, @imm, 1)
+  @call1(putchar, @reg, rv0)
+  @call1(putchar, @reg, rv1)
+
+  @lbrk
+)
+
+#define read_u16(dst, blk, addr) @let(dst, @call2(storage_read_at_le, @reg, blk, @reg, addr))
+#define read_u8(dst, blk, addr) @let(dst, @call2(storage_read_at, @reg, blk, @reg, addr)) @srli(dst, dst, 8)
+
+@proc(print_image_size,
+  @mov(s0, @arg1)
+  @mov(s1, @arg2)
+
+  @let2(s0, s1, @call3(to_file_offset_words, @reg, s0, @reg, s1, @imm, 0))
+
+  @debug("Image size: ")
+
+  @read_u16(x0, s0, s1)
+  @call1(print_uint, @reg, x0)
   
-  @set(sc, 10)
-  @sltu(sc, t0, sc)
+  @call1(putchar, @imm, 'x')
 
-  @ifelse(sc,
-    @call1(print_digit, @reg, t0),
-
-    @set(sc, 100)
-    @sltu(sc, t0, sc)
-    
-    @ifelse(sc,
-      @divi(sc, t0, 10) @call1(print_digit, @reg, sc)
-      @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
-      ,
-      
-      @set(sc, 1000)
-      @sltu(sc, t0, sc)
-
-      @ifelse(sc,
-        @divi(sc, t0, 100) @call1(print_digit, @reg, sc)
-        @divi(sc, t0, 10) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
-        @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
-        ,
-
-        @set(sc, 10000)
-        @sltu(sc, t0, sc)
-
-        @ifelse(sc,
-          @divi(sc, t0, 1000) @call1(print_digit, @reg, sc)
-          @divi(sc, t0, 100) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
-          @divi(sc, t0, 10) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
-          @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
-          ,
-
-          @divi(sc, t0, 10000) @call1(print_digit, @reg, sc)
-          @divi(sc, t0, 1000) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
-          @divi(sc, t0, 100) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
-          @divi(sc, t0, 10) @modi(sc, sc, 10) @call1(print_digit, @reg, sc)
-          @modi(sc, t0, 10) @call1(print_digit, @reg, sc)
-        )
-      )
-    )
-  )
+  @inc(s1)
+  @read_u16(x0, s0, s1)
+  @call1(print_uint, @reg, x0) @lbrk
+  @dec(s1)
 )
 
-@procN(main, 4,
-  @mov(t0, sb)
+#define pack(reg1, reg2, dst) {
+  @slli(reg1, reg1, 8)
+  @or(dst, reg1, reg2)
+}
 
-  @set(t3, 0)
-  @local_arr(t1, t2, t3, "HI!", 3)
-  @local_addr_i(t1, 0) 
-  @call2(puts, @reg, sb, @reg, t1)
+#define load_locals {
+  @local_load_i(s0, #VAR_TITLEPIC_HEADER_BANK)
+  @local_load_i(s1, #VAR_TITLEPIC_HEADER_ADDR)
+  @local_load_i(s2, #VAR_TITLEPIC_HEADER_BANK_OFFSET)
+  @local_load_i(s3, #VAR_TITLEPIC_HEADER_ADDR_OFFSET)
+}
 
-  @set(t3, 65535)
-  @call1(print_uint, @reg, t3)
+@procN(save_col, 7,
+  @mov(s0, @arg1) @com("Header bank")
+  @mov(s1, @arg2) @com("Header addr")
+  @local_store_i(#VAR_TITLEPIC_HEADER_BANK, s0)
+  @local_store_i(#VAR_TITLEPIC_HEADER_ADDR, s1)
+
+  @mov(s2, @arg3) @com("Local offset from header: bank")
+  @local_store_i(#VAR_TITLEPIC_HEADER_BANK_OFFSET, s2)
+  @mov(s3, @arg4) @com("Local offset from header: addr")
+  @local_store_i(#VAR_TITLEPIC_HEADER_ADDR_OFFSET, s3)
+
+  @set(t5, 0xFF)
+  @loop(
+    @load_locals
+
+    @let2(s0, s1, @call3(to_file_offset_words, @reg, s0, @reg, s1, @reg, s3))
+    @let2(s0, s1, @call2(storage_read_at_le_unpack, @reg, s0, @reg, s1))
+    
+    @mov(t4, s0)
+    @jeq(t4, t5, {label c_end})
+
+    @local_store_i(#VAR_POST_Y, s0)
+    @local_store_i(#VAR_POST_LENGTH, s1)
+
+    @local_load_i(x0, #VAR_POST_LENGTH)
+
+    @addi(x0, x0, 2)
+    @set(x1, 0)
+
+    @while(@ne(x1, x0),
+      @addi(x1, x1, 2)
+
+      @load_locals
+
+      @add(s3, s3, x1)
+
+      @let2(s0, s1, @call3(to_file_offset_words, @reg, s0, @reg, s1, @reg, s3))
+      @let2(s0, s1, @call2(storage_read_at_le_unpack, @reg, s0, @reg, s1))
+      @pack(s0, s1, s0)
+      @call1(print_hex16, @reg, s0)
+
+      @com("Here we will copy this shit to bank 3")
+    )
+
+    @local_load_i(s3, #VAR_TITLEPIC_HEADER_ADDR_OFFSET)
+    @addi(x1, x1, 2)
+    @add(s3, s3, x1)
+    @local_store_i(#VAR_TITLEPIC_HEADER_ADDR_OFFSET, s3)
+  )
+
+  {label c_end}: {br}
+)
+
+@procN(main, #LOCALS,
+  @call(iwad)
+
+  @debug("Lump count: ")
+  @call2(storage_read_at, @imm, 0, @imm, 2)
+  @local_store_i(#VAR_LUMP_COUNT, rv0)
+  @call1(print_uint, @reg, rv0) @lbrk
+
+  @let2(s0, s1, @call2(storage_read_at_u32_le, @imm, 0, @imm, 4))
+  @local_load_i(s2, #VAR_LUMP_COUNT)
+  @let2(s0, s1, @call3(get_titlepic_table_pos, @reg, s0, @reg, s1, @reg, s2))
+  @let2(s0, s1, @call2(get_titlepic_header_pos, @reg, s0, @reg, s1))
+
+  @local_store_i(#VAR_TITLEPIC_HEADER_BANK, s0)
+  @local_store_i(#VAR_TITLEPIC_HEADER_ADDR, s1)
+
+  @call2(print_image_size, @reg, s0, @reg, s1)
+
+  @addi(s1, s1, 8) @com(skip header)
+  @debug("First col addr: ")
+  @let2(s0, s1, @call3(to_file_offset_words, @reg, s0, @reg, s1, @imm, 0))
+  @let2(s2, s3, @call2(storage_read_at_u32_le, @reg, s0, @reg, s1))
+  @call2(print_hex32, @reg, s2, @reg, s3) @lbrk @com("Local offset from header")
+
+  @local_load_i(s0, #VAR_TITLEPIC_HEADER_BANK)
+  @local_load_i(s1, #VAR_TITLEPIC_HEADER_ADDR)
+
+  @call4(save_col, @reg, s0, @reg, s1, @reg, s2, @reg, s3)
 )
