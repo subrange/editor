@@ -12,6 +12,7 @@
     { "include": "#brainfuck-operators" },
     { "include": "#strings" },
     { "include": "#numbers" },
+    { "include": "#local-variables" },
     { "include": "#identifiers" }
   ],
   "repository": {
@@ -114,8 +115,11 @@
           ]
         },
         {
-          "name": "entity.name.function.macro.bfmacro",
-          "match": "@[a-zA-Z_]\\w*"
+          "match": "(@)([a-zA-Z_]\\w*)",
+          "captures": {
+            "1": { "name": "punctuation.definition.macro.bfmacro" },
+            "2": { "name": "entity.name.function.macro.bfmacro" }
+          }
         },
         {
           "name": "entity.name.function.macro.hash.bfmacro",
@@ -125,8 +129,10 @@
     },
     "macro-arguments": {
       "patterns": [
+        { "include": "#macro-invocation" },
         { "include": "#builtin-functions" },
         { "include": "#numbers" },
+        { "include": "#local-variables" },
         { "include": "#identifiers" },
         {
           "name": "punctuation.separator.arguments.bfmacro",
@@ -227,6 +233,54 @@
           "patterns": [
             { "include": "#preserve-content" }
           ]
+        },
+        {
+          "name": "meta.builtin.proc.bfmacro",
+          "begin": "\\{(proc)\\s*\\(",
+          "end": "\\)\\s*\\}",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.builtin.proc.bfmacro" }
+          },
+          "patterns": [
+            { "include": "#builtin-arguments" },
+            { "include": "#local-variables" }
+          ]
+        },
+        {
+          "name": "meta.builtin.local.bfmacro",
+          "begin": "\\{(local)(?:\\s*\\(|\\s+)",
+          "end": "(?:\\)|\\})",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.builtin.local.bfmacro" }
+          },
+          "patterns": [
+            {
+              "match": "(%[a-zA-Z_]\\w*)",
+              "name": "storage.type.local.bfmacro"
+            },
+            { "include": "#numbers" }
+          ]
+        },
+        {
+          "name": "meta.builtin.len.bfmacro",
+          "begin": "\\{(len)(?:\\s*\\(|\\s+)",
+          "end": "(?:\\)|\\})",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.builtin.len.bfmacro" }
+          },
+          "patterns": [
+            {
+              "match": "(%[a-zA-Z_]\\w*)",
+              "name": "storage.type.local.bfmacro"
+            }
+          ]
+        },
+        {
+          "name": "meta.builtin.locals_len.bfmacro",
+          "match": "\\{(locals_len)\\}",
+          "captures": {
+            "1": { "name": "keyword.control.builtin.locals_len.bfmacro" }
+          }
         }
       ]
     },
@@ -235,6 +289,7 @@
         { "include": "#builtin-functions" },
         { "include": "#macro-invocation" },
         { "include": "#numbers" },
+        { "include": "#local-variables" },
         { "include": "#identifiers" },
         {
           "name": "punctuation.separator.arguments.bfmacro",
@@ -335,6 +390,14 @@
         {
           "name": "variable.other.bfmacro",
           "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "local-variables": {
+      "patterns": [
+        {
+          "name": "storage.type.local.bfmacro",
+          "match": "%[a-zA-Z_]\\w*"
         }
       ]
     }

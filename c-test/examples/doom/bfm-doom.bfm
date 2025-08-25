@@ -179,10 +179,11 @@
 
   @call2(print_image_size, @reg, s0, @reg, s1)
 
-  @addi(s1, s1, 8) @com(skip header)
+  @addi(s1, s1, 16) @com(skip header)
   @debug("First col addr: ")
   @let2(s0, s1, @call3(to_file_offset_words, @reg, s0, @reg, s1, @imm, 0))
   @let2(s2, s3, @call2(storage_read_at_u32_le, @reg, s0, @reg, s1))
+  @debug("Local offset from header: ")
   @call2(print_hex32, @reg, s2, @reg, s3) @lbrk @com("Local offset from header")
 
   @local_load_i(s0, %TITLEPIC_HEADER_BANK)
