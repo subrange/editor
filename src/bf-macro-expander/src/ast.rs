@@ -74,6 +74,9 @@ pub enum BuiltinFunction {
     Preserve,
     Label,
     Br,  // Line break
+    Proc, // Procedure with automatic local tracking
+    Local, // Local variable declaration
+    Len,  // Get size of local variable
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -1,5 +1,6 @@
 use crate::ast::*;
-use crate::expander::{ExpansionContext, MacroExpander, replace_whole_word};
+use crate::expander::{ExpansionContext, MacroExpander, replace_whole_word, LocalInfo};
+use crate::source_map::SourceMapBuilder;
 use crate::types::*;
 use std::collections::HashMap;
 
@@ -162,6 +163,9 @@ impl MacroExpander {
             BuiltinFunction::Preserve => self.expand_preserve(node, context, generate_source_map, source_range),
             BuiltinFunction::Label => self.expand_label(node, context, generate_source_map, source_range),
             BuiltinFunction::Br => self.expand_br(node, context, generate_source_map, source_range),
+            BuiltinFunction::Proc => self.expand_proc(node, context, generate_source_map, source_range),
+            BuiltinFunction::Local => self.expand_local(node, context, generate_source_map, source_range),
+            BuiltinFunction::Len => self.expand_len(node, context, generate_source_map, source_range),
         }
     }
     
@@ -590,4 +594,418 @@ impl MacroExpander {
         
         elements
     }
+    
+    fn expand_proc(&mut self, node: &BuiltinFunctionNode, context: &mut ExpansionContext, generate_source_map: bool, source_range: PositionRange) {
+        if node.arguments.len() != 1 {
+            self.errors.push(MacroExpansionError {
+                error_type: MacroExpansionErrorType::SyntaxError,
+                message: format!("proc() expects exactly 1 argument (the body), got {}", node.arguments.len()),
+                location: Some(SourceLocation {
+                    line: node.position.line.saturating_sub(1),
+                    column: node.position.column.saturating_sub(1),
+                    length: node.position.end - node.position.start,
+                }),
+            });
+            return;
+        }
+        
+        // Save current state
+        let saved_in_proc = self.in_proc;
+        let saved_local_counter = self.local_counter;
+        let saved_local_map = self.local_map.clone();
+        
+        // Start fresh for this proc
+        self.in_proc = true;
+        self.local_counter = 0;
+        self.local_map.clear();
+        
+        // First pass: collect locals only (don't expand them yet)
+        let body_expr = &node.arguments[0];
+        
+        eprintln!("DEBUG expand_proc: body_expr type = {:?}", std::mem::discriminant(body_expr));
+        
+        // We need to walk the AST to find and process {local} declarations
+        self.collect_locals_from_expression(body_expr);
+        
+        eprintln!("DEBUG expand_proc: Found {} locals", self.local_counter);
+        eprintln!("DEBUG expand_proc: local_map = {:?}", self.local_map);
+        
+        // Now we know the total locals needed
+        let total_locals = self.local_counter;
+        
+        // Second pass: expand the body with local substitutions
+        let mut final_context = ExpansionContext {
+            source_map_builder: SourceMapBuilder::new(),
+            current_source_position: context.current_source_position.clone(),
+            expansion_depth: context.expansion_depth,
+            macro_call_stack: context.macro_call_stack.clone(),
+            expanded_lines: vec![String::new()],
+            current_expanded_line: 1,
+            current_expanded_column: 1,
+        };
+        
+        // Process the body with locals now available for substitution
+        let body_with_locals = if let ExpressionNode::ExpressionList(list) = body_expr {
+            // Process each content node in the list
+            for content in &list.expressions {
+                // Special handling for text nodes that contain {local ...}
+                if let ContentNode::Text(text) = content {
+                    let mut text_value = text.value.clone();
+                    // Remove {local ...} declarations from the text (both formats)
+                    loop {
+                        let start_opt = text_value.find("{local ").or_else(|| text_value.find("{local("));
+                        if let Some(start) = start_opt {
+                            let is_paren = text_value[start..].starts_with("{local(");
+                            let close_char = if is_paren { ')' } else { '}' };
+                            let search_start = start + 7; // Skip "{local(" or "{local "
+                            if let Some(end_offset) = text_value[search_start..].find(close_char) {
+                                let end = search_start + end_offset + 1; // Include closing char
+                                if is_paren && end < text_value.len() && text_value.chars().nth(end) == Some('}') {
+                                    text_value.replace_range(start..end + 1, ""); // Include the closing }
+                                } else if !is_paren {
+                                    text_value.replace_range(start..end, "");
+                                }
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    // Expand the remaining text with local references
+                    if !text_value.trim().is_empty() {
+                        let expanded = self.expand_local_references(&text_value);
+                        self.append_to_expanded(&expanded, &mut final_context, false, None);
+                    }
+                } else {
+                    self.expand_content(content, &mut final_context, false);
+                }
+            }
+            final_context.expanded_lines.join("\n")
+        } else {
+            // Fallback for other expression types
+            self.expand_expression(body_expr, &mut final_context, false);
+            final_context.expanded_lines.join("\n")
+        };
+        
+        // Replace {locals_len} with the actual count
+        let mut final_body = body_with_locals;
+        final_body = final_body.replace("{locals_len}", &total_locals.to_string());
+        
+        // Output the expanded body with all substitutions
+        self.append_to_expanded(&final_body, context, generate_source_map, Some(source_range));
+        
+        // Restore previous state
+        self.in_proc = saved_in_proc;
+        self.local_counter = saved_local_counter;
+        self.local_map = saved_local_map;
+    }
+    
+    fn expand_local(&mut self, node: &BuiltinFunctionNode, context: &mut ExpansionContext, _generate_source_map: bool, _source_range: PositionRange) {
+        if node.arguments.is_empty() || node.arguments.len() > 2 {
+            self.errors.push(MacroExpansionError {
+                error_type: MacroExpansionErrorType::SyntaxError,
+                message: format!("local() expects 1 or 2 arguments (name, optional size), got {}", node.arguments.len()),
+                location: Some(SourceLocation {
+                    line: node.position.line.saturating_sub(1),
+                    column: node.position.column.saturating_sub(1),
+                    length: node.position.end - node.position.start,
+                }),
+            });
+            return;
+        }
+        
+        // Get the variable name
+        let var_name = self.expression_to_string(&node.arguments[0]).trim().to_string();
+        
+        // Check if it starts with %
+        if !var_name.starts_with('%') {
+            self.errors.push(MacroExpansionError {
+                error_type: MacroExpansionErrorType::SyntaxError,
+                message: format!("Local variable names must start with '%', got '{}'", var_name),
+                location: Some(SourceLocation {
+                    line: node.position.line.saturating_sub(1),
+                    column: node.position.column.saturating_sub(1),
+                    length: node.position.end - node.position.start,
+                }),
+            });
+            return;
+        }
+        
+        // If we're in a proc and this local already exists in the map, it means we're in the
+        // second pass (expansion phase) and should just skip this - locals were already collected
+        if self.in_proc && self.local_map.contains_key(&var_name) {
+            // Local declarations don't output anything
+            return;
+        }
+        
+        // Get the size (default to 1)
+        let size = if node.arguments.len() == 2 {
+            let size_expr = self.expand_expression_to_string(&node.arguments[1], context);
+            let trimmed = size_expr.trim();
+            
+            if let Ok(s) = trimmed.parse::<usize>() {
+                s
+            } else {
+                self.errors.push(MacroExpansionError {
+                    error_type: MacroExpansionErrorType::SyntaxError,
+                    message: format!("Invalid size for local variable: {}", size_expr),
+                    location: Some(SourceLocation {
+                        line: node.position.line.saturating_sub(1),
+                        column: node.position.column.saturating_sub(1),
+                        length: node.position.end - node.position.start,
+                    }),
+                });
+                return;
+            }
+        } else {
+            1
+        };
+        
+        // Add to local map
+        self.local_map.insert(var_name.clone(), LocalInfo {
+            offset: self.local_counter,
+            size,
+        });
+        self.local_counter += size;
+        
+        // Local declarations don't output anything
+    }
+    
+    fn collect_locals_from_expression(&mut self, expr: &ExpressionNode) {
+        match expr {
+            ExpressionNode::ExpressionList(list) => {
+                // The body is an ExpressionList containing ContentNodes
+                for content in &list.expressions {
+                    self.collect_locals_from_content(content);
+                }
+            }
+            ExpressionNode::BuiltinFunction(builtin) => {
+                if builtin.name == BuiltinFunction::Local {
+                    // Process the local declaration
+                    if !builtin.arguments.is_empty() && builtin.arguments.len() <= 2 {
+                        let var_name = self.expression_to_string(&builtin.arguments[0]).trim().to_string();
+                        
+                        if var_name.starts_with('%') && !self.local_map.contains_key(&var_name) {
+                            let size = if builtin.arguments.len() == 2 {
+                                let size_str = self.expression_to_string(&builtin.arguments[1]).trim().to_string();
+                                size_str.parse::<usize>().unwrap_or(1)
+                            } else {
+                                1
+                            };
+                            
+                            self.local_map.insert(var_name.clone(), LocalInfo {
+                                offset: self.local_counter,
+                                size,
+                            });
+                            self.local_counter += size;
+                        }
+                    }
+                } else {
+                    // Recursively check arguments of other builtins
+                    for arg in &builtin.arguments {
+                        self.collect_locals_from_expression(arg);
+                    }
+                }
+            }
+            ExpressionNode::MacroInvocation(macro_inv) => {
+                // Check arguments of macro invocations
+                if let Some(args) = &macro_inv.arguments {
+                    for arg in args {
+                        self.collect_locals_from_expression(arg);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    
+    fn collect_locals_from_content(&mut self, content: &ContentNode) {
+        match content {
+            ContentNode::Text(text) => {
+                eprintln!("DEBUG collect_locals_from_content: Text = '{}'", text.value);
+                // Check if the text contains {local ...} patterns (can be multiple)
+                // This handles cases where {local} comes through macro expansion as text
+                let mut text_str = text.value.clone();
+                let mut search_start = 0;
+                
+                // Keep looking for {local} patterns until we've found them all
+                loop {
+                    // Match both "{local " and "{local(" formats
+                    let remaining = &text_str[search_start..];
+                    let start_opt = remaining.find("{local ").or_else(|| remaining.find("{local("));
+                    
+                    if let Some(start_in_remaining) = start_opt {
+                        let start = search_start + start_in_remaining;
+                        let is_paren = text_str[start..].starts_with("{local(");
+                        let skip_len = 7; // Skip "{local " or "{local("
+                        let close_char = if is_paren { ')' } else { '}' };
+                        
+                        if let Some(end) = text_str[start + skip_len..].find(close_char) {
+                            let local_content = &text_str[start + skip_len..start + skip_len + end];
+                            eprintln!("DEBUG: Found local content: '{}'", local_content);
+                            // Handle both space-separated and comma-separated formats
+                            let parts: Vec<&str> = if local_content.contains(',') {
+                                local_content.split(',').map(|s| s.trim()).collect()
+                            } else {
+                                local_content.trim().split_whitespace().collect()
+                            };
+                            
+                            if !parts.is_empty() {
+                                let var_name = parts[0].to_string();
+                                eprintln!("DEBUG: Processing local var: '{}'", var_name);
+                                if var_name.starts_with('%') && !self.local_map.contains_key(&var_name) {
+                                    let size = if parts.len() > 1 {
+                                        parts[1].parse::<usize>().unwrap_or(1)
+                                    } else {
+                                        1
+                                    };
+                                    
+                                    eprintln!("DEBUG: Adding local '{}' at offset {} with size {}", var_name, self.local_counter, size);
+                                    self.local_map.insert(var_name.clone(), LocalInfo {
+                                        offset: self.local_counter,
+                                        size,
+                                    });
+                                    self.local_counter += size;
+                                }
+                            }
+                            
+                            // Move past this {local} and continue searching
+                            search_start = start + skip_len + end + 1;
+                            if is_paren && search_start < text_str.len() && text_str.chars().nth(search_start) == Some('}') {
+                                search_start += 1;
+                            }
+                        } else {
+                            break; // No closing bracket found
+                        }
+                    } else {
+                        break; // No more {local} patterns found
+                    }
+                }
+            }
+            ContentNode::BuiltinFunction(builtin) => {
+                if builtin.name == BuiltinFunction::Local {
+                    // Process the local declaration
+                    if !builtin.arguments.is_empty() && builtin.arguments.len() <= 2 {
+                        let var_name = self.expression_to_string(&builtin.arguments[0]).trim().to_string();
+                        
+                        if var_name.starts_with('%') && !self.local_map.contains_key(&var_name) {
+                            let size = if builtin.arguments.len() == 2 {
+                                let size_str = self.expression_to_string(&builtin.arguments[1]).trim().to_string();
+                                size_str.parse::<usize>().unwrap_or(1)
+                            } else {
+                                1
+                            };
+                            
+                            self.local_map.insert(var_name.clone(), LocalInfo {
+                                offset: self.local_counter,
+                                size,
+                            });
+                            self.local_counter += size;
+                        }
+                    }
+                } else {
+                    // Recursively check arguments of other builtins  
+                    for arg in &builtin.arguments {
+                        self.collect_locals_from_expression(arg);
+                    }
+                }
+            }
+            ContentNode::MacroInvocation(macro_inv) => {
+                // Check arguments of macro invocations
+                if let Some(args) = &macro_inv.arguments {
+                    for arg in args {
+                        self.collect_locals_from_expression(arg);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    
+    fn expand_len(&mut self, node: &BuiltinFunctionNode, context: &mut ExpansionContext, generate_source_map: bool, source_range: PositionRange) {
+        if node.arguments.len() != 1 {
+            self.errors.push(MacroExpansionError {
+                error_type: MacroExpansionErrorType::SyntaxError,
+                message: format!("len() expects exactly 1 argument (variable name), got {}", node.arguments.len()),
+                location: Some(SourceLocation {
+                    line: node.position.line.saturating_sub(1),
+                    column: node.position.column.saturating_sub(1),
+                    length: node.position.end - node.position.start,
+                }),
+            });
+            return;
+        }
+        
+        let var_name = self.expression_to_string(&node.arguments[0]).trim().to_string();
+        
+        if !var_name.starts_with('%') {
+            self.errors.push(MacroExpansionError {
+                error_type: MacroExpansionErrorType::SyntaxError,
+                message: format!("Variable name must start with '%', got '{}'", var_name),
+                location: Some(SourceLocation {
+                    line: node.position.line.saturating_sub(1),
+                    column: node.position.column.saturating_sub(1),
+                    length: node.position.end - node.position.start,
+                }),
+            });
+            return;
+        }
+        
+        if let Some(info) = self.local_map.get(&var_name) {
+            self.append_to_expanded(&info.size.to_string(), context, generate_source_map, Some(source_range));
+        } else {
+            self.errors.push(MacroExpansionError {
+                error_type: MacroExpansionErrorType::Undefined,
+                message: format!("Undefined local variable: {}", var_name),
+                location: Some(SourceLocation {
+                    line: node.position.line.saturating_sub(1),
+                    column: node.position.column.saturating_sub(1),
+                    length: node.position.end - node.position.start,
+                }),
+            });
+        }
+    }
+    
+    fn expand_expression_to_string_with_locals(&mut self, expr: &ExpressionNode, context: &ExpansionContext) -> String {
+        let mut temp_context = ExpansionContext {
+            source_map_builder: SourceMapBuilder::new(),
+            current_source_position: context.current_source_position.clone(),
+            expansion_depth: context.expansion_depth,
+            macro_call_stack: context.macro_call_stack.clone(),
+            expanded_lines: vec![String::new()],
+            current_expanded_line: 1,
+            current_expanded_column: 1,
+        };
+        
+        self.expand_expression_with_locals(expr, &mut temp_context, false);
+        temp_context.expanded_lines.join("\n").trim().to_string()
+    }
+    
+    fn expand_expression_with_locals(&mut self, expr: &ExpressionNode, context: &mut ExpansionContext, generate_source_map: bool) {
+        match expr {
+            ExpressionNode::Text(text) => {
+                // Check if it's a local variable reference
+                let expanded_text = self.expand_local_references(&text.value);
+                let source_range = PositionRange {
+                    start: Position {
+                        line: expr.position().line,
+                        column: expr.position().column,
+                        offset: Some(expr.position().start),
+                    },
+                    end: Position {
+                        line: expr.position().line,
+                        column: expr.position().column + (expr.position().end - expr.position().start),
+                        offset: Some(expr.position().end),
+                    },
+                };
+                self.append_to_expanded(&expanded_text, context, generate_source_map, Some(source_range));
+            }
+            _ => {
+                // For other expression types, use the normal expansion
+                self.expand_expression(expr, context, generate_source_map);
+            }
+        }
+    }
+    
 }

@@ -57,6 +57,48 @@ impl MacroExpander {
         }
     }
     
+    pub fn expression_to_string_preserving_locals(&mut self, expr: &ExpressionNode, context: &ExpansionContext) -> String {
+        // Like expand_expression_to_string but preserves {local} builtins as text
+        match expr {
+            ExpressionNode::BuiltinFunction(builtin) if builtin.name == BuiltinFunction::Local => {
+                // Preserve {local} as text instead of expanding it
+                self.expression_to_string(expr)
+            }
+            ExpressionNode::ExpressionList(list) => {
+                // For expression lists, check each item
+                let mut result = String::new();
+                for item in &list.expressions {
+                    match item {
+                        ContentNode::BuiltinFunction(builtin) if builtin.name == BuiltinFunction::Local => {
+                            // Preserve {local} as text
+                            result.push_str(&format!("{{local({})}}", 
+                                self.expressions_to_string(&builtin.arguments)));
+                        }
+                        _ => {
+                            // Expand everything else normally
+                            let mut temp_context = ExpansionContext {
+                                source_map_builder: SourceMapBuilder::new(),
+                                current_source_position: context.current_source_position.clone(),
+                                expansion_depth: context.expansion_depth,
+                                macro_call_stack: context.macro_call_stack.clone(),
+                                expanded_lines: vec![String::new()],
+                                current_expanded_line: 1,
+                                current_expanded_column: 1,
+                            };
+                            self.expand_content(item, &mut temp_context, false);
+                            result.push_str(&temp_context.expanded_lines.join("\n"));
+                        }
+                    }
+                }
+                result
+            }
+            _ => {
+                // For everything else, expand normally
+                self.expand_expression_to_string(expr, context)
+            }
+        }
+    }
+    
     pub fn expand_expression_to_string(&mut self, expr: &ExpressionNode, context: &ExpansionContext) -> String {
         let mut temp_context = ExpansionContext {
             source_map_builder: SourceMapBuilder::new(),
@@ -362,6 +404,9 @@ impl BuiltinFunction {
             BuiltinFunction::Preserve => "preserve",
             BuiltinFunction::Label => "label",
             BuiltinFunction::Br => "br",
+            BuiltinFunction::Proc => "proc",
+            BuiltinFunction::Local => "local",
+            BuiltinFunction::Len => "len",
         }
     }
 }

@@ -20,6 +20,9 @@ pub enum TokenType {
     BuiltinPreserve,
     BuiltinLabel,
     BuiltinBr,
+    BuiltinProc,
+    BuiltinLocal,
+    BuiltinLen,
     ColonShorthand,  // {: shorthand for preserve
     
     // Delimiters
@@ -135,6 +138,12 @@ impl Lexer {
                     Some(self.make_token(TokenType::BuiltinLabel, "{label", start))
                 } else if self.match_string("br") {
                     Some(self.make_token(TokenType::BuiltinBr, "{br", start))
+                } else if self.match_string("proc") {
+                    Some(self.make_token(TokenType::BuiltinProc, "{proc", start))
+                } else if self.match_string("local") {
+                    Some(self.make_token(TokenType::BuiltinLocal, "{local", start))
+                } else if self.match_string("len") {
+                    Some(self.make_token(TokenType::BuiltinLen, "{len", start))
                 } else {
                     Some(self.make_token(TokenType::LBrace, "{", start))
                 }
@@ -292,6 +301,15 @@ impl Lexer {
         // Check if the characters match
         for (i, ch) in chars.iter().enumerate() {
             if self.input[self.current + i] != *ch {
+                return false;
+            }
+        }
+        
+        // For keyword matching, ensure the next character is not alphanumeric
+        // This prevents matching "local" in "locals_len"
+        if self.current + chars.len() < self.input.len() {
+            let next_char = self.input[self.current + chars.len()];
+            if next_char.is_ascii_alphanumeric() || next_char == '_' {
                 return false;
             }
         }

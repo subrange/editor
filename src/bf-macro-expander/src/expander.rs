@@ -1,7 +1,7 @@
-use crate::ast::*;
+use crate::ast::{*, BuiltinFunction};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
-use crate::preprocessor::{Preprocessor, parse_line_directives, LineMap};
+use crate::preprocessor::{Preprocessor, parse_line_directives};
 use crate::source_map::SourceMapBuilder;
 use crate::types::*;
 use std::collections::{HashMap, HashSet};
@@ -67,6 +67,12 @@ pub struct ExpansionContext {
     pub current_expanded_column: usize,
 }
 
+#[derive(Clone, Debug)]
+pub struct LocalInfo {
+    pub offset: usize,
+    pub size: usize,
+}
+
 pub struct MacroExpander {
     pub(crate) macros: HashMap<String, MacroDefinitionNode>,
     pub(crate) errors: Vec<MacroExpansionError>,
@@ -77,6 +83,10 @@ pub struct MacroExpander {
     pub(crate) enable_circular_dependency_detection: bool,
     pub(crate) label_counter: usize,
     pub(crate) label_map: HashMap<String, String>,
+    pub(crate) local_counter: usize,
+    pub(crate) local_map: HashMap<String, LocalInfo>,
+    pub(crate) in_proc: bool,
+    pub(crate) proc_body: Vec<String>,
 }
 
 impl MacroExpander {
@@ -91,6 +101,10 @@ impl MacroExpander {
             enable_circular_dependency_detection: false,
             label_counter: 0,
             label_map: HashMap::new(),
+            local_counter: 0,
+            local_map: HashMap::new(),
+            in_proc: false,
+            proc_body: Vec::new(),
         }
     }
     
@@ -149,6 +163,10 @@ impl MacroExpander {
         self.enable_circular_dependency_detection = options.enable_circular_dependency_detection;
         // Don't reset label_counter - keep it incrementing to ensure unique labels
         self.label_map.clear();   // Clear label map as well
+        self.local_counter = 0;
+        self.local_map.clear();
+        self.in_proc = false;
+        self.proc_body.clear();
         
         // Tokenize and parse
         let mut lexer = Lexer::new(input, !options.strip_comments);
@@ -499,13 +517,26 @@ impl MacroExpander {
                 self.append_to_expanded(&cmd.commands, context, generate_source_map, Some(source_range));
             }
             ContentNode::Text(text) => {
-                self.append_to_expanded(&text.value, context, generate_source_map, Some(source_range));
+                // Check if we're in a proc and need to expand local references
+                let expanded_text = if self.in_proc {
+                    self.expand_local_references(&text.value)
+                } else {
+                    text.value.clone()
+                };
+                self.append_to_expanded(&expanded_text, context, generate_source_map, Some(source_range));
             }
             ContentNode::MacroInvocation(invocation) => {
                 self.expand_macro_invocation(invocation, context, generate_source_map, source_range);
             }
             ContentNode::BuiltinFunction(builtin) => {
-                self.expand_builtin_function(builtin, context, generate_source_map, source_range);
+                // Special handling for {local} - it's a declaration, not output
+                if builtin.name == BuiltinFunction::Local && self.in_proc {
+                    // Process the local declaration (updates local_map)
+                    self.expand_builtin_function(builtin, context, generate_source_map, source_range);
+                    // Don't output anything for local declarations
+                } else {
+                    self.expand_builtin_function(builtin, context, generate_source_map, source_range);
+                }
             }
         }
     }
@@ -590,14 +621,26 @@ impl MacroExpander {
         if let (Some(params), Some(args)) = (&macro_def.parameters, &node.arguments) {
             let mut values = HashMap::new();
             for (param, arg) in params.iter().zip(args.iter()) {
-                values.insert(param.clone(), self.expand_expression_to_string(arg, context));
+                // For proc macros, preserve {local} builtins but expand everything else
+                let arg_str = if macro_def.name == "proc" || macro_def.name == "procN" {
+                    // Special handling for proc macro - preserve {local} as text
+                    self.expression_to_string_preserving_locals(arg, context)
+                } else {
+                    // Normal macro - expand everything
+                    self.expand_expression_to_string(arg, context)
+                };
+                values.insert(param.clone(), arg_str);
             }
             parameter_values = Some(values);
         }
         
-        // Save current label_map and create a fresh one for this macro invocation
+        // Save current label_map and local_map and create fresh ones for this macro invocation
         let saved_label_map = self.label_map.clone();
+        let saved_local_map = self.local_map.clone();
+        let saved_local_counter = self.local_counter;
         self.label_map.clear();
+        self.local_map.clear();
+        self.local_counter = 0;
         
         // Push macro context
         context.macro_call_stack.push(MacroCallStackEntry {
@@ -613,9 +656,11 @@ impl MacroExpander {
             self.expand_body_nodes(&macro_def.body, context, generate_source_map);
         }
         
-        // Pop macro context and restore label_map
+        // Pop macro context and restore label_map and local_map
         context.macro_call_stack.pop();
         self.label_map = saved_label_map;
+        self.local_map = saved_local_map;
+        self.local_counter = saved_local_counter;
         context.expansion_depth -= 1;
         if self.enable_circular_dependency_detection {
             self.expansion_chain.remove(&invocation_signature);
@@ -658,6 +703,11 @@ impl MacroExpander {
                     for (param, value) in sorted_subs {
                         // Use a simpler approach without lookahead
                         text = replace_whole_word(&text, param, value);
+                    }
+                    
+                    // Also expand local references if we're in a proc
+                    if self.in_proc {
+                        text = self.expand_local_references(&text);
                     }
                     
                     let source_range = PositionRange {
@@ -746,5 +796,24 @@ impl MacroExpander {
                 }
             }
         }
+    }
+    
+    pub(crate) fn expand_local_references(&self, text: &str) -> String {
+        if self.local_map.is_empty() {
+            return text.to_string();
+        }
+        
+        let mut result = text.to_string();
+        
+        // Sort by longest name first to avoid partial replacements
+        let mut sorted_locals: Vec<_> = self.local_map.iter().collect();
+        sorted_locals.sort_by_key(|(name, _)| std::cmp::Reverse(name.len()));
+        
+        for (var_name, info) in sorted_locals {
+            // Use word boundary matching to avoid partial replacements
+            result = replace_whole_word(&result, var_name, &info.offset.to_string());
+        }
+        
+        result
     }
 }

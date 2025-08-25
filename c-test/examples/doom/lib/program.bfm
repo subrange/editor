@@ -183,16 +183,11 @@
 
 #define proc(name, body) {
   name:{br}
-  @prologue(0)
-  body{br}
-  @epilogue(0)
-}
-
-#define procN(name, locals, body) {
-  name:{br}
-  @prologue(locals)
-  body{br}
-  @epilogue(locals)
+  {proc(
+    @prologue({locals_len})
+    body{br}
+    @epilogue({locals_len})
+  )}
 }
 
 #define ascii(s)  {for(c in s, c{: })}

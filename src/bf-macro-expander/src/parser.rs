@@ -371,7 +371,7 @@ impl Parser {
                 self.advance(); // consume {
                 if self.check(TokenType::Identifier) {
                     let name = self.peek().value.clone();
-                    if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse" | "preserve") {
+                    if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse" | "preserve" | "proc" | "local" | "len") {
                         if let Some(builtin) = self.parse_builtin_function() {
                             return Some(ContentNode::BuiltinFunction(builtin));
                         }
@@ -393,14 +393,38 @@ impl Parser {
                     position: token.position.clone(),
                 }))
             }
-            TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::BuiltinLabel | TokenType::BuiltinBr | TokenType::ColonShorthand => {
+            TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::BuiltinLabel | TokenType::BuiltinBr | TokenType::BuiltinProc | TokenType::BuiltinLocal | TokenType::BuiltinLen | TokenType::ColonShorthand => {
                 self.parse_builtin_function().map(ContentNode::BuiltinFunction)
             }
             TokenType::Whitespace | TokenType::Text | TokenType::Identifier | TokenType::Number => {
-                let token = self.advance();
+                // Combine consecutive text-like tokens into a single text node
+                let start_token = self.advance().clone();
+                let mut combined_text = start_token.value.clone();
+                let start_pos = start_token.position.start;
+                let mut end_pos = start_token.position.end;
+                let start_line = start_token.position.line;
+                let start_column = start_token.position.column;
+                
+                // Keep combining consecutive text-like tokens (but not newlines)
+                while !self.is_at_end() && !self.check(TokenType::Newline) {
+                    match self.peek().token_type {
+                        TokenType::Text | TokenType::Identifier | TokenType::Number | TokenType::Whitespace => {
+                            let next_token = self.advance().clone();
+                            combined_text.push_str(&next_token.value);
+                            end_pos = next_token.position.end;
+                        }
+                        _ => break,
+                    }
+                }
+                
                 Some(ContentNode::Text(TextNode {
-                    value: token.value.clone(),
-                    position: token.position.clone(),
+                    value: combined_text,
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
                 }))
             }
             _ => {
@@ -554,6 +578,211 @@ impl Parser {
                     },
                 });
             }
+            TokenType::BuiltinProc => {
+                self.advance();
+                
+                // Expect opening parenthesis
+                if !self.consume(TokenType::LParen) {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Expected '(' after proc", pos);
+                    return None;
+                }
+                
+                // Parse the body as a sequence of content nodes (like macro body)
+                let mut body_nodes = Vec::new();
+                let mut paren_depth = 1;
+                
+                // Skip initial whitespace/newlines
+                while self.check(TokenType::Whitespace) || self.check(TokenType::Newline) {
+                    self.advance();
+                }
+                
+                // Collect body content until matching closing paren
+                while !self.is_at_end() && paren_depth > 0 {
+                    if self.check(TokenType::LParen) {
+                        paren_depth += 1;
+                        let token = self.advance();
+                        body_nodes.push(ContentNode::Text(TextNode {
+                            value: token.value.clone(),
+                            position: token.position.clone(),
+                        }));
+                    } else if self.check(TokenType::RParen) {
+                        paren_depth -= 1;
+                        if paren_depth == 0 {
+                            self.advance(); // consume closing paren
+                            break;
+                        }
+                        let token = self.advance();
+                        body_nodes.push(ContentNode::Text(TextNode {
+                            value: token.value.clone(),
+                            position: token.position.clone(),
+                        }));
+                    } else if let Some(content) = self.parse_content() {
+                        body_nodes.push(content);
+                    } else {
+                        // If parse_content returns None, advance and treat as text
+                        let token = self.advance();
+                        body_nodes.push(ContentNode::Text(TextNode {
+                            value: token.value.clone(),
+                            position: token.position.clone(),
+                        }));
+                    }
+                }
+                
+                if paren_depth > 0 {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Unclosed proc body - missing ')'", pos);
+                }
+                
+                // Expect closing brace
+                if !self.consume(TokenType::RBrace) {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Expected '}' after proc", pos);
+                }
+                
+                let end_pos = self.tokens[self.current.saturating_sub(1)].position.end;
+                
+                // Wrap the body nodes in an ExpressionList
+                let body_expr = ExpressionNode::ExpressionList(ExpressionListNode {
+                    expressions: body_nodes,
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
+                });
+                
+                return Some(BuiltinFunctionNode {
+                    name: BuiltinFunction::Proc,
+                    arguments: vec![body_expr],
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
+                });
+            }
+            TokenType::BuiltinLocal => {
+                self.advance();
+                
+                let mut arguments = Vec::new();
+                
+                // Skip initial whitespace
+                self.skip_whitespace();
+                
+                // Parse the variable name (with or without $)
+                let start_arg = self.current;
+                let mut var_name = String::new();
+                
+                // Collect the variable name (including $ prefix)
+                while !self.is_at_end() && !self.check(TokenType::RBrace) && !self.check(TokenType::Whitespace) && !self.check(TokenType::Number) {
+                    let token = self.advance();
+                    var_name.push_str(&token.value);
+                }
+                
+                if var_name.is_empty() {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Expected variable name after {local", pos);
+                    return None;
+                }
+                
+                let var_pos = if start_arg < self.tokens.len() {
+                    self.tokens[start_arg].position.clone()
+                } else {
+                    ASTPosition {
+                        start: start_pos,
+                        end: start_pos,
+                        line: start_line,
+                        column: start_column,
+                    }
+                };
+                
+                arguments.push(ExpressionNode::Text(TextNode {
+                    value: var_name,
+                    position: var_pos,
+                }));
+                
+                // Check for optional size (number)
+                self.skip_whitespace();
+                if self.check(TokenType::Number) {
+                    let size_token = self.advance();
+                    arguments.push(ExpressionNode::Number(NumberNode {
+                        value: size_token.value.parse().unwrap_or(1),
+                        position: size_token.position.clone(),
+                    }));
+                }
+                
+                // Expect closing brace
+                if !self.consume(TokenType::RBrace) {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Expected '}' after local", pos);
+                }
+                
+                let end_pos = self.tokens[self.current.saturating_sub(1)].position.end;
+                
+                return Some(BuiltinFunctionNode {
+                    name: BuiltinFunction::Local,
+                    arguments,
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
+                });
+            }
+            TokenType::BuiltinLen => {
+                self.advance();
+                
+                let mut arguments = Vec::new();
+                
+                // Skip initial whitespace
+                self.skip_whitespace();
+                
+                // Parse the variable name
+                let mut var_name = String::new();
+                while !self.is_at_end() && !self.check(TokenType::RBrace) {
+                    let token = self.advance();
+                    var_name.push_str(&token.value);
+                }
+                
+                if var_name.is_empty() {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Expected variable name after {len", pos);
+                    return None;
+                }
+                
+                arguments.push(ExpressionNode::Text(TextNode {
+                    value: var_name.trim().to_string(),
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: start_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
+                }));
+                
+                // Expect closing brace
+                if !self.consume(TokenType::RBrace) {
+                    let pos = self.peek().position.clone();
+                    self.add_error("Expected '}' after len", pos);
+                }
+                
+                let end_pos = self.tokens[self.current.saturating_sub(1)].position.end;
+                
+                return Some(BuiltinFunctionNode {
+                    name: BuiltinFunction::Len,
+                    arguments,
+                    position: ASTPosition {
+                        start: start_pos,
+                        end: end_pos,
+                        line: start_line,
+                        column: start_column,
+                    },
+                });
+            }
             TokenType::ColonShorthand => {
                 // {: shorthand doesn't use parentheses, content goes directly until }
                 self.advance();
@@ -619,6 +848,9 @@ impl Parser {
                     "preserve" => BuiltinFunction::Preserve,
                     "label" => BuiltinFunction::Label,
                     "br" => BuiltinFunction::Br,
+                    "proc" => BuiltinFunction::Proc,
+                    "local" => BuiltinFunction::Local,
+                    "len" => BuiltinFunction::Len,
                     _ => {
                         let pos = self.peek().position.clone();
                         self.add_error(&format!("Unknown builtin function: {}", name_str), pos);
@@ -850,7 +1082,7 @@ impl Parser {
         }
         
         // Check for builtin functions
-        if matches!(self.peek().token_type, TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::BuiltinLabel | TokenType::BuiltinBr | TokenType::ColonShorthand) {
+        if matches!(self.peek().token_type, TokenType::BuiltinRepeat | TokenType::BuiltinIf | TokenType::BuiltinFor | TokenType::BuiltinReverse | TokenType::BuiltinPreserve | TokenType::BuiltinLabel | TokenType::BuiltinBr | TokenType::BuiltinProc | TokenType::BuiltinLocal | TokenType::BuiltinLen | TokenType::ColonShorthand) {
             if let Some(builtin) = self.parse_builtin_function() {
                 return Some(ExpressionNode::BuiltinFunction(builtin));
             }
@@ -862,7 +1094,7 @@ impl Parser {
             self.advance(); // consume {
             if self.check(TokenType::Identifier) {
                 let name = self.peek().value.clone();
-                if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse" | "preserve") {
+                if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse" | "preserve" | "proc" | "local" | "len") {
                     // Reset position for parse_builtin_function
                     self.current = saved_pos;
                     self.advance(); // consume { again
@@ -1025,7 +1257,7 @@ impl Parser {
         self.advance(); // consume {
         if self.check(TokenType::Identifier) {
             let name = self.peek().value.clone();
-            if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse") {
+            if matches!(name.as_str(), "repeat" | "if" | "for" | "reverse" | "proc" | "local" | "len") {
                 // It's a builtin function, not an array literal
                 self.current = saved_pos;
                 return None;

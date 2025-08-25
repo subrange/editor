@@ -1,17 +1,6 @@
 #include "lib/program.bfm"
 #include "lib/stdio.bfm"
 
-#define LOCALS 4
-
-#define VAR_LUMP_COUNT 0
-#define VAR_TITLEPIC_HEADER_BANK 1
-#define VAR_TITLEPIC_HEADER_ADDR 2
-
-#define VAR_POST_Y 3
-#define VAR_POST_LENGTH 4
-#define VAR_TITLEPIC_HEADER_BANK_OFFSET 5
-#define VAR_TITLEPIC_HEADER_ADDR_OFFSET 6
-
 @proc(to_file_offset_words,
   @mov(s0, @arg1)
   @mov(s1, @arg2)
@@ -101,22 +90,29 @@
 }
 
 #define load_locals {
-  @local_load_i(s0, #VAR_TITLEPIC_HEADER_BANK)
-  @local_load_i(s1, #VAR_TITLEPIC_HEADER_ADDR)
-  @local_load_i(s2, #VAR_TITLEPIC_HEADER_BANK_OFFSET)
-  @local_load_i(s3, #VAR_TITLEPIC_HEADER_ADDR_OFFSET)
+  @local_load_i(s0, %TITLEPIC_HEADER_BANK)
+  @local_load_i(s1, %TITLEPIC_HEADER_ADDR)
+  @local_load_i(s2, %TITLEPIC_HEADER_BANK_OFFSET)
+  @local_load_i(s3, %TITLEPIC_HEADER_ADDR_OFFSET)
 }
 
-@procN(save_col, 7,
+@proc(save_col,
   @mov(s0, @arg1) @com("Header bank")
   @mov(s1, @arg2) @com("Header addr")
-  @local_store_i(#VAR_TITLEPIC_HEADER_BANK, s0)
-  @local_store_i(#VAR_TITLEPIC_HEADER_ADDR, s1)
+  {local %TITLEPIC_HEADER_BANK}
+  {local %TITLEPIC_HEADER_ADDR}
+  {local %TITLEPIC_HEADER_BANK_OFFSET}
+  {local %TITLEPIC_HEADER_ADDR_OFFSET}
+  {local %POST_Y}
+  {local %POST_LENGTH}
+
+  @local_store_i(%TITLEPIC_HEADER_BANK, s0)
+  @local_store_i(%TITLEPIC_HEADER_ADDR, s1)
 
   @mov(s2, @arg3) @com("Local offset from header: bank")
-  @local_store_i(#VAR_TITLEPIC_HEADER_BANK_OFFSET, s2)
+  @local_store_i(%TITLEPIC_HEADER_BANK_OFFSET, s2)
   @mov(s3, @arg4) @com("Local offset from header: addr")
-  @local_store_i(#VAR_TITLEPIC_HEADER_ADDR_OFFSET, s3)
+  @local_store_i(%TITLEPIC_HEADER_ADDR_OFFSET, s3)
 
   @set(t5, 0xFF)
   @loop(
@@ -126,12 +122,14 @@
     @let2(s0, s1, @call2(storage_read_at_le_unpack, @reg, s0, @reg, s1))
     
     @mov(t4, s0)
+    @call1(print_hex16, @reg, t4)
+    @call1(print_hex16, @reg, t5)
     @jeq(t4, t5, {label c_end})
 
-    @local_store_i(#VAR_POST_Y, s0)
-    @local_store_i(#VAR_POST_LENGTH, s1)
+    @local_store_i(%POST_Y, s0)
+    @local_store_i(%POST_LENGTH, s1)
 
-    @local_load_i(x0, #VAR_POST_LENGTH)
+    @local_load_i(x0, %POST_LENGTH)
 
     @addi(x0, x0, 2)
     @set(x1, 0)
@@ -149,32 +147,35 @@
       @call1(print_hex16, @reg, s0)
 
       @com("Here we will copy this shit to bank 3")
-    )
+    )    
 
-    @local_load_i(s3, #VAR_TITLEPIC_HEADER_ADDR_OFFSET)
+    @local_load_i(s3, %TITLEPIC_HEADER_ADDR_OFFSET)
     @addi(x1, x1, 2)
     @add(s3, s3, x1)
-    @local_store_i(#VAR_TITLEPIC_HEADER_ADDR_OFFSET, s3)
+    @local_store_i(%TITLEPIC_HEADER_ADDR_OFFSET, s3)
   )
 
   {label c_end}: {br}
 )
 
-@procN(main, #LOCALS,
+@proc(main, 
   @call(iwad)
 
   @debug("Lump count: ")
   @call2(storage_read_at, @imm, 0, @imm, 2)
-  @local_store_i(#VAR_LUMP_COUNT, rv0)
+  {local %LUMP_COUNT}
+  @local_store_i(%LUMP_COUNT, rv0)
   @call1(print_uint, @reg, rv0) @lbrk
 
   @let2(s0, s1, @call2(storage_read_at_u32_le, @imm, 0, @imm, 4))
-  @local_load_i(s2, #VAR_LUMP_COUNT)
+  @local_load_i(s2, %LUMP_COUNT)
   @let2(s0, s1, @call3(get_titlepic_table_pos, @reg, s0, @reg, s1, @reg, s2))
   @let2(s0, s1, @call2(get_titlepic_header_pos, @reg, s0, @reg, s1))
 
-  @local_store_i(#VAR_TITLEPIC_HEADER_BANK, s0)
-  @local_store_i(#VAR_TITLEPIC_HEADER_ADDR, s1)
+  {local %TITLEPIC_HEADER_BANK}
+  {local %TITLEPIC_HEADER_ADDR}
+  @local_store_i(%TITLEPIC_HEADER_BANK, s0)
+  @local_store_i(%TITLEPIC_HEADER_ADDR, s1)
 
   @call2(print_image_size, @reg, s0, @reg, s1)
 
@@ -184,8 +185,8 @@
   @let2(s2, s3, @call2(storage_read_at_u32_le, @reg, s0, @reg, s1))
   @call2(print_hex32, @reg, s2, @reg, s3) @lbrk @com("Local offset from header")
 
-  @local_load_i(s0, #VAR_TITLEPIC_HEADER_BANK)
-  @local_load_i(s1, #VAR_TITLEPIC_HEADER_ADDR)
+  @local_load_i(s0, %TITLEPIC_HEADER_BANK)
+  @local_load_i(s1, %TITLEPIC_HEADER_ADDR)
 
   @call4(save_col, @reg, s0, @reg, s1, @reg, s2, @reg, s3)
 )
