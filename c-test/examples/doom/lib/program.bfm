@@ -196,11 +196,21 @@
 #define local_addr_i(tmp, imm)   @addi(tmp, fp, imm)
 #define local_addr_r(tmp, reg)   @add(tmp, fp, reg)
 
-#define local_store_i(imm, src)  @local_addr_i(t0, imm) @poke(src, sb, t0)
-#define local_store_r(reg, src)  @local_addr_r(t0, reg) @poke(src, sb, t0)
+#define local_store_i(imm, src)  @local_addr_i(sc, imm) @poke(src, sb, sc)
+#define local_store_r(reg, src)  @local_addr_r(sc, reg) @poke(src, sb, sc)
 
-#define local_load_i(dst, imm)   @local_addr_i(t0, imm) @peek(dst, sb, t0)
-#define local_load_r(dst, reg)   @local_addr_r(t0, reg) @peek(dst, sb, t0)
+#define local_load_i(dst, imm)   @local_addr_i(sc, imm) @peek(dst, sb, sc)
+#define local_load_r(dst, reg)   @local_addr_r(sc, reg) @peek(dst, sb, sc)
+
+// @local_store_i(%TITLEPIC_WIDTH, x0)
+
+#define setlocal(loc, reg) {
+  @local_store_i(loc, reg)
+}
+
+#define getlocal(dst, loc) {
+  @local_load_i(dst, loc)
+}
 
 #define local_arr(tmp, idx_reg, offs_reg, s, slen) {
   {for(c, i in s,

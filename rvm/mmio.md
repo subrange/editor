@@ -28,8 +28,8 @@ The Ripple VM implements a memory-mapped I/O (MMIO) system with a dedicated 32-w
 | 15      | `HDR_KEY_X`           | R   | X key state (bit 0: 1=pressed, 0=released)            |
 | 16      | `HDR_DISP_RESOLUTION` | R/W | Display resolution for RGB565 (hi8=width, lo8=height) |
 | 17      | `HDR_STORE_BLOCK`     | W   | Select current storage block (0-65535)                |
-| 18      | `HDR_STORE_ADDR`      | W   | Select word address within block (0-65535)            |
-| 19      | `HDR_STORE_DATA`      | R/W | Data register: read/write word at (block, addr)       |
+| 18      | `HDR_STORE_ADDR`      | W   | Select byte address within block (0-65535)            |
+| 19      | `HDR_STORE_DATA`      | R/W | Data register: read/write byte at (block, addr)       |
 | 20      | `HDR_STORE_CTL`       | R/W | Storage control (busy/dirty/commit bits)              |
 | 21-31   | Reserved              | -   | Reserved for future use (return 0 on read)            |
 
@@ -83,8 +83,8 @@ Regular data memory starts at word 1032, after the VRAM region.
 ### Storage Device
 
 **Overview**
-- Persistent block storage device with 8 GiB total capacity
-- 65,536 blocks × 65,536 words per block × 2 bytes = 8 GiB
+- Persistent block storage device with 4 GiB total capacity
+- 65,536 blocks × 65,536 bytes per block = 4 GiB
 - Lazy initialization: blocks are only allocated when accessed
 - Backed by `~/.RippleVM/disk.img` sparse file
 
@@ -95,14 +95,14 @@ Regular data memory starts at word 1032, after the VRAM region.
 
 **Storage Address (HDR_STORE_ADDR)**
 - Write-only register at address 18
-- Selects word address within current block (0-65535)
+- Selects byte address within current block (0-65535)
 - Auto-increments after each HDR_STORE_DATA access
 - Wraps to 0 after reaching 65535
 
 **Storage Data (HDR_STORE_DATA)**
 - Read/Write register at address 19
-- Read: Returns 16-bit word at (block, addr)
-- Write: Updates word and marks block as dirty
+- Read: Returns byte at (block, addr) in low 8 bits (high 8 bits are 0)
+- Write: Updates byte at (block, addr) using low 8 bits of value (high 8 bits ignored)
 - Auto-increments HDR_STORE_ADDR after each operation
 
 **Storage Control (HDR_STORE_CTL)**
@@ -356,7 +356,7 @@ not_pressed:
 
 ### Storage Operations
 ```asm
-; Write data to block 42, starting at word 0
+; Write data to block 42, starting at byte 0
 LI    A0, 42
 LI    T0, 0        ; Bank 0
 LI    T1, 17       ; HDR_STORE_BLOCK
@@ -366,15 +366,21 @@ LI    A0, 0
 LI    T1, 18       ; HDR_STORE_ADDR
 STORE A0, T0, T1
 
-; Write "Hello" (one word at a time)
-LI    A0, 'H' | ('e' << 8)
+; Write "Hello" (one byte at a time)
+LI    A0, 'H'
 LI    T1, 19       ; HDR_STORE_DATA
 STORE A0, T0, T1   ; Auto-increments address
 
-LI    A0, 'l' | ('l' << 8)
+LI    A0, 'e'
 STORE A0, T0, T1   ; Auto-increments address
 
-LI    A0, 'o' | (0 << 8)
+LI    A0, 'l'
+STORE A0, T0, T1   ; Auto-increments address
+
+LI    A0, 'l'
+STORE A0, T0, T1   ; Auto-increments address
+
+LI    A0, 'o'
 STORE A0, T0, T1   ; Auto-increments address
 
 ; Commit the block to disk
@@ -392,9 +398,11 @@ LI    T1, 18       ; HDR_STORE_ADDR
 STORE A0, T0, T1
 
 LI    T1, 19       ; HDR_STORE_DATA
-LOAD  A0, T0, T1   ; Read first word
-LOAD  A1, T0, T1   ; Read second word (auto-increment)
-LOAD  A2, T0, T1   ; Read third word (auto-increment)
+LOAD  A0, T0, T1   ; Read first byte ('H')
+LOAD  A1, T0, T1   ; Read second byte ('e') (auto-increment)
+LOAD  A2, T0, T1   ; Read third byte ('l') (auto-increment)
+LOAD  A3, T0, T1   ; Read fourth byte ('l') (auto-increment)
+LOAD  X0, T0, T1   ; Read fifth byte ('o') (auto-increment)
 ```
 
 ## C Runtime Integration

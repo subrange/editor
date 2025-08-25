@@ -3,12 +3,12 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write, Seek, SeekFrom};
 use std::path::PathBuf;
 
-const BLOCK_SIZE_WORDS: usize = 65536;  // 64K words per block
-const BLOCK_SIZE_BYTES: usize = BLOCK_SIZE_WORDS * 2;  // 128KB per block
+const BLOCK_SIZE_WORDS: usize = 32768;  // 32K words per block
+const BLOCK_SIZE_BYTES: usize = BLOCK_SIZE_WORDS * 2;  // 64KB per block
 #[allow(dead_code)]
 const MAX_BLOCKS: usize = 65536;  // 64K blocks total
 #[allow(dead_code)]
-const TOTAL_CAPACITY_BYTES: usize = MAX_BLOCKS * BLOCK_SIZE_BYTES;  // 8 GiB total
+const TOTAL_CAPACITY_BYTES: usize = MAX_BLOCKS * BLOCK_SIZE_BYTES;  // 4 GiB total
 
 /// Storage subsystem for the Ripple VM
 /// Provides persistent block storage with lazy initialization
@@ -16,7 +16,7 @@ pub struct Storage {
     /// Current selected block number (0-65535)
     current_block: u16,
     
-    /// Current word address within the block (0-65535)
+    /// Current byte address within the block (0-65535)
     current_addr: u16,
     
     /// Cached blocks in memory (lazy-loaded)
@@ -36,7 +36,7 @@ pub struct Storage {
 
 /// A single block of storage
 struct Block {
-    /// Block data (65536 words)
+    /// Block data (32768 words)
     data: Vec<u16>,
     
     /// Whether this block has uncommitted writes
@@ -188,7 +188,7 @@ impl Storage {
         self.current_block = block_num;
     }
     
-    /// Set the current word address within the block
+    /// Set the current byte address within the block
     pub fn set_addr(&mut self, addr: u16) {
         self.current_addr = addr;
     }
@@ -198,13 +198,13 @@ impl Storage {
         self.current_block
     }
     
-    /// Get the current word address within the block
+    /// Get the current byte address within the block
     pub fn get_addr(&self) -> u16 {
         self.current_addr
     }
     
-    /// Read a word at the current (block, addr)
-    pub fn read_word(&mut self) -> u16 {
+    /// Read a byte at the current (block, addr)
+    pub fn read_byte(&mut self) -> u16 {
         // Ensure the block is loaded
         if let Err(e) = self.load_block(self.current_block) {
             log::error!("Storage: Failed to load block {:#06x}: {:?}", self.current_block, e);
@@ -214,38 +214,66 @@ impl Storage {
         let value = self.blocks
             .get(&self.current_block)
             .map(|block| {
-                let val = block.data[self.current_addr as usize];
-                // Debug: Show reads from high addresses (like 0xb7xx)
-                if self.current_addr >= 0xb7b0 && self.current_addr <= 0xb7c0 {
-                    log::trace!("Storage: Block {:#06x}, addr {:#06x}: data[{}] = {:#06x}", 
-                                self.current_block, self.current_addr, self.current_addr, val);
+                // Convert byte address to word index and byte offset
+                let word_idx = (self.current_addr / 2) as usize;
+                let byte_offset = self.current_addr % 2;
+                
+                if word_idx < block.data.len() {
+                    let word = block.data[word_idx];
+                    let byte_val = if byte_offset == 0 {
+                        (word & 0xFF) as u16  // Low byte
+                    } else {
+                        (word >> 8) as u16     // High byte
+                    };
+                    
+                    // Debug: Show reads from high addresses
+                    if self.current_addr >= 0xb7b0 && self.current_addr <= 0xb7c0 {
+                        log::trace!("Storage: Block {:#06x}, byte addr {:#06x}: word[{}] = {:#06x}, byte = {:#04x}", 
+                                    self.current_block, self.current_addr, word_idx, word, byte_val);
+                    }
+                    byte_val
+                } else {
+                    0
                 }
-                val
             })
             .unwrap_or_else(|| {
                 log::error!("Storage: Block {:#06x} not found in cache!", self.current_block);
                 0
             });
         
-        // Auto-increment address
+        // Auto-increment byte address
         self.current_addr = self.current_addr.wrapping_add(1);
         
         value
     }
     
-    /// Write a word at the current (block, addr)
-    pub fn write_word(&mut self, value: u16) {
+    /// Write a byte at the current (block, addr)
+    pub fn write_byte(&mut self, value: u16) {
         // Ensure the block is loaded
         if self.load_block(self.current_block).is_err() {
             return;  // Silently fail on error
         }
         
         if let Some(block) = self.blocks.get_mut(&self.current_block) {
-            block.data[self.current_addr as usize] = value;
-            block.dirty = true;
+            // Convert byte address to word index and byte offset
+            let word_idx = (self.current_addr / 2) as usize;
+            let byte_offset = self.current_addr % 2;
+            
+            if word_idx < block.data.len() {
+                let byte_val = (value & 0xFF) as u8;  // Only use low 8 bits
+                
+                if byte_offset == 0 {
+                    // Write to low byte, preserve high byte
+                    block.data[word_idx] = (block.data[word_idx] & 0xFF00) | (byte_val as u16);
+                } else {
+                    // Write to high byte, preserve low byte
+                    block.data[word_idx] = (block.data[word_idx] & 0x00FF) | ((byte_val as u16) << 8);
+                }
+                block.dirty = true;
+            }
         }
         
-        // Auto-increment address
+        // Auto-increment byte address
         self.current_addr = self.current_addr.wrapping_add(1);
     }
     

@@ -127,18 +127,18 @@ impl VM {
             HDR_STORE_BLOCK => Some(0), // Write-only, return 0
             HDR_STORE_ADDR => Some(0),  // Write-only, return 0
             HDR_STORE_DATA => {
-                // Read word from storage at current (block, addr)
+                // Read byte from storage at current (block, byte_addr)
                 if let Some(ref mut storage) = self.storage {
                     // Get the actual current position from storage (before read)
                     let block = storage.get_block();
                     let addr = storage.get_addr();
                     
-                    let value = storage.read_word();
+                    let value = storage.read_byte();  // Returns byte value (0-255)
                     self.memory[HDR_STORE_DATA] = value;
                     
-                    // Log the read operation with the address that was actually used
+                    // Log the read operation with the byte address that was actually used
                     let full_addr = ((block as u32) << 16) | (addr as u32);
-                    log::debug!("Storage READ: addr {:#010x} (block={:#06x}, addr={:#06x}) -> value {:#06x}", 
+                    log::debug!("Storage READ: byte addr {:#010x} (block={:#06x}, byte_addr={:#06x}) -> value {:#04x}", 
                                 full_addr, block, addr, value);
                     
                     // Update memory to reflect the new position after auto-increment
@@ -264,7 +264,7 @@ impl VM {
                 true
             },
             HDR_STORE_ADDR => {
-                // Set current word address within block
+                // Set current byte address within block
                 if let Some(ref mut storage) = self.storage {
                     storage.set_addr(value);
                 }
@@ -272,10 +272,11 @@ impl VM {
                 true
             },
             HDR_STORE_DATA => {
-                // Write word to storage at current (block, addr)
+                // Write byte to storage at current (block, byte_addr)
+                // Only use low 8 bits of the value
                 if let Some(ref mut storage) = self.storage {
-                    storage.write_word(value);
-                    self.memory[HDR_STORE_DATA] = value;
+                    storage.write_byte(value);  // Will only use low 8 bits
+                    self.memory[HDR_STORE_DATA] = value & 0xFF;  // Store only the byte that was written
                 }
                 true
             },

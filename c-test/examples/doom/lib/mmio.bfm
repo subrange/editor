@@ -93,41 +93,34 @@
   @or(dst, t_lo, t_hi)
 }
 
-@proc(storage_read_at_le,
-  @call1(storage_set_block, @reg, @arg1)
-  @call1(storage_set_addr, @reg, @arg2)
-  @call(storage_read)
+@proc(storage_read_u16_le,
+  @mov(s0, @arg1)
+  @mov(s1, @arg2)
+  @set(s2, 0)
 
-  @mov(t0, rv0)
-  @set(t1, 0)
+  @let(s2, @read_byte(s0, s1))
 
-  @WORD_FROM_LE(t0, t1, s2)
+  @inc(s1)
+  @read_byte(s0, s1)
+  
+  @slli(rv0, rv0, 8)
+  @or(s2, s2, rv0)
 
   @retval(s2, r0)
 )
 
-@proc(storage_read_at_u32_le,
+@proc(storage_read_u32_le,
   @mov(s0, @arg1)
   @mov(s1, @arg2)
   @set(s2, 0)
   @set(s3, 0)
 
-  @call1(storage_set_block, @reg, s0)
-  @call1(storage_set_addr,  @reg, s1)
-  @call(storage_read)
-
-  @mov(t0, rv0)
-  @set(t1, 0)
-
-  @WORD_FROM_LE(t0, t1, s2)
-
-  @inc(s1)
-  @call1(storage_set_block, @reg, s0)
-  @call1(storage_set_addr,  @reg, s1)
-  @call(storage_read)
-
-  @mov(t0, rv0)
-  @WORD_FROM_LE(t0, t1, s3)
+  @let(s2, @read_u16(s0, s1))
+  @addi(s1, s1, 2)
+  @let(s3, @read_u16(s0, s1))
 
   @retval(s3, s2)
 )
+
+#define read_byte(block, addr) @call2(storage_read_at, @reg, s0, @reg, s1)
+#define read_u16(block, addr) @call2(storage_read_u16_le, @reg, block, @reg, addr)
