@@ -146,11 +146,19 @@ function EditorPanel() {
     const settings = useStoreSubscribe(settingsStore.settings);
     const autoExpand = settings?.macro.autoExpand ?? false;
     const useWasmExpander = settings?.macro.useWasmExpander ?? false;
+    const showAssemblyWorkspace = settings?.assembly?.showWorkspace ?? false;
     const [macroExpander] = useState(() => useWasmExpander ? createAsyncMacroExpanderWasm() : createAsyncMacroExpander());
     
     // Subscribe to minimap states
     const [mainEditorMinimapEnabled, setMainEditorMinimapEnabled] = useState(false);
     const [macroEditorMinimapEnabled, setMacroEditorMinimapEnabled] = useState(true);
+    
+    // Switch to brainfuck mode if Assembly workspace is disabled
+    useEffect(() => {
+        if (!showAssemblyWorkspace && mainEditorMode === 'assembly') {
+            setMainEditorMode('brainfuck');
+        }
+    }, [showAssemblyWorkspace, mainEditorMode, setMainEditorMode]);
     
     // Update main editor tokenizer when mode changes
     useEffect(() => {
@@ -328,14 +336,18 @@ function EditorPanel() {
                 <div className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
                     Main Editor
                     
-                    <div className="w-px h-6 bg-zinc-700 mx-1"/>
-                    
-                    <IconButton
-                        icon={CodeBracketIcon}
-                        label={mainEditorMode === 'assembly' ? "Assembly Mode" : "Brainfuck Mode"}
-                        onClick={() => setMainEditorMode(mainEditorMode === 'assembly' ? 'brainfuck' : 'assembly')}
-                        variant={mainEditorMode === 'assembly' ? "warning" : "default"}
-                    />
+                    {showAssemblyWorkspace && (
+                        <>
+                            <div className="w-px h-6 bg-zinc-700 mx-1"/>
+                            
+                            <IconButton
+                                icon={CodeBracketIcon}
+                                label={mainEditorMode === 'assembly' ? "Assembly Mode" : "Brainfuck Mode"}
+                                onClick={() => setMainEditorMode(mainEditorMode === 'assembly' ? 'brainfuck' : 'assembly')}
+                                variant={mainEditorMode === 'assembly' ? "warning" : "default"}
+                            />
+                        </>
+                    )}
                     
                     <div className="w-px h-6 bg-zinc-700 mx-1"/>
                     
@@ -438,40 +450,51 @@ function DebugPanel() {
 
 function WorkspacePanel() {
     const [activeEditor, setActiveEditor] = useLocalStorageState<'brainfuck' | 'assembly'>('activeEditorType', 'brainfuck');
+    const settings = useStoreSubscribe(settingsStore.settings);
+    const showAssemblyWorkspace = settings?.assembly?.showWorkspace ?? false;
+    
+    // If assembly workspace is hidden and user is on assembly, switch to brainfuck
+    useEffect(() => {
+        if (!showAssemblyWorkspace && activeEditor === 'assembly') {
+            setActiveEditor('brainfuck');
+        }
+    }, [showAssemblyWorkspace, activeEditor, setActiveEditor]);
     
     return <div className="v grow-1 bg-zinc-950">
-        {/* Editor selector tabs */}
-        <div className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold px-2 min-h-8 border-b border-zinc-800">
-            <div className="h gap-0">
-                <button
-                    className={clsx(
-                        "px-3 py-2 text-xs font-bold transition-colors",
-                        activeEditor === 'brainfuck' 
-                            ? "text-zinc-400 bg-zinc-800" 
-                            : "text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50"
-                    )}
-                    onClick={() => setActiveEditor('brainfuck')}
-                >
-                    <CpuChipIcon className="w-3 h-3 inline mr-1" />
-                    Brainfuck
-                </button>
-                <button
-                    className={clsx(
-                        "px-3 py-2 text-xs font-bold transition-colors",
-                        activeEditor === 'assembly' 
-                            ? "text-zinc-400 bg-zinc-800" 
-                            : "text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50"
-                    )}
-                    onClick={() => setActiveEditor('assembly')}
-                >
-                    <CommandLineIcon className="w-3 h-3 inline mr-1" />
-                    Assembly
-                </button>
+        {/* Editor selector tabs - only show if assembly workspace is enabled */}
+        {showAssemblyWorkspace && (
+            <div className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold px-2 min-h-8 border-b border-zinc-800">
+                <div className="h gap-0">
+                    <button
+                        className={clsx(
+                            "px-3 py-2 text-xs font-bold transition-colors",
+                            activeEditor === 'brainfuck' 
+                                ? "text-zinc-400 bg-zinc-800" 
+                                : "text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50"
+                        )}
+                        onClick={() => setActiveEditor('brainfuck')}
+                    >
+                        <CpuChipIcon className="w-3 h-3 inline mr-1" />
+                        Brainfuck
+                    </button>
+                    <button
+                        className={clsx(
+                            "px-3 py-2 text-xs font-bold transition-colors",
+                            activeEditor === 'assembly' 
+                                ? "text-zinc-400 bg-zinc-800" 
+                                : "text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50"
+                        )}
+                        onClick={() => setActiveEditor('assembly')}
+                    >
+                        <CommandLineIcon className="w-3 h-3 inline mr-1" />
+                        Assembly
+                    </button>
+                </div>
             </div>
-        </div>
+        )}
         
-        {/* Content based on active editor */}
-        {activeEditor === 'brainfuck' ? (
+        {/* Content based on active editor - always show brainfuck if assembly workspace is hidden */}
+        {(!showAssemblyWorkspace || activeEditor === 'brainfuck') ? (
             <>
                 <DebugPanel/>
                 <Toolbar/>

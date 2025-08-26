@@ -1,6 +1,6 @@
 import {useStoreSubscribeToField, useStoreSubscribe} from "../../../hooks/use-store-subscribe.tsx";
 import {interpreterStore} from "../../debugger/interpreter-facade.store.ts";
-import {useLayoutEffect, useRef, useMemo} from "react";
+import {useLayoutEffect, useRef, useMemo, useEffect} from "react";
 import clsx from "clsx";
 import {ChevronDownIcon, ChevronUpIcon, XMarkIcon} from "@heroicons/react/16/solid";
 import {CommandLineIcon} from "@heroicons/react/24/outline";
@@ -26,10 +26,18 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
     const outputContainer = useRef<HTMLDivElement>(null);
     const vmOutputContainer = useRef<HTMLDivElement>(null);
     
-    const showDisassembly = settings?.debugger.showDisassembly ?? false;
+    const showAssemblyWorkspace = settings?.assembly?.showWorkspace ?? false;
+    const showDisassembly = (settings?.debugger.showDisassembly ?? false) && showAssemblyWorkspace;
     const isDebugging = interpreterState.isRunning || interpreterState.isPaused;
     
     const { collapsed, height, maxLines } = outputState;
+    
+    // Switch to output tab if current tab is not available
+    useEffect(() => {
+        if (!showAssemblyWorkspace && (activeTab === 'vm' || activeTab === 'disassembly')) {
+            setActiveTab('output');
+        }
+    }, [showAssemblyWorkspace, activeTab, setActiveTab]);
 
     // Process output to handle max lines
     const processedOutput = useMemo(() => {
@@ -58,7 +66,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
             // Uncomment the line below to enable this feature:
             // setSplitView(true);
         }
-    }, [isDebugging, showDisassembly]);
+    }, [isDebugging, showDisassembly, splitView]);
 
     const containerClasses = clsx(
         "v bg-zinc-900 transition-all overflow-hidden",
@@ -147,12 +155,14 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                                         >
                                             Output
                                         </button>
-                                        <button
-                                            className={tabButtonClasses(activeTab === 'vm')}
-                                            onClick={() => setActiveTab('vm')}
-                                        >
-                                            VM Output
-                                        </button>
+                                        {showAssemblyWorkspace && (
+                                            <button
+                                                className={tabButtonClasses(activeTab === 'vm')}
+                                                onClick={() => setActiveTab('vm')}
+                                            >
+                                                VM Output
+                                            </button>
+                                        )}
                                         {showDisassembly && (
                                             <button
                                                 className={tabButtonClasses(activeTab === 'disassembly')}

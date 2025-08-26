@@ -8,7 +8,7 @@ import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { useState, useRef } from 'react';
 import { settingsManager } from '../../services/settings-manager.service';
 
-function SettingSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function SettingSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
     const storageKey = `settings-section-${title.toLowerCase().replace(/\s+/g, '-')}`;
     const [isOpen, setIsOpen] = useState(() => {
         const stored = localStorage.getItem(storageKey);
@@ -189,7 +189,7 @@ export function Settings() {
                 </SettingSection>
 
                 {/* Rust WASM Interpreter Settings */}
-                <SettingSection title="Rust WASM Interpreter" defaultOpen={false}>
+                <SettingSection title="Rust WASM Interpreter">
                     <div className="space-y-4">
                         <div className="p-2 bg-zinc-800/50 rounded text-xs text-zinc-400 mb-4">
                             <span className="text-yellow-500">⚡</span> These settings only apply to the Rust WASM interpreter
@@ -273,7 +273,7 @@ export function Settings() {
                 </SettingSection>
 
                 {/* Tape Labels */}
-                <SettingSection title="Tape Labels (Lane View)" defaultOpen={false}>
+                <SettingSection title="Tape Labels (Lane View)">
                     <TapeLabelsEditor />
                 </SettingSection>
 
@@ -443,6 +443,21 @@ export function Settings() {
                 {/* Assembly Settings */}
                 <SettingSection title="Assembly Editor">
                     <div className="space-y-4">
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                Show Assembly Workspace
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={settings?.assembly?.showWorkspace ?? false}
+                                onChange={(e) => settingsStore.setAssemblyShowWorkspace(e.target.checked)}
+                                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                            />
+                        </label>
+                        <p className="text-xs text-zinc-500 -mt-2">
+                            Show Assembly workspace tab in the main editor
+                        </p>
+                        
                         <label className="flex items-center justify-between cursor-pointer group">
                             <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
                                 Auto-compile

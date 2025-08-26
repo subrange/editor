@@ -25,7 +25,7 @@ class OutputStore {
     }
 
     state = new BehaviorSubject<OutputState>({
-        collapsed: this.loadFromStorage('outputCollapsed', false),
+        collapsed: this.loadFromStorage('outputCollapsed', true),
         position: this.loadFromStorage('outputPosition', 'right'),
         width: this.loadFromStorage('outputWidth', 384), // w-96 equivalent
         height: this.loadFromStorage('outputHeight', 384), // h-96 equivalent

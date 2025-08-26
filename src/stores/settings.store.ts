@@ -21,6 +21,7 @@ export interface AssemblySettings {
     bankSize: number;
     maxImmediate: number;
     memoryOffset: number;  // Offset for data addresses (default 2 for VM special values)
+    showWorkspace: boolean;  // Show Assembly workspace tab
 }
 
 export interface InterpreterSettings {
@@ -53,7 +54,8 @@ class SettingsStore {
             autoOpenOutput: this.loadFromStorage('assemblyAutoOpenOutput', true),
             bankSize: this.loadFromStorage('assemblyBankSize', 16),
             maxImmediate: this.loadFromStorage('assemblyMaxImmediate', 65535),
-            memoryOffset: this.loadFromStorage('assemblyMemoryOffset', 2)
+            memoryOffset: this.loadFromStorage('assemblyMemoryOffset', 2),
+            showWorkspace: this.loadFromStorage('assemblyShowWorkspace', false)
         },
         interpreter: {
             wrapCells: this.loadFromStorage('interpreterWrapCells', true),
@@ -206,6 +208,18 @@ class SettingsStore {
             }
         });
         this.saveToStorage('assemblyMemoryOffset', value);
+    }
+    
+    setAssemblyShowWorkspace(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            assembly: {
+                ...current.assembly,
+                showWorkspace: value
+            }
+        });
+        this.saveToStorage('assemblyShowWorkspace', value);
     }
 
     setInterpreterWrapCells(value: boolean) {
