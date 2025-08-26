@@ -166,6 +166,59 @@ export function Learning() {
                         💡 Select a tutorial to load example code into the editors. The IDE will configure the appropriate editors for each lesson.
                     </p>
                 </div>
+
+                {/* Links Section */}
+                <div className="mt-6 space-y-2">
+                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Helpful Links</h3>
+                    
+                    <div className="space-y-1">
+                        <a
+                            href="https://esolangs.org/wiki/Brainfuck"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-2 bg-zinc-800/50 hover:bg-zinc-700/50 rounded text-xs text-zinc-300 hover:text-zinc-100 transition-colors"
+                        >
+                            📖 Brainfuck Language Reference
+                        </a>
+
+                        <a 
+                            href="https://esolangs.org/wiki/Brainfuck_algorithms"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-2 bg-zinc-800/50 hover:bg-zinc-700/50 rounded text-xs text-zinc-300 hover:text-zinc-100 transition-colors"
+                        >
+                            📚 Brainfuck Algorithms Wiki
+                        </a>
+                        
+                        <a 
+                            href="http://www.hevanet.com/cristofd/brainfuck/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-2 bg-zinc-800/50 hover:bg-zinc-700/50 rounded text-xs text-zinc-300 hover:text-zinc-100 transition-colors"
+                        >
+                            🧑‍💻 Daniel Cristofani's BF Page
+                        </a>
+                        
+                        <a 
+                            href="https://www.reddit.com/r/brainfuck/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-2 bg-zinc-800/50 hover:bg-zinc-700/50 rounded text-xs text-zinc-300 hover:text-zinc-100 transition-colors"
+                        >
+                            💬 Reddit Brainfuck Community
+                        </a>
+                        
+                        <a
+                            href="https://copy.sh/brainfuck/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-2 bg-zinc-800/50 hover:bg-zinc-700/50 rounded text-xs text-zinc-300 hover:text-zinc-100 transition-colors"
+                        >
+                            🎮 Copy.sh Brainfuck Interpreter
+                        </a>
+
+                    </div>
+                </div>
             </div>
         </div>
     );

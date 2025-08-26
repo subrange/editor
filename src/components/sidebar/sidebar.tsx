@@ -1,11 +1,13 @@
 import {useLocalStorageState} from "../../hooks/use-local-storage-state.tsx";
+import { useState } from 'react';
 import clsx from "clsx";
-import {CogIcon, CameraIcon, DocumentIcon, HashtagIcon, AcademicCapIcon} from "@heroicons/react/24/outline";
+import {CogIcon, CameraIcon, DocumentIcon, HashtagIcon, AcademicCapIcon, InformationCircleIcon} from "@heroicons/react/24/outline";
 import {Settings} from "./settings.tsx";
 import {Snapshots} from "./snapshots.tsx";
 import {Files} from "./files.tsx";
 import {Marks} from "./marks.tsx";
 import {Learning} from "./learning.tsx";
+import {AboutModal} from "./about-modal.tsx";
 
 function SidebarTabButton({
                               icon: Icon,
@@ -37,6 +39,7 @@ function SidebarTabButton({
 
 export function Sidebar() {
     const [activeTab, setActiveTab] = useLocalStorageState<'settings' | 'snapshots' | 'files' | 'marks' | 'learning' | null>("sidebarTab", null);
+    const [showAboutModal, setShowAboutModal] = useState(false);
 
     return (
         <div className={clsx(
@@ -74,6 +77,12 @@ export function Sidebar() {
                     onClick={() => setActiveTab(activeTab === 'learning' ? null : 'learning')}
                 />
                 <SidebarTabButton
+                    icon={InformationCircleIcon}
+                    label="About"
+                    active={false}
+                    onClick={() => setShowAboutModal(true)}
+                />
+                <SidebarTabButton
                     icon={CogIcon}
                     label="Settings"
                     active={activeTab === 'settings'}
@@ -95,6 +104,9 @@ export function Sidebar() {
                 {activeTab === 'marks' && <Marks />}
                 {activeTab === 'learning' && <Learning />}
             </div>
+
+            {/* About Modal */}
+            {showAboutModal && <AboutModal onClose={() => setShowAboutModal(false)} />}
         </div>
     );
 }
