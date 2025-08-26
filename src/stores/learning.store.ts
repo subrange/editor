@@ -511,6 +511,73 @@ class LearningStore {
                             content: {
                                 macroEditor: macroRipple,
                                 mainEditor: '// Expanded code will appear here after clicking "Expand Macros"'
+                            },
+                            debuggerConfig: {
+                                viewMode: 'lane',
+                                laneCount: 8,
+                            },
+                            labels: {
+                                lanes: {
+                                    0: 'ZERO',
+                                    1: 'REG',
+                                    2: 'PTR',
+                                    3: 'CODE',
+                                    4: 'RAM',
+                                    5: 'Sa',
+                                    6: 'Sb',
+                                    7: 'FL'
+                                },
+                                columns: {
+                                    0: 'Zero',
+                                    1: 'R0',
+                                    2: 'PC',
+                                    3: 'PCB',
+                                    4: 'RA',
+                                    5: 'RAB',
+                                },
+                                cells: {
+                                    0: 'State',
+                                    9: 'R0',
+                                    17: 'PC',
+                                    25: 'PCB',
+                                    33: 'RA',
+                                    41: 'RAB',
+                                    49: 'RV0',
+                                    57: 'RV1',
+
+                                    65: 'A0',
+                                    73: 'A1',
+                                    81: 'A2',
+                                    89: 'A3',
+
+                                    97: 'X0',
+                                    105: 'X1',
+                                    113: 'X2',
+                                    121: 'X3',
+
+                                    129: 'T0',
+                                    137: 'T1',
+                                    145: 'T2',
+                                    153: 'T3',
+                                    161: 'T4',
+                                    169: 'T5',
+                                    177: 'T6',
+                                    185: 'T7',
+
+                                    193: 'S0',
+                                    201: 'S1',
+                                    209: 'S2',
+                                    217: 'S3',
+
+                                    225: 'SC',
+                                    233: 'SB',
+                                    241: 'SP',
+                                    249: 'FP',
+                                    257: 'GP',
+
+
+                                    299: 'Ins 0'
+                                }
                             }
                         }
                     ]

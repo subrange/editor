@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { learningStore, type LearningCategory, type LearningItem } from '../../stores/learning.store';
 import { useStoreSubscribe } from '../../hooks/use-store-subscribe';
-import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/20/solid';
+import { ChevronRightIcon } from '@heroicons/react/20/solid';
 import { BookOpenIcon } from '@heroicons/react/24/outline';
 import { editorManager } from '../../services/editor-manager.service';
 import { useLocalStorageState } from '../../hooks/use-local-storage-state';
@@ -15,7 +15,7 @@ export function Learning() {
     const learningState = useStoreSubscribe(learningStore.state);
     const [expandedCategories, setExpandedCategories] = useLocalStorageState<string[]>('learning-expanded-categories', []);
     const [expandedSubcategories, setExpandedSubcategories] = useLocalStorageState<string[]>('learning-expanded-subcategories', []);
-    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [selectedItemId, setSelectedItemId] = useLocalStorageState<string | null>('learning-selected-item', null);
     const [showTutorial, setShowTutorial] = useState(false);
     const [showAssemblyTutorial, setShowAssemblyTutorial] = useState(false);
     const [showIDEOverview, setShowIDEOverview] = useState(false);
@@ -38,6 +38,23 @@ export function Learning() {
                 : [...prev, subcategoryId]
         );
     };
+
+    // Auto-restore last selected item on mount
+    useEffect(() => {
+        if (selectedItemId && !learningStore.state.value.selectedItem) {
+            // Find the item by ID across all categories
+            for (const category of learningState.categories) {
+                for (const subcategory of category.subcategories) {
+                    const foundItem = subcategory.items.find(item => item.id === selectedItemId);
+                    if (foundItem) {
+                        learningStore.selectItem(foundItem);
+                        return;
+                    }
+                }
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run once on mount - selectedItemId and learningState are intentionally not in deps
 
     const loadItem = (item: LearningItem) => {
         // Update selected item
@@ -151,69 +168,102 @@ export function Learning() {
             </div>
 
             {/* Content */}
-            <div className="p-4 space-y-2">
+            <div className="p-3 space-y-1">
                 {learningState.categories.map((category: LearningCategory) => (
-                    <div key={category.id} className="space-y-1">
+                    <div key={category.id} className="">
                         {/* Category Header */}
                         <button
                             onClick={() => toggleCategory(category.id)}
-                            className="w-full flex items-center justify-between p-2 hover:bg-zinc-800/50 rounded transition-colors group"
+                            className="w-full flex items-center gap-1.5 px-2 py-1.5 hover:bg-zinc-800/40 rounded-md transition-all duration-150 group"
                         >
-                            <div className="flex items-center gap-2">
-                                {expandedCategories.includes(category.id) ? (
-                                    <ChevronDownIcon className="w-4 h-4 text-zinc-500" />
-                                ) : (
-                                    <ChevronRightIcon className="w-4 h-4 text-zinc-500" />
-                                )}
-                                <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                            <div className="flex items-center gap-1.5 flex-1">
+                                <div className="transition-transform duration-200" style={{
+                                    transform: expandedCategories.includes(category.id) ? 'rotate(90deg)' : 'rotate(0deg)'
+                                }}>
+                                    <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-400" />
+                                </div>
+                                <span className="text-[13px] font-medium text-zinc-300 group-hover:text-zinc-100 select-none">
                                     {category.icon} {category.name}
                                 </span>
                             </div>
+                            {expandedCategories.includes(category.id) && (
+                                <span className="text-[10px] text-zinc-600 font-mono">
+                                    {category.subcategories.length}
+                                </span>
+                            )}
                         </button>
 
                         {/* Subcategories */}
                         {expandedCategories.includes(category.id) && (
-                            <div className="ml-3 space-y-1">
-                                {category.subcategories.map(subcategory => (
-                                    <div key={subcategory.id}>
+                            <div className="ml-3 border-l border-zinc-800 mt-1">
+                                {category.subcategories.map((subcategory) => (
+                                    <div key={subcategory.id} className="relative">
+                                        {/* Tree connector line */}
+                                        <div className="absolute left-0 top-3 w-3 h-px bg-zinc-800" />
+                                        
                                         {/* Subcategory Header */}
                                         <button
                                             onClick={() => toggleSubcategory(subcategory.id)}
-                                            className="w-full flex items-center justify-between p-1.5 hover:bg-zinc-800/30 rounded transition-colors group"
+                                            className="w-full flex items-center gap-1.5 ml-3 px-2 py-1 hover:bg-zinc-800/30 rounded-md transition-all duration-150 group"
                                         >
-                                            <div className="flex items-center gap-2">
-                                                {expandedSubcategories.includes(subcategory.id) ? (
-                                                    <ChevronDownIcon className="w-3 h-3 text-zinc-600" />
-                                                ) : (
-                                                    <ChevronRightIcon className="w-3 h-3 text-zinc-600" />
-                                                )}
-                                                <span className="text-xs font-medium text-zinc-400 group-hover:text-zinc-300">
+                                            <div className="flex items-center gap-1.5 flex-1">
+                                                <div className="transition-transform duration-200" style={{
+                                                    transform: expandedSubcategories.includes(subcategory.id) ? 'rotate(90deg)' : 'rotate(0deg)'
+                                                }}>
+                                                    <ChevronRightIcon className="w-3 h-3 text-zinc-600 group-hover:text-zinc-500" />
+                                                </div>
+                                                <span className="text-[12px] font-medium text-zinc-400 group-hover:text-zinc-200 select-none">
                                                     {subcategory.name}
                                                 </span>
                                             </div>
+                                            {expandedSubcategories.includes(subcategory.id) && (
+                                                <span className="text-[10px] text-zinc-700 font-mono">
+                                                    {subcategory.items.length}
+                                                </span>
+                                            )}
                                         </button>
 
                                         {/* Items */}
                                         {expandedSubcategories.includes(subcategory.id) && (
-                                            <div className="mt-1 space-y-1">
-                                                {subcategory.items.map(item => (
-                                                    <button
-                                                        key={item.id}
-                                                        onClick={() => loadItem(item)}
-                                                        className={clsx(
-                                                            "w-full text-left p-2 rounded transition-colors",
-                                                            selectedItemId === item.id
-                                                                ? "bg-blue-500/20 border border-blue-500/50"
-                                                                : "bg-zinc-800 hover:bg-zinc-700"
-                                                        )}
-                                                    >
-                                                        <p className="text-sm text-zinc-200 font-medium">
-                                                            {item.name}
-                                                        </p>
-                                                        <p className="text-xs text-zinc-500 mt-0.5">
-                                                            {item.description}
-                                                        </p>
-                                                    </button>
+                                            <div className="ml-6 border-l border-zinc-800/50 mt-0.5">
+                                                {subcategory.items.map((item) => (
+                                                    <div key={item.id} className="relative">
+                                                        {/* Tree connector for items */}
+                                                        <div className="absolute left-0 top-4 w-3 h-px bg-zinc-800/50" />
+                                                        
+                                                        <button
+                                                            onClick={() => loadItem(item)}
+                                                            className={clsx(
+                                                                "w-full text-left ml-3 p-2 rounded-md transition-all duration-150",
+                                                                selectedItemId === item.id
+                                                                    ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/40 shadow-sm shadow-blue-500/10"
+                                                                    : "hover:bg-zinc-800/40 border border-transparent hover:border-zinc-700/50"
+                                                            )}
+                                                        >
+                                                            <div className="flex items-start gap-2">
+                                                                {/* Item indicator */}
+                                                                <div className={clsx(
+                                                                    "w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 transition-colors",
+                                                                    selectedItemId === item.id
+                                                                        ? "bg-blue-400 shadow-sm shadow-blue-400/50"
+                                                                        : "bg-zinc-600"
+                                                                )} />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={clsx(
+                                                                        "text-[12px] font-medium leading-snug",
+                                                                        selectedItemId === item.id
+                                                                            ? "text-zinc-100"
+                                                                            : "text-zinc-300"
+                                                                    )}>
+                                                                        {item.name}
+                                                                    </p>
+                                                                    <p className="text-[11px] text-zinc-500 mt-0.5 leading-snug line-clamp-2">
+                                                                        {item.description}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
