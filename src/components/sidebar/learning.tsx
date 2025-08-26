@@ -5,6 +5,9 @@ import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/20/solid';
 import { editorManager } from '../../services/editor-manager.service';
 import { useLocalStorageState } from '../../hooks/use-local-storage-state';
 import clsx from 'clsx';
+import { interpreterStore } from '../debugger/interpreter-facade.store';
+import { settingsStore } from '../../stores/settings.store';
+import { tapeLabelsStore } from '../../stores/tape-labels.store';
 
 export function Learning() {
     const learningState = useStoreSubscribe(learningStore.state);
@@ -34,7 +37,7 @@ export function Learning() {
         learningStore.selectItem(item);
 
         // Configure editors based on item config
-        const { editorConfig, content } = item;
+        const { editorConfig, content, interpreterConfig, debuggerConfig, labels } = item;
 
         // Show/hide editors as needed
         const showMainEditor = localStorage.getItem('showMainEditor');
@@ -53,9 +56,58 @@ export function Learning() {
             localStorage.setItem('mainEditorMode', JSON.stringify(editorConfig.mainEditorMode));
         }
 
-        localStorage.setItem('debugCollapsed', 'false'); // Ensure debug is visible
-        localStorage.setItem('debuggerViewMode', '"normal"'); // Set to normal view
-        localStorage.setItem('debuggerCompactView', 'false'); // Set to normal view
+        // Apply interpreter configuration
+        if (interpreterConfig) {
+            if (interpreterConfig.tapeSize !== undefined) {
+                interpreterStore.setTapeSize(interpreterConfig.tapeSize);
+            }
+            if (interpreterConfig.cellSize !== undefined) {
+                interpreterStore.setCellSize(interpreterConfig.cellSize);
+            }
+        }
+
+        // Apply debugger configuration
+        if (debuggerConfig) {
+            if (debuggerConfig.viewMode !== undefined) {
+                settingsStore.setDebuggerViewMode(debuggerConfig.viewMode);
+            }
+            if (debuggerConfig.laneCount !== undefined) {
+                interpreterStore.setLaneCount(debuggerConfig.laneCount);
+            }
+        }
+
+        // Clear existing labels first, then apply new ones
+        if (labels) {
+            // Clear all labels first
+            tapeLabelsStore.clearAllLabels();
+            
+            // Apply lane labels
+            if (labels.lanes) {
+                Object.entries(labels.lanes).forEach(([index, label]) => {
+                    tapeLabelsStore.setLaneLabel(Number(index), label);
+                });
+            }
+            
+            // Apply column labels
+            if (labels.columns) {
+                Object.entries(labels.columns).forEach(([index, label]) => {
+                    tapeLabelsStore.setColumnLabel(Number(index), label);
+                });
+            }
+            
+            // Apply cell labels
+            if (labels.cells) {
+                Object.entries(labels.cells).forEach(([index, label]) => {
+                    tapeLabelsStore.setCellLabel(Number(index), label);
+                });
+            }
+        } else {
+            // Clear all labels if no labels are specified
+            tapeLabelsStore.clearAllLabels();
+        }
+
+        // Ensure debugger is visible
+        localStorage.setItem('debugCollapsed', 'false');
 
         // Load content into editors
         if (content.mainEditor !== undefined) {

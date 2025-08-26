@@ -153,7 +153,7 @@ export function Toolbar() {
                     ) : (
                         <IconButton
                             icon={RocketLaunchIcon}
-                            label="Run with Rust WASM (Optimized, No Debug)"
+                            label="Run with Rust WASM (Optimized, Fastest, No Debug)"
                             onClick={handleRunWithRustWasm}
                             disabled={wasmStatus !== 'ready' || isRunning}
                             variant="success"
@@ -184,7 +184,7 @@ export function Toolbar() {
                         <>
                             <IconButton
                                 icon={BoltIcon}
-                                label="Run Really Fast (No delay, rare UI updates)"
+                                label="Run Really Fast (No delay, rare UI updates, output may be clobbered)"
                                 onClick={() => interpreterStore.runTurbo()}
                                 disabled={isRunning}
                                 variant="success"
