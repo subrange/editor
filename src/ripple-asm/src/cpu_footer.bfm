@@ -112,8 +112,8 @@
 #define OP_ORI  0xC
 #define OP_XORI 0xD
 #define OP_LI   0xE
-#define OP_SLI  0xF
-#define OP_SRI  0x10
+#define OP_SLLI 0xF
+#define OP_SRLI 0x10
 
 #define OP_LOAD 0x11
 
@@ -1554,8 +1554,8 @@
       @opcase(#OP_STOR,  @stor)
       @opcase(#OP_LOAD,  @load)
 
-      @opcase(#OP_SRI,   @sri)
-      @opcase(#OP_SLI,   @sli)
+      @opcase(#OP_SRLI,   @sri)
+      @opcase(#OP_SLLI,   @sli)
       @opcase(#OP_LI,    @li)
       @opcase(#OP_XORI,  @xori)
       @opcase(#OP_ORI,   @ori)
