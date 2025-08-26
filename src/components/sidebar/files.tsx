@@ -3,6 +3,8 @@ import { editorManager } from "../../services/editor-manager.service.ts";
 import { DocumentIcon, TrashIcon, ArrowDownTrayIcon, ArrowDownIcon } from "@heroicons/react/24/outline";
 import JSZip from "jszip";
 import { Tooltip } from "../ui/tooltip";
+import { settingsStore } from "../../stores/settings.store.ts";
+import { useStoreSubscribe } from "../../hooks/use-store-subscribe.tsx";
 
 const STORAGE_KEY = "brainfuck-saved-files";
 
@@ -36,6 +38,8 @@ function saveFiles(files: SavedFile[]) {
 export function Files() {
     const [files, setFiles] = useState<SavedFile[]>(() => loadFiles());
     const [fileName, setFileName] = useState("");
+    const settings = useStoreSubscribe(settingsStore.settings);
+    const showAssemblyWorkspace = settings?.assembly?.showWorkspace ?? false;
 
     // Save files to localStorage whenever they change
     useEffect(() => {
@@ -57,7 +61,8 @@ export function Files() {
             timestamp: Date.now(),
             mainContent: mainEditor.getText(),
             macroContent: macroEditor.getText(),
-            assemblyContent: assemblyEditor?.getText() || ''
+            // Only save assembly content if the workspace is enabled
+            assemblyContent: showAssemblyWorkspace && assemblyEditor ? assemblyEditor.getText() : ''
         };
         
         setFiles([file, ...files]);
@@ -77,7 +82,8 @@ export function Files() {
             macroEditor.setContent(file.macroContent);
         }
         
-        if (assemblyEditor && file.assemblyContent) {
+        // Only load assembly content if the workspace is enabled
+        if (showAssemblyWorkspace && assemblyEditor && file.assemblyContent) {
             assemblyEditor.setContent(file.assemblyContent);
         }
     };
@@ -93,7 +99,7 @@ export function Files() {
 
     const downloadFile = async (file: SavedFile) => {
         const hasMacroContent = file.macroContent.trim().length > 0;
-        const hasAssemblyContent = file.assemblyContent?.trim().length > 0;
+        const hasAssemblyContent = showAssemblyWorkspace && file.assemblyContent?.trim().length > 0;
         
         if (!hasMacroContent && !hasAssemblyContent) {
             // Download single .bf file
@@ -203,7 +209,7 @@ export function Files() {
                                                 {hasMacros && (
                                                     <span className="text-xs text-blue-400">M</span>
                                                 )}
-                                                {file.assemblyContent?.trim() && (
+                                                {showAssemblyWorkspace && file.assemblyContent?.trim() && (
                                                     <span className="text-xs text-green-400">A</span>
                                                 )}
                                             </div>

@@ -62,7 +62,7 @@ function initializeEditors() {
                 showDebug: false,
                 showMinimap: true
             },
-            initialContent: '#define clear [-]\n#define inc(n) {repeat(n, +)}\n#define dec(n) {repeat(n, -)}\n\n// Example usage:\n// @inc(5) @clear\n'
+            initialContent: ''
         });
         
         // Set up auto-expansion pipeline

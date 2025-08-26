@@ -7,6 +7,7 @@ import { TapeLabelsEditor } from "./tape-labels-editor";
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { useState, useRef } from 'react';
 import { settingsManager } from '../../services/settings-manager.service';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 function SettingSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
     const storageKey = `settings-section-${title.toLowerCase().replace(/\s+/g, '-')}`;
@@ -62,6 +63,7 @@ export function Settings() {
     const laneCount = useStoreSubscribe(interpreterStore.laneCount);
     const settings = useStoreSubscribe(settingsStore.settings);
     const outputState = useStoreSubscribe(outputStore.state);
+    const [showResetWarning, setShowResetWarning] = useState(false);
 
     const handleTapeSizeChange = (value: string) => {
         const size = parseInt(value) || 30000;
@@ -273,7 +275,7 @@ export function Settings() {
                 </SettingSection>
 
                 {/* Tape Labels */}
-                <SettingSection title="Tape Labels (Lane View)">
+                <SettingSection title="Tape Labels">
                     <TapeLabelsEditor />
                 </SettingSection>
 
@@ -337,7 +339,7 @@ export function Settings() {
                             />
                         </label>
                         <p className="text-xs text-zinc-500 -mt-2">
-                            Use Rust-based WASM macro expander (experimental)
+                            Use Rust-based WASM macro expander
                         </p>
                     </div>
                 </SettingSection>
@@ -441,7 +443,7 @@ export function Settings() {
                 {/*</SettingSection>*/}
 
                 {/* Assembly Settings */}
-                <SettingSection title="Assembly Editor">
+                <SettingSection title="Assembly">
                     <div className="space-y-4">
                         <label className="flex items-center justify-between cursor-pointer group">
                             <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
@@ -456,6 +458,26 @@ export function Settings() {
                         </label>
                         <p className="text-xs text-zinc-500 -mt-2">
                             Show Assembly workspace tab in the main editor
+                        </p>
+                        
+                        {/* Show rest of assembly settings only when workspace is enabled */}
+                        {(settings?.assembly?.showWorkspace ?? false) && (
+                            <>
+                        {/* Show Disassembly toggle */}
+                        <label className="flex items-center justify-between cursor-pointer group mt-4">
+                            <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                Show Disassembly
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={settings?.debugger.showDisassembly ?? false}
+                                onChange={(e) => settingsStore.setDebuggerShowDisassembly(e.target.checked)}
+                                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                disabled={settings?.debugger.viewMode !== 'lane' || laneCount === 1}
+                            />
+                        </label>
+                        <p className="text-xs text-zinc-500 -mt-2">
+                            Display disassembly in lane view debugger (requires lane view and lanes &gt; 1)
                         </p>
                         
                         <label className="flex items-center justify-between cursor-pointer group">
@@ -554,6 +576,8 @@ export function Settings() {
                                 Maximum value for immediate operands in LI instruction
                             </p>
                         </div>
+                            </>
+                        )}
                     </div>
                 </SettingSection>
 
@@ -605,9 +629,84 @@ export function Settings() {
                                 ⚠️ Importing settings will overwrite all current settings and reload the page.
                             </p>
                         </div>
+                        
+                        {/* Restore default settings */}
+                        <div className="pt-4 border-t border-zinc-800">
+                            <button
+                                onClick={() => setShowResetWarning(true)}
+                                className="w-full px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 text-sm font-medium rounded transition-colors"
+                            >
+                                Restore Default Settings
+                            </button>
+                            <p className="text-xs text-zinc-500 mt-2">
+                                Reset all settings to their default values
+                            </p>
+                        </div>
                     </div>
                 </SettingSection>
             </div>
+            
+            {/* Reset Warning Modal */}
+            {showResetWarning && (
+                <>
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-black/70 z-40" 
+                        onClick={() => setShowResetWarning(false)}
+                    />
+                    
+                    {/* Modal */}
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
+                        <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden">
+                            {/* Header */}
+                            <div className="px-6 py-4 bg-zinc-800 border-b border-zinc-700">
+                                <div className="flex items-center gap-3">
+                                    <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
+                                    <h3 className="text-lg font-semibold text-zinc-100">Reset All Settings</h3>
+                                </div>
+                            </div>
+                            
+                            {/* Content */}
+                            <div className="px-6 py-4">
+                                <p className="text-sm text-zinc-300 mb-4">
+                                    This action will completely reset the IDE to its default state. This includes:
+                                </p>
+                                <ul className="list-disc list-inside text-sm text-zinc-400 space-y-1 mb-4">
+                                    <li>All saved files will be deleted</li>
+                                    <li>All settings will be reset to defaults</li>
+                                    <li>All tape snapshots will be removed</li>
+                                    <li>Editor contents will be cleared</li>
+                                    <li>Custom tape labels will be removed</li>
+                                </ul>
+                                <p className="text-sm text-red-400 ">
+                                    This action cannot be undone!
+                                </p>
+                            </div>
+                            
+                            {/* Actions */}
+                            <div className="px-6 py-4 bg-zinc-800/50 border-t border-zinc-700 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setShowResetWarning(false)}
+                                    className="px-4 py-2 text-sm font-medium text-zinc-300 bg-zinc-700 hover:bg-zinc-600 rounded transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        // Clear all localStorage
+                                        localStorage.clear();
+                                        // Reload the page
+                                        window.location.reload();
+                                    }}
+                                    className="px-4 py-2 text-sm font-medium text-zinc-200 bg-red-900 hover:bg-red-700 rounded transition-colors"
+                                >
+                                    Reset Everything
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

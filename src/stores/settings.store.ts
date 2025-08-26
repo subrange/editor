@@ -40,9 +40,9 @@ class SettingsStore {
     public settings = new BehaviorSubject<Settings>({
         macro: {
             stripComments: this.loadFromStorage('macroStripComments', true),
-            collapseEmptyLines: this.loadFromStorage('macroCollapseEmptyLines', true),
-            autoExpand: this.loadFromStorage('autoExpandMacros', false),
-            useWasmExpander: this.loadFromStorage('macroUseWasmExpander', false)
+            collapseEmptyLines: this.loadFromStorage('macroCollapseEmptyLines', false),
+            autoExpand: this.loadFromStorage('autoExpandMacros', true),
+            useWasmExpander: this.loadFromStorage('macroUseWasmExpander', true)
         },
         debugger: {
             compactView: this.loadFromStorage('debuggerCompactView', false),
@@ -52,7 +52,7 @@ class SettingsStore {
         assembly: {
             autoCompile: this.loadFromStorage('assemblyAutoCompile', false),
             autoOpenOutput: this.loadFromStorage('assemblyAutoOpenOutput', true),
-            bankSize: this.loadFromStorage('assemblyBankSize', 16),
+            bankSize: this.loadFromStorage('assemblyBankSize', 64000),
             maxImmediate: this.loadFromStorage('assemblyMaxImmediate', 65535),
             memoryOffset: this.loadFromStorage('assemblyMemoryOffset', 2),
             showWorkspace: this.loadFromStorage('assemblyShowWorkspace', false)

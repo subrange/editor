@@ -49,6 +49,64 @@ export function TapeLabelsEditor() {
         <div className="space-y-4">
             <div>
                 <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-zinc-300">Cell Labels</h3>
+                    <button
+                        onClick={() => setShowAddCell(!showAddCell)}
+                        className="p-1 hover:bg-zinc-800 rounded transition-colors"
+                    >
+                        <PlusIcon className="w-4 h-4 text-zinc-400" />
+                    </button>
+                </div>
+
+                {showAddCell && (
+                    <div className="space-y-2 mb-2">
+                        <div className="flex gap-2">
+                            <input
+                                type="number"
+                                placeholder="Index"
+                                value={newCellIndex}
+                                onChange={(e) => setNewCellIndex(e.target.value)}
+                                className="w-12 px-1.5 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Label"
+                                value={newCellLabel}
+                                onChange={(e) => setNewCellLabel(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddCellLabel()}
+                                className="flex-1 px-2 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded"
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddCellLabel}
+                            className="w-full px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 rounded transition-colors"
+                        >
+                            Add Cell Label
+                        </button>
+                    </div>
+                )}
+
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {Object.entries(labels.cells).map(([index, label]) => (
+                        <div key={index} className="flex items-center gap-1 p-1 text-xs bg-zinc-800 rounded">
+                            <span className="text-zinc-400 shrink-0">#{index}:</span>
+                            <span className="text-zinc-300 truncate flex-1">{label}</span>
+                            <button
+                                onClick={() => tapeLabelsStore.removeCellLabel(parseInt(index))}
+                                className="p-0.5 hover:bg-zinc-700 rounded transition-colors shrink-0"
+                            >
+                                <XMarkIcon className="w-3 h-3 text-zinc-500" />
+                            </button>
+                        </div>
+                    ))}
+                    {Object.keys(labels.cells).length === 0 && (
+                        <p className="text-xs text-zinc-500">No cell labels defined</p>
+                    )}
+                </div>
+            </div>
+
+            <div>
+                <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-medium text-zinc-300">Lane Labels</h3>
                     <button
                         onClick={() => setShowAddLane(!showAddLane)}
@@ -163,63 +221,6 @@ export function TapeLabelsEditor() {
                 </div>
             </div>
 
-            <div>
-                <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium text-zinc-300">Cell Labels</h3>
-                    <button
-                        onClick={() => setShowAddCell(!showAddCell)}
-                        className="p-1 hover:bg-zinc-800 rounded transition-colors"
-                    >
-                        <PlusIcon className="w-4 h-4 text-zinc-400" />
-                    </button>
-                </div>
-                
-                {showAddCell && (
-                    <div className="space-y-2 mb-2">
-                        <div className="flex gap-2">
-                            <input
-                                type="number"
-                                placeholder="Index"
-                                value={newCellIndex}
-                                onChange={(e) => setNewCellIndex(e.target.value)}
-                                className="w-12 px-1.5 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded"
-                            />
-                            <input
-                                type="text"
-                                placeholder="Label"
-                                value={newCellLabel}
-                                onChange={(e) => setNewCellLabel(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddCellLabel()}
-                                className="flex-1 px-2 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded"
-                            />
-                        </div>
-                        <button
-                            onClick={handleAddCellLabel}
-                            className="w-full px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 rounded transition-colors"
-                        >
-                            Add Cell Label
-                        </button>
-                    </div>
-                )}
-                
-                <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {Object.entries(labels.cells).map(([index, label]) => (
-                        <div key={index} className="flex items-center gap-1 p-1 text-xs bg-zinc-800 rounded">
-                            <span className="text-zinc-400 shrink-0">#{index}:</span>
-                            <span className="text-zinc-300 truncate flex-1">{label}</span>
-                            <button
-                                onClick={() => tapeLabelsStore.removeCellLabel(parseInt(index))}
-                                className="p-0.5 hover:bg-zinc-700 rounded transition-colors shrink-0"
-                            >
-                                <XMarkIcon className="w-3 h-3 text-zinc-500" />
-                            </button>
-                        </div>
-                    ))}
-                    {Object.keys(labels.cells).length === 0 && (
-                        <p className="text-xs text-zinc-500">No cell labels defined</p>
-                    )}
-                </div>
-            </div>
 
             {(Object.keys(labels.lanes).length > 0 || Object.keys(labels.columns).length > 0 || Object.keys(labels.cells).length > 0) && (
                 <button

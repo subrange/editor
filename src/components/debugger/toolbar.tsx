@@ -184,7 +184,7 @@ export function Toolbar() {
                         <>
                             <IconButton
                                 icon={BoltIcon}
-                                label="Run Really Fast (No delay, rare UI updates, no breakpoints)"
+                                label="Run Really Fast (No delay, rare UI updates)"
                                 onClick={() => interpreterStore.runTurbo()}
                                 disabled={isRunning}
                                 variant="success"

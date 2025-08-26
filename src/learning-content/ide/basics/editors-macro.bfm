@@ -1,0 +1,29 @@
+// This is the macro editor
+// Define macros here and expand them to see the result
+
+// Define some useful macros
+#define clear [-]
+#define inc(n) {repeat(n, +)}
+#define dec(n) {repeat(n, -)}
+#define move(n) {repeat(n, >)}
+#define back(n) {repeat(n, <)}
+#define print .
+
+// Use macros with @ symbol
+@inc(72)     // Set cell to 72 ('H')
+@print       // Print it
+@clear       // Clear cell
+
+@inc(101)    // 'e'
+@print
+@clear
+
+@inc(108)    // 'l'
+@print
+@print       // Print 'l' twice
+@clear
+
+@inc(111)    // 'o'
+@print
+
+// Click "Expand Macros" button to see the expanded Brainfuck code!

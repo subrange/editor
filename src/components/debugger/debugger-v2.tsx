@@ -17,7 +17,8 @@ export function Debugger() {
   const pointer = interpreterState.pointer;
   const laneCount = interpreterState.laneCount;
   const viewMode = settings?.debugger.viewMode ?? 'normal';
-  const showDisassembly = settings?.debugger.showDisassembly ?? false;
+  const showAssemblyWorkspace = settings?.assembly?.showWorkspace ?? false;
+  const showDisassembly = (settings?.debugger.showDisassembly ?? false) && showAssemblyWorkspace;
   
   // Determine cell info
   const cellInfo = tape instanceof Uint8Array
@@ -95,8 +96,8 @@ export function Debugger() {
               variant={viewMode === 'lane' ? 'info' : 'default'}
             />
           </div>
-          {/* Disassembly toggle (only in lane view) */}
-          {viewMode === 'lane' && laneCount > 1 && (
+          {/* Disassembly toggle (only in lane view and when Assembly workspace is enabled) */}
+          {viewMode === 'lane' && laneCount > 1 && showAssemblyWorkspace && (
             <IconButton
               icon={CommandLineIcon}
               label={showDisassembly ? "Hide Disassembly" : "Show Disassembly"}

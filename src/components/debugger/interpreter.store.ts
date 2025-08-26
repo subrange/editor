@@ -51,7 +51,7 @@ export type TapeSnapshot = {
     };
 }
 
-const DEFAULT_TAPE_SIZE = 1024 * 1024; // 1 megabyte tape
+const DEFAULT_TAPE_SIZE = 30000; // Default tape size
 const DEFAULT_CELL_SIZE = 256; // 8-bit cells
 const DEFAULT_LANE_COUNT = 1; // Single lane by default
 

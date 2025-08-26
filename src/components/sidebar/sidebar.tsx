@@ -1,10 +1,11 @@
 import {useLocalStorageState} from "../../hooks/use-local-storage-state.tsx";
 import clsx from "clsx";
-import {CogIcon, CameraIcon, DocumentIcon, HashtagIcon} from "@heroicons/react/24/outline";
+import {CogIcon, CameraIcon, DocumentIcon, HashtagIcon, AcademicCapIcon} from "@heroicons/react/24/outline";
 import {Settings} from "./settings.tsx";
 import {Snapshots} from "./snapshots.tsx";
 import {Files} from "./files.tsx";
 import {Marks} from "./marks.tsx";
+import {Learning} from "./learning.tsx";
 
 function SidebarTabButton({
                               icon: Icon,
@@ -35,7 +36,7 @@ function SidebarTabButton({
 }
 
 export function Sidebar() {
-    const [activeTab, setActiveTab] = useLocalStorageState<'settings' | 'snapshots' | 'files' | 'marks' | null>("sidebarTab", null);
+    const [activeTab, setActiveTab] = useLocalStorageState<'settings' | 'snapshots' | 'files' | 'marks' | 'learning' | null>("sidebarTab", null);
 
     return (
         <div className={clsx(
@@ -67,6 +68,12 @@ export function Sidebar() {
                 />
                 <div className="flex-1" />
                 <SidebarTabButton
+                    icon={AcademicCapIcon}
+                    label="Learning"
+                    active={activeTab === 'learning'}
+                    onClick={() => setActiveTab(activeTab === 'learning' ? null : 'learning')}
+                />
+                <SidebarTabButton
                     icon={CogIcon}
                     label="Settings"
                     active={activeTab === 'settings'}
@@ -86,6 +93,7 @@ export function Sidebar() {
                 {activeTab === 'snapshots' && <Snapshots />}
                 {activeTab === 'files' && <Files />}
                 {activeTab === 'marks' && <Marks />}
+                {activeTab === 'learning' && <Learning />}
             </div>
         </div>
     );

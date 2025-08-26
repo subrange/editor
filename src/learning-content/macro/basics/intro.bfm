@@ -1,0 +1,49 @@
+// Introduction to the Macro System
+// The macro system allows you to write more readable and maintainable Brainfuck code
+
+// === Basic Macro Definition ===
+// Use #define to create a simple text replacement macro
+#define clear [-]
+#define next >
+#define prev <
+#define inc +
+#define dec -
+#define output .
+#define input ,
+
+// === Parameterized Macros ===
+// Macros can accept parameters for more flexibility
+#define add(n) {repeat(n, +)}
+#define sub(n) {repeat(n, -)}
+#define move(n) {repeat(n, >)}
+#define back(n) {repeat(n, <)}
+#define set(n) [-]{repeat(n, +)}
+
+// === Complex Macros ===
+// Build more complex operations from simpler ones
+#define print_char(c) @set(c) @output
+#define print_newline @print_char(10)
+#define print_space @print_char(32)
+
+// === Using Macros ===
+// Call macros with the @ symbol
+
+// Example 1: Print 'A' (ASCII 65)
+@print_char(65)
+@print_newline
+
+// Example 2: Simple counter
+@clear
+@add(5)      // Set to 5
+@next        // Move to next cell
+@add(3)      // Set to 3
+@prev        // Back to first cell
+
+// Example 3: Print "Hi!"
+@clear
+@print_char(72)  // 'H'
+@print_char(105) // 'i'  
+@print_char(33)  // '!'
+@print_newline
+
+// Click "Expand Macros" to see the generated Brainfuck code!
