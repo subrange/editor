@@ -176,19 +176,55 @@
   @setlocal(%TITLEPIC_OFFS_LO, @arg4)
 
   @let2(s0, s1, @call4(add_u32, @reg, @arg1, @reg, @arg2, @reg, @arg3, @reg, @arg4))
-  @call2(print_hex32, @reg, s0, @reg, s1) @lbrk
 
   {local %TITLEPIC_COL_BANK}
   {local %TITLEPIC_COL_ADDR}
   @setlocal(%TITLEPIC_COL_BANK, s0)
   @setlocal(%TITLEPIC_COL_ADDR, s1)
 
+  {local %post_length}
+
   /*
-  @call1(save_col, @reg, s0, @reg, s1,
-    @reg, %TITLEPIC_HEADER_BANK_OFFSET,
-    @reg, %TITLEPIC_HEADER_ADDR_OFFSET
-  )
+    while (post_header != 0x00FF) {
+      // Read post
+    }
   */
+  {local %post_y}
+  {local %eoc_marker}
+  @set(x0, 0x00FF)
+  @setlocal(%eoc_marker, x0)
+  @setlocal(%post_y, r0)
+  
+  @loop(
+    @let(s2, @read_byte(s0, s1))
+    @setlocal(%post_y, s2)
+    @getlocal(t0, %eoc_marker)
+    @jeq(s2, t0, {label endloop})
+
+    @inc(s1)
+    @let(s2, @read_byte(s0, s1))
+    @setlocal(%post_length, s2)
+    @call1(print_uint, @reg, s2) @lbrk
+    @inc(s1)
+    @inc(s1) @com("skip padding byte")
+
+    /*
+      Now we read %post_length bytes of data
+    */
+
+    @set(s3, 0)
+
+    @while(@ne(s3, s2),
+      @let(t0, @read_byte(s0, s1))
+      @call1(print_hex16, @reg, t0) 
+      @inc(s1)
+      @inc(s3)
+    )
+
+    @inc(s1) @com("skip padding byte")
+  )
+
+  {label endloop}:
 )
 
 @proc(main, 
@@ -238,12 +274,15 @@
   @getlocal(s1, %TITLEPIC_HEADER_ADDR)
 
   @while(@ne(t0, t1),
+    @debug("Column: ") 
+    @call1(print_uint, @reg, t0)
+    @lbrk
+
     @muli(t2, t0, 4)
     @addi(t2, t2, 8)
     @add(t2, t2, s1)
     
     @let2(s2, s3, @call2(storage_read_u32_le, @reg, s0, @reg, t2))
-    // @call2(print_hex32, @reg, s2, @reg, s3) @lbrk
 
     @call4(read_column, @reg, s0, @reg, s1, @reg, s2, @reg, s3)
 
