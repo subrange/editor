@@ -1,4 +1,4 @@
-# Brainfuck Macro Language Tutorial
+# Brainfuck Advanced Language Layer System Tutorial
 
 A comprehensive guide to the macro preprocessing system for Brainfuck programming.
 
@@ -16,7 +16,7 @@ A comprehensive guide to the macro preprocessing system for Brainfuck programmin
 
 ## Introduction
 
-The Brainfuck macro preprocessor extends the standard Brainfuck language with powerful macro capabilities, making it easier to write complex programs. The preprocessor expands macros before the Brainfuck interpreter executes the code.
+The Brainfuck Advanced Language Layer System macro preprocessor extends the standard Brainfuck language with powerful macro capabilities, making it easier to write complex programs. The preprocessor expands macros before the Brainfuck interpreter executes the code.
 
 ### Key Features
 - Macro definitions with optional parameters
@@ -355,7 +355,7 @@ bfm validate input.bfm
 
 ## Summary
 
-The Brainfuck macro language provides powerful abstractions that make Brainfuck programming more manageable:
+The Brainfuck Advanced Language Layer System provides powerful abstractions that make Brainfuck programming more manageable:
 
 - **Macros** for code reuse and abstraction
 - **Parameters** for flexible, reusable components
@@ -364,3 +364,5 @@ The Brainfuck macro language provides powerful abstractions that make Brainfuck 
 - **Control flow** for complex logic
 
 By combining these features, you can write maintainable and sophisticated Brainfuck programs that would be impractical with raw Brainfuck alone.
+
+For the godlike-tear example, check out the "Macro Language" -> "Advanced" -> "Ripple VM" item in tutorials.

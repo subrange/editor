@@ -1,4 +1,29 @@
+// Pefectly Engineered Nonstandard Instruction Set v1.0
 
+// MARK: ------------- START -------------
+
+#define DEBUG 1
+
+#define BRK_IF_DEBUG {if(#DEBUG, $, @nop)}
+
+#define PROGRAM {@prg(
+  // Memory
+  @lane(#L_MEM,
+    {for(s in {'H','e','l','l','o',',',' ','R','i','p','p','l','e', ' ', 'V', 'M', '!',10,0}, @set(s) @nextword)}
+  ),
+
+  // Program
+  @program_start(
+       @OP_LI    , #S0, 0   , 0)
+  @cmd(@OP_LI    , #S1, 2   , 0)
+  @cmd(@OP_LOAD  , #S0, @R0 , #S1)
+  @cmd(@OP_BNE   , #S0, @R0 , 2)
+  @cmd(@OP_HALT  , 0  , 0   , 0)
+  @cmd(@OP_ADDI  , #S1, #S1 , 1)
+  @cmd(@OP_STOR  , #S0, @R0 , 0)
+  @cmd(@OP_JAL   , 0  , 0   , 2)
+  @program_end
+)
 }
 
 // MARK: ----------- CODE END ----------

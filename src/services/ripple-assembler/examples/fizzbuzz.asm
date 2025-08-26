@@ -13,30 +13,30 @@ space:        .asciiz " "
 start:
     ; Initialize counter to 1
     LI R3, 1
-    
+
 main_loop:
     ; Check if we've reached 101
     LI R4, 101
     BEQ R3, R4, done
-    
+
     ; Check divisibility by 15 (3*5) first
     ADD R5, R3, R0   ; Copy number
     LI R6, 15
     JAL R0, R0, check_divisible  ; Result in R7
     BEQ R7, R0, print_fizzbuzz
-    
+
     ; Check divisibility by 3
     ADD R5, R3, R0   ; Copy number
     LI R6, 3
     JAL R0, R0, check_divisible  ; Result in R7
     BEQ R7, R0, print_fizz
-    
+
     ; Check divisibility by 5
     ADD R5, R3, R0   ; Copy number
     LI R6, 5
     JAL R0, R0, check_divisible  ; Result in R7
     BEQ R7, R0, print_buzz
-    
+
     ; Not divisible by 3 or 5, print the number
     JAL R0, R0, print_number
     JAL r0 r0 continue_loop
@@ -63,7 +63,7 @@ continue_loop:
     LI R6, 10
     JAL R0, R0, check_divisible
     BEQ R7, R0, print_newline_cont
-    
+
     ; Print space
     LI R8, space
     JAL R0, R0, print_string

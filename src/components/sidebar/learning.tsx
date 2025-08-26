@@ -2,18 +2,26 @@ import { useState } from 'react';
 import { learningStore, type LearningCategory, type LearningItem } from '../../stores/learning.store';
 import { useStoreSubscribe } from '../../hooks/use-store-subscribe';
 import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/20/solid';
+import { BookOpenIcon } from '@heroicons/react/24/outline';
 import { editorManager } from '../../services/editor-manager.service';
 import { useLocalStorageState } from '../../hooks/use-local-storage-state';
 import clsx from 'clsx';
 import { interpreterStore } from '../debugger/interpreter-facade.store';
 import { settingsStore } from '../../stores/settings.store';
 import { tapeLabelsStore } from '../../stores/tape-labels.store';
+import { MarkdownViewer } from '../markdown-viewer';
 
 export function Learning() {
     const learningState = useStoreSubscribe(learningStore.state);
     const [expandedCategories, setExpandedCategories] = useLocalStorageState<string[]>('learning-expanded-categories', []);
     const [expandedSubcategories, setExpandedSubcategories] = useLocalStorageState<string[]>('learning-expanded-subcategories', []);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [showTutorial, setShowTutorial] = useState(false);
+    const [showAssemblyTutorial, setShowAssemblyTutorial] = useState(false);
+    const [showIDEOverview, setShowIDEOverview] = useState(false);
+    const [showEditorGuide, setShowEditorGuide] = useState(false);
+    const [showDebuggerGuide, setShowDebuggerGuide] = useState(false);
+    const [showSettingsGuide, setShowSettingsGuide] = useState(false);
 
     const toggleCategory = (categoryId: string) => {
         setExpandedCategories((prev: string[]) =>
@@ -225,7 +233,69 @@ export function Learning() {
 
                 {/* Links Section */}
                 <div className="mt-6 space-y-2">
-                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Helpful Links</h3>
+                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">IDE Documentation</h3>
+                    
+                    <div className="space-y-1">
+                        <button
+                            onClick={() => setShowIDEOverview(true)}
+                            className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-indigo-600/20 to-violet-600/20 hover:from-indigo-600/30 hover:to-violet-600/30 border border-indigo-500/30 rounded text-xs text-zinc-100 transition-all"
+                        >
+                            <BookOpenIcon className="w-4 h-4 text-indigo-400" />
+                            <span className="font-medium">Complete IDE Features Overview</span>
+                        </button>
+                        
+                        <button
+                            onClick={() => setShowEditorGuide(true)}
+                            className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-pink-600/20 to-rose-600/20 hover:from-pink-600/30 hover:to-rose-600/30 border border-pink-500/30 rounded text-xs text-zinc-100 transition-all"
+                        >
+                            <BookOpenIcon className="w-4 h-4 text-pink-400" />
+                            <span className="font-medium">Editor System Guide</span>
+                        </button>
+                        
+                        <button
+                            onClick={() => setShowDebuggerGuide(true)}
+                            className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-orange-600/20 to-amber-600/20 hover:from-orange-600/30 hover:to-amber-600/30 border border-orange-500/30 rounded text-xs text-zinc-100 transition-all"
+                        >
+                            <BookOpenIcon className="w-4 h-4 text-orange-400" />
+                            <span className="font-medium">Debugger & Execution Guide</span>
+                        </button>
+                        
+                        <button
+                            onClick={() => setShowSettingsGuide(true)}
+                            className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-cyan-600/20 to-teal-600/20 hover:from-cyan-600/30 hover:to-teal-600/30 border border-cyan-500/30 rounded text-xs text-zinc-100 transition-all"
+                        >
+                            <BookOpenIcon className="w-4 h-4 text-cyan-400" />
+                            <span className="font-medium">Settings & Configuration Guide</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Language Documentation Section */}
+                <div className="mt-6 space-y-2">
+                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Language Documentation</h3>
+                    
+                    <div className="space-y-1">
+                        <button
+                            onClick={() => setShowTutorial(true)}
+                            className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-blue-600/20 to-purple-600/20 hover:from-blue-600/30 hover:to-purple-600/30 border border-blue-500/30 rounded text-xs text-zinc-100 transition-all"
+                        >
+                            <BookOpenIcon className="w-4 h-4 text-blue-400" />
+                            <span className="font-medium">Brainfuck Macro Language Tutorial</span>
+                        </button>
+                        
+                        <button
+                            onClick={() => setShowAssemblyTutorial(true)}
+                            className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 rounded text-xs text-zinc-100 transition-all"
+                        >
+                            <BookOpenIcon className="w-4 h-4 text-green-400" />
+                            <span className="font-medium">Ripple VM Assembly & Architecture</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* External Links Section */}
+                <div className="mt-6 space-y-2">
+                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">External Resources</h3>
                     
                     <div className="space-y-1">
                         <a
@@ -276,6 +346,54 @@ export function Learning() {
                     </div>
                 </div>
             </div>
+            
+            {/* Markdown Tutorial Viewer */}
+            {showTutorial && (
+                <MarkdownViewer 
+                    filePath="/BRAINFUCK_MACRO_TUTORIAL.md"
+                    onClose={() => setShowTutorial(false)}
+                />
+            )}
+            
+            {/* Assembly Tutorial Viewer */}
+            {showAssemblyTutorial && (
+                <MarkdownViewer 
+                    filePath="/RIPPLE_ASSEMBLY_TUTORIAL.md"
+                    onClose={() => setShowAssemblyTutorial(false)}
+                />
+            )}
+            
+            {/* IDE Overview Documentation */}
+            {showIDEOverview && (
+                <MarkdownViewer 
+                    filePath="/IDE_FEATURES_OVERVIEW.md"
+                    onClose={() => setShowIDEOverview(false)}
+                />
+            )}
+            
+            {/* Editor Guide Documentation */}
+            {showEditorGuide && (
+                <MarkdownViewer 
+                    filePath="/IDE_EDITOR_GUIDE.md"
+                    onClose={() => setShowEditorGuide(false)}
+                />
+            )}
+            
+            {/* Debugger Guide Documentation */}
+            {showDebuggerGuide && (
+                <MarkdownViewer 
+                    filePath="/IDE_DEBUGGER_GUIDE.md"
+                    onClose={() => setShowDebuggerGuide(false)}
+                />
+            )}
+            
+            {/* Settings Guide Documentation */}
+            {showSettingsGuide && (
+                <MarkdownViewer 
+                    filePath="/IDE_SETTINGS_GUIDE.md"
+                    onClose={() => setShowSettingsGuide(false)}
+                />
+            )}
         </div>
     );
 }

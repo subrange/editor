@@ -20,13 +20,13 @@ The assembler will support BOTH numeric and symbolic names for all registers:
 
 | Numeric | Symbolic | Purpose              | Notes                 |
 |---------|----------|----------------------|-----------------------|
-| R0      | ZR, R0   | Hardware zero        | Always reads 0        |
+| R0      | R0       | Hardware zero        | Always reads 0        |
 | R1      | PC       | Program Counter      |                       |
 | R2      | PCB      | Program Counter Bank |                       |
 | R3      | RA       | Return Address       |                       |
 | R4      | RAB      | Return Address Bank  |                       |
-| R5      | RV0, V0  | Return Value 0       | Fat ptr address       |
-| R6      | RV1, V1  | Return Value 1       | Fat ptr bank          |
+| R5      | RV0      | Return Value 0       | Fat ptr address       |
+| R6      | RV1      | Return Value 1       | Fat ptr bank          |
 | R7      | A0       | Argument 0           |                       |
 | R8      | A1       | Argument 1           |                       |
 | R9      | A2       | Argument 2           |                       |
@@ -76,7 +76,7 @@ MOVE S0, RV0         ; Save return value
 ### Register Classes
 
 - **Hardware**: R0-R4 (zero, PC, PCB, RA, RAB)
-- **Return Values**: R5-R6 (RV0, RV1) - can return 32-bit/64-bit values
+- **Return Values**: R5-R6 (RV0, RV1) - can return 16-bit/32-bit values
 - **Arguments**: R7-R10 (A0-A3) - 4 function arguments
 - **Reserved**: R11-R14 (X0-X3) - Reserved for future extensions
 - **Temporaries**: R15-R22 (T0-T7) - caller-saved, general use

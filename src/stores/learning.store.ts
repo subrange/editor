@@ -5,6 +5,9 @@ import { BehaviorSubject } from 'rxjs';
 import ideWelcome from '../learning-content/ide/basics/welcome.bf?raw';
 import ideEditorsMacro from '../learning-content/ide/basics/editors-macro.bfm?raw';
 
+// Import new documentation files
+// Note: These will be loaded dynamically via markdown viewer
+
 // Brainfuck content
 import bfHelloWorld from '../learning-content/brainfuck/basics/hello-world.bf?raw';
 import bfCommands from '../learning-content/brainfuck/basics/commands.bf?raw';
@@ -14,6 +17,7 @@ import bfSierpinski from '../learning-content/brainfuck/examples/sierpinski.bf?r
 
 // Macro content
 import macroIntro from '../learning-content/macro/basics/intro.bfm?raw';
+import macroRipple from '../learning-content/macro/advanced/ripple-hello-world.bfm?raw';
 
 // RVM content
 // import rvmIntro from '../learning-content/rvm/basics/intro.asm?raw';
@@ -121,6 +125,216 @@ class LearningStore {
                             content: {
                                 mainEditor: '// This is the main editor\n// The expanded macro code will appear here\n// Click "Expand Macros" button to see the result',
                                 macroEditor: ideEditorsMacro
+                            }
+                        }
+                    ]
+                },
+                {
+                    id: 'ide-features',
+                    name: 'IDE Features',
+                    items: [
+                        {
+                            id: 'ide-debugging',
+                            name: 'Debugging Basics',
+                            description: 'Learn to use breakpoints and step through code',
+                            editorConfig: {
+                                showMainEditor: true,
+                                showMacroEditor: false,
+                                mainEditorMode: 'brainfuck'
+                            },
+                            interpreterConfig: {
+                                tapeSize: 100,
+                                cellSize: 256
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            },
+                            content: {
+                                mainEditor: `// Debugging Tutorial
+// Click on line numbers to set breakpoints!
+// Try setting a breakpoint on line 10
+
+// Initialize cell 0 with value 10
+++++++++++
+
+// Copy to cell 1 using a loop
+[->+<]
+
+// Move to cell 1 and add 5
+>+++++
+
+// Print the result (ASCII 15 = non-printable, so let's add more)
+// Add 50 to make it printable
+++++++++++ ++++++++++ ++++++++++ ++++++++++ ++++++++++
+
+// Print the character
+.
+
+// Clear the cell
+[-]
+
+// Print newline
+<++++++++++.`
+                            },
+                            labels: {
+                                cells: {
+                                    0: 'Source',
+                                    1: 'Destination'
+                                }
+                            }
+                        },
+                        {
+                            id: 'ide-tape-visualization',
+                            name: 'Tape Visualization Modes',
+                            description: 'Explore different tape view modes',
+                            editorConfig: {
+                                showMainEditor: true,
+                                showMacroEditor: false,
+                                mainEditorMode: 'brainfuck'
+                            },
+                            interpreterConfig: {
+                                tapeSize: 256,
+                                cellSize: 256
+                            },
+                            debuggerConfig: {
+                                viewMode: 'lane',
+                                laneCount: 8
+                            },
+                            content: {
+                                mainEditor: `// Tape Visualization Demo
+// Try switching between Normal, Compact, and Lane views!
+// This creates a pattern that looks interesting in lane view
+
+// Create a pattern across 64 cells
+// Each group of 8 cells will form one row in lane view
+
+// Row 1: Ascending values
+>+>++>+++>++++>+++++>++++++>+++++++>++++++++
+
+// Row 2: Descending values
+>++++++++>+++++++>++++++>+++++>++++>+++>++>+
+
+// Row 3: Even numbers
+>++>++++>++++++>++++++++>++++++++++>++++++++++++>++++++++++++++>++++++++++++++++
+
+// Row 4: Powers of 2
+>+>++>++++>++++++++>++++++++++++++++>++++++++++++++++++++++++++++++++
+
+// Move back to start
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+// Now step through or run to see the pattern!`
+                            },
+                            labels: {
+                                lanes: {
+                                    0: 'Pattern A',
+                                    1: 'Pattern B',
+                                    2: 'Pattern C',
+                                    3: 'Pattern D',
+                                    4: 'Pattern E',
+                                    5: 'Pattern F',
+                                    6: 'Pattern G',
+                                    7: 'Pattern H'
+                                }
+                            }
+                        },
+                        {
+                            id: 'ide-snapshots',
+                            name: 'Using Snapshots',
+                            description: 'Save and restore tape states',
+                            editorConfig: {
+                                showMainEditor: true,
+                                showMacroEditor: false,
+                                mainEditorMode: 'brainfuck'
+                            },
+                            interpreterConfig: {
+                                tapeSize: 100,
+                                cellSize: 256
+                            },
+                            content: {
+                                mainEditor: `// Snapshot Tutorial
+// Run this program step by step and save snapshots at interesting points!
+
+// Stage 1: Initialize some values
++++++ +++++ [>+++++ ++<-]  // Cell 1 = 70 (F)
+>>.                         // Print F
+>+++++ +++++ [>+++++ +++<-] // Cell 2 = 80 (P)  
+>.                          // Print P
+
+// SAVE A SNAPSHOT HERE! (Open Snapshots panel)
+
+<<[-]>[-]>[-]               // Clear all cells
+
+// Stage 2: Different values
+<<<+++++ +++++ [>+++++ ++++<-]  // Cell 1 = 90 (Z)
+>>.                              // Print Z
+>+++++ ++[>+++++ +++++<-]        // Cell 2 = 65 (A)
+>.                               // Print A
+
+// SAVE ANOTHER SNAPSHOT HERE!
+
+// Now try loading your first snapshot to restore the FP state!`
+                            },
+                            labels: {
+                                cells: {
+                                    0: 'Counter',
+                                    1: 'Letter 1',
+                                    2: 'Letter 2'
+                                }
+                            }
+                        },
+                        {
+                            id: 'ide-execution-modes',
+                            name: 'Execution Modes',
+                            description: 'Compare different execution speeds',
+                            editorConfig: {
+                                showMainEditor: true,
+                                showMacroEditor: false,
+                                mainEditorMode: 'brainfuck'
+                            },
+                            interpreterConfig: {
+                                tapeSize: 1000,
+                                cellSize: 256
+                            },
+                            content: {
+                                mainEditor: `// Execution Modes Demo
+// Try running this with different modes:
+// 1. Step mode (Forward button) - see each operation
+// 2. Smooth mode (Play button) - balanced speed
+// 3. Turbo mode (Lightning button) - maximum speed
+// 4. Custom delay (Clock button) - set your own speed
+// 5. Rust WASM (Rocket button) - native speed!
+
+// This program counts to 255 and shows progress
+// The different modes will show dramatically different speeds!
+
+// Initialize counter display
++++++ +++++ [>+++++ +++<-] >++. // Print 'R'
++++.                             // 'U'
+-.                               // 'N'
+<+++++ +++++.                    // newline
+
+// Main counting loop
+[-]  // Clear cell
+[    // This will run 256 times
+    + // Increment counter
+    
+    // Show progress every 10 increments
+    >[-]+++++ +++++
+    [<->-[<->-[<->-[<->-[<->-[<->-[<->-[<->-[<->-[<[-]>-]]]]]]]]]]
+    <[>>+++++ +++++ [>+++++ ++<-]>.<<<<]  // Print dot for progress
+    >>[-]<<
+    
+    // Continue until we overflow (256 becomes 0)
+    +
+]
+
+// Done!
+>+++++ +++++.  // newline
++++++ +++++ [>+++++ ++++<-]>.  // 'D'
++++++ +++++ [>+++++ +++++<-]>++++.  // 'O'
+-------.  // 'N'
+-.  // 'E'`
                             }
                         }
                     ]
@@ -277,7 +491,24 @@ class LearningStore {
                     id: 'macro-advanced',
                     name: 'Advanced',
                     items: [
-
+                        {
+                            id: 'macro-ripple',
+                            name: 'Ripple Hello World',
+                            description: 'A complex macro example. Reeeeaaally complex.',
+                            editorConfig: {
+                                showMainEditor: true,
+                                showMacroEditor: true,
+                                mainEditorMode: 'brainfuck'
+                            },
+                            interpreterConfig: {
+                                tapeSize: 30000000,
+                                cellSize: 65536
+                            },
+                            content: {
+                                macroEditor: macroRipple,
+                                mainEditor: '// Expanded code will appear here after clicking "Expand Macros"'
+                            }
+                        }
                     ]
                 }
             ]

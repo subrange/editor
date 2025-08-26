@@ -15,13 +15,11 @@
     "build:wasm:rust-interpreter": "cd src/rust-bf && ./build-wasm.sh && cp ./pkg/* ../../public/wasm || true && cd ../..",
     "build:wasm:rust-assembler": "cd src/ripple-asm && ./build-wasm.sh || true && cd ../..",
     "build:wasm": "npm run build:wasm:rust-interpreter && npm run build:wasm:rust-assembler",
-
     "build:rust-assembler": "cd src/ripple-asm && cargo build --release  || true && cd ../..",
     "build:rust-interpreter": "cd src/rust-bf && cargo build --release  || true && cd ../..",
     "build:rust-macro-expander": "cd src/bf-macro-expander && cargo build --release  || true && cd ../..",
     "build:rbt": "cd rbt && cargo build --release  || true && cd ..",
     "build:rcc": "cargo build --release || true",
-
     "build:native": "npm run build:rust-assembler && npm run build:rust-interpreter && npm run build:rust-macro-expander && npm run build:rbt && npm run build:rcc"
   },
   "dependencies": {
@@ -34,6 +32,8 @@
     "jszip": "^3.10.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "rxjs": "^7.8.2",
     "tailwindcss": "^4.1.11"
   },
