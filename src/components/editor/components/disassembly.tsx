@@ -22,7 +22,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   const tokenizer = useMemo(() => new AssemblyTokenizer(), [])
   
   // Constants for instruction layout
-  const INSTRUCTION_START = 168;
+  const INSTRUCTION_START = 296;
   const INSTRUCTION_SIZE = 32; // Each instruction spans 32 cells
   
   // Force update when interpreter state changes by using a key that changes
@@ -149,7 +149,15 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   const registerValues = useMemo(() => {
     const REGISTER_START = 9; // 8 + 1
     const REGISTER_SPACING = 8;
-    const registerNames = ['R0', 'PC', 'PCB', 'RA', 'RAB', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15'];
+    const registerNames = [
+      'R0', 'PC', 'PCB', 'RA', 'RAB', 
+      'RV0', 'RV1', // Return values (R5-R6)
+      'A0', 'A1', 'A2', 'A3', // Arguments (R7-R10)
+      'X0', 'X1', 'X2', 'X3', // Extended (R11-R14)
+      'T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', // Temporaries (R15-R22)
+      'S0', 'S1', 'S2', 'S3', // Saved (R23-R26)
+      'SC', 'SB', 'SP', 'FP', 'GP' // Special (R27-R31)
+    ];
     const registers: Array<{ name: string; value: number; index: number }> = [];
     
     for (let i = 0; i < registerNames.length; i++) {
@@ -164,7 +172,7 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
     }
     
     return registers;
-  }, [tape, interpreterState]); // Depend on interpreterState to catch all updates
+  }, [tape, interpreterState]); // Depend on tape AND interpreter state to catch all updates
   
   // Save watch cells to localStorage whenever they change
   useEffect(() => {
@@ -210,84 +218,136 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
   };
   
   return (
-    <div className="text-xs font-mono">
-      {/* Register display section - sticky at top */}
-      <div className="sticky top-0 bg-zinc-950 border-b border-zinc-800 pb-2 pt-2 -mx-2 px-2 z-10">
+    <div className="text-xs font-mono h-full flex flex-col">
+      {/* Register display section - fixed height */}
+      <div className="bg-zinc-950 border-b border-zinc-800 pb-2 pt-2 px-2 flex-shrink-0">
         <div className="text-zinc-400 font-bold mb-1">Registers:</div>
         
         {/* R0 */}
         <div className="flex items-baseline gap-1 mb-1">
           <span 
-            className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
+            className="text-cyan-400 cursor-pointer hover:underline"
             onClick={() => scrollToTapeIndex(registerValues[0]?.index || 9)}
           >
             R0:
           </span>
-          <span className={assemblyTokenStyles.number}>{registerValues[0]?.value || 0}</span>
+          <span className="text-zinc-600">{registerValues[0]?.value || 0}</span>
         </div>
         
-        {/* PC and PCB */}
-        <div className="flex gap-4 mb-1">
+        {/* PC with bank (PCB:PC format) */}
+        <div className="flex gap-6 mb-1">
           <div className="flex items-baseline gap-1">
-            <span 
-              className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
-              onClick={() => scrollToTapeIndex(registerValues[1]?.index || 17)}
-            >
+            <span className="text-cyan-400 cursor-pointer hover:underline" onClick={() => scrollToTapeIndex(registerValues[1]?.index || 17)}>
               PC:
             </span>
-            <span className={assemblyTokenStyles.number}>{registerValues[1]?.value || 0}</span>
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span 
-              className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
-              onClick={() => scrollToTapeIndex(registerValues[2]?.index || 25)}
-            >
-              PCB:
+            <span className={registerValues[2]?.value !== 0 || registerValues[1]?.value !== 0 ? "text-green-400 font-bold" : "text-zinc-600"}>
+              {String(registerValues[2]?.value || 0).padStart(4, '0')}:{String(registerValues[1]?.value || 0).padStart(4, '0')}
             </span>
-            <span className={assemblyTokenStyles.number}>{registerValues[2]?.value || 0}</span>
           </div>
-        </div>
-        
-        {/* RA and RAB */}
-        <div className="flex gap-4 mb-1">
+          
+          {/* RA with bank (RAB:RA format) */}
           <div className="flex items-baseline gap-1">
-            <span 
-              className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
-              onClick={() => scrollToTapeIndex(registerValues[3]?.index || 33)}
-            >
+            <span className="text-cyan-400 cursor-pointer hover:underline" onClick={() => scrollToTapeIndex(registerValues[3]?.index || 33)}>
               RA:
             </span>
-            <span className={assemblyTokenStyles.number}>{registerValues[3]?.value || 0}</span>
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span 
-              className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
-              onClick={() => scrollToTapeIndex(registerValues[4]?.index || 41)}
-            >
-              RAB:
+            <span className={registerValues[4]?.value !== 0 || registerValues[3]?.value !== 0 ? "text-green-400 font-bold" : "text-zinc-600"}>
+              {String(registerValues[4]?.value || 0).padStart(4, '0')}:{String(registerValues[3]?.value || 0).padStart(4, '0')}
             </span>
-            <span className={assemblyTokenStyles.number}>{registerValues[4]?.value || 0}</span>
           </div>
         </div>
         
-        {/* General purpose registers R3-R15 */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {registerValues.slice(5).map(reg => (
+        {/* Calling Convention Registers - with color coding */}
+        <div className="flex gap-4">
+          {registerValues.slice(5, 7).map(reg => (
             <div key={reg.name} className="flex items-baseline gap-1">
               <span 
-                className={assemblyTokenStyles.register + " cursor-pointer hover:underline"}
+                className="text-fuchsia-400 cursor-pointer hover:underline"
                 onClick={() => scrollToTapeIndex(reg.index)}
               >
                 {reg.name}:
               </span>
-              <span className={assemblyTokenStyles.number}>{reg.value}</span>
+              <span className={reg.value !== 0 ? "text-zinc-200" : "text-zinc-600"}>{reg.value}</span>
             </div>
           ))}
         </div>
         
-        {/* Watch cells section */}
-        <div className="mt-2 pt-2 border-t border-zinc-800">
-          <div className="text-zinc-400 font-bold mb-1">Watch Cells:</div>
+        <div className="flex gap-4">
+          {registerValues.slice(7, 11).map(reg => (
+            <div key={reg.name} className="flex items-baseline gap-1">
+              <span 
+                className="text-blue-400 cursor-pointer hover:underline"
+                onClick={() => scrollToTapeIndex(reg.index)}
+              >
+                {reg.name}:
+              </span>
+              <span className={reg.value !== 0 ? "text-zinc-200" : "text-zinc-600"}>{reg.value}</span>
+            </div>
+          ))}
+        </div>
+        
+        {/* Extended & Temporaries */}
+        <div className="flex gap-4">
+          {registerValues.slice(11, 15).map(reg => (
+            <div key={reg.name} className="flex items-baseline gap-1">
+              <span 
+                className="text-zinc-500 cursor-pointer hover:underline"
+                onClick={() => scrollToTapeIndex(reg.index)}
+              >
+                {reg.name}:
+              </span>
+              <span className={reg.value !== 0 ? "text-zinc-200" : "text-zinc-600"}>{reg.value}</span>
+            </div>
+          ))}
+        </div>
+        
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+          {registerValues.slice(15, 23).map(reg => (
+            <div key={reg.name} className="flex items-baseline gap-1">
+              <span 
+                className="text-yellow-400 cursor-pointer hover:underline"
+                onClick={() => scrollToTapeIndex(reg.index)}
+              >
+                {reg.name}:
+              </span>
+              <span className={reg.value !== 0 ? "text-zinc-200" : "text-zinc-600"}>{reg.value}</span>
+            </div>
+          ))}
+        </div>
+        
+        {/* Saved & Special */}
+        <div className="flex gap-4">
+          {registerValues.slice(23, 27).map(reg => (
+            <div key={reg.name} className="flex items-baseline gap-1">
+              <span 
+                className="text-emerald-400 cursor-pointer hover:underline"
+                onClick={() => scrollToTapeIndex(reg.index)}
+              >
+                {reg.name}:
+              </span>
+              <span className={reg.value !== 0 ? "text-zinc-200" : "text-zinc-600"}>{reg.value}</span>
+            </div>
+          ))}
+        </div>
+        
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+          {registerValues.slice(27).map(reg => (
+            <div key={reg.name} className="flex items-baseline gap-1">
+              <span 
+                className="text-red-400 cursor-pointer hover:underline"
+                onClick={() => scrollToTapeIndex(reg.index)}
+              >
+                {reg.name}:
+              </span>
+              <span className={reg.value !== 0 ? "text-zinc-200" : "text-zinc-600"}>{reg.value}</span>
+            </div>
+          ))}
+        </div>
+        
+      </div>
+      
+      {/* Watch cells section - fixed height */}
+      <div className="bg-zinc-950 border-b border-zinc-800 px-2 py-2 flex-shrink-0">
+        <div className="text-zinc-400 font-bold mb-1">Watch Cells:</div>
           
           {/* Add new watch cell input */}
           <div className="flex gap-2 mb-2">
@@ -338,12 +398,11 @@ export function Disassembly({ outputRef, isActive }: DisassemblyProps) {
           ) : (
             <div className="text-zinc-500 italic">No cells being watched</div>
           )}
-        </div>
       </div>
       
-      {/* Instructions section */}
-      <div>
-        <div className="text-zinc-400 font-bold mb-1">Instructions:</div>
+      {/* Instructions section - scrollable */}
+      <div className="flex-1 overflow-y-auto px-2" ref={outputRef}>
+        <div className="text-zinc-400 font-bold mb-1 mt-2">Instructions:</div>
         {tokenizedLines.map((tokens, lineIndex) => {
         const lineText = disassembledCode.split('\n')[lineIndex];
         

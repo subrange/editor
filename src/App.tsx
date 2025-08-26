@@ -334,8 +334,8 @@ function EditorPanel() {
         )}
         {showMainEditor && (
             <div className="v grow-1 bg-zinc-950">
-                <div className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold p-2 min-h-8 border-b border-zinc-800">
-                    Main Editor
+                <div className="h items-center bg-zinc-900 text-zinc-500 text-xs font-bold px-2 min-h-8 border-b border-zinc-800">
+                    <span className="mr-4">Main Editor</span>
                     
                     {showAssemblyWorkspace && (
                         <>

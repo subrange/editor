@@ -27,6 +27,8 @@ const LANE_COLORS = [
   { stroke: '#6366f1', fill: 'rgba(99, 102, 241, 0.1)' }, // indigo
 ];
 
+const INSTRUCTION_START = 296;
+
 export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, showDisassembly = false }: TapeCanvasRendererProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
@@ -383,7 +385,6 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, sho
         let isEvenInstruction = false;
         
         if (showDisassembly && viewMode === 'lane' && laneCount > 1) {
-          const INSTRUCTION_START = 168;
           const offset = index - INSTRUCTION_START;
           
           // Check if this cell is an instruction component (not padding)
@@ -509,7 +510,6 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, sho
         // Check if we should show disassembly
         if (showDisassembly && viewMode === 'lane' && laneCount > 1) {
           // Calculate if this is an instruction cell
-          const INSTRUCTION_START = 168;
           const offset = index - INSTRUCTION_START;
           
           // Check if this cell is part of an instruction

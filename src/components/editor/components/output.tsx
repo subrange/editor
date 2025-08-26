@@ -231,8 +231,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                     // Split view mode - show Disassembly on top, VM Output on bottom
                     <div className={clsx("flex flex-col gap-2 h-full overflow-hidden p-2 bg-zinc-950", position === 'floating' && "rounded-b-lg")}>
                         {/* Top panel - Disassembly */}
-                        <div className="flex-1 flex flex-col min-h-0 border-b border-zinc-800 pb-2">
-                            <div className="text-zinc-400 text-xs font-bold mb-2 flex-shrink-0">Disassembly</div>
+                        <div className="flex-1 flex flex-col min-h-0 border-b border-zinc-800">
                             <div className="flex-1 overflow-auto min-h-0" ref={outputContainer}>
                                 <Disassembly outputRef={outputContainer} isActive={true} />
                             </div>

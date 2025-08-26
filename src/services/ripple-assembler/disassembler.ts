@@ -1,26 +1,40 @@
-import { Opcode, InstructionFormat, opcodeInfo, Register } from './types.ts';
+import { Opcode, InstructionFormat, opcodeInfo } from './types.ts';
 
 export type DisassembledInstruction = [string, string | null, string | null, string | null];
 
 const registerNames: Record<number, string> = {
-  [Register.R0]: 'R0',
-  [Register.PC]: 'PC',
-  [Register.PCB]: 'PCB',
-  [Register.RA]: 'RA',
-  [Register.RAB]: 'RAB',
-  [Register.R3]: 'R3',
-  [Register.R4]: 'R4',
-  [Register.R5]: 'R5',
-  [Register.R6]: 'R6',
-  [Register.R7]: 'R7',
-  [Register.R8]: 'R8',
-  [Register.R9]: 'R9',
-  [Register.R10]: 'R10',
-  [Register.R11]: 'R11',
-  [Register.R12]: 'R12',
-  [Register.R13]: 'R13',
-  [Register.R14]: 'R14',
-  [Register.R15]: 'R15'
+  0: 'R0',    // Zero register
+  1: 'PC',    // Program Counter
+  2: 'PCB',   // Program Counter Bank
+  3: 'RA',    // Return Address
+  4: 'RAB',   // Return Address Bank
+  5: 'RV0',   // Return Value 0
+  6: 'RV1',   // Return Value 1
+  7: 'A0',    // Argument 0
+  8: 'A1',    // Argument 1
+  9: 'A2',    // Argument 2
+  10: 'A3',   // Argument 3
+  11: 'X0',   // Reserved/Extended 0
+  12: 'X1',   // Reserved/Extended 1
+  13: 'X2',   // Reserved/Extended 2
+  14: 'X3',   // Reserved/Extended 3
+  15: 'T0',   // Temporary 0
+  16: 'T1',   // Temporary 1
+  17: 'T2',   // Temporary 2
+  18: 'T3',   // Temporary 3
+  19: 'T4',   // Temporary 4
+  20: 'T5',   // Temporary 5
+  21: 'T6',   // Temporary 6
+  22: 'T7',   // Temporary 7
+  23: 'S0',   // Saved 0
+  24: 'S1',   // Saved 1
+  25: 'S2',   // Saved 2
+  26: 'S3',   // Saved 3
+  27: 'SC',   // Allocator Scratch
+  28: 'SB',   // Stack Bank
+  29: 'SP',   // Stack Pointer
+  30: 'FP',   // Frame Pointer
+  31: 'GP'    // Global Pointer
 };
 
 export class Disassembler {
