@@ -1,3 +1,4 @@
+      Use the Rocket icon to run it — it is veeeery slow in other modes
       A mandelbrot set fractal viewer in brainf*** written by Erik Bosman
 +++++++++++++[->++>>>+++++>++>+<<<<<<]>>>>>++++++>--->>>>>>>>>>+++++++++++++++[[
 >>>>>>>>>]+[<<<<<<<<<]>>>>>>>>>-]+[>>>>>>>>[-]>]<<<<<<<<<[<<<<<<<<<]>>>>>>>>[-]+

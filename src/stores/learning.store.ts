@@ -143,7 +143,7 @@ class LearningStore {
                                 mainEditorMode: 'brainfuck'
                             },
                             interpreterConfig: {
-                                tapeSize: 100,
+                                tapeSize: 30000,
                                 cellSize: 256
                             },
                             debuggerConfig: {
@@ -152,7 +152,8 @@ class LearningStore {
                             content: {
                                 mainEditor: `// Debugging Tutorial
 // Click on line numbers to set breakpoints!
-// Try setting a breakpoint on line 10
+// Try setting a breakpoint on line 10 and run the program with the play button
+// Then try using a dollar sign anywhere in the program to set a code breakpoint
 
 // Initialize cell 0 with value 10
 ++++++++++
@@ -193,7 +194,7 @@ class LearningStore {
                                 mainEditorMode: 'brainfuck'
                             },
                             interpreterConfig: {
-                                tapeSize: 256,
+                                tapeSize: 30000,
                                 cellSize: 256
                             },
                             debuggerConfig: {
@@ -203,13 +204,10 @@ class LearningStore {
                             content: {
                                 mainEditor: `// Tape Visualization Demo
 // Try switching between Normal, Compact, and Lane views!
-// This creates a pattern that looks interesting in lane view
-
-// Create a pattern across 64 cells
-// Each group of 8 cells will form one row in lane view
+// Use either a lighting icon or a play icon to run.
 
 // Row 1: Ascending values
->+>++>+++>++++>+++++>++++++>+++++++>++++++++
++>++>+++>++++>+++++>++++++>+++++++>++++++++
 
 // Row 2: Descending values
 >++++++++>+++++++>++++++>+++++>++++>+++>++>+
@@ -219,22 +217,29 @@ class LearningStore {
 
 // Row 4: Powers of 2
 >+>++>++++>++++++++>++++++++++++++++>++++++++++++++++++++++++++++++++
+>++++++++++++++++++++++++++++++++ ++++++++++++++++++++++++++++++++
+>++++++++++++++++++++++++++++++++ ++++++++++++++++++++++++++++++++
+ ++++++++++++++++++++++++++++++++ ++++++++++++++++++++++++++++++++
 
 // Move back to start
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-// Now step through or run to see the pattern!`
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<`
                             },
                             labels: {
                                 lanes: {
-                                    0: 'Pattern A',
-                                    1: 'Pattern B',
-                                    2: 'Pattern C',
-                                    3: 'Pattern D',
-                                    4: 'Pattern E',
-                                    5: 'Pattern F',
-                                    6: 'Pattern G',
-                                    7: 'Pattern H'
+                                    0: 'A',
+                                    1: 'B',
+                                    2: 'C',
+                                    3: 'D',
+                                    4: 'E',
+                                    5: 'F',
+                                    6: 'G',
+                                    7: 'H'
+                                },
+                                columns: {
+                                    0: 'Asc',
+                                    1: 'Desc',
+                                    2: 'Even',
+                                    3: 'Powers'
                                 }
                             }
                         },
@@ -248,7 +253,7 @@ class LearningStore {
                                 mainEditorMode: 'brainfuck'
                             },
                             interpreterConfig: {
-                                tapeSize: 100,
+                                tapeSize: 30000,
                                 cellSize: 256
                             },
                             content: {
@@ -256,20 +261,20 @@ class LearningStore {
 // Run this program step by step and save snapshots at interesting points!
 
 // Stage 1: Initialize some values
-+++++ +++++ [>+++++ ++<-]  // Cell 1 = 70 (F)
->>.                         // Print F
->+++++ +++++ [>+++++ +++<-] // Cell 2 = 80 (P)  
->.                          // Print P
++++++ +++++ [>+++++ ++<-]     // Cell 1 = 70 (F)
+>.                            // Print F
+<+++++ +++++ [>>+++++ +++<<-] // Cell 2 = 80 (P)  
+>>.                           // Print P
 
-// SAVE A SNAPSHOT HERE! (Open Snapshots panel)
+// SAVE A SNAPSHOT HERE! (Open Snapshots panel, the camera icon in the left sidebar)
 
-<<[-]>[-]>[-]               // Clear all cells
+<<[-]>[-]>[-]<<               // Clear all cells
 
 // Stage 2: Different values
-<<<+++++ +++++ [>+++++ ++++<-]  // Cell 1 = 90 (Z)
->>.                              // Print Z
->+++++ ++[>+++++ +++++<-]        // Cell 2 = 65 (A)
->.                               // Print A
++++++ +++++ [>+++++ ++++<-]       // Cell 1 = 90 (Z)
+>.                                // Print Z
+<+++++ +[>>+++++ +++++<<-]>>+++++ // Cell 2 = 65 (A)
+.                                 // Print A
 
 // SAVE ANOTHER SNAPSHOT HERE!
 
@@ -293,48 +298,44 @@ class LearningStore {
                                 mainEditorMode: 'brainfuck'
                             },
                             interpreterConfig: {
-                                tapeSize: 1000,
+                                tapeSize: 30000,
                                 cellSize: 256
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
                             },
                             content: {
                                 mainEditor: `// Execution Modes Demo
 // Try running this with different modes:
-// 1. Step mode (Forward button) - see each operation
-// 2. Smooth mode (Play button) - balanced speed
-// 3. Turbo mode (Lightning button) - maximum speed
-// 4. Custom delay (Clock button) - set your own speed
-// 5. Rust WASM (Rocket button) - native speed!
+// 1) Step mode (Forward button): see each operation
+// 2) Smooth mode (Play button): balanced speed
+// 3) Turbo mode (Lightning button): maximum speed
+// 4) Custom delay (Clock button): set your own speed — try setting it to 0!
+// 5) Rust WASM (Rocket button): native speed!
 
-// This program counts to 255 and shows progress
+// This program counts to 255
 // The different modes will show dramatically different speeds!
 
 // Initialize counter display
-+++++ +++++ [>+++++ +++<-] >++. // Print 'R'
++++++ +++++ [>+++++ +++<-] >++.  // Print 'R'
 +++.                             // 'U'
--.                               // 'N'
+----- --.                        // 'N'
 <+++++ +++++.                    // newline
 
 // Main counting loop
+
 [-]  // Clear cell
-[    // This will run 256 times
-    + // Increment counter
-    
-    // Show progress every 10 increments
-    >[-]+++++ +++++
-    [<->-[<->-[<->-[<->-[<->-[<->-[<->-[<->-[<->-[<[-]>-]]]]]]]]]]
-    <[>>+++++ +++++ [>+++++ ++<-]>.<<<<]  // Print dot for progress
-    >>[-]<<
-    
-    // Continue until we overflow (256 becomes 0)
-    +
-]
+ +   // Set it to 1
+[+]  // This will run 255 times
 
 // Done!
->+++++ +++++.  // newline
-+++++ +++++ [>+++++ ++++<-]>.  // 'D'
-+++++ +++++ [>+++++ +++++<-]>++++.  // 'O'
--------.  // 'N'
--.  // 'E'`
+>[-]+++++ +++++.  // newline
+[-]+++++ +++++ [>+++++ +<-]>+++++ +++.  // 'D'
++++++++++++.  // 'O'
+-.            // 'N'
+---------.    // 'E'
+
+// Nice.`
                             }
                         }
                     ]
@@ -435,6 +436,9 @@ class LearningStore {
                             },
                             content: {
                                 mainEditor: bfSierpinski
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
                             }
                         },
                         {
@@ -501,7 +505,7 @@ class LearningStore {
                                 mainEditorMode: 'brainfuck'
                             },
                             interpreterConfig: {
-                                tapeSize: 30000000,
+                                tapeSize: 300_000_000,
                                 cellSize: 65536
                             },
                             content: {

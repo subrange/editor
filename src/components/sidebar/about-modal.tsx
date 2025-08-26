@@ -67,7 +67,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
                                 </svg>
                                 <div>
                                     <p className="text-sm font-medium text-zinc-200 group-hover:text-zinc-100">Braintease GitHub Repository</p>
-                                    <p className="text-xs text-zinc-500">Source code and documentation</p>
+                                    <p className="text-xs text-zinc-500">Source "code" and "documentation"</p>
                                 </div>
                             </a>
 

@@ -224,13 +224,6 @@ export function Learning() {
                     </div>
                 ))}
 
-                {/* Info message */}
-                <div className="mt-6 p-3 bg-zinc-800/50 rounded border border-zinc-700">
-                    <p className="text-xs text-zinc-400">
-                        💡 Select a tutorial to load example code into the editors. The IDE will configure the appropriate editors for each lesson.
-                    </p>
-                </div>
-
                 {/* Links Section */}
                 <div className="mt-6 space-y-2">
                     <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">IDE Documentation</h3>
