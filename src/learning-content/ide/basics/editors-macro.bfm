@@ -4,26 +4,25 @@
 // Define some useful macros
 #define clear [-]
 #define inc(n) {repeat(n, +)}
+#define set(n) @clear @inc(n)
 #define dec(n) {repeat(n, -)}
 #define move(n) {repeat(n, >)}
 #define back(n) {repeat(n, <)}
 #define print .
 
 // Use macros with @ symbol
-@inc(72)     // Set cell to 72 ('H')
+@set('H')    // Set cell to 72 ('H')
 @print       // Print it
 @clear       // Clear cell
 
-@inc(101)    // 'e'
+@set('e')    // 'e'
 @print
 @clear
 
-@inc(108)    // 'l'
+@set('l')    // 'l'
 @print
 @print       // Print 'l' twice
 @clear
 
-@inc(111)    // 'o'
+@set('o')    // 'o'
 @print
-
-// Click "Expand Macros" button to see the expanded Brainfuck code!

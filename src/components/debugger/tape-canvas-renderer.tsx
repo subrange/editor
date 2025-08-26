@@ -71,7 +71,7 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, sho
     cellHeight: 24,
     cellGap: 2,
     padding: 12,
-    fontSize: { index: 8, value: 12, binary: 8, ascii: 10 }
+    fontSize: { index: 8, value: 12, binary: 0, ascii: 0 }
   } : viewMode === 'lane' && laneCount > 1 ? {
     cellWidth: 80,
     cellHeight: 24,

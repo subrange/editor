@@ -9,7 +9,6 @@
 #define inc +
 #define dec -
 #define output .
-#define input ,
 
 // === Parameterized Macros ===
 // Macros can accept parameters for more flexibility
@@ -17,7 +16,7 @@
 #define sub(n) {repeat(n, -)}
 #define move(n) {repeat(n, >)}
 #define back(n) {repeat(n, <)}
-#define set(n) [-]{repeat(n, +)}
+#define set(n) @clear {repeat(n, +)}
 
 // === Complex Macros ===
 // Build more complex operations from simpler ones
@@ -39,11 +38,9 @@
 @add(3)      // Set to 3
 @prev        // Back to first cell
 
-// Example 3: Print "Hi!"
+// Example 3: Print "Hi!". Macro system supports 'c'haracters
 @clear
-@print_char(72)  // 'H'
-@print_char(105) // 'i'  
-@print_char(33)  // '!'
+@print_char('H')
+@print_char('i')
+@print_char('!')
 @print_newline
-
-// Click "Expand Macros" to see the generated Brainfuck code!

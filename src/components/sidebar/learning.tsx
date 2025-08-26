@@ -53,6 +53,10 @@ export function Learning() {
             localStorage.setItem('mainEditorMode', JSON.stringify(editorConfig.mainEditorMode));
         }
 
+        localStorage.setItem('debugCollapsed', 'false'); // Ensure debug is visible
+        localStorage.setItem('debuggerViewMode', '"normal"'); // Set to normal view
+        localStorage.setItem('debuggerCompactView', 'false'); // Set to normal view
+
         // Load content into editors
         if (content.mainEditor !== undefined) {
             const mainEditor = editorManager.getEditor('main');
