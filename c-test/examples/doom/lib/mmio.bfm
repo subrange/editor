@@ -27,6 +27,17 @@
 #define STORE_CTL_COMMIT      0x4
 #define STORE_CTL_COMMIT_ALL  0x8
 
+#define DISP_MODE_OFF    0
+#define DISP_MODE_TTY    1
+#define DISP_MODE_TEXT40 2
+#define DISP_MODE_RGB565 3
+
+#define DISP_CTL_ENABLE 1
+#define DISP_CTL_CLEAR  2
+
+#define DISP_STATUS_READY      1
+#define DISP_STATUS_FLUSH_DONE 2
+
 #define mmio_write(value, pin) @poke_imm(value, r0, pin)
 #define mmio_read(set, pin)    @peek_imm(set,   r0, pin)
 
@@ -124,3 +135,11 @@
 
 #define read_byte(block, addr) @call2(storage_read_at, @reg, s0, @reg, s1)
 #define read_u16(block, addr) @call2(storage_read_u16_le, @reg, block, @reg, addr)
+
+// Graphix
+
+@leaf(graphics_flush,
+  @set(sc, 1)
+  @mmio_write(sc, #HDR_DISP_FLUSH)
+)
+

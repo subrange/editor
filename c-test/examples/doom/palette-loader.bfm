@@ -1,0 +1,52 @@
+#include "lib/mmio.bfm"
+#include "lib/stdio.bfm"
+#include "lib/graphics.bfm"
+
+#define PALETTE_MEMORY_BANK 4
+
+@proc(read_rgb_565,
+  @mov(s0, @arg1) // address
+  @mov(s1, @arg2) // offset
+
+  @let(s2, @read_byte(s0, s1))
+  // @call1(print_hex16, @reg, s2)
+
+  @inc(s1)
+  @let(s3, @read_byte(s0, s1))
+  // @call1(print_hex16, @reg, s3)
+
+  @inc(s1)
+  @let(t0, @read_byte(s0, s1))
+  // @call1(print_hex16, @reg, t0)
+
+  // Convert to RGB565
+  @let(s0, @call3(rgb_to_rgb565, @reg, s2, @reg, s3, @reg, t0))
+
+  @retval(s0, r0)
+)
+
+@proc(load_palette,
+  @let2(s0, s1, @call2(storage_read_u32_le, @imm, 0, @imm, 8))
+//   @call2(print_hex32, @reg, s0, @reg, s1)
+  @let2(s0, s1, @call2(storage_read_u32_le, @reg, s0, @reg, s1))
+  // Read 256 * 3 bytes of palette data
+
+  {local %bank}
+  {local %offs}
+  @setlocal(%bank, s0)
+  @setlocal(%offs, s1)
+ 
+  @set(s2, 256)
+  @set(s3, 0)
+
+  @while(@ne(s3, s2),
+    @muli(t1, s3, 3)
+    @add(t1, t1, s1)
+
+    @let(t2, @call2(read_rgb_565, @reg, s0, @reg, t1))
+    @set(sc, #PALETTE_MEMORY_BANK)
+    @poke(t2, sc, s3)
+
+    @inc(s3)
+  )
+)

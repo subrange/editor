@@ -1,0 +1,24 @@
+@proc(rgb_to_rgb565,
+/*
+unsigned short rgb565(unsigned char r, unsigned char g, unsigned char b) {
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+*/
+  @mov(s0, @arg1) // r
+  @mov(s1, @arg2) // g
+  @mov(s2, @arg3) // b
+
+  @andi(s0, s0, 0xF8)
+  @slli(s0, s0, 8)
+
+  @andi(s1, s1, 0xFC)
+  @slli(s1, s1, 3)
+
+  @andi(s2, s2, 0xF8)
+  @srli(s2, s2, 3)
+
+  @or(s0, s0, s1)
+  @or(s0, s0, s2)
+
+  @retval(s0, r0)
+)
