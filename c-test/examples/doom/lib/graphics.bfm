@@ -22,3 +22,68 @@ unsigned short rgb565(unsigned char r, unsigned char g, unsigned char b) {
 
   @retval(s0, r0)
 )
+
+@proc(graphics_init,
+  @mov(s0, @arg1) // width
+  @mov(s1, @arg2) // height
+
+  @slli(s0, s0, 8) // Shift width to high byte
+  @or(s0, s0, s1) // Combine width and height
+
+  @mmio_write(s0, #HDR_DISP_RESOLUTION)
+  @set(s3, #DISP_MODE_RGB565)
+  @mmio_write(s3, #HDR_DISP_MODE)
+)
+
+@proc(set_pixel,
+  @mov(s0, @arg1) // x
+  @mov(s1, @arg2) // y
+  @mov(s2, @arg3) // color
+
+//   @debug("Setting pixel at:")
+//   @call1(print_uint, @reg, s0) // Print x for debugging
+//   @debug(", ")
+//   @call1(print_uint, @reg, s1) // Print y for debugging
+//   @debug(" with color:")
+//   @call1(print_hex16, @reg, s2) // Print color for debugging
+
+  @set(t0, 160) // display width
+  @set(t1, 100) // display height
+  @mul(t2, t0, t1) // pixel count
+  @addi(t2, t2, 32) // back buffer start address
+
+  @mul(t3, s1, t0) // y * display_width
+  @add(t3, t3, s0) // y * display_width + x
+  @add(t3, t3, t2) // back_buffer_start + y * display_width + x
+
+  @mmio_write_r(s2, t3) // Write color to back buffer address
+)
+
+/*
+void clear_screen(unsigned short color) {
+    for (unsigned short y = 0; y < display_height; y++) {
+        for (unsigned short x = 0; x < display_width; x++) {
+            set_pixel(x, y, color);
+        }
+    }
+}
+*/
+
+@proc(clear_screen,
+  @mov(s0, @arg1) // color
+
+  @set(s1, 0) // y
+  @set(s2, 100) // display height
+
+  @while(@lt(s1, s2),
+    @set(s3, 0) // x
+    @set(t0, 160) // display width
+
+    @while(@lt(s3, t0),
+      @call3(set_pixel, @reg, s3, @reg, s1, @reg, s0) // set pixel at (x, y)
+      @inc(s3)
+    )
+
+    @inc(s1)
+  )
+)

@@ -63,7 +63,7 @@
 #define STATE_RUNNING 2
 #define STATE_HALT    1
 
-#define BANK_SIZE 16 // should be 65535, BUT 8*0xffff = A LOT OF CELLS, let's wait for the perf improvement of the tape UI
+#define BANK_SIZE 64000 // should be 65535, BUT 8*0xffff = A LOT OF CELLS, let's wait for the perf improvement of the tape UI
 #define CMD_SIZE 4
 
 #define LANES_COUNT 8
@@ -138,30 +138,84 @@
 #define OP_MODI  0x1F
 
 // MARK: ----- Register Constants
-#define REG_ZONE_W  20
-#define REG_ZONE_CW 5
+#define REG_ZONE_W  36
+#define REG_ZONE_CW 10
 
 #define R0   0
 
 #define PC   1
 #define PCB  2
 
-#define RA   3 // R1
-#define RAB  4 // R2
+#define RA   3
+#define RAB  4
 
-#define R3   5
-#define R4   6
-#define R5   7
-#define R6   8
-#define R7   9
-#define R8   10
-#define R9   11
-#define R10  12
-#define R11  13
-#define R12  14
-#define R13  15
-#define R14  16
-#define R15  17
+#define RV0   5
+#define RV1   6
+
+#define A0   7
+#define A1   8
+#define A2   9
+#define A3   10
+
+#define X0   11
+#define X1   12
+#define X2   13
+#define X3   14
+
+#define T0   15
+#define T1   16
+#define T2   17
+#define T3   18
+#define T4   19
+#define T5   20
+#define T6   21
+#define T7   22
+
+#define S0   23
+#define S1   24
+#define S2   25
+#define S3   26
+
+#define SC   27
+
+#define SB   28
+#define SP   29
+
+#define FP   30
+#define GP   31
+
+#define R1  #PC
+#define R2  #PCB
+#define R3  #RA
+#define R4  #RAB
+#define R5  #RV0
+#define R6  #RV1
+#define R7  #A0
+#define R8  #A1
+#define R9  #A2
+#define R10 #A3
+#define R11 #X0
+#define R12 #X1
+#define R13 #X2
+#define R14 #X3
+#define R15 #T0
+#define R16 #T1
+#define R17 #T2
+#define R18 #T3
+#define R19 #T4
+#define R20 #T5
+#define R21 #T6
+#define R22 #T7
+#define R23 #S0
+#define R24 #S1
+#define R25 #S2
+#define R26 #S3
+#define R27 #SC
+#define R28 #SB
+#define R29 #SP
+#define R30 #FP
+#define R31 #GP
+
 
 // MARK: -- Memory mapping
 #define OUT      0x00

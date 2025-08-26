@@ -41,6 +41,9 @@
 #define mmio_write(value, pin) @poke_imm(value, r0, pin)
 #define mmio_read(set, pin)    @peek_imm(set,   r0, pin)
 
+#define mmio_write_r(reg, pin) @poke(reg, r0, pin)
+#define mmio_read_r(reg, pin)  @peek(reg, r0, pin)
+
 @leaf(storage_set_block,
   @mmio_write(@arg1, #HDR_STORE_BLOCK)
 )
