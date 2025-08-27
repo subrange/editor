@@ -327,9 +327,15 @@ export class InterpreterWorkerStore {
       isWaitingForInput: false,
       pointer: 0,
       output: '',
+      currentSourcePosition: undefined,
+      macroContext: undefined,
       lastExecutionTime: undefined,
       lastOperationCount: undefined
     });
+    
+    // Reset character position to beginning
+    this.currentChar.next({ line: 0, column: 0 });
+    this.currentSourceChar.next(null);
     
     // Clear the tape
     if (this.sharedTape) {
@@ -393,13 +399,22 @@ export class InterpreterWorkerStore {
   public async runTurbo() {
     // Update local state immediately to show running indicator
     const currentState = this.state.getValue();
+    
+    // Clear any previous execution state
     this.state.next({
       ...currentState,
       isRunning: true,
       isPaused: false,
       isStopped: false,
-      lastExecutionMode: 'turbo'
+      lastExecutionMode: 'turbo',
+      // Clear these to ensure fresh start
+      currentSourcePosition: undefined,
+      macroContext: undefined
     });
+    
+    // Reset character position for fresh execution
+    this.currentChar.next({ line: 0, column: 0 });
+    this.currentSourceChar.next(null);
     
     this.worker.postMessage({ type: 'runTurbo' });
   }

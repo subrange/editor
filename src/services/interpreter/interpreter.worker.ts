@@ -65,14 +65,9 @@ interface SetVMOutputConfigMessage {
   };
 }
 
-interface ProvideInputMessage {
-  type: 'provideInput';
-  char: string;
-}
-
 type WorkerMessage = InitMessage | ResetMessage | StepMessage | RunTurboMessage | 
   ResumeTurboMessage | PauseMessage | StopMessage | SetBreakpointsMessage | 
-  SetPositionMessage | SetVMOutputConfigMessage | ProvideInputMessage;
+  SetPositionMessage | SetVMOutputConfigMessage;
 
 // State update message sent to main thread
 interface StateUpdateMessage {
@@ -83,7 +78,6 @@ interface StateUpdateMessage {
   isRunning: boolean;
   isPaused: boolean;
   isStopped: boolean;
-  isWaitingForInput?: boolean;
   output: string;
   currentChar: Position;
   currentSourcePosition?: Position;
@@ -116,7 +110,6 @@ class WorkerInterpreter {
   private isRunning = false;
   private isPaused = false;
   private isStopped = false;
-  private isWaitingForInput = false;
   private output = '';
   private breakpoints: Position[] = [];
   private sourceBreakpoints: Position[] = [];
@@ -214,7 +207,6 @@ class WorkerInterpreter {
     this.isRunning = false;
     this.isPaused = false;
     this.isStopped = false;
-    this.isWaitingForInput = false;
     this.output = '';
     this.lastPausedBreakpoint = null;
     this.currentSourcePosition = undefined;
@@ -223,6 +215,14 @@ class WorkerInterpreter {
     this.lastOutputUpdateTime = 0;
     this.lastExecutionTime = undefined;
     this.lastOperationCount = undefined;
+    
+    // Reset VM output state
+    this.lastVMFlagValue = 0;
+    // Note: We intentionally keep vmOutputConfig as it's a configuration that should persist
+    
+    // Rebuild loop map to ensure it's fresh
+    this.buildLoopMap();
+    
     // Send tape data after reset
     this.sendStateUpdate(true);
   }
@@ -391,10 +391,7 @@ class WorkerInterpreter {
         break;
       case ',':
         this.log(`Input requested at position ${this.pointer}`);
-        this.isWaitingForInput = true;
-        this.isPaused = true;
-        this.sendStateUpdate(true);
-        return true; // Don't move to next char yet
+        break;
     }
 
     // Check VM output flag
@@ -452,14 +449,22 @@ class WorkerInterpreter {
 
     this.log(`Compiled ${ops.length} operations. Starting turbo execution...`);
 
+    // Reset ALL state for a fresh execution
     this.isRunning = true;
     this.isPaused = false;
     this.isStopped = false;
     this.tape.fill(0);
     this.pointer = 0;
     this.output = '';
+    this.currentChar = { line: 0, column: 0 };
+    this.lastPausedBreakpoint = null;
+    this.currentSourcePosition = undefined;
+    this.macroContext = undefined;
     this.lastOutputLength = 0;
     this.lastOutputUpdateTime = performance.now();
+    this.lastVMFlagValue = 0;
+    this.lastExecutionTime = undefined;
+    this.lastOperationCount = undefined;
     let pc = 0;
     const startTime = performance.now();
     const UPDATE_INTERVAL = 50_000_000; // Match main thread interval
@@ -506,18 +511,7 @@ class WorkerInterpreter {
           }
           break;
         }
-        case ',': {
-          this.log(`Turbo: Input requested at pointer ${pointer}`);
-          // Need to pause for input
-          this.isPaused = true;
-          this.isWaitingForInput = true;
-          this.currentChar = op.position;
-          // Update instance variables before pausing
-          this.pointer = pointer;
-          this.output = output;
-          this.sendStateUpdate(true); // Include isWaitingForInput in state
-          return;
-        }
+        case ',': tape[pointer] = 0; break;
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
           const nextPc = pc + 1;
@@ -682,18 +676,7 @@ class WorkerInterpreter {
           }
           break;
         }
-        case ',': {
-        this.log(`Turbo: Input requested at pointer ${this.pointer}`);
-        // Need to pause for input
-        this.isPaused = true;
-        this.isWaitingForInput = true;
-        this.currentChar = op.position;
-        // Update instance variables before pausing
-        this.pointer = pointer;
-        this.output = output;
-        this.sendStateUpdate(true); // Include isWaitingForInput in state
-        return;
-      }
+        case ',': this.tape[this.pointer] = 0; break;
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
           const nextPc = pc + 1;
@@ -766,7 +749,6 @@ class WorkerInterpreter {
     this.isRunning = false;
     this.isPaused = false;
     this.isStopped = true;
-    this.isWaitingForInput = false;
     // Send tape data when stopping
     this.sendStateUpdate(true);
   }
@@ -796,34 +778,6 @@ class WorkerInterpreter {
   }) {
     this.vmOutputConfig = config;
     this.lastVMFlagValue = 0;
-  }
-
-  provideInput(char: string) {
-    if (!this.isWaitingForInput) {
-      this.log('Input provided but interpreter is not waiting for input');
-      return;
-    }
-    
-    const asciiValue = char.charCodeAt(0);
-    this.tape[this.pointer] = asciiValue % this.cellSize;
-    
-    this.log(`Input received: '${char}' (ASCII ${asciiValue}) placed at position ${this.pointer}`);
-    
-    // Clear waiting state
-    this.isWaitingForInput = false;
-    this.isPaused = false;
-    
-    // Move to next instruction
-    const hasMore = this.moveToNextChar();
-    if (!hasMore) {
-      this.stop();
-    } else if (this.isRunning) {
-      // Resume turbo execution if we were running
-      this.resumeTurbo();
-    } else {
-      // Just send state update if not running
-      this.sendStateUpdate(true);
-    }
   }
 
   private updateSourcePosition() {
@@ -872,7 +826,6 @@ class WorkerInterpreter {
       isRunning: this.isRunning,
       isPaused: this.isPaused,
       isStopped: this.isStopped,
-      isWaitingForInput: this.isWaitingForInput,
       output: this.output,
       currentChar: this.currentChar,
       currentSourcePosition: this.currentSourcePosition,
@@ -992,9 +945,6 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
         break;
       case 'setVMOutputConfig':
         interpreter.setVMOutputConfig(message.config);
-        break;
-      case 'provideInput':
-        interpreter.provideInput(message.char);
         break;
     }
   } catch (error) {
