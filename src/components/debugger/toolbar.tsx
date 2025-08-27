@@ -156,7 +156,7 @@ export function Toolbar() {
                     ) : (
                         <IconButton
                             icon={RocketLaunchIcon}
-                            label="Run with Rust WASM (Optimized, Fastest, No Debug)"
+                            label="Run with Rust WASM (Optimized, Fastest, No Input, No Debug)"
                             onClick={handleRunWithRustWasm}
                             disabled={wasmStatus !== 'ready' || isRunning}
                             variant="success"

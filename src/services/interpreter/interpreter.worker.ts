@@ -766,6 +766,7 @@ class WorkerInterpreter {
     this.isRunning = false;
     this.isPaused = false;
     this.isStopped = true;
+    this.isWaitingForInput = false;
     // Send tape data when stopping
     this.sendStateUpdate(true);
   }
