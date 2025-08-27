@@ -1,6 +1,20 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, protocol } = require('electron');
 const path = require('path');
-const url = require('url');
+const fs = require('fs');
+
+// This allows TypeScript to detect the missing method
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      bypassCSP: true
+    }
+  }
+]);
 
 let mainWindow;
 
@@ -11,7 +25,10 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false // Allow loading local files
+      webSecurity: true,
+      // Enable features needed for workers and SharedArrayBuffer
+      webgl: true,
+      experimentalFeatures: true
     },
     icon: path.join(__dirname, '../dist/favicon.ico')
   });
@@ -86,8 +103,8 @@ function createWindow() {
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    // Load the index.html file
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    // Use custom protocol with a base URL structure
+    mainWindow.loadURL('app://localhost/');
   }
 
   mainWindow.on('closed', () => {
@@ -95,7 +112,33 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Register protocol for serving local files with proper headers
+  protocol.registerFileProtocol('app', (request, callback) => {
+    let url = request.url.replace('app://localhost/', '');
+    
+    // Remove any query parameters
+    url = url.split('?')[0];
+    
+    // Default to index.html if no file specified or just a slash
+    if (!url || url === '' || url === '/') {
+      url = 'index.html';
+    }
+    
+    // Remove leading slash if present
+    if (url.startsWith('/')) {
+      url = url.substring(1);
+    }
+    
+    const filePath = path.join(__dirname, '../dist', url);
+    
+    callback({ 
+      path: filePath
+    });
+  });
+
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

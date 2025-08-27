@@ -12,9 +12,9 @@ if (!fs.existsSync("build-resources")) {
 // Configuration for app icons
 const configuration = {
     path: "/",
-    appName: "Brainfuck IDE",
+    appName: "Braintease IDE",
     appShortName: "BF IDE",
-    appDescription: "A powerful IDE for Brainfuck and Ripple C development",
+    appDescription: "A powerful IDE for Brainfuck and Ripple VM development",
     developerName: null,
     developerURL: null,
     background: "#2d3748", // Dark background to match the icon

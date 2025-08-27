@@ -1,5 +1,5 @@
 appId: com.ripple.bfide
-productName: "Brainfuck IDE"
+productName: "Braintease IDE"
 directories:
   output: electron-dist
   buildResources: build-resources

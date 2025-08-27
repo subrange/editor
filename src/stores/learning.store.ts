@@ -97,7 +97,7 @@ class LearningStore {
                         {
                             id: 'ide-welcome',
                             name: 'Welcome to the IDE',
-                            description: 'Introduction to the Brainfuck IDE',
+                            description: 'Introduction to the Braintease IDE',
                             editorConfig: {
                                 showMainEditor: true,
                                 showMacroEditor: false,

@@ -20,7 +20,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
                 <div className="p-6 space-y-6">
                     {/* Logo and Title */}
                     <div className="flex items-center gap-4">
-                        <img src={faviconHuge} alt="Brainfuck IDE" className="w-20 h-20 rounded-lg" />
+                        <img src={faviconHuge} alt="Braintease IDE" className="w-20 h-20 rounded-lg" />
                         <div>
                             <h3 className="text-2xl font-bold text-zinc-100">Braintease IDE</h3>
                             <p className="text-sm text-zinc-400 mt-1">Advanced Development Environment for Esoteric Programming</p>
