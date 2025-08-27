@@ -68,6 +68,36 @@ export function IO({ output, outputRef, isActive = true, maxLines }: IOProps) {
             activeRef.current.focus();
         }
 
+        const handleKeyDown = (e: KeyboardEvent) => {
+            let charToSend: string | null = null;
+            
+            // Handle special keys
+            if (e.key === 'Enter') {
+                charToSend = '\n';
+            } else if (e.key === 'Tab') {
+                charToSend = '\t';
+            } else if (e.key === 'Backspace') {
+                charToSend = '\x08'; // ASCII backspace
+            } else if (e.key === 'Escape') {
+                charToSend = '\x1b'; // ASCII escape
+            }
+            
+            if (charToSend) {
+                console.log(`IO: Received special key '${e.key}' sending '${charToSend.charCodeAt(0)}'`);
+                
+                // Check if WASM interpreter is running
+                const rustWasm = (window as any).rustWasmInterpreter;
+                if (rustWasm && rustWasm.isWaitingForInput$ && rustWasm.isWaitingForInput$.getValue()) {
+                    console.log('IO: Providing input to WASM interpreter');
+                    rustWasm.provideInput(charToSend);
+                } else {
+                    console.log('IO: Providing input to JS/Worker interpreter');
+                    (interpreterStore as any).provideInput(charToSend);
+                }
+                e.preventDefault();
+            }
+        };
+        
         const handleKeyPress = (e: KeyboardEvent) => {
             if (e.key.length === 1) {
                 console.log(`IO: Received input '${e.key}' (ASCII ${e.key.charCodeAt(0)})`);
@@ -86,8 +116,10 @@ export function IO({ output, outputRef, isActive = true, maxLines }: IOProps) {
             }
         };
 
+        window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keypress', handleKeyPress);
         return () => {
+            window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keypress', handleKeyPress);
         };
     }, [isWaitingForInput, isActive, activeRef]);
