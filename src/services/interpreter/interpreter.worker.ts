@@ -648,40 +648,37 @@ class WorkerInterpreter {
     this.lastOutputLength = this.output.length;
     this.lastOutputUpdateTime = performance.now();
     
+    // Cache frequently accessed values as locals for performance
+    let pointer = this.pointer;
+    const tape = this.tape;
+    const tapeSize = this.tapeSize;
+    const cellSize = this.cellSize;
+    
     while (pc < ops.length && this.isRunning && !this.isPaused) {
       const op = ops[pc];
 
       switch (op.type) {
-        case '>': this.pointer = (this.pointer + 1) % this.tapeSize; break;
-        case '<': this.pointer = (this.pointer - 1 + this.tapeSize) % this.tapeSize; break;
-        case '+': this.tape[this.pointer] = (this.tape[this.pointer] + 1) % this.cellSize; break;
-        case '-': this.tape[this.pointer] = (this.tape[this.pointer] - 1 + this.cellSize) % this.cellSize; break;
+        case '>': pointer = (pointer + 1) % tapeSize; break;
+        case '<': pointer = (pointer - 1 + tapeSize) % tapeSize; break;
+        case '+': tape[pointer] = (tape[pointer] + 1) % cellSize; break;
+        case '-': tape[pointer] = (tape[pointer] - 1 + cellSize) % cellSize; break;
         case '[':
-          if (this.tape[this.pointer] === 0) {
+          if (tape[pointer] === 0) {
             pc = jumpTable.get(pc) || pc;
           }
           break;
         case ']':
-          if (this.tape[this.pointer] !== 0) {
+          if (tape[pointer] !== 0) {
             pc = jumpTable.get(pc) || pc;
           }
           break;
         case '.': {
-          output += String.fromCharCode(this.tape[this.pointer]);
-          // this.output = output;
-          // Check if we should send an output update (but not if VM output is active)
-          // const now = performance.now();
-          // const vmOutputActive = this.vmOutputConfig && this.tape[this.vmOutputConfig.outFlagCellIndex] === 1;
-          // if (!vmOutputActive &&
-          //     (this.output.length - this.lastOutputLength >= this.outputUpdateInterval ||
-          //      now - this.lastOutputUpdateTime >= this.outputUpdateTimeInterval)) {
-          //   this.lastOutputLength = this.output.length;
-          //   this.lastOutputUpdateTime = now;
-          //   this.sendStateUpdate(false); // Don't send tape data for output updates
-          // }
+          output += String.fromCharCode(tape[pointer]);
+          this.output = output;
+          this.sendStateUpdate(false); // Don't send tape data for output updates
           break;
         }
-        case ',': this.tape[this.pointer] = 0; break;
+        case ',': tape[pointer] = 0; break;
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
           const nextPc = pc + 1;
@@ -689,6 +686,9 @@ class WorkerInterpreter {
             this.currentChar = ops[nextPc].position;
           }
           this.isPaused = true;
+          // Update instance variables before returning
+          this.pointer = pointer;
+          this.output = output;
           this.sendStateUpdate(true);
           return;
         }
@@ -707,9 +707,6 @@ class WorkerInterpreter {
       pc++;
       opsExecuted++;
 
-      // Update instance variables
-      this.output = output;
-
       // Check for regular breakpoints
       if (pc < ops.length) {
         const nextOp = ops[pc];
@@ -718,7 +715,10 @@ class WorkerInterpreter {
           this.currentChar = nextOp.position;
           this.lastPausedBreakpoint = { ...nextOp.position };
           this.isPaused = true;
-          // Always send tape data when hitting a breakpoint.rs
+          // Update instance variables before returning
+          this.pointer = pointer;
+          this.output = output;
+          // Always send tape data when hitting a breakpoint
           this.sendStateUpdate(true);
           return;
         }
@@ -728,6 +728,9 @@ class WorkerInterpreter {
       if (opsExecuted % UPDATE_INTERVAL === 0) {
         const elapsed = (performance.now() - startTime) / 1000;
         this.log(`Turbo progress: ${opsExecuted} ops in ${elapsed}s`);
+        // Update instance variables before sending periodic update
+        this.pointer = pointer;
+        this.output = output;
         // Don't send tape data during execution for performance
         this.sendStateUpdate(false);
 
@@ -736,6 +739,10 @@ class WorkerInterpreter {
       }
     }
 
+    // Update instance variables with final state
+    this.pointer = pointer;
+    this.output = output;
+    
     this.isRunning = false;
     this.isStopped = true;  // Mark as finished/stopped
     // Send final state with tape data
