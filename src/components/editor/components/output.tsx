@@ -33,12 +33,24 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
     
     const { collapsed, height, maxLines } = outputState;
     
-    // Switch to output tab if current tab is not available
+    // Switch to output tab if current tab is not available or if input is needed
     useEffect(() => {
         if (!showAssemblyWorkspace && (activeTab === 'vm' || activeTab === 'disassembly')) {
             setActiveTab('output');
         }
-    }, [showAssemblyWorkspace, activeTab, setActiveTab]);
+        
+        // Switch to output tab and expand panel when input is needed
+        if (interpreterState.isWaitingForInput) {
+            if (activeTab !== 'output') {
+                console.log('Output: Switching to output tab for input');
+                setActiveTab('output');
+            }
+            if (collapsed) {
+                console.log('Output: Expanding panel for input');
+                outputStore.setCollapsed(false);
+            }
+        }
+    }, [showAssemblyWorkspace, activeTab, setActiveTab, interpreterState.isWaitingForInput, collapsed]);
 
     // Note: Auto-scroll and output processing are now handled by individual components (IO, VMOutput, Disassembly)
     

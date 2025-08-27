@@ -46,12 +46,21 @@ export function IO({ output, outputRef, isActive = true, maxLines }: IOProps) {
 
     // Handle keyboard input when waiting
     useEffect(() => {
-        if (!isWaitingForInput || !isActive) return;
+        if (!isWaitingForInput) return;
 
+        console.log('IO: Input requested, checking if need to show panel');
+        
         // Show output panel if collapsed
         const outputState = outputStore.state.getValue();
         if (outputState.collapsed) {
+            console.log('IO: Panel is collapsed, showing it');
             outputStore.setCollapsed(false);
+        }
+
+        // Only handle input if this tab is active
+        if (!isActive) {
+            console.log('IO: Tab not active, not handling input');
+            return;
         }
 
         // Focus the container to capture keyboard input
