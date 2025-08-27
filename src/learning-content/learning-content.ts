@@ -275,6 +275,27 @@ export const learningContent: LearningCategory[] = [
                         debuggerConfig: {
                             viewMode: 'normal'
                         },
+                    },
+                    {
+                        "id": "bf-echo",
+                        "name": "Reading Input",
+                        "description": "Echo input until Enter",
+                        "editorConfig": {
+                            "showMainEditor": true,
+                            "showMacroEditor": false,
+                            "mainEditorMode": "brainfuck"
+                        },
+                        "interpreterConfig": {
+                            "tapeSize": 30000,
+                            "cellSize": 256
+                        },
+                        "debuggerConfig": {
+                            "viewMode": "normal"
+                        },
+                        "content": {
+                            "mainEditor": "[\n  // This program reads the letter from an input, echoes it, and does it until you press enter.\n  // Run it with the lighting or play button\n]\n----------[++++++++++>,.----------]++++++++++",
+                            "macroEditor": ""
+                        }
                     }
                 ]
             },
@@ -339,7 +360,8 @@ export const learningContent: LearningCategory[] = [
                             mainEditor: bfSierpinski
                         },
                         debuggerConfig: {
-                            viewMode: 'normal'
+                            viewMode: 'lane',
+                            laneCount: 2
                         }
                     },
                     {
@@ -396,6 +418,43 @@ export const learningContent: LearningCategory[] = [
                             viewMode: 'normal'
                         },
                     },
+                    {
+                        "id": "macro-lanes",
+                        "name": "Lanes and Words",
+                        "description": "Using lanes and words to simplify Brainfuck code",
+                        "editorConfig": {
+                            "showMainEditor": true,
+                            "showMacroEditor": true,
+                            "mainEditorMode": "brainfuck"
+                        },
+                        "interpreterConfig": {
+                            "tapeSize": 30000,
+                            "cellSize": 256
+                        },
+                        "debuggerConfig": {
+                            "viewMode": "lane",
+                            "laneCount": 3
+                        },
+                        "content": {
+                            "mainEditor": ">>> [ Moves us to the next word, to cell number 3 ]\n<<< [ Gets us back to cell 0 ]\n> [ Moved to lane 1, basically, to cell 1 ]\n+ [ - Added (and immediately removed) one ]\n< [ Moved back to lane 0 ]\n>>> [ Moved to the next word, lane 0]\n<<< [ And got back to word 0 ]\n>+++< [ Move to lane 1, add 3, return to lane 0 ]\n>>>\n>+++<   [ Move to lane 1, add 3, return to lane 0 ]\n>>+++++<< [ Move to lane 2, add 5, return to lane 0 ]\n>>>\n[So now let's add 3 and 5 using lanes one and two]\n>+++<\n>>+++++<<\n>>[-<+>]<<\n>>>\n[ Now let's do the same but on one lane]\n>+++>>>+++++<<<>>>[-<<<+>>>]<<<<",
+                            "macroEditor": "/*\n\nThis is a tutorial on using \"lanes\" and \"words\" abstractions.\nIt is much easier to write complex Brainfuck programs, if you look\nat Brainfuck tape as not a single continuous tape, but as\non multiple interleaved \"lanes\".\n\nThis technique was previously used, for example, in the\nSierpinski triange implementation by Daniel Cristofani.\n\nImagine Brainfuck tape:\n\n[0, 1, 2, 3, 4, 5, 6, 7, 8...]\n\nDefine how many lanes you need. This example uses three,\nmy Ripple VM implementation uses eight. The amount of lanes\ndefines your word size. Let's define it as LANES_COUNT\n\n*/\n\n#define LANES_COUNT 3\n\n/*\n\nFor three lanes:\n\n[[0, 1, 2], [3, 4, 5], [6, 7, 8]...]\n\nNow we can say that word 0 is cells 0, 1, 2, and so on.\nAnd now, to see the whole picture, let's write our words\nin columns:\n\n0 | 3 | 6\n1 | 4 | 7\n2 | 5 | 8\n\nNow we can say that 0 | 3 | 6 are laying on lane 0,\n1 | 4 | 7 are on lane 1, and\n2 | 5 | 8 are on lane 2.\n\nRemember, we still have the same flat Brainfuck tape —\nwe just think about it differently.\n\nSo now we can actually think about \"moving to the next word\non the same lane\". This would be just using > LANES_COUNT\ntimes, right? Same with \"moving to the previous word on\nthe same lane\" — it is the same as using < LANES_COUNT times.\n\nLet's define these and check them:\n*/\n\n#define right(n) {repeat(n, >)}\n#define left(n)  {repeat(n, <)}\n\n#define nextword @right(#LANES_COUNT)\n#define prevword @left( #LANES_COUNT)\n\n/* And now, make sure you also look in the main editor */\n\n@nextword [ Moves us to the next word, to cell number 3 ]\n@prevword [ Gets us back to cell 0 ]\n\n/*\n\nNow let's think about how we can move between lanes.\nIf we are on the lane 0, we can move to lane 1 by just >,\nand back by <. From lane 0 to lane 2 it would be >>.\n\nSo to move to lane N from lane 0, we need to > N times,\nwhere N is a number of lane!\n\nLet's look at this:\n*/\n\n> [ Moved to lane 1, basically, to cell 1 ]\n+ [ - Added (and immediately removed) one ]\n< [ Moved back to lane 0 ]\n\n@nextword [ Moved to the next word, lane 0]\n@prevword [ And got back to word 0 ]\n\n/*\n\nPerfect! The only thing is that is not, is that we now\nneed to be very cautious on which lane we are at. It\nis pretty easy to lose track of it, especially when\nyou write a large program.\n\nWhile writing the whole virtual machine, to simplify things\nfor myself, I started thinking about \"lane hygiene\". I\ndefined lane 0 as my \"homebase\", and made sure that\nafter every complex operation on other lanes, I must\nreturn to lane 0. And I defined a macro to help me with it:\n*/\n\n#define LANE_ZERO 0 // Technically unused in this example\n#define LANE_ONE  1\n#define LANE_TWO  2\n\n#define lane(n, code) {\n  @right(n) // Move to lane n\n  code      // Do stuff\n  @left(n)  // Return to lane 0\n}\n\n@lane(#LANE_ONE, +++) [ Move to lane 1, add 3, return to lane 0 ]\n\n@nextword\n\n@lane(#LANE_ONE, +++)   [ Move to lane 1, add 3, return to lane 0 ]\n@lane(#LANE_TWO, +++++) [ Move to lane 2, add 5, return to lane 0 ]\n\n@nextword\n\n// MARK: Addition of values in the same word, but on different lanes\n\n[So now let's add 3 and 5 using lanes one and two]\n\n@lane(#LANE_ONE, +++)\n@lane(#LANE_TWO, +++++)\n\n@lane(#LANE_ONE,\n  > // move to lane two\n  [-<+>] // move the value from lane two to lane one\n  < // return to the lane one so @lane macro would quit to lane zero\n)\n\n@nextword\n\n// MARK: Addition of values in the same lane, but on different words\n\n[ Now let's do the same but on one lane]\n\n@lane(#LANE_ONE,\n  +++ @nextword +++++ @prevword\n  \n  @nextword // Move to the next word in the same lane\n  [- @prevword + @nextword] // move the value from this word to the previous one\n  @prevword // Return to the previous word\n)\n\n/*\n\nYou see, how simple it is? The beauty is that every Brainfuck\nalgorithm can be executed with this abstraction —\njust replace every > with @nextword, and every < with @prevword.\n\nIt is like having multiple Brainfuck tapes — but still\non one master tape.\n\nI made the lane visualizer in this IDE specifically to\nallow me to develop the VM easier.\n*/"
+                        },
+                        labels: {
+                            lanes: {
+                                0: 'Lane 0',
+                                1: 'Lane 1',
+                                2: 'Lane 2'
+                            },
+                            columns: {
+                                0: 'Word 0',
+                                1: 'Word 1',
+                                2: 'Word 2',
+                                3: 'Word 3',
+                                4: 'Word 4',
+                                5: 'Word 5',
+                            },
+                        }
+                    }
                 ]
             },
             {

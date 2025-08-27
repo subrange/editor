@@ -29,11 +29,16 @@ export interface InterpreterSettings {
     wrapTape: boolean;
 }
 
+export interface DevelopmentSettings {
+    showDevTools: boolean;
+}
+
 export interface Settings {
     macro: MacroSettings;
     debugger: DebuggerSettings;
     assembly: AssemblySettings;
     interpreter?: InterpreterSettings;
+    development?: DevelopmentSettings;
 }
 
 class SettingsStore {
@@ -60,6 +65,9 @@ class SettingsStore {
         interpreter: {
             wrapCells: this.loadFromStorage('interpreterWrapCells', true),
             wrapTape: this.loadFromStorage('interpreterWrapTape', true)
+        },
+        development: {
+            showDevTools: this.loadFromStorage('developmentShowDevTools', false)
         }
     });
 
@@ -244,6 +252,18 @@ class SettingsStore {
             }
         });
         this.saveToStorage('interpreterWrapTape', value);
+    }
+
+    setDevelopmentShowDevTools(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            development: {
+                ...current.development!,
+                showDevTools: value
+            }
+        });
+        this.saveToStorage('developmentShowDevTools', value);
     }
 
     private loadFromStorage<T>(key: string, defaultValue: T): T {

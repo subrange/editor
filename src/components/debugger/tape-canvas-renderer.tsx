@@ -1331,14 +1331,13 @@ export function TapeCanvasRenderer({ width, height, viewMode, laneCount = 1, sho
     <>
       <canvas
         ref={canvasRef}
-        className="cursor-pointer"
         onWheel={handleWheel}
         onMouseMove={handleMouseMove}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onMouseDown={handleMouseDown}
         onContextMenu={handleContextMenu}
-        style={{ cursor: isDraggingScrollBar || isDraggingVerticalScrollBar ? 'grabbing' : 'pointer' }}
+        style={{ cursor: isDraggingScrollBar || isDraggingVerticalScrollBar ? 'grabbing' : 'default' }}
       />
       {renderContextMenu()}
     </>

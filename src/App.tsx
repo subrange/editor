@@ -32,6 +32,69 @@ import {AssemblyTokenizer} from "./components/editor/services/assembly-tokenizer
 // Initialize VM output service
 vmOutputService.initialize();
 
+// Temporary helper to capture current state for learning content
+function captureLearningContentState() {
+    const mainEditor = editorManager.getEditor('main');
+    const macroEditor = editorManager.getEditor('macro');
+    const settings = settingsStore.settings.value;
+    const interpreterState = interpreterStore.state.value;
+    
+    // Capture actual visibility state from localStorage
+    const showMainEditor = localStorage.getItem('showMainEditor') === 'true';
+    const showMacroEditor = localStorage.getItem('showMacroEditor') === 'true';
+    
+    // Capture current tape labels from interpreter store
+    const tapeLabels = interpreterState.tapeLabels || {};
+    const laneLabels = interpreterState.laneLabels || {};
+    const columnLabels = interpreterState.columnLabels || {};
+    
+    const learningItem = {
+        id: 'placeholder-id',
+        name: 'Placeholder Name',
+        description: 'Placeholder description',
+        editorConfig: {
+            showMainEditor: showMainEditor,
+            showMacroEditor: showMacroEditor,
+            mainEditorMode: localStorage.getItem('mainEditorMode') || 'brainfuck'
+        },
+        interpreterConfig: {
+            tapeSize: interpreterState.tapeSize || 30000,
+            cellSize: interpreterState.cellSize || 256
+        },
+        debuggerConfig: {
+            viewMode: settings?.debugger.viewMode || 'normal',
+            ...(settings?.debugger.viewMode === 'lane' && {
+                laneCount: settings?.debugger.laneCount || 8
+            })
+        },
+        content: {
+            ...(showMainEditor && mainEditor && { mainEditor: mainEditor.getText() }),
+            ...(showMacroEditor && macroEditor && { macroEditor: macroEditor.getText() })
+        },
+        labels: {
+            // Capture actual labels from current state
+            cells: Object.keys(tapeLabels).length > 0 ? tapeLabels : {},
+            lanes: Object.keys(laneLabels).length > 0 ? laneLabels : {},
+            columns: Object.keys(columnLabels).length > 0 ? columnLabels : {}
+        }
+    };
+    
+    // Clean up empty label objects
+    if (Object.keys(learningItem.labels.cells).length === 0 &&
+        Object.keys(learningItem.labels.lanes).length === 0 &&
+        Object.keys(learningItem.labels.columns).length === 0) {
+        delete learningItem.labels;
+    }
+    
+    // Copy to clipboard
+    const json = JSON.stringify(learningItem, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+        console.log('Learning content JSON copied to clipboard!');
+        alert('Learning content JSON copied to clipboard! Check console for preview.');
+        console.log(json);
+    });
+}
+
 // Initialize all editors immediately (before React renders)
 // This ensures they're available when components mount
 function initializeEditors() {
@@ -515,6 +578,8 @@ function WorkspacePanel() {
 export default function App() {
     const outputState = useStoreSubscribe(outputStore.state);
     const { position, collapsed, width } = outputState;
+    const settings = useStoreSubscribe(settingsStore.settings);
+    const showDevTools = settings?.development?.showDevTools ?? false;
     
     // No cleanup needed - editors persist for the lifetime of the app
 
@@ -531,6 +596,16 @@ export default function App() {
                 {/*<DesktopAppNotice />*/}
                 <div className="sidebar">
                     <Sidebar/>
+                    {/* Temporary button to capture learning content - only show when dev tools enabled */}
+                    {showDevTools && (
+                        <button
+                            className="absolute bottom-4 right-4 z-50 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded shadow-lg"
+                            onClick={captureLearningContentState}
+                            title="Capture current state as learning content JSON"
+                        >
+                            📋 Capture Learning JSON
+                        </button>
+                    )}
                 </div>
                 <VSep/>
                 
@@ -568,6 +643,16 @@ export default function App() {
             {/*<DesktopAppNotice />*/}
             <div className="sidebar">
                 <Sidebar/>
+                {/* Temporary button to capture learning content - only show when dev tools enabled */}
+                {showDevTools && (
+                    <button
+                        className="absolute bottom-4 right-4 z-50 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded shadow-lg"
+                        onClick={captureLearningContentState}
+                        title="Capture current state as learning content JSON"
+                    >
+                        📋 Capture Learning JSON
+                    </button>
+                )}
             </div>
             <VSep/>
             

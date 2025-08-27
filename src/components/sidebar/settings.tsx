@@ -597,6 +597,26 @@ export function Settings() {
                     </div>
                 </SettingSection>
 
+                {/* IDE Development */}
+                <SettingSection title="IDE Development">
+                    <div className="space-y-4">
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-200">
+                                Show Dev Tools
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={settings?.development?.showDevTools ?? false}
+                                onChange={(e) => settingsStore.setDevelopmentShowDevTools(e.target.checked)}
+                                className="w-4 h-4 text-blue-500 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                            />
+                        </label>
+                        <p className="text-xs text-zinc-500 -mt-2">
+                            Enable development tools like the learning content capture button
+                        </p>
+                    </div>
+                </SettingSection>
+
                 {/* Settings Management */}
                 <SettingSection title="Settings Management">
                     <div className="space-y-4">
