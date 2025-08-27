@@ -39,10 +39,17 @@ class KeybindingsService {
             return;
         }
 
-        // Also let's allow default behavior for some keys like F1-F12, Escape, cmd+R, cmd+opt+I
+        // Also let's allow default behavior for some keys like F1-F12, Escape, cmd+R, cmd+opt+I, cmd+Q
         if (["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "Escape"].includes(event.key) ||
             (event.metaKey && event.key === 'r') ||
-            (event.metaKey && event.altKey && event.key === 'i')) {
+            (event.metaKey && event.altKey && event.key === 'i') ||
+            (event.metaKey && event.key === 'q') ||
+            (event.metaKey && event.key === 'w') || // Allow closing tabs/windows
+            (event.metaKey && event.key === 'n') || // Allow new window
+            (event.metaKey && event.key === 't') || // Allow new tab
+            (event.metaKey && event.shiftKey && event.key === 't') || // Allow reopening closed tab
+            (event.metaKey && event.key === 'h') || // Allow hiding app
+            (event.metaKey && event.key === 'm')) { // Allow minimizing
             return;
         }
 

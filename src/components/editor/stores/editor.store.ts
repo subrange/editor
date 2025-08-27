@@ -453,7 +453,7 @@ export class EditorStore {
 
     private undoRedo = new UndoRedo();
 
-    public focused = new BehaviorSubject(false);
+    public focused = new BehaviorSubject<boolean>(false);
 
     public showDebug = false;
     public showMinimap = new BehaviorSubject<boolean>(false);

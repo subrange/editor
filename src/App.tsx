@@ -16,6 +16,7 @@ import {createAsyncMacroExpander, createAsyncMacroExpanderWasm} from "./services
 import {CpuChipIcon, ArrowPathIcon, DocumentTextIcon, CommandLineIcon, CodeBracketIcon} from "@heroicons/react/24/solid";
 import {IconButton} from "./components/ui/icon-button.tsx";
 import {BrowserNotice} from "./components/browser-notice.tsx";
+// import {DesktopAppNotice} from "./components/desktop-app-notice.tsx";
 
 import {settingsStore} from "./stores/settings.store";
 import {useStoreSubscribe} from "./hooks/use-store-subscribe";
@@ -527,6 +528,7 @@ export default function App() {
             <div className="h grow-1 outline-0 app-container" tabIndex={0}
                  onKeyDownCapture={e => keybindingsService.handleKeyEvent(e.nativeEvent)}>
                 <BrowserNotice />
+                {/*<DesktopAppNotice />*/}
                 <div className="sidebar">
                     <Sidebar/>
                 </div>
@@ -563,6 +565,7 @@ export default function App() {
         <div className="h grow-1 outline-0 app-container" tabIndex={0}
              onKeyDownCapture={e => keybindingsService.handleKeyEvent(e.nativeEvent)}>
             <BrowserNotice />
+            {/*<DesktopAppNotice />*/}
             <div className="sidebar">
                 <Sidebar/>
             </div>

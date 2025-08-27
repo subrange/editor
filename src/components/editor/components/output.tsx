@@ -1,12 +1,13 @@
 import {useStoreSubscribeToField, useStoreSubscribe} from "../../../hooks/use-store-subscribe.tsx";
 import {interpreterStore} from "../../debugger/interpreter-facade.store.ts";
-import {useLayoutEffect, useRef, useMemo, useEffect} from "react";
+import {useLayoutEffect, useRef, useEffect} from "react";
 import clsx from "clsx";
 import {ChevronDownIcon, ChevronUpIcon, XMarkIcon} from "@heroicons/react/16/solid";
 import {CommandLineIcon} from "@heroicons/react/24/outline";
 import {outputStore} from "../../../stores/output.store.ts";
 import {VMOutput} from "./vm-output.tsx";
 import {Disassembly} from "./disassembly.tsx";
+import {IO} from "./io.tsx";
 import {useLocalStorageState} from "../../../hooks/use-local-storage-state.tsx";
 import {settingsStore} from "../../../stores/settings.store.ts";
 
@@ -39,25 +40,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
         }
     }, [showAssemblyWorkspace, activeTab, setActiveTab]);
 
-    // Process output to handle max lines
-    const processedOutput = useMemo(() => {
-        if (!maxLines || !output) return output;
-        const lines = output.split('\n');
-        if (lines.length <= maxLines) return output;
-        
-        // Keep the last maxLines lines
-        const truncated = lines.slice(-maxLines);
-        return `[... ${lines.length - maxLines} lines truncated ...]\n${truncated.join('\n')}`;
-    }, [output, maxLines]);
-
-    // Scroll to the bottom when output changes
-    useLayoutEffect(() => {
-        setTimeout(() => {
-            if (outputContainer.current && !collapsed && (activeTab === 'output' || splitView)) {
-                outputContainer.current.scrollTop = outputContainer.current.scrollHeight;
-            }
-        }, 10);
-    }, [processedOutput, collapsed, activeTab, splitView]);
+    // Note: Auto-scroll and output processing are now handled by individual components (IO, VMOutput, Disassembly)
     
     // Auto-enable split view when debugging starts (optional feature)
     useLayoutEffect(() => {
@@ -249,9 +232,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                     // Tab view mode - show single panel
                     <div className={clsx(contentClasses, "overflow-auto")} ref={outputContainer}>
                         {activeTab === 'output' ? (
-                            <pre className="text-xs text-white whitespace-pre font-mono">
-                                {processedOutput}
-                            </pre>
+                            <IO output={output} maxLines={maxLines} outputRef={outputContainer} isActive={activeTab === 'output'} />
                         ) : activeTab === 'vm' ? (
                             <VMOutput outputRef={outputContainer} isActive={activeTab === 'vm'} />
                         ) : (

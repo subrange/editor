@@ -4,6 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "main": "electron/main.cjs",
+  "author": {
+    "name": "Pavlo",
+    "email": "deadswallow@gmail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://braintease.dev",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -27,9 +33,10 @@
     "electron:dev": "NODE_ENV=development electron .",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:linux": "npm run build && electron-builder --linux",
-    "dist:all": "npm run build && electron-builder -mwl"
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:linux": "npm run build && electron-builder --linux --x64",
+    "dist:all": "npm run build && electron-builder -mwl --x64",
+    "publish-downloads": "./scripts/publish-downloads.sh"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

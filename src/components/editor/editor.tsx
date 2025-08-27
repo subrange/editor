@@ -146,7 +146,15 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
         setEditorScrollTop((e.target as HTMLDivElement).scrollTop);
     };
 
+    const keybindingsInitializedRef = useRef(false);
+
     function addEditorKeybindings() {
+        // Prevent duplicate initialization
+        if (keybindingsInitializedRef.current) {
+            return;
+        }
+        keybindingsInitializedRef.current = true;
+
         // Use editor-specific keybinding state to avoid conflicts
         const keybindingState = `editor_${store.getId()}` as KeybindingState;
         keybindingsService.pushKeybindings(keybindingState, [
@@ -202,9 +210,56 @@ export function Editor({store, onFocus, onBlur}: EditorProps) {
     function removeEditorKeybindings() {
         const keybindingState = `editor_${store.getId()}` as KeybindingState;
         keybindingsService.removeKeybindings(keybindingState);
+        keybindingsInitializedRef.current = false;
         store.blur();
         onBlur?.();
     }
+
+    // Check initial focus state after mount and sync with store
+    useEffect(() => {
+        // Small delay to ensure DOM is ready
+        const checkInitialFocus = setTimeout(() => {
+            const isActuallyFocused = editorRef.current === document.activeElement;
+            const storeThinksFocused = store.focused.getValue();
+            
+            // Sync the store with actual focus state
+            if (isActuallyFocused && !storeThinksFocused) {
+                // Editor is focused but store doesn't know
+                addEditorKeybindings();
+            } else if (!isActuallyFocused && storeThinksFocused) {
+                // Store thinks we're focused but we're not
+                removeEditorKeybindings();
+            }
+        }, 100);
+
+        return () => clearTimeout(checkInitialFocus);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only run once on mount
+
+    // Handle clicks outside the editor to blur it
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            // Check if the click was outside the editor
+            if (editorRef.current && !editorRef.current.contains(event.target as Node)) {
+                // Check if editor store thinks it's focused
+                if (store.focused.getValue()) {
+                    // Manually trigger blur since clicking on non-focusable elements won't
+                    removeEditorKeybindings();
+                    // Also blur the actual element if it's focused
+                    if (editorRef.current === document.activeElement) {
+                        editorRef.current.blur();
+                    }
+                }
+            }
+        };
+
+        // Add event listener to document
+        document.addEventListener('mousedown', handleClickOutside);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [store]); // Use store directly instead of focused state
 
     return (
         <div className="flex overflow-hidden grow-1 relative">

@@ -1,13 +1,14 @@
 import {useLocalStorageState} from "../../hooks/use-local-storage-state.tsx";
 import { useState } from 'react';
 import clsx from "clsx";
-import {CogIcon, CameraIcon, DocumentIcon, HashtagIcon, AcademicCapIcon, InformationCircleIcon} from "@heroicons/react/24/outline";
+import {CogIcon, CameraIcon, DocumentIcon, HashtagIcon, AcademicCapIcon, InformationCircleIcon, ArrowDownTrayIcon} from "@heroicons/react/24/outline";
 import {Settings} from "./settings.tsx";
 import {Snapshots} from "./snapshots.tsx";
 import {Files} from "./files.tsx";
 import {Marks} from "./marks.tsx";
 import {Learning} from "./learning.tsx";
 import {AboutModal} from "./about-modal.tsx";
+// import {DownloadModal} from "./download-modal.tsx";
 import {LearningNotice} from "./learning-notice.tsx";
 import {Tooltip} from "../ui/tooltip.tsx";
 
@@ -43,6 +44,14 @@ function SidebarTabButton({
 export function Sidebar() {
     const [activeTab, setActiveTab] = useLocalStorageState<'settings' | 'snapshots' | 'files' | 'marks' | 'learning' | null>("sidebarTab", null);
     const [showAboutModal, setShowAboutModal] = useState(false);
+    // const [showDownloadModal, setShowDownloadModal] = useState(false);
+    // const [isElectron, setIsElectron] = useState(false);
+    
+    // useEffect(() => {
+    //     Check if running in Electron
+        // const userAgent = navigator.userAgent.toLowerCase();
+        // setIsElectron(userAgent.includes('electron'));
+    // }, []);
 
     return (
         <div className={clsx(
@@ -79,6 +88,14 @@ export function Sidebar() {
                     active={activeTab === 'learning'}
                     onClick={() => setActiveTab(activeTab === 'learning' ? null : 'learning')}
                 />
+                {/*{!isElectron && (*/}
+                {/*    <SidebarTabButton*/}
+                {/*        icon={ArrowDownTrayIcon}*/}
+                {/*        label="Download App"*/}
+                {/*        active={false}*/}
+                {/*        onClick={() => setShowDownloadModal(true)}*/}
+                {/*    />*/}
+                {/*)}*/}
                 <SidebarTabButton
                     icon={InformationCircleIcon}
                     label="About"
@@ -110,6 +127,9 @@ export function Sidebar() {
 
             {/* About Modal */}
             {showAboutModal && <AboutModal onClose={() => setShowAboutModal(false)} />}
+            
+            {/* Download Modal */}
+            {/*{showDownloadModal && <DownloadModal onClose={() => setShowDownloadModal(false)} />}*/}
             
             {/* Learning Notice */}
             <LearningNotice activeTab={activeTab} />

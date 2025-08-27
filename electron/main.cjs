@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, protocol } = require('electron');
+const { app, BrowserWindow, Menu, protocol, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -106,6 +106,27 @@ function createWindow() {
     // Use custom protocol with a base URL structure
     mainWindow.loadURL('app://localhost/');
   }
+
+  // Handle external links - open them in the default browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    // If it's an external URL, open it in the default browser
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+      return { action: 'deny' }; // Prevent opening in Electron
+    }
+    return { action: 'allow' };
+  });
+
+  // Also handle navigation to external links
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    // If navigating to an external URL, prevent it and open in browser
+    if (!url.startsWith('app://') && !url.startsWith('file://')) {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
