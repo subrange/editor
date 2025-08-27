@@ -14,6 +14,8 @@ import bfCommands from '../learning-content/brainfuck/basics/commands.bf?raw';
 import bfLoops from '../learning-content/brainfuck/basics/loops.bf?raw';
 import bfMandelbrot from '../learning-content/brainfuck/examples/mandelbrot.bf?raw';
 import bfSierpinski from '../learning-content/brainfuck/examples/sierpinski.bf?raw';
+import bfYapi from '../learning-content/brainfuck/examples/yapi.bf?raw';
+import bfChar from '../learning-content/brainfuck/examples/char.bf?raw';
 
 // Macro content
 import macroIntro from '../learning-content/macro/basics/intro.bfm?raw';
@@ -85,7 +87,7 @@ class LearningStore {
     private defaultCategories: LearningCategory[] = [
         {
             id: 'ide',
-            name: 'IDE',
+            name: 'Braintease IDE',
             icon: '💻',
             subcategories: [
                 {
@@ -105,6 +107,9 @@ class LearningStore {
                                 tapeSize: 30000,
                                 cellSize: 256
                             },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            },
                             content: {
                                 mainEditor: ideWelcome
                             }
@@ -121,6 +126,9 @@ class LearningStore {
                             interpreterConfig: {
                                 tapeSize: 30000,
                                 cellSize: 256
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
                             },
                             content: {
                                 mainEditor: '// This is the main editor\n// The expanded macro code will appear here\n// Click "Expand Macros" button to see the result',
@@ -256,6 +264,9 @@ class LearningStore {
                                 tapeSize: 30000,
                                 cellSize: 256
                             },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            },
                             content: {
                                 mainEditor: `// Snapshot Tutorial
 // Run this program step by step and save snapshots at interesting points!
@@ -367,6 +378,9 @@ class LearningStore {
                             content: {
                                 mainEditor: bfHelloWorld
                             },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            },
                             labels: {
                                 cells: {
                                     0: 'Temp',
@@ -389,7 +403,10 @@ class LearningStore {
                             },
                             content: {
                                 mainEditor: bfCommands
-                            }
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            },
                         },
                         {
                             id: 'bf-loops',
@@ -413,7 +430,10 @@ class LearningStore {
                                     1: 'Copy Target',
                                     2: 'Temp Variable'
                                 }
-                            }
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            },
                         }
                     ]
                 },
@@ -421,6 +441,46 @@ class LearningStore {
                     id: 'bf-examples',
                     name: 'Examples',
                     items: [
+                        {
+                            id: 'bf-char',
+                            name: 'Characters',
+                            description: 'Print ASCII characters set',
+                            editorConfig: {
+                                showMainEditor: true,
+                                showMacroEditor: false,
+                                mainEditorMode: 'brainfuck'
+                            },
+                            interpreterConfig: {
+                                tapeSize: 30000,
+                                cellSize: 256
+                            },
+                            content: {
+                                mainEditor: bfChar
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            },
+                        },
+                        {
+                            id: 'bf-yapi',
+                            name: 'YAPI',
+                            description: 'A Brainfuck program that calculates Pi',
+                            editorConfig: {
+                                showMainEditor: true,
+                                showMacroEditor: false,
+                                mainEditorMode: 'brainfuck'
+                            },
+                            interpreterConfig: {
+                                tapeSize: 30000,
+                                cellSize: 65536
+                            },
+                            content: {
+                                mainEditor: bfYapi
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            }
+                        },
                         {
                             id: 'bf-sierpinski',
                             name: 'Sierpinski Triangle',
@@ -453,6 +513,9 @@ class LearningStore {
                             interpreterConfig: {
                                 tapeSize: 30000,
                                 cellSize: 256
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
                             },
                             content: {
                                 mainEditor: bfMandelbrot
@@ -487,7 +550,10 @@ class LearningStore {
                             content: {
                                 macroEditor: macroIntro,
                                 mainEditor: '// Expanded code will appear here after clicking "Expand Macros"'
-                            }
+                            },
+                            debuggerConfig: {
+                                viewMode: 'normal'
+                            },
                         },
                     ]
                 },

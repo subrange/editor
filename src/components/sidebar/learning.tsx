@@ -169,6 +169,9 @@ export function Learning() {
 
             {/* Content */}
             <div className="p-3 space-y-1">
+                {/* Interactive Examples Section */}
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Interactive Examples</h3>
+                
                 {learningState.categories.map((category: LearningCategory) => (
                     <div key={category.id} className="">
                         {/* Category Header */}
