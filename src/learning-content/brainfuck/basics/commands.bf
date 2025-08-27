@@ -28,8 +28,10 @@
 <
 
 // Command 6: Input character
-// This command does not work in Braintease IDE because reasons
-// ,
+// This command requests an input from the user and stores the result in a current cell
+,
+. // Output the character we just got
+[-] // Clear the cell
 
 // Commands 7 & 8: Loop constructs
 // Open square bracket means: if current cell is 0 then jump forward past matching closing square bracket

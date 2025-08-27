@@ -1,3 +1,11 @@
+
+// Use the Rocket button to run it
+// If you want to step through the code, use the lightning button
+// Every press of the lighting button will execute one command and pause
+// If you set the debug flag to 0 then it will run without stopping after each command
+// This is useful when you want to set a code breakpoint with the dollar sign
+// to debug some inner mechanics of the code
+
 // Pefectly Engineered Nonstandard Instruction Set v1.0
 
 // MARK: ------------- START -------------
