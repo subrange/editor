@@ -13,6 +13,7 @@ type InterpreterState = {
     isRunning: boolean;
     isPaused: boolean;
     isStopped: boolean;
+    isWaitingForInput: boolean; // New flag for input state
 
     breakpoints: Position[];
     sourceBreakpoints?: Position[]; // Breakpoints set in source (macro) code
@@ -75,6 +76,7 @@ class InterpreterStore {
         isRunning: false,
         isPaused: false,
         isStopped: false,
+        isWaitingForInput: false,
         breakpoints: [],
         sourceBreakpoints: [],
         output: '',
@@ -203,6 +205,7 @@ class InterpreterStore {
             isRunning: false,
             isPaused: false,
             isStopped: false,
+            isWaitingForInput: false,
             breakpoints: currentState.breakpoints, // Keep existing breakpoints
             sourceBreakpoints: currentState.sourceBreakpoints, // Keep existing source breakpoints
             output: '',
@@ -668,8 +671,12 @@ class InterpreterStore {
                 break;
             case ',':
                 console.log(`Input requested at position ${currentState.pointer}`);
+                // Set waiting for input state and pause execution
+                currentState.isWaitingForInput = true;
+                currentState.isPaused = true;
+                this.state.next(currentState);
                 this.operationCount++;
-                break;
+                return true; // Don't move to next character yet
         }
 
         // Call VM output callback after each instruction
@@ -933,7 +940,16 @@ class InterpreterStore {
                     break;
                 case ',':
                     console.log(`Input requested at position ${pointer}`);
-                    break;
+                    // Need to pause for input
+                    this.state.next({
+                        ...currentState,
+                        tape: tape,
+                        pointer: pointer,
+                        output: newOutput,
+                        isWaitingForInput: true,
+                        isPaused: true
+                    });
+                    return true; // Don't continue processing
             }
 
             // Update state only if needed
@@ -1066,7 +1082,27 @@ class InterpreterStore {
                     }
                     break;
                 case '.': output += String.fromCharCode(tape[pointer]); break;
-                case ',': tape[pointer] = 0; break;
+                case ',': {
+                    // Need to pause turbo mode for input
+                    console.log(`Turbo: Input requested at pointer ${pointer}`);
+                    
+                    // Update state to show we're waiting for input
+                    this.state.next({
+                        ...this.state.getValue(),
+                        tape: tape,
+                        pointer: pointer,
+                        output: this.state.getValue().output + output,
+                        isWaitingForInput: true,
+                        isPaused: true,
+                        isRunning: true
+                    });
+                    
+                    // Store current position for resuming
+                    this.currentChar.next(ops[pc].position);
+                    
+                    console.log('Pausing turbo mode for input.');
+                    return;
+                }
                 case '$': {
                     // Hit in-code breakpoint.rs
                     console.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
@@ -1256,7 +1292,27 @@ class InterpreterStore {
                     }
                     break;
                 case '.': output += String.fromCharCode(tape[pointer]); break;
-                case ',': tape[pointer] = 0; break;
+                case ',': {
+                    // Need to pause turbo mode for input
+                    console.log(`Turbo: Input requested at pointer ${pointer}`);
+                    
+                    // Update state to show we're waiting for input
+                    this.state.next({
+                        ...this.state.getValue(),
+                        tape: tape,
+                        pointer: pointer,
+                        output: this.state.getValue().output + output,
+                        isWaitingForInput: true,
+                        isPaused: true,
+                        isRunning: true
+                    });
+                    
+                    // Store current position for resuming
+                    this.currentChar.next(ops[pc].position);
+                    
+                    console.log('Pausing turbo mode for input.');
+                    return;
+                }
                 case '$': {
                     // Hit in-code breakpoint.rs - update state and pause
                     console.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
@@ -1417,6 +1473,38 @@ class InterpreterStore {
             ...this.state.getValue(),
             laneCount: count
         });
+    }
+
+    public provideInput(char: string) {
+        const currentState = this.state.getValue();
+        
+        if (!currentState.isWaitingForInput) {
+            console.warn('Input provided but interpreter is not waiting for input');
+            return;
+        }
+        
+        // Get ASCII value of the input character
+        const asciiValue = char.charCodeAt(0);
+        
+        // Place the value in the current cell
+        currentState.tape[currentState.pointer] = asciiValue % this.cellSize.getValue();
+        
+        // Clear waiting state and resume
+        currentState.isWaitingForInput = false;
+        currentState.isPaused = false;
+        
+        console.log(`Input received: '${char}' (ASCII ${asciiValue}) placed at position ${currentState.pointer}`);
+        
+        this.state.next(currentState);
+        
+        // Move to next instruction after input
+        const hasMore = this.moveToNextChar();
+        if (!hasMore) {
+            this.stop();
+        } else if (currentState.isRunning && (this.runInterval || this.runAnimationFrameId)) {
+            // If we were running before input, continue execution
+            // The run loop will automatically continue since isPaused is now false
+        }
     }
 
     public loadSnapshot(snapshot: TapeSnapshot) {

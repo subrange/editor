@@ -10,6 +10,7 @@ type InterpreterState = {
   isRunning: boolean;
   isPaused: boolean;
   isStopped: boolean;
+  isWaitingForInput?: boolean;
   breakpoints: Position[];
   sourceBreakpoints?: Position[];
   output: string;
@@ -248,6 +249,7 @@ export class InterpreterWorkerStore {
       isRunning: message.isRunning,
       isPaused: message.isPaused,
       isStopped: message.isStopped,
+      isWaitingForInput: message.isWaitingForInput,
       output: message.output,
       currentSourcePosition: message.currentSourcePosition,
       macroContext: message.macroContext,
@@ -322,6 +324,7 @@ export class InterpreterWorkerStore {
       isRunning: false,
       isPaused: false,
       isStopped: false,
+      isWaitingForInput: false,
       pointer: 0,
       output: '',
       lastExecutionTime: undefined,
@@ -591,6 +594,14 @@ export class InterpreterWorkerStore {
     this.worker.postMessage({
       type: 'setVMOutputConfig',
       config
+    });
+  }
+
+  public provideInput(char: string) {
+    console.log(`Worker: Providing input '${char}'`);
+    this.worker.postMessage({
+      type: 'provideInput',
+      char
     });
   }
 

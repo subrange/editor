@@ -11,6 +11,7 @@ type InterpreterState = {
     isRunning: boolean;
     isPaused: boolean;
     isStopped: boolean;
+    isWaitingForInput?: boolean;
     breakpoints: Position[];
     sourceBreakpoints?: Position[]; // Breakpoints set in source (macro) code
     output: string;
@@ -281,6 +282,13 @@ class InterpreterFacade implements InterpreterInterface {
 
     loadSnapshot(snapshot: TapeSnapshot) {
         this.currentInterpreter.loadSnapshot(snapshot);
+    }
+    
+    provideInput(char: string) {
+        // Delegate to the current interpreter
+        if ('provideInput' in this.currentInterpreter) {
+            (this.currentInterpreter as any).provideInput(char);
+        }
     }
     
     toggleSourceBreakpoint(position: Position) {

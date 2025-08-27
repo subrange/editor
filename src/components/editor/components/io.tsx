@@ -1,4 +1,6 @@
-import { useRef, useLayoutEffect, useMemo } from "react";
+import { useRef, useLayoutEffect, useMemo, useEffect, useState } from "react";
+import { interpreterStore } from "../../debugger/interpreter-facade.store";
+import { outputStore } from "../../../stores/output.store";
 
 interface IOProps {
     output: string | undefined;
@@ -10,6 +12,15 @@ interface IOProps {
 export function IO({ output, outputRef, isActive = true, maxLines }: IOProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const activeRef = outputRef || containerRef;
+    const [isWaitingForInput, setIsWaitingForInput] = useState(false);
+
+    // Subscribe to interpreter state for input waiting status
+    useEffect(() => {
+        const subscription = interpreterStore.state.subscribe(state => {
+            setIsWaitingForInput(state.isWaitingForInput || false);
+        });
+        return () => subscription.unsubscribe();
+    }, []);
 
     // Process output to handle max lines
     const processedOutput = useMemo(() => {
@@ -33,9 +44,43 @@ export function IO({ output, outputRef, isActive = true, maxLines }: IOProps) {
         }, 10);
     }, [processedOutput, isActive, activeRef]);
 
+    // Handle keyboard input when waiting
+    useEffect(() => {
+        if (!isWaitingForInput || !isActive) return;
+
+        // Show output panel if collapsed
+        const outputState = outputStore.state.getValue();
+        if (outputState.collapsed) {
+            outputStore.setCollapsed(false);
+        }
+
+        // Focus the container to capture keyboard input
+        if (activeRef.current) {
+            activeRef.current.focus();
+        }
+
+        const handleKeyPress = (e: KeyboardEvent) => {
+            if (e.key.length === 1) {
+                // Single character input
+                (interpreterStore as any).provideInput(e.key);
+                e.preventDefault();
+            }
+        };
+
+        window.addEventListener('keypress', handleKeyPress);
+        return () => {
+            window.removeEventListener('keypress', handleKeyPress);
+        };
+    }, [isWaitingForInput, isActive, activeRef]);
+
     return (
-        <pre className="text-xs text-white whitespace-pre font-mono">
-            {processedOutput}
-        </pre>
+        <div tabIndex={-1} ref={containerRef} className="outline-none">
+            <pre className="text-xs text-white whitespace-pre font-mono">
+                {processedOutput}
+                {isWaitingForInput && (
+                    <span className="animate-pulse">_</span>
+                )}
+            </pre>
+        </div>
     );
 }
