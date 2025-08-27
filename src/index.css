@@ -99,6 +99,19 @@
             transform: translateX(0);
         }
     }
+    
+    @keyframes slide-in-left {
+        from {
+            opacity: 0;
+            transform: translateX(-1rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    --animate-slide-in-left: slide-in-left 0.3s ease-out;
 }
 
 .slider::-webkit-slider-thumb {

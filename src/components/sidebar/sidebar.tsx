@@ -8,6 +8,7 @@ import {Files} from "./files.tsx";
 import {Marks} from "./marks.tsx";
 import {Learning} from "./learning.tsx";
 import {AboutModal} from "./about-modal.tsx";
+import {LearningNotice} from "./learning-notice.tsx";
 
 function SidebarTabButton({
                               icon: Icon,
@@ -107,6 +108,9 @@ export function Sidebar() {
 
             {/* About Modal */}
             {showAboutModal && <AboutModal onClose={() => setShowAboutModal(false)} />}
+            
+            {/* Learning Notice */}
+            <LearningNotice activeTab={activeTab} />
         </div>
     );
 }
