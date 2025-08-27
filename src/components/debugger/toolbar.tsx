@@ -22,19 +22,22 @@ import { settingsStore } from "../../stores/settings.store.ts";
 
 export function Toolbar() {
     const interpreterState = useStoreSubscribe(interpreterStore.state);
-    const { isRunning, isPaused, isStopped, lastExecutionMode, lastExecutionTime, lastOperationCount } = interpreterState;
+    const { isRunning, isPaused, isStopped, isWaitingForInput, lastExecutionMode, lastExecutionTime, lastOperationCount } = interpreterState;
     const [delay, setDelay] = useState(50);
     const [showDelayInput, setShowDelayInput] = useState(false);
     const [wasmStatus, setWasmStatus] = useState<'initializing' | 'ready' | 'error'>('initializing');
     const [wasmRunning, setWasmRunning] = useState(false);
+    const [wasmWaitingForInput, setWasmWaitingForInput] = useState(false);
     
     useEffect(() => {
         const statusSub = rustWasmInterpreter.status$.subscribe(setWasmStatus);
         const runningSub = rustWasmInterpreter.isRunning$.subscribe(setWasmRunning);
+        const waitingInputSub = rustWasmInterpreter.isWaitingForInput$.subscribe(setWasmWaitingForInput);
         
         return () => {
             statusSub.unsubscribe();
             runningSub.unsubscribe();
+            waitingInputSub.unsubscribe();
         };
     }, []);
     
@@ -97,7 +100,7 @@ export function Toolbar() {
             // Run with real-time output callback
             const result = await rustWasmInterpreter.runProgram(
                 code,
-                '', // No input for now
+                '', // Input will be provided interactively
                 {
                     tapeSize: tapeSize,
                     cellSize: cellBits,
@@ -309,34 +312,48 @@ export function Toolbar() {
                     {isRunning && (
                         <div className="flex items-center gap-1">
                             <div className={`w-2 h-2 rounded-full ${
-                                isPaused
+                                isWaitingForInput
+                                    ? 'bg-blue-500 animate-pulse'
+                                    : isPaused
                                     ? 'bg-yellow-500'
                                     : 'bg-green-500 animate-pulse'
                             }`} />
                             <span className={
-                                isPaused
+                                isWaitingForInput
+                                    ? 'text-blue-500'
+                                    : isPaused
                                     ? 'text-yellow-500'
                                     : 'text-green-500'
                             }>
-                                {isPaused ? 'Paused' : 'Running'}
+                                {isWaitingForInput ? 'Waiting for input' : isPaused ? 'Paused' : 'Running'}
                             </span>
                         </div>
                     )}
                     {/* WASM interpreter running status */}
                     {wasmRunning && (
                         <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                            <span className="text-purple-500">Running (WASM)</span>
+                            <div className={`w-2 h-2 rounded-full ${
+                                wasmWaitingForInput
+                                    ? 'bg-blue-500 animate-pulse'
+                                    : 'bg-purple-500 animate-pulse'
+                            }`} />
+                            <span className={
+                                wasmWaitingForInput
+                                    ? 'text-blue-500'
+                                    : 'text-purple-500'
+                            }>
+                                {wasmWaitingForInput ? 'Waiting for input (WASM)' : 'Running (WASM)'}
+                            </span>
                         </div>
                     )}
                     {/* Finished status */}
                     {
                         !isRunning && !wasmRunning && isStopped && (
                             <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                <span className="text-blue-500">Finished</span>
+                                <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                                <span className="text-zinc-500">Finished</span>
                                 {lastExecutionTime !== undefined && lastOperationCount !== undefined && (
-                                    <span className="text-zinc-500 ml-2">
+                                    <span className="text-zinc-600 ml-2">
                                         ({lastExecutionTime.toFixed(2)}s, {Math.round(lastOperationCount / lastExecutionTime).toLocaleString()} ops/s)
                                     </span>
                                 )}

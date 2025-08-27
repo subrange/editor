@@ -339,3 +339,8 @@ class InterpreterFacade implements InterpreterInterface {
 
 // Export a single instance that all components can use
 export const interpreterStore = new InterpreterFacade();
+
+// Make it globally accessible for keybindings service
+if (typeof window !== 'undefined') {
+    (window as any).interpreterStore = interpreterStore;
+}

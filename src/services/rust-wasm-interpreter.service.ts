@@ -1,4 +1,5 @@
 import { BehaviorSubject } from 'rxjs';
+import { interpreterStore } from '../components/debugger/interpreter-facade.store';
 
 export interface RustWasmOptions {
   tapeSize?: number;
@@ -33,6 +34,7 @@ class RustWasmInterpreterService {
   // Observable for service status
   public status$ = new BehaviorSubject<'initializing' | 'ready' | 'error'>('initializing');
   public isRunning$ = new BehaviorSubject<boolean>(false);
+  public isWaitingForInput$ = new BehaviorSubject<boolean>(false);
   
   constructor() {
     this.initializeWorker();
@@ -46,6 +48,16 @@ class RustWasmInterpreterService {
         const { type, id, char, charCode, result, error, code } = e.data;
         
         switch (type) {
+          case 'waiting_for_input':
+            this.isWaitingForInput$.next(true);
+            // Update interpreter state to show we're waiting for input
+            const currentState = interpreterStore.state.getValue();
+            interpreterStore.state.next({
+              ...currentState,
+              isWaitingForInput: true,
+              isPaused: true
+            });
+            break;
           case 'ready':
             this.isReady = true;
             this.status$.next('ready');
@@ -67,6 +79,18 @@ class RustWasmInterpreterService {
               if (this.currentRunId === id) {
                 this.currentRunId = null;
                 this.isRunning$.next(false);
+                this.isWaitingForInput$.next(false);
+                
+                // Clear the waiting state in the interpreter store as well
+                const currentState = interpreterStore.state.getValue();
+                if (currentState.isWaitingForInput) {
+                  interpreterStore.state.next({
+                    ...currentState,
+                    isWaitingForInput: false,
+                    isPaused: false,
+                    isStopped: true
+                  });
+                }
               }
             }
             break;
@@ -80,6 +104,18 @@ class RustWasmInterpreterService {
                 if (this.currentRunId === id) {
                   this.currentRunId = null;
                   this.isRunning$.next(false);
+                  this.isWaitingForInput$.next(false);
+                  
+                  // Clear the waiting state in the interpreter store as well
+                  const currentState = interpreterStore.state.getValue();
+                  if (currentState.isWaitingForInput) {
+                    interpreterStore.state.next({
+                      ...currentState,
+                      isWaitingForInput: false,
+                      isPaused: false,
+                      isStopped: true
+                    });
+                  }
                 }
               }
             } else {
@@ -194,6 +230,18 @@ class RustWasmInterpreterService {
       }
       this.currentRunId = null;
       this.isRunning$.next(false);
+      this.isWaitingForInput$.next(false);
+      
+      // Clear the waiting state in the interpreter store as well
+      const currentState = interpreterStore.state.getValue();
+      if (currentState.isWaitingForInput) {
+        interpreterStore.state.next({
+          ...currentState,
+          isWaitingForInput: false,
+          isPaused: false,
+          isStopped: true
+        });
+      }
       
       // Restart worker to ensure clean state
       this.restart();
@@ -250,13 +298,49 @@ class RustWasmInterpreterService {
   }
   
   /**
+   * Provide input to the interpreter when it's waiting
+   */
+  provideInput(char: string) {
+    if (!this.worker || !this.currentRunId || !this.isWaitingForInput$.getValue()) {
+      console.warn('Cannot provide input: interpreter not waiting for input');
+      return;
+    }
+    
+    const charCode = char.charCodeAt(0);
+    this.isWaitingForInput$.next(false);
+    
+    // Clear the waiting state in the interpreter store immediately
+    const currentState = interpreterStore.state.getValue();
+    if (currentState.isWaitingForInput) {
+      interpreterStore.state.next({
+        ...currentState,
+        isWaitingForInput: false,
+        isPaused: false
+      });
+    }
+    
+    this.worker.postMessage({
+      type: 'provide_input',
+      id: this.currentRunId,
+      charCode
+    });
+  }
+  
+  
+  /**
    * Restart the worker
    */
   restart() {
     this.terminate();
     this.initializeWorker();
+    this.isWaitingForInput$.next(false);
   }
 }
 
 // Export singleton instance
 export const rustWasmInterpreter = new RustWasmInterpreterService();
+
+// Make it globally accessible for the IO component
+if (typeof window !== 'undefined') {
+  (window as any).rustWasmInterpreter = rustWasmInterpreter;
+}

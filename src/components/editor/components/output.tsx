@@ -123,7 +123,7 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                             ) : (
                                 <>
                                     <ChevronUpIcon className="w-4 h-4" />
-                                    <span>Output</span>
+                                    <span>I/O</span>
                                 </>
                             )}
                         </button>
@@ -148,7 +148,10 @@ export function Output({ position = 'bottom', showHeader = true, onClose }: Outp
                                             className={tabButtonClasses(activeTab === 'output')}
                                             onClick={() => setActiveTab('output')}
                                         >
-                                            Output
+                                            I/O
+                                            {interpreterState.isWaitingForInput && (
+                                                <span className="ml-1 inline-block w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                                            )}
                                         </button>
                                         {showAssemblyWorkspace && (
                                             <button

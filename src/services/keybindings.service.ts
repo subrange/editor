@@ -39,6 +39,16 @@ class KeybindingsService {
             return;
         }
 
+        // Check if interpreter is waiting for input - if so, let the event through
+        // This allows the IO component to capture input for Brainfuck programs
+        const interpreterStore = (window as any).interpreterStore;
+        if (interpreterStore && interpreterStore.state && interpreterStore.state.getValue) {
+            const state = interpreterStore.state.getValue();
+            if (state.isWaitingForInput) {
+                return; // Let the event propagate for input handling
+            }
+        }
+
         // Also let's allow default behavior for some keys like F1-F12, Escape, cmd+R, cmd+opt+I, cmd+Q
         if (["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "Escape"].includes(event.key) ||
             (event.metaKey && event.key === 'r') ||

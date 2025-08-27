@@ -1,6 +1,8 @@
 // Web Worker for running Brainfuck code using WASM interpreter
 let wasmModule = null;
 let BrainfuckInterpreter = null;
+let StatefulBrainfuckInterpreter = null;
+let currentInterpreter = null;
 
 // Initialize WASM module
 async function initWasm() {
@@ -10,6 +12,7 @@ async function initWasm() {
         
         wasmModule = await initModule.default(wasmUrl);
         BrainfuckInterpreter = initModule.BrainfuckInterpreter;
+        StatefulBrainfuckInterpreter = initModule.StatefulBrainfuckInterpreter;
         
         self.postMessage({ type: 'ready' });
     } catch (error) {
@@ -30,7 +33,7 @@ self.onmessage = async function(e) {
     }
     
     if (type === 'run') {
-        if (!BrainfuckInterpreter) {
+        if (!StatefulBrainfuckInterpreter) {
             self.postMessage({ 
                 type: 'error', 
                 id,
@@ -47,17 +50,15 @@ self.onmessage = async function(e) {
             const wrapTape = options?.wrapTape !== false;
             const optimize = options?.optimize !== false;
             
-            // Create interpreter
-            const interpreter = BrainfuckInterpreter.with_options(
+            // Create stateful interpreter that can pause for input
+            currentInterpreter = new StatefulBrainfuckInterpreter(
+                code,
                 tapeSize, 
                 cellSize, 
                 wrap, 
                 wrapTape, 
                 optimize
             );
-            
-            // Convert input string to Uint8Array
-            const inputBytes = input ? new TextEncoder().encode(input) : new Uint8Array();
             
             // Create output callback that sends messages to main thread
             const outputCallback = (char, charCode) => {
@@ -69,32 +70,101 @@ self.onmessage = async function(e) {
                 });
             };
             
-            // Run the program with callback
-            const result = interpreter.run_program_with_callback(
-                code, 
-                inputBytes, 
-                outputCallback
-            );
+            // Run until input is needed or program finishes
+            const needsInput = currentInterpreter.run_until_input(outputCallback);
             
-            // Send completion message with final state
-            // The tape is already truncated by the Rust code if needed
-            self.postMessage({
-                type: 'complete',
-                id,
-                result: {
-                    tape: result.tape,
-                    pointer: result.pointer,
-                    output: result.output,
-                    tapeTruncated: result.tape_truncated || false,
-                    originalTapeSize: result.original_tape_size || result.tape.length
-                }
-            });
+            if (needsInput && currentInterpreter.is_waiting_for_input()) {
+                // Program is paused waiting for input
+                self.postMessage({
+                    type: 'waiting_for_input',
+                    id
+                });
+            } else {
+                // Program completed
+                const result = currentInterpreter.get_state();
+                
+                self.postMessage({
+                    type: 'complete',
+                    id,
+                    result: {
+                        tape: result.tape,
+                        pointer: result.pointer,
+                        output: result.output,
+                        tapeTruncated: result.tape_truncated || false,
+                        originalTapeSize: result.original_tape_size || result.tape.length
+                    }
+                });
+                
+                currentInterpreter = null;
+            }
             
         } catch (error) {
             self.postMessage({
                 type: 'error',
                 id,
                 error: error.message || 'Unknown error occurred'
+            });
+            currentInterpreter = null;
+        }
+    }
+    
+    if (type === 'provide_input') {
+        if (!currentInterpreter) {
+            self.postMessage({
+                type: 'error',
+                id,
+                error: 'No interpreter running'
+            });
+            return;
+        }
+        
+        try {
+            // Provide the input character
+            const charCode = e.data.charCode;
+            currentInterpreter.provide_input(charCode);
+            
+            // Create output callback
+            const outputCallback = (char, charCode) => {
+                self.postMessage({
+                    type: 'output',
+                    id,
+                    char,
+                    charCode
+                });
+            };
+            
+            // Continue execution
+            const needsInput = currentInterpreter.run_until_input(outputCallback);
+            
+            if (needsInput && currentInterpreter.is_waiting_for_input()) {
+                // Still needs more input
+                self.postMessage({
+                    type: 'waiting_for_input',
+                    id
+                });
+            } else {
+                // Program completed
+                const result = currentInterpreter.get_state();
+                
+                self.postMessage({
+                    type: 'complete',
+                    id,
+                    result: {
+                        tape: result.tape,
+                        pointer: result.pointer,
+                        output: result.output,
+                        tapeTruncated: result.tape_truncated || false,
+                        originalTapeSize: result.original_tape_size || result.tape.length
+                    }
+                });
+                
+                currentInterpreter = null;
+            }
+        } catch (error) {
+            self.postMessage({
+                type: 'error',
+                id,
+                error: error.message || 'Failed to provide input'
             });
         }
     }

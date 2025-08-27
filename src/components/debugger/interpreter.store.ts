@@ -676,7 +676,8 @@ class InterpreterStore {
                 currentState.isPaused = true;
                 this.state.next(currentState);
                 this.operationCount++;
-                return true; // Don't move to next character yet
+                shouldMoveNext = false; // Don't move yet, wait for input
+                break;
         }
 
         // Call VM output callback after each instruction
@@ -1501,9 +1502,19 @@ class InterpreterStore {
         const hasMore = this.moveToNextChar();
         if (!hasMore) {
             this.stop();
-        } else if (currentState.isRunning && (this.runInterval || this.runAnimationFrameId)) {
-            // If we were running before input, continue execution
-            // The run loop will automatically continue since isPaused is now false
+        } else if (currentState.isRunning) {
+            // If we were running before input, we need to restart the run loop
+            // since it was stopped when we paused for input
+            if (!this.runInterval && !this.runAnimationFrameId) {
+                // Restart with the same mode as before
+                const lastMode = currentState.lastExecutionMode;
+                if (lastMode === 'turbo') {
+                    this.resumeTurbo();
+                } else {
+                    // Resume normal execution
+                    this.resume();
+                }
+            }
         }
     }
 

@@ -70,8 +70,18 @@ export function IO({ output, outputRef, isActive = true, maxLines }: IOProps) {
 
         const handleKeyPress = (e: KeyboardEvent) => {
             if (e.key.length === 1) {
+                console.log(`IO: Received input '${e.key}' (ASCII ${e.key.charCodeAt(0)})`);
+                
                 // Single character input
-                (interpreterStore as any).provideInput(e.key);
+                // Check if WASM interpreter is running
+                const rustWasm = (window as any).rustWasmInterpreter;
+                if (rustWasm && rustWasm.isWaitingForInput$ && rustWasm.isWaitingForInput$.getValue()) {
+                    console.log('IO: Providing input to WASM interpreter');
+                    rustWasm.provideInput(e.key);
+                } else {
+                    console.log('IO: Providing input to JS/Worker interpreter');
+                    (interpreterStore as any).provideInput(e.key);
+                }
                 e.preventDefault();
             }
         };
@@ -83,11 +93,18 @@ export function IO({ output, outputRef, isActive = true, maxLines }: IOProps) {
     }, [isWaitingForInput, isActive, activeRef]);
 
     return (
-        <div tabIndex={-1} ref={containerRef} className="outline-none">
+        <div 
+            tabIndex={-1} 
+            ref={containerRef} 
+            className={`outline-none ${isWaitingForInput ? 'ring-0 ring-zinc-500 ring-opacity-50 rounded-sm' : ''}`}
+        >
             <pre className="text-xs text-white whitespace-pre font-mono">
                 {processedOutput}
                 {isWaitingForInput && (
-                    <span className="animate-pulse">_</span>
+                    <>
+                        <span className="animate-pulse text-blue-400">_</span>
+                        <span className="text-zinc-500 ml-2">(Type a character for input)</span>
+                    </>
                 )}
             </pre>
         </div>
