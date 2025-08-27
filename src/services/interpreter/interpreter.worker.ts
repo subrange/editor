@@ -17,6 +17,11 @@ interface InitMessage {
   sharedTapeBuffer?: SharedArrayBuffer;
 }
 
+interface ProvideInputMessage {
+  type: 'provideInput';
+  char: string;
+}
+
 interface ResetMessage {
   type: 'reset';
 }
@@ -67,7 +72,7 @@ interface SetVMOutputConfigMessage {
 
 type WorkerMessage = InitMessage | ResetMessage | StepMessage | RunTurboMessage | 
   ResumeTurboMessage | PauseMessage | StopMessage | SetBreakpointsMessage | 
-  SetPositionMessage | SetVMOutputConfigMessage;
+  SetPositionMessage | SetVMOutputConfigMessage | ProvideInputMessage;
 
 // State update message sent to main thread
 interface StateUpdateMessage {
@@ -78,6 +83,7 @@ interface StateUpdateMessage {
   isRunning: boolean;
   isPaused: boolean;
   isStopped: boolean;
+  isWaitingForInput?: boolean;
   output: string;
   currentChar: Position;
   currentSourcePosition?: Position;
@@ -110,6 +116,7 @@ class WorkerInterpreter {
   private isRunning = false;
   private isPaused = false;
   private isStopped = false;
+  private isWaitingForInput = false;
   private output = '';
   private breakpoints: Position[] = [];
   private sourceBreakpoints: Position[] = [];
@@ -139,6 +146,7 @@ class WorkerInterpreter {
   // Execution tracking
   private lastExecutionTime?: number;
   private lastOperationCount?: number;
+  private wasInTurboMode = false;
 
   constructor() {
     this.tapeSize = 1024 * 1024;
@@ -207,6 +215,7 @@ class WorkerInterpreter {
     this.isRunning = false;
     this.isPaused = false;
     this.isStopped = false;
+    this.isWaitingForInput = false;
     this.output = '';
     this.lastPausedBreakpoint = null;
     this.currentSourcePosition = undefined;
@@ -215,6 +224,7 @@ class WorkerInterpreter {
     this.lastOutputUpdateTime = 0;
     this.lastExecutionTime = undefined;
     this.lastOperationCount = undefined;
+    this.wasInTurboMode = false;
     
     // Reset VM output state
     this.lastVMFlagValue = 0;
@@ -391,7 +401,11 @@ class WorkerInterpreter {
         break;
       case ',':
         this.log(`Input requested at position ${this.pointer}`);
-        break;
+        this.isWaitingForInput = true;
+        this.isPaused = true;
+        this.sendStateUpdate(true);
+        shouldMoveNext = false; // Don't move yet, wait for input
+        return true; // Keep running but paused
     }
 
     // Check VM output flag
@@ -420,6 +434,7 @@ class WorkerInterpreter {
 
   async runTurbo() {
     this.log('Compiling program for turbo execution...');
+    this.wasInTurboMode = true;
 
     const ops: Array<{type: string, position: Position}> = [];
     const jumpTable: Map<number, number> = new Map();
@@ -453,6 +468,7 @@ class WorkerInterpreter {
     this.isRunning = true;
     this.isPaused = false;
     this.isStopped = false;
+    this.isWaitingForInput = false;
     this.tape.fill(0);
     this.pointer = 0;
     this.output = '';
@@ -513,7 +529,18 @@ class WorkerInterpreter {
           // }
           break;
         }
-        case ',': tape[pointer] = 0; break;
+        case ',': {
+          this.log(`Turbo: Input requested at pointer ${pointer}`);
+          // Update instance variables before pausing
+          this.pointer = pointer;
+          this.output = output;
+          this.currentChar = op.position; // IMPORTANT: Update position so provideInput knows where we are
+          this.isWaitingForInput = true;
+          this.isPaused = true;
+          // Keep isRunning = true so we know to resume after input
+          this.sendStateUpdate(true);
+          return;
+        }
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
           const nextPc = pc + 1;
@@ -593,6 +620,8 @@ class WorkerInterpreter {
     this.isPaused = false;
     this.isRunning = true;
     this.isStopped = false;  // Clear stopped state when resuming
+    this.isWaitingForInput = false;
+    this.wasInTurboMode = true;
     
     this.log('Resuming turbo execution from current position...');
     
@@ -678,7 +707,18 @@ class WorkerInterpreter {
           this.sendStateUpdate(false); // Don't send tape data for output updates
           break;
         }
-        case ',': tape[pointer] = 0; break;
+        case ',': {
+          this.log(`Turbo (resume): Input requested at pointer ${pointer}`);
+          // Update instance variables before pausing
+          this.pointer = pointer;
+          this.output = output;
+          this.currentChar = op.position; // IMPORTANT: Update position so provideInput knows where we are
+          this.isWaitingForInput = true;
+          this.isPaused = true;
+          // Keep isRunning = true so we know to resume after input
+          this.sendStateUpdate(true);
+          return;
+        }
         case '$': {
           this.log(`Turbo: Hit in-code breakpoint $ at operation ${pc}`);
           const nextPc = pc + 1;
@@ -764,6 +804,7 @@ class WorkerInterpreter {
     this.isRunning = false;
     this.isPaused = false;
     this.isStopped = true;
+    this.wasInTurboMode = false;  // Clear turbo mode flag
     // Send tape data when stopping
     this.sendStateUpdate(true);
   }
@@ -841,6 +882,7 @@ class WorkerInterpreter {
       isRunning: this.isRunning,
       isPaused: this.isPaused,
       isStopped: this.isStopped,
+      isWaitingForInput: this.isWaitingForInput,
       output: this.output,
       currentChar: this.currentChar,
       currentSourcePosition: this.currentSourcePosition,
@@ -917,6 +959,52 @@ class WorkerInterpreter {
     };
     self.postMessage(logMessage);
   }
+
+  provideInput(char: string) {
+    if (!this.isWaitingForInput) {
+      this.log('Input provided but interpreter is not waiting for input');
+      return;
+    }
+    
+    // Get ASCII value of the input character
+    const asciiValue = char.charCodeAt(0);
+    
+    // Place the value in the current cell - this completes the ',' instruction
+    this.tape[this.pointer] = asciiValue % this.cellSize;
+    
+    // Clear waiting state
+    this.isWaitingForInput = false;
+    
+    this.log(`Input received: '${char}' (ASCII ${asciiValue}) placed at position ${this.pointer}`);
+    
+    // Now move to the next instruction since ',' is complete
+    const hasMore = this.moveToNextChar();
+    if (!hasMore) {
+      this.stop();
+      return;
+    }
+    
+    // Resume execution if we were running
+    if (this.isRunning) {
+      this.isPaused = false; // Clear pause state
+      this.sendStateUpdate(true); // Send state update to reflect the change
+      
+      // Check if we were in turbo mode
+      if (this.wasInTurboMode) {
+        // Resume turbo execution from the new position
+        this.log('Resuming turbo execution after input...');
+        setTimeout(() => {
+          this.resumeTurbo();
+        }, 10);
+      } else {
+        // Just send state update for step mode
+        this.log('Ready for next step after input');
+      }
+    } else {
+      // Not running, just update state
+      this.sendStateUpdate(true);
+    }
+  }
 }
 
 // Create interpreter instance
@@ -960,6 +1048,9 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
         break;
       case 'setVMOutputConfig':
         interpreter.setVMOutputConfig(message.config);
+        break;
+      case 'provideInput':
+        interpreter.provideInput(message.char);
         break;
     }
   } catch (error) {
