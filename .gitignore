@@ -30,3 +30,5 @@ build
 target
 
 __pycache__
+
+electron-dist

@@ -429,8 +429,8 @@ function DebugPanel() {
         >
             {
                 collapsed
-                    ? <ChevronDownIcon/>
-                    : <ChevronUpIcon/>
+                    ? <ChevronDownIcon className="w-3.5"/>
+                    : <ChevronUpIcon className="w-3.5"/>
             }
             Tape and Visual Debugger
         </button>

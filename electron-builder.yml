@@ -1,0 +1,38 @@
+appId: com.ripple.bfide
+productName: "Brainfuck IDE"
+directories:
+  output: electron-dist
+  buildResources: build-resources
+
+files:
+  - dist/**/*
+  - electron/**/*
+
+mac:
+  category: public.app-category.developer-tools
+  icon: build-resources/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build-resources/entitlements.mac.plist
+  entitlementsInherit: build-resources/entitlements.mac.plist
+  target:
+    - dmg
+    - zip
+
+win:
+  icon: build-resources/icon.ico
+  target:
+    - nsis
+    - zip
+
+linux:
+  icon: build-resources
+  category: Development
+  target:
+    - AppImage
+    - deb
+    - rpm
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

@@ -7,6 +7,7 @@ import topLevelAwait from 'vite-plugin-top-level-await'
 
 // https://vite.dev/config/
 export default defineConfig({
+    base: './', // Use relative paths for assets
     plugins: [
         wasm(),
         topLevelAwait(),
