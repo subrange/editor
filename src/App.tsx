@@ -432,7 +432,7 @@ function DebugPanel() {
                     ? <ChevronDownIcon/>
                     : <ChevronUpIcon/>
             }
-            Debugger
+            Tape and Visual Debugger
         </button>
         {
             !collapsed && (

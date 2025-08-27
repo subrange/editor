@@ -9,6 +9,7 @@ import {Marks} from "./marks.tsx";
 import {Learning} from "./learning.tsx";
 import {AboutModal} from "./about-modal.tsx";
 import {LearningNotice} from "./learning-notice.tsx";
+import {Tooltip} from "../ui/tooltip.tsx";
 
 function SidebarTabButton({
                               icon: Icon,
@@ -22,19 +23,20 @@ function SidebarTabButton({
     onClick: () => void;
 }) {
     return (
-        <button
-            className={clsx(
-                "flex items-center justify-center w-full p-3 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-all duration-200",
-                {
-                    "bg-zinc-800 text-zinc-200": active,
-                    "hover:bg-zinc-800/50": !active
-                }
-            )}
-            onClick={onClick}
-            title={label}
-        >
-            <Icon className="h-8 w-8" />
-        </button>
+        <Tooltip content={label} side="right">
+            <button
+                className={clsx(
+                    "flex items-center justify-center w-full p-3 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-all duration-200",
+                    {
+                        "bg-zinc-800 text-zinc-200": active,
+                        "hover:bg-zinc-800/50": !active
+                    }
+                )}
+                onClick={onClick}
+            >
+                <Icon className="h-8 w-8" />
+            </button>
+        </Tooltip>
     );
 }
 
