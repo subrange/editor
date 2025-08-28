@@ -29,20 +29,50 @@ export class MacroFormatter {
     [Opcode.BLT, '@OP_BLT'],
     [Opcode.BGE, '@OP_BGE'],
     [Opcode.BRK, '@OP_BRK'],
+    [Opcode.MUL, '@OP_MUL'],
+    [Opcode.DIV, '@OP_DIV'],
+    [Opcode.MOD, '@OP_MOD'],
+    [Opcode.MULI, '@OP_MULI'],
+    [Opcode.DIVI, '@OP_DIVI'],
+    [Opcode.MODI, '@OP_MODI'],
   ]);
 
   private registerToMacro(reg: number): string {
     switch (reg) {
-      case Register.R0: return '@R0';
-      case Register.PC: return '@PC';
-      case Register.PCB: return '@PCB';
-      case Register.RA: return '@RA';
-      case Register.RAB: return '@RAB';
+      case 0: return '#R0';   // Zero register
+      case 1: return '#PC';   // Program Counter
+      case 2: return '#PCB';  // Program Counter Bank
+      case 3: return '#RA';   // Return Address
+      case 4: return '#RAB';  // Return Address Bank
+      case 5: return '#RV0';  // Return Value 0
+      case 6: return '#RV1';  // Return Value 1
+      case 7: return '#A0';   // Argument 0
+      case 8: return '#A1';   // Argument 1
+      case 9: return '#A2';   // Argument 2
+      case 10: return '#A3';  // Argument 3
+      case 11: return '#X0';  // Reserved/Extended 0
+      case 12: return '#X1';  // Reserved/Extended 1
+      case 13: return '#X2';  // Reserved/Extended 2
+      case 14: return '#X3';  // Reserved/Extended 3
+      case 15: return '#T0';  // Temporary 0
+      case 16: return '#T1';  // Temporary 1
+      case 17: return '#T2';  // Temporary 2
+      case 18: return '#T3';  // Temporary 3
+      case 19: return '#T4';  // Temporary 4
+      case 20: return '#T5';  // Temporary 5
+      case 21: return '#T6';  // Temporary 6
+      case 22: return '#T7';  // Temporary 7
+      case 23: return '#S0';  // Saved 0
+      case 24: return '#S1';  // Saved 1
+      case 25: return '#S2';  // Saved 2
+      case 26: return '#S3';  // Saved 3
+      case 27: return '#SC';  // Allocator Scratch
+      case 28: return '#SB';  // Stack Bank
+      case 29: return '#SP';  // Stack Pointer
+      case 30: return '#FP';  // Frame Pointer
+      case 31: return '#GP';  // Global Pointer
       default:
-        if (reg >= 5 && reg <= 17) {
-          return `@R${reg - 2}`; // R3-R15
-        }
-        return `#R${reg}`;
+        throw new Error(`Invalid register number: ${reg}. Valid registers are 0-31.`);
     }
   }
 
@@ -86,13 +116,15 @@ export class MacroFormatter {
     // Determine which operands are registers based on opcode
     const isRFormat = [
       Opcode.ADD, Opcode.SUB, Opcode.AND, Opcode.OR, Opcode.XOR,
-      Opcode.SLL, Opcode.SRL, Opcode.SLT, Opcode.SLTU, Opcode.JALR
+      Opcode.SLL, Opcode.SRL, Opcode.SLT, Opcode.SLTU, Opcode.JALR,
+      Opcode.MUL, Opcode.DIV, Opcode.MOD
     ].includes(instruction.opcode);
 
     const isIFormat = [
       Opcode.ADDI, Opcode.ANDI, Opcode.ORI, Opcode.XORI,
       Opcode.SLLI, Opcode.SRLI, Opcode.LOAD, Opcode.STORE,
-      Opcode.BEQ, Opcode.BNE, Opcode.BLT, Opcode.BGE
+      Opcode.BEQ, Opcode.BNE, Opcode.BLT, Opcode.BGE,
+      Opcode.MULI, Opcode.DIVI, Opcode.MODI
     ].includes(instruction.opcode);
 
 

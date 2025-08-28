@@ -33,12 +33,17 @@ export interface DevelopmentSettings {
     showDevTools: boolean;
 }
 
+export interface WeirdSettings {
+    doublePlus: boolean;
+}
+
 export interface Settings {
     macro: MacroSettings;
     debugger: DebuggerSettings;
     assembly: AssemblySettings;
     interpreter?: InterpreterSettings;
     development?: DevelopmentSettings;
+    weird?: WeirdSettings;
 }
 
 class SettingsStore {
@@ -68,6 +73,9 @@ class SettingsStore {
         },
         development: {
             showDevTools: this.loadFromStorage('developmentShowDevTools', false)
+        },
+        weird: {
+            doublePlus: this.loadFromStorage('weirdDoublePlus', false)
         }
     });
 
@@ -264,6 +272,18 @@ class SettingsStore {
             }
         });
         this.saveToStorage('developmentShowDevTools', value);
+    }
+
+    setWeirdDoublePlus(value: boolean) {
+        const current = this.settings.value;
+        this.settings.next({
+            ...current,
+            weird: {
+                ...current.weird!,
+                doublePlus: value
+            }
+        });
+        this.saveToStorage('weirdDoublePlus', value);
     }
 
     private loadFromStorage<T>(key: string, defaultValue: T): T {

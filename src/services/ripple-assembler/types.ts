@@ -42,24 +42,38 @@ export enum Opcode {
 }
 
 export enum Register {
-  R0 = 0,
-  PC = 1,
-  PCB = 2,
-  RA = 3,
-  RAB = 4,
-  R3 = 5,
-  R4 = 6,
-  R5 = 7,
-  R6 = 8,
-  R7 = 9,
-  R8 = 10,
-  R9 = 11,
-  R10 = 12,
-  R11 = 13,
-  R12 = 14,
-  R13 = 15,
-  R14 = 16,
-  R15 = 17
+  R0 = 0,   // Zero register
+  PC = 1,   // Program Counter
+  PCB = 2,  // Program Counter Bank
+  RA = 3,   // Return Address
+  RAB = 4,  // Return Address Bank
+  RV0 = 5,  // Return Value 0
+  RV1 = 6,  // Return Value 1
+  A0 = 7,   // Argument 0
+  A1 = 8,   // Argument 1
+  A2 = 9,   // Argument 2
+  A3 = 10,  // Argument 3
+  X0 = 11,  // Reserved/Extended 0
+  X1 = 12,  // Reserved/Extended 1
+  X2 = 13,  // Reserved/Extended 2
+  X3 = 14,  // Reserved/Extended 3
+  T0 = 15,  // Temporary 0
+  T1 = 16,  // Temporary 1
+  T2 = 17,  // Temporary 2
+  T3 = 18,  // Temporary 3
+  T4 = 19,  // Temporary 4
+  T5 = 20,  // Temporary 5
+  T6 = 21,  // Temporary 6
+  T7 = 22,  // Temporary 7
+  S0 = 23,  // Saved 0
+  S1 = 24,  // Saved 1
+  S2 = 25,  // Saved 2
+  S3 = 26,  // Saved 3
+  SC = 27,  // Allocator Scratch
+  SB = 28,  // Stack Bank
+  SP = 29,  // Stack Pointer
+  FP = 30,  // Frame Pointer
+  GP = 31   // Global Pointer
 }
 
 export enum InstructionFormat {

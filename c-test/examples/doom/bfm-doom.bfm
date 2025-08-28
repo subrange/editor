@@ -1,6 +1,9 @@
 #include "titlepic-loader.bfm"
 #include "palette-loader.bfm"
 
+#define SCREEN_WIDTH 160
+#define SCREEN_HEIGHT 100
+
 @proc(resolve_titlepic_colors,
   @set(s0, 0) // i
   @set(s1, 63999)
@@ -20,7 +23,7 @@
   @mov(s1, @arg2)        // y
 
   @set(t0, 200)          // titlepic height
-  @mul(t2, s0, t0)      // x * 200
+  @mul(t2, s0, t0)       // x * 200
   @add(t2, t2, s1)       // + y
 
   @set(sc, #TITLEPIC_MEMORY_BANK)
@@ -51,9 +54,9 @@
     */
 
     @set(s0, 0) // y
-    @set(s1, 100) // display height
+    @set(s1, #SCREEN_HEIGHT) // display height
     @set(s2, 0) // x
-    @set(s3, 160) // display width
+    @set(s3, #SCREEN_WIDTH) // display width
 
     @while(@lt(s0, s1),
       @set(s2, 0) // Reset x for each row

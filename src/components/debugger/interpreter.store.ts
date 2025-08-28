@@ -5,6 +5,7 @@ import {type Line, type Position} from "../editor/stores/editor.store.ts";
 import {editorManager} from "../../services/editor-manager.service.ts";
 import type { SourceMap, SourceMapEntry } from "../../services/macro-expander/source-map.ts";
 import { SourceMapLookup } from "../../services/macro-expander/source-map.ts";
+import { settingsStore } from "../../stores/settings.store.ts";
 
 type InterpreterState = {
     tape: Uint8Array | Uint16Array | Uint32Array;
@@ -628,7 +629,8 @@ class InterpreterStore {
                 this.operationCount++;
                 break;
             case '+':
-                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] + 1) % this.cellSize.getValue();
+                const increment = settingsStore.settings.getValue().weird?.doublePlus ? 2 : 1;
+                currentState.tape[currentState.pointer] = (currentState.tape[currentState.pointer] + increment) % this.cellSize.getValue();
                 this.operationCount++;
                 break;
             case '-':
@@ -906,7 +908,8 @@ class InterpreterStore {
                     pointer = (pointer - 1 + tape.length) % tape.length;
                     break;
                 case '+':
-                    tape[pointer] = (tape[pointer] + 1) % this.cellSize.getValue();
+                    const increment = settingsStore.settings.getValue().weird?.doublePlus ? 2 : 1;
+                    tape[pointer] = (tape[pointer] + increment) % this.cellSize.getValue();
                     break;
                 case '-':
                     tape[pointer] = (tape[pointer] - 1 + this.cellSize.getValue()) % this.cellSize.getValue();
@@ -1070,7 +1073,11 @@ class InterpreterStore {
             switch (op.type) {
                 case '>': pointer = (pointer + 1) % this.tapeSize.getValue(); break;
                 case '<': pointer = (pointer - 1 + this.tapeSize.getValue()) % this.tapeSize.getValue(); break;
-                case '+': tape[pointer] = (tape[pointer] + 1) % this.cellSize.getValue(); break;
+                case '+': {
+                    const increment = settingsStore.settings.getValue().weird?.doublePlus ? 2 : 1;
+                    tape[pointer] = (tape[pointer] + increment) % this.cellSize.getValue();
+                    break;
+                }
                 case '-': tape[pointer] = (tape[pointer] - 1 + this.cellSize.getValue()) % this.cellSize.getValue(); break;
                 case '[':
                     if (tape[pointer] === 0) {
@@ -1280,7 +1287,11 @@ class InterpreterStore {
             switch (op.type) {
                 case '>': pointer = (pointer + 1) % this.tapeSize.getValue(); break;
                 case '<': pointer = (pointer - 1 + this.tapeSize.getValue()) % this.tapeSize.getValue(); break;
-                case '+': tape[pointer] = (tape[pointer] + 1) % this.cellSize.getValue(); break;
+                case '+': {
+                    const increment = settingsStore.settings.getValue().weird?.doublePlus ? 2 : 1;
+                    tape[pointer] = (tape[pointer] + increment) % this.cellSize.getValue();
+                    break;
+                }
                 case '-': tape[pointer] = (tape[pointer] - 1 + this.cellSize.getValue()) % this.cellSize.getValue(); break;
                 case '[':
                     if (tape[pointer] === 0) {
