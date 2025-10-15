@@ -11,9 +11,9 @@ protocol.registerSchemesAsPrivileged([
       standard: true,
       supportFetchAPI: true,
       corsEnabled: true,
-      bypassCSP: true
-    }
-  }
+      bypassCSP: true,
+    },
+  },
 ]);
 
 let mainWindow;
@@ -28,9 +28,9 @@ function createWindow() {
       webSecurity: true,
       // Enable features needed for workers and SharedArrayBuffer
       webgl: true,
-      experimentalFeatures: true
+      experimentalFeatures: true,
     },
-    icon: path.join(__dirname, '../dist/favicon.ico')
+    icon: path.join(__dirname, '../dist/favicon.ico'),
   });
 
   // Create menu for Mac
@@ -44,8 +44,8 @@ function createWindow() {
         { role: 'cut' },
         { role: 'copy' },
         { role: 'paste' },
-        { role: 'selectall' }
-      ]
+        { role: 'selectall' },
+      ],
     },
     {
       label: 'View',
@@ -58,16 +58,13 @@ function createWindow() {
         { role: 'zoomin' },
         { role: 'zoomout' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
+        { role: 'togglefullscreen' },
+      ],
     },
     {
       label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'close' }
-      ]
-    }
+      submenu: [{ role: 'minimize' }, { role: 'close' }],
+    },
   ];
 
   if (process.platform === 'darwin') {
@@ -82,8 +79,8 @@ function createWindow() {
         { role: 'hideothers' },
         { role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit' }
-      ]
+        { role: 'quit' },
+      ],
     });
 
     // Window menu
@@ -92,7 +89,7 @@ function createWindow() {
       { role: 'minimize' },
       { role: 'zoom' },
       { type: 'separator' },
-      { role: 'front' }
+      { role: 'front' },
     ];
   }
 
@@ -137,24 +134,24 @@ app.whenReady().then(() => {
   // Register protocol for serving local files with proper headers
   protocol.registerFileProtocol('app', (request, callback) => {
     let url = request.url.replace('app://localhost/', '');
-    
+
     // Remove any query parameters
     url = url.split('?')[0];
-    
+
     // Default to index.html if no file specified or just a slash
     if (!url || url === '' || url === '/') {
       url = 'index.html';
     }
-    
+
     // Remove leading slash if present
     if (url.startsWith('/')) {
       url = url.substring(1);
     }
-    
+
     const filePath = path.join(__dirname, '../dist', url);
-    
-    callback({ 
-      path: filePath
+
+    callback({
+      path: filePath,
     });
   });
 

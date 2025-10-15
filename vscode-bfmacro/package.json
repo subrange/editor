@@ -1,23 +1,27 @@
 {
-  "name": "bfmacro",
-  "displayName": "Brainfuck Macro",
-  "description": "Syntax highlighting for Brainfuck Macro language",
-  "version": "0.0.2",
-  "engines": {
-    "vscode": "^1.74.0"
-  },
-  "categories": ["Programming Languages"],
-  "contributes": {
-    "languages": [{
-      "id": "bfmacro",
-      "aliases": ["Brainfuck Macro", "bfmacro", "BF Macro"],
-      "extensions": [".bfm", ".bfmacro", ".bf"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "bfmacro",
-      "scopeName": "source.bfmacro",
-      "path": "./syntaxes/bf-macro.tmLanguage.json"
-    }]
-  }
+      "name": "bfmacro",
+      "displayName": "Brainfuck Macro",
+      "description": "Syntax highlighting for Brainfuck Macro language",
+      "version": "0.0.2",
+      "engines": {
+            "vscode": "^1.74.0"
+      },
+      "categories": ["Programming Languages"],
+      "contributes": {
+            "languages": [
+                  {
+                        "id": "bfmacro",
+                        "aliases": ["Brainfuck Macro", "bfmacro", "BF Macro"],
+                        "extensions": [".bfm", ".bfmacro", ".bf"],
+                        "configuration": "./language-configuration.json"
+                  }
+            ],
+            "grammars": [
+                  {
+                        "language": "bfmacro",
+                        "scopeName": "source.bfmacro",
+                        "path": "./syntaxes/bf-macro.tmLanguage.json"
+                  }
+            ]
+      }
 }

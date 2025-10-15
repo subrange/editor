@@ -8,7 +8,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
       const input = `#define add5 +++++
 #add5`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+++++');
     });
@@ -18,7 +18,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
       const input = `#define repeat_n(n, cmd) {repeat(n, cmd)}
 #repeat_n(3, >)`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('>>>');
     });
@@ -30,7 +30,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
 @add3
 #add5`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+++\n+++++');
     });
@@ -41,7 +41,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
 #define outer #inner#inner
 #outer`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++++');
     });
@@ -51,7 +51,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
       const input = `#define move_right >
 {repeat(3, #move_right)}`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('>>>');
     });
@@ -61,7 +61,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
       const input = `#define hex_repeat(n, cmd) {repeat(n, cmd)}
 #hex_repeat(0x10, +)`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim().length).toBe(16);
     });
@@ -70,7 +70,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
       const expander = createMacroExpanderV3();
       const input = `#undefined_macro`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].type).toBe('undefined');
       expect(result.errors[0].message).toContain('undefined_macro');
@@ -81,7 +81,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
       const input = `#define add_one +
 {for(i in {1, 2, 3}, #add_one)}`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+++');
     });
@@ -92,7 +92,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
       const expander = createMacroExpanderV3();
       const input = `# This is just text`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('# This is just text');
     });
@@ -104,7 +104,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
 #define another ---
 #another`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+++\n\n---');
     });
@@ -114,7 +114,7 @@ describe('MacroExpander V3 - Hash Macro Invocation Support', () => {
       const input = `#define test +++
 @test#test`;
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++++++');
     });

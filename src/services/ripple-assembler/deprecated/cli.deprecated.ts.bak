@@ -1,234 +1,234 @@
-#!/usr/bin/env node
+// #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { resolve, basename, dirname, extname, join } from 'path';
-import { Command } from 'commander';
-import { RippleAssembler } from '../assembler.js';
+// import { readFileSync, writeFileSync, existsSync } from 'fs';
+// import { resolve, basename, dirname, extname, join } from 'path';
+// import { Command } from 'commander';
+// import { RippleAssembler } from '../assembler.js';
 
-const program = new Command();
+// const program = new Command();
 
-program
-  .name('ripple-asm')
-  .description('Ripple VM Assembler - Converts RISC-like assembly to macro format')
-  .version('1.0.0')
-  .argument('<input>', 'input assembly file')
-  .option('-o, --output <file>', 'output file (default: input file with .bfm extension)')
-  .option('-b, --bank-size <size>', 'bank size (instructions per bank)', parseInt, 16)
-  .option('-m, --max-immediate <value>', 'maximum immediate value', parseInt, 65535)
-  .option('--no-case-sensitive', 'disable case-insensitive mnemonics')
-  .option('-s, --start-bank <bank>', 'starting bank number', parseInt, 0)
-  .option('-d, --data <file>', 'include data from file')
-  .option('-c, --comments', 'include comments in output', false)
-  .option('-h, --header <text>', 'add header comment to output')
-  .option('-v, --verbose', 'verbose output')
-  .option('--dry-run', 'parse and validate without writing output')
-  .option('--show-stats', 'show assembly statistics')
-  .action((inputFile, options) => {
-    try {
-      // Resolve input file path
-      const inputPath = resolve(inputFile);
-      
-      if (!existsSync(inputPath)) {
-        console.error(`Error: Input file '${inputPath}' does not exist`);
-        process.exit(1);
-      }
+// program
+//   .name('ripple-asm')
+//   .description('Ripple VM Assembler - Converts RISC-like assembly to macro format')
+//   .version('1.0.0')
+//   .argument('<input>', 'input assembly file')
+//   .option('-o, --output <file>', 'output file (default: input file with .bfm extension)')
+//   .option('-b, --bank-size <size>', 'bank size (instructions per bank)', parseInt, 16)
+//   .option('-m, --max-immediate <value>', 'maximum immediate value', parseInt, 65535)
+//   .option('--no-case-sensitive', 'disable case-insensitive mnemonics')
+//   .option('-s, --start-bank <bank>', 'starting bank number', parseInt, 0)
+//   .option('-d, --data <file>', 'include data from file')
+//   .option('-c, --comments', 'include comments in output', false)
+//   .option('-h, --header <text>', 'add header comment to output')
+//   .option('-v, --verbose', 'verbose output')
+//   .option('--dry-run', 'parse and validate without writing output')
+//   .option('--show-stats', 'show assembly statistics')
+//   .action((inputFile, options) => {
+//     try {
+//       // Resolve input file path
+//       const inputPath = resolve(inputFile);
 
-      if (options.verbose) {
-        console.log(`Reading input file: ${inputPath}`);
-      }
+//       if (!existsSync(inputPath)) {
+//         console.error(`Error: Input file '${inputPath}' does not exist`);
+//         process.exit(1);
+//       }
 
-      // Read input file
-      const source = readFileSync(inputPath, 'utf-8');
+//       if (options.verbose) {
+//         console.log(`Reading input file: ${inputPath}`);
+//       }
 
-      // Create assembler with options
-      const assemblerOptions = {
-        bankSize: options.bankSize,
-        maxImmediate: options.maxImmediate,
-        caseInsensitive: options.caseSensitive !== false,
-        startBank: options.startBank
-      };
+//       // Read input file
+//       const source = readFileSync(inputPath, 'utf-8');
 
-      if (options.verbose) {
-        console.log('Assembler configuration:');
-        console.log(`  Bank size: ${assemblerOptions.bankSize || 16}`);
-        console.log(`  Max immediate: ${assemblerOptions.maxImmediate || 65535}`);
-        console.log(`  Case insensitive: ${assemblerOptions.caseInsensitive !== false}`);
-        console.log(`  Start bank: ${assemblerOptions.startBank || 0}`);
-      }
+//       // Create assembler with options
+//       const assemblerOptions = {
+//         bankSize: options.bankSize,
+//         maxImmediate: options.maxImmediate,
+//         caseInsensitive: options.caseSensitive !== false,
+//         startBank: options.startBank
+//       };
 
-      const assembler = new RippleAssembler(assemblerOptions);
+//       if (options.verbose) {
+//         console.log('Assembler configuration:');
+//         console.log(`  Bank size: ${assemblerOptions.bankSize || 16}`);
+//         console.log(`  Max immediate: ${assemblerOptions.maxImmediate || 65535}`);
+//         console.log(`  Case insensitive: ${assemblerOptions.caseInsensitive !== false}`);
+//         console.log(`  Start bank: ${assemblerOptions.startBank || 0}`);
+//       }
 
-      // Assemble the source
-      if (options.verbose) {
-        console.log('Assembling...');
-      }
+//       const assembler = new RippleAssembler(assemblerOptions);
 
-      const result = assembler.assemble(source);
+//       // Assemble the source
+//       if (options.verbose) {
+//         console.log('Assembling...');
+//       }
 
-      // Check for errors
-      if (result.errors.length > 0) {
-        console.error('Assembly errors:');
-        result.errors.forEach(error => {
-          console.error(`  ${error}`);
-        });
-        process.exit(1);
-      }
+//       const result = assembler.assemble(source);
 
-      // Show statistics if requested
-      if (options.showStats) {
-        console.log('\nAssembly statistics:');
-        console.log(`  Instructions: ${result.instructions.length}`);
-        console.log(`  Banks used: ${Math.ceil(result.instructions.length / assembler.getBankSize())}`);
-        console.log(`  Labels defined: ${result.labels.size}`);
-        if (result.labels.size > 0) {
-          console.log('  Labels:');
-          for (const [name, label] of result.labels) {
-            console.log(`    ${name}: bank ${label.bank}, offset ${label.offset}`);
-          }
-        }
-      }
+//       // Check for errors
+//       if (result.errors.length > 0) {
+//         console.error('Assembly errors:');
+//         result.errors.forEach(error => {
+//           console.error(`  ${error}`);
+//         });
+//         process.exit(1);
+//       }
 
-      // Load data if specified
-      let data: number[] | undefined;
-      if (options.data) {
-        const dataPath = resolve(options.data);
-        if (!existsSync(dataPath)) {
-          console.error(`Error: Data file '${dataPath}' does not exist`);
-          process.exit(1);
-        }
-        
-        if (options.verbose) {
-          console.log(`Reading data file: ${dataPath}`);
-        }
+//       // Show statistics if requested
+//       if (options.showStats) {
+//         console.log('\nAssembly statistics:');
+//         console.log(`  Instructions: ${result.instructions.length}`);
+//         console.log(`  Banks used: ${Math.ceil(result.instructions.length / assembler.getBankSize())}`);
+//         console.log(`  Labels defined: ${result.labels.size}`);
+//         if (result.labels.size > 0) {
+//           console.log('  Labels:');
+//           for (const [name, label] of result.labels) {
+//             console.log(`    ${name}: bank ${label.bank}, offset ${label.offset}`);
+//           }
+//         }
+//       }
 
-        const dataContent = readFileSync(dataPath);
-        data = Array.from(dataContent);
-      }
+//       // Load data if specified
+//       let data: number[] | undefined;
+//       if (options.data) {
+//         const dataPath = resolve(options.data);
+//         if (!existsSync(dataPath)) {
+//           console.error(`Error: Data file '${dataPath}' does not exist`);
+//           process.exit(1);
+//         }
 
-      // Generate output
-      let output: string;
-      
-      // Combine external data with embedded data
-      const allData = [...(result.memoryData || []), ...(data || [])];
-      
-      if (allData.length > 0 || options.header) {
-        // Generate full format with data section and/or header
-        output = assembler.toFullMacroFormat(
-          result.instructions,
-          allData,
-          options.comments ? extractComments(source) : undefined,
-          options.header
-        );
-      } else {
-        // Generate simple format
-        output = assembler.toMacroFormat(
-          result.instructions,
-          options.comments ? extractComments(source) : undefined
-        );
-      }
+//         if (options.verbose) {
+//           console.log(`Reading data file: ${dataPath}`);
+//         }
 
-      // Handle dry run
-      if (options.dryRun) {
-        console.log('Dry run - no output written');
-        console.log(`Would write ${output.length} characters`);
-        process.exit(0);
-      }
+//         const dataContent = readFileSync(dataPath);
+//         data = Array.from(dataContent);
+//       }
 
-      // Determine output file
-      let outputPath: string;
-      if (options.output) {
-        outputPath = resolve(options.output);
-      } else {
-        // Default: replace extension with .bfm
-        const dir = dirname(inputPath);
-        const base = basename(inputPath, extname(inputPath));
-        outputPath = join(dir, base + '.bfm');
-      }
+//       // Generate output
+//       let output: string;
 
-      // Write output
-      if (options.verbose) {
-        console.log(`Writing output to: ${outputPath}`);
-      }
+//       // Combine external data with embedded data
+//       const allData = [...(result.memoryData || []), ...(data || [])];
 
-      writeFileSync(outputPath, output, 'utf-8');
+//       if (allData.length > 0 || options.header) {
+//         // Generate full format with data section and/or header
+//         output = assembler.toFullMacroFormat(
+//           result.instructions,
+//           allData,
+//           options.comments ? extractComments(source) : undefined,
+//           options.header
+//         );
+//       } else {
+//         // Generate simple format
+//         output = assembler.toMacroFormat(
+//           result.instructions,
+//           options.comments ? extractComments(source) : undefined
+//         );
+//       }
 
-      console.log(`Successfully assembled to: ${outputPath}`);
-      if (options.verbose) {
-        console.log(`Output size: ${output.length} characters`);
-      }
+//       // Handle dry run
+//       if (options.dryRun) {
+//         console.log('Dry run - no output written');
+//         console.log(`Would write ${output.length} characters`);
+//         process.exit(0);
+//       }
 
-    } catch (error: any) {
-      console.error(`Error: ${error.message}`);
-      process.exit(1);
-    }
-  });
+//       // Determine output file
+//       let outputPath: string;
+//       if (options.output) {
+//         outputPath = resolve(options.output);
+//       } else {
+//         // Default: replace extension with .bfm
+//         const dir = dirname(inputPath);
+//         const base = basename(inputPath, extname(inputPath));
+//         outputPath = join(dir, base + '.bfm');
+//       }
 
-// Add examples to help
-program.on('--help', () => {
-  console.log('');
-  console.log('Examples:');
-  console.log('  $ ripple-asm program.asm');
-  console.log('  $ ripple-asm program.asm -o output.bfm');
-  console.log('  $ ripple-asm program.asm --bank-size 8 --max-immediate 255');
-  console.log('  $ ripple-asm program.asm --data hello.txt --header "Hello World Program"');
-  console.log('  $ ripple-asm program.asm --show-stats --verbose');
-  console.log('');
-  console.log('Input format:');
-  console.log('  The assembler accepts RISC-like assembly with the following features:');
-  console.log('  - Instructions: LI, ADD, SUB, JAL, BEQ, etc.');
-  console.log('  - Registers: R0-R15, PC, RA, etc.');
-  console.log('  - Labels: loop:, start:, etc.');
-  console.log('  - Comments: ; comment, # comment, // comment');
-  console.log('  - Sections: .data and .code');
-  console.log('');
-  console.log('Data section directives:');
-  console.log('  .byte / .db     - Define bytes: .byte 0x48, \'H\', 72');
-  console.log('  .word / .dw     - Define words: .word 0x1234, 1000');
-  console.log('  .string / .ascii - Define string: .string "Hello"');
-  console.log('  .asciiz         - Define null-terminated string: .asciiz "Hello"');
-  console.log('  .space / .zero  - Reserve space: .space 10');
-  console.log('');
-  console.log('Output format:');
-  console.log('  Generates macro format suitable for the Ripple VM linker:');
-  console.log('  @program_start(...), @cmd(...), @program_end');
-});
+//       // Write output
+//       if (options.verbose) {
+//         console.log(`Writing output to: ${outputPath}`);
+//       }
 
-// Helper function to extract comments from source
-function extractComments(source: string): Map<number, string> {
-  const comments = new Map<number, string>();
-  const lines = source.split('\n');
-  let instructionIndex = 0;
-  
-  for (const line of lines) {
-    // Check if line has an instruction
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith(';') || trimmed.startsWith('#') || trimmed.startsWith('//')) {
-      continue;
-    }
-    
-    // Check for inline comment
-    const commentMatch = line.match(/[;#](.*)$/);
-    if (commentMatch) {
-      const hasInstruction = line.match(/^\s*(?:\w+:)?\s*\w+/);
-      if (hasInstruction) {
-        comments.set(instructionIndex, commentMatch[1].trim());
-        instructionIndex++;
-      }
-    } else {
-      // Check if it's a label-only line
-      if (!line.match(/^\s*\w+:\s*$/)) {
-        instructionIndex++;
-      }
-    }
-  }
-  
-  return comments;
-}
+//       writeFileSync(outputPath, output, 'utf-8');
 
-// Parse command line arguments
-program.parse(process.argv);
+//       console.log(`Successfully assembled to: ${outputPath}`);
+//       if (options.verbose) {
+//         console.log(`Output size: ${output.length} characters`);
+//       }
 
-// Show help if no arguments
-if (process.argv.length === 2) {
-  program.help();
-}
+//     } catch (error: any) {
+//       console.error(`Error: ${error.message}`);
+//       process.exit(1);
+//     }
+//   });
+
+// // Add examples to help
+// program.on('--help', () => {
+//   console.log('');
+//   console.log('Examples:');
+//   console.log('  $ ripple-asm program.asm');
+//   console.log('  $ ripple-asm program.asm -o output.bfm');
+//   console.log('  $ ripple-asm program.asm --bank-size 8 --max-immediate 255');
+//   console.log('  $ ripple-asm program.asm --data hello.txt --header "Hello World Program"');
+//   console.log('  $ ripple-asm program.asm --show-stats --verbose');
+//   console.log('');
+//   console.log('Input format:');
+//   console.log('  The assembler accepts RISC-like assembly with the following features:');
+//   console.log('  - Instructions: LI, ADD, SUB, JAL, BEQ, etc.');
+//   console.log('  - Registers: R0-R15, PC, RA, etc.');
+//   console.log('  - Labels: loop:, start:, etc.');
+//   console.log('  - Comments: ; comment, # comment, // comment');
+//   console.log('  - Sections: .data and .code');
+//   console.log('');
+//   console.log('Data section directives:');
+//   console.log('  .byte / .db     - Define bytes: .byte 0x48, \'H\', 72');
+//   console.log('  .word / .dw     - Define words: .word 0x1234, 1000');
+//   console.log('  .string / .ascii - Define string: .string "Hello"');
+//   console.log('  .asciiz         - Define null-terminated string: .asciiz "Hello"');
+//   console.log('  .space / .zero  - Reserve space: .space 10');
+//   console.log('');
+//   console.log('Output format:');
+//   console.log('  Generates macro format suitable for the Ripple VM linker:');
+//   console.log('  @program_start(...), @cmd(...), @program_end');
+// });
+
+// // Helper function to extract comments from source
+// function extractComments(source: string): Map<number, string> {
+//   const comments = new Map<number, string>();
+//   const lines = source.split('\n');
+//   let instructionIndex = 0;
+
+//   for (const line of lines) {
+//     // Check if line has an instruction
+//     const trimmed = line.trim();
+//     if (!trimmed || trimmed.startsWith(';') || trimmed.startsWith('#') || trimmed.startsWith('//')) {
+//       continue;
+//     }
+
+//     // Check for inline comment
+//     const commentMatch = line.match(/[;#](.*)$/);
+//     if (commentMatch) {
+//       const hasInstruction = line.match(/^\s*(?:\w+:)?\s*\w+/);
+//       if (hasInstruction) {
+//         comments.set(instructionIndex, commentMatch[1].trim());
+//         instructionIndex++;
+//       }
+//     } else {
+//       // Check if it's a label-only line
+//       if (!line.match(/^\s*\w+:\s*$/)) {
+//         instructionIndex++;
+//       }
+//     }
+//   }
+
+//   return comments;
+// }
+
+// // Parse command line arguments
+// program.parse(process.argv);
+
+// // Show help if no arguments
+// if (process.argv.length === 2) {
+//   program.help();
+// }

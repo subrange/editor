@@ -1,4 +1,9 @@
-import { createMacroExpanderV3, type MacroExpander, type MacroExpanderOptions, type MacroExpanderResult } from './macro-expander';
+import {
+  createMacroExpanderV3,
+  type MacroExpander,
+  type MacroExpanderOptions,
+  type MacroExpanderResult,
+} from './macro-expander';
 
 // Message types for communication with main thread
 interface ExpandMessage {
@@ -31,7 +36,7 @@ console.log('Macro expander worker started with source map generation fixes');
 // Handle messages from main thread
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   const message = event.data;
-  
+
   switch (message.type) {
     case 'expand':
       try {
@@ -39,18 +44,19 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
         const response: ResultMessage = {
           type: 'result',
           id: message.id,
-          result
+          result,
         };
         self.postMessage(response);
       } catch (error) {
         console.error('Macro expansion error in worker:', error);
-        const errorMessage = error instanceof Error 
-          ? `${error.message}\n${error.stack}` 
-          : 'Unknown error';
+        const errorMessage =
+          error instanceof Error
+            ? `${error.message}\n${error.stack}`
+            : 'Unknown error';
         const response: ErrorMessage = {
           type: 'error',
           id: message.id,
-          error: errorMessage
+          error: errorMessage,
         };
         self.postMessage(response);
       }

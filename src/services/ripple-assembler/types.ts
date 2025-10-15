@@ -17,12 +17,12 @@ export enum Opcode {
   SRL = 0x07,
   SLT = 0x08,
   SLTU = 0x09,
-  ADDI = 0x0A,
-  ANDI = 0x0B,
-  ORI = 0x0C,
-  XORI = 0x0D,
-  LI = 0x0E,
-  SLLI = 0x0F,
+  ADDI = 0x0a,
+  ANDI = 0x0b,
+  ORI = 0x0c,
+  XORI = 0x0d,
+  LI = 0x0e,
+  SLLI = 0x0f,
   SRLI = 0x10,
   LOAD = 0x11,
   STORE = 0x12,
@@ -33,47 +33,47 @@ export enum Opcode {
   BLT = 0x17,
   BGE = 0x18,
   BRK = 0x19,
-  MUL = 0x1A,
-  DIV = 0x1B,
-  MOD = 0x1C,
-  MULI = 0x1D,
-  DIVI = 0x1E,
-  MODI = 0x1F
+  MUL = 0x1a,
+  DIV = 0x1b,
+  MOD = 0x1c,
+  MULI = 0x1d,
+  DIVI = 0x1e,
+  MODI = 0x1f,
 }
 
 export enum Register {
-  R0 = 0,   // Zero register
-  PC = 1,   // Program Counter
-  PCB = 2,  // Program Counter Bank
-  RA = 3,   // Return Address
-  RAB = 4,  // Return Address Bank
-  RV0 = 5,  // Return Value 0
-  RV1 = 6,  // Return Value 1
-  A0 = 7,   // Argument 0
-  A1 = 8,   // Argument 1
-  A2 = 9,   // Argument 2
-  A3 = 10,  // Argument 3
-  X0 = 11,  // Reserved/Extended 0
-  X1 = 12,  // Reserved/Extended 1
-  X2 = 13,  // Reserved/Extended 2
-  X3 = 14,  // Reserved/Extended 3
-  T0 = 15,  // Temporary 0
-  T1 = 16,  // Temporary 1
-  T2 = 17,  // Temporary 2
-  T3 = 18,  // Temporary 3
-  T4 = 19,  // Temporary 4
-  T5 = 20,  // Temporary 5
-  T6 = 21,  // Temporary 6
-  T7 = 22,  // Temporary 7
-  S0 = 23,  // Saved 0
-  S1 = 24,  // Saved 1
-  S2 = 25,  // Saved 2
-  S3 = 26,  // Saved 3
-  SC = 27,  // Allocator Scratch
-  SB = 28,  // Stack Bank
-  SP = 29,  // Stack Pointer
-  FP = 30,  // Frame Pointer
-  GP = 31   // Global Pointer
+  R0 = 0, // Zero register
+  PC = 1, // Program Counter
+  PCB = 2, // Program Counter Bank
+  RA = 3, // Return Address
+  RAB = 4, // Return Address Bank
+  RV0 = 5, // Return Value 0
+  RV1 = 6, // Return Value 1
+  A0 = 7, // Argument 0
+  A1 = 8, // Argument 1
+  A2 = 9, // Argument 2
+  A3 = 10, // Argument 3
+  X0 = 11, // Reserved/Extended 0
+  X1 = 12, // Reserved/Extended 1
+  X2 = 13, // Reserved/Extended 2
+  X3 = 14, // Reserved/Extended 3
+  T0 = 15, // Temporary 0
+  T1 = 16, // Temporary 1
+  T2 = 17, // Temporary 2
+  T3 = 18, // Temporary 3
+  T4 = 19, // Temporary 4
+  T5 = 20, // Temporary 5
+  T6 = 21, // Temporary 6
+  T7 = 22, // Temporary 7
+  S0 = 23, // Saved 0
+  S1 = 24, // Saved 1
+  S2 = 25, // Saved 2
+  S3 = 26, // Saved 3
+  SC = 27, // Allocator Scratch
+  SB = 28, // Stack Bank
+  SP = 29, // Stack Pointer
+  FP = 30, // Frame Pointer
+  GP = 31, // Global Pointer
 }
 
 export enum InstructionFormat {
@@ -81,7 +81,7 @@ export enum InstructionFormat {
   I,
   I1,
   I2,
-  J
+  J,
 }
 
 export interface AssemblerOptions {
@@ -89,7 +89,7 @@ export interface AssemblerOptions {
   startBank?: number;
   bankSize?: number;
   maxImmediate?: number;
-  memoryOffset?: number;  // Offset for data section to account for memory-mapped regions (default 2)
+  memoryOffset?: number; // Offset for data section to account for memory-mapped regions (default 2)
 }
 
 export interface Label {
@@ -119,7 +119,7 @@ export interface ParsedLine {
 
 export enum Section {
   Code = 'code',
-  Data = 'data'
+  Data = 'data',
 }
 
 export interface AssemblerState {
@@ -127,7 +127,10 @@ export interface AssemblerState {
   currentOffset: number;
   labels: Map<string, Label>;
   dataLabels: Map<string, number>; // Labels in data section point to data offset
-  pendingReferences: Map<number, { label: string; type: 'branch' | 'absolute' | 'data' }>;
+  pendingReferences: Map<
+    number,
+    { label: string; type: 'branch' | 'absolute' | 'data' }
+  >;
   instructions: Instruction[];
   memoryData: number[];
   errors: string[];
@@ -137,7 +140,10 @@ export const DEFAULT_BANK_SIZE = 16;
 export const INSTRUCTION_SIZE = 4;
 export const DEFAULT_MAX_IMMEDIATE = 65535;
 
-export const opcodeInfo: Record<Opcode, { format: InstructionFormat; mnemonic: string }> = {
+export const opcodeInfo: Record<
+  Opcode,
+  { format: InstructionFormat; mnemonic: string }
+> = {
   [Opcode.NOP]: { format: InstructionFormat.R, mnemonic: 'NOP' },
   [Opcode.ADD]: { format: InstructionFormat.R, mnemonic: 'ADD' },
   [Opcode.SUB]: { format: InstructionFormat.R, mnemonic: 'SUB' },
@@ -164,13 +170,10 @@ export const opcodeInfo: Record<Opcode, { format: InstructionFormat; mnemonic: s
   [Opcode.BLT]: { format: InstructionFormat.I, mnemonic: 'BLT' },
   [Opcode.BGE]: { format: InstructionFormat.I, mnemonic: 'BGE' },
   [Opcode.BRK]: { format: InstructionFormat.R, mnemonic: 'BRK' },
-    [Opcode.MUL]: { format: InstructionFormat.R, mnemonic: 'MUL' },
-    [Opcode.DIV]: { format: InstructionFormat.R, mnemonic: 'DIV' },
-    [Opcode.MOD]: { format: InstructionFormat.R, mnemonic: 'MOD' },
-    [Opcode.MULI]: { format: InstructionFormat.I, mnemonic: 'MULI' },
-    [Opcode.DIVI]: { format: InstructionFormat.I, mnemonic: 'DIVI' },
-    [Opcode.MODI]: { format: InstructionFormat.I, mnemonic: 'MODI' },
-
-
-
+  [Opcode.MUL]: { format: InstructionFormat.R, mnemonic: 'MUL' },
+  [Opcode.DIV]: { format: InstructionFormat.R, mnemonic: 'DIV' },
+  [Opcode.MOD]: { format: InstructionFormat.R, mnemonic: 'MOD' },
+  [Opcode.MULI]: { format: InstructionFormat.I, mnemonic: 'MULI' },
+  [Opcode.DIVI]: { format: InstructionFormat.I, mnemonic: 'DIVI' },
+  [Opcode.MODI]: { format: InstructionFormat.I, mnemonic: 'MODI' },
 };

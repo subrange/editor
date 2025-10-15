@@ -11,10 +11,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         ----
       }
       @somemacro`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++++----');
     });
@@ -28,10 +28,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         +
       }
       @test`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('><+');
     });
@@ -44,10 +44,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         @inner
       }
       @outer`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++--++');
     });
@@ -64,10 +64,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         >
       }
       @complex`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('[-]+++++>');
     });
@@ -81,10 +81,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         {repeat(n, +)}
       }
       @set(3)`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('[-]+++');
     });
@@ -100,10 +100,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         )}
       }
       @loop({1, 2, 3})`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('>[-]<>>[-]<<>>>[-]<<<');
     });
@@ -118,10 +118,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
   <
 }
 @old_style @new_style`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+-> +-<');
     });
@@ -130,10 +130,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
       const input = `#define bad {
         ++++
         // missing closing brace`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('closing brace');
     });
@@ -144,10 +144,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         <
       }
       @nested`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+>+>+><');
     });
@@ -159,10 +159,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         >      // Next
       }
       @formatted`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('[-]+++>');
     });
@@ -172,10 +172,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         ++++
       }
       @test`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++++');
     });
@@ -183,10 +183,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
     it('should handle single-line brace macros', () => {
       const input = `#define simple { ++++ }
       @simple`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++++');
     });
@@ -196,10 +196,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
       #define empty2 {
       }
       @empty @empty2`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('');
     });
@@ -210,10 +210,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         {if(val, +++>, ---<)}
       }
       @check(1) @check(0)`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+++> ---<');
     });
@@ -227,10 +227,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         )}
       }
       @process_array({1, 2, 3})`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+++.++.+.');
     });
@@ -243,10 +243,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         ++++
       }
       @test`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++++');
     });
@@ -257,10 +257,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         +{-}+
       }
       @test`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       // The {-} in the middle is treated as text since it's not a valid builtin
       expect(result.expanded.trim()).toContain('+');
@@ -274,10 +274,10 @@ describe('MacroExpander - Multiline Macro Support', () => {
         {repeat(b, -)}
       }
       @fn(2, 3)`;
-      
+
       const expander = createMacroExpander();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++>---');
     });

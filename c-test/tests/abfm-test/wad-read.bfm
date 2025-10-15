@@ -1,8 +1,0 @@
-#define test {
-  {:main}:{br}
-  {:LI T0, 65}{br}
-  {:STORE T0, R0, R0}{br}
-  {:HALT}{br}
-}
-
-@test

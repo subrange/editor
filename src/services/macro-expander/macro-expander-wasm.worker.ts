@@ -1,4 +1,10 @@
-import { createMacroExpanderRust, initializeWasm, type MacroExpander, type MacroExpanderOptions, type MacroExpanderResult } from './macro-expander';
+import {
+  createMacroExpanderRust,
+  initializeWasm,
+  type MacroExpander,
+  type MacroExpanderOptions,
+  type MacroExpanderResult,
+} from './macro-expander';
 
 // Message types for communication with main thread
 interface ExpandMessage {
@@ -33,20 +39,20 @@ async function ensureInitialized(): Promise<MacroExpander> {
       console.log('WASM macro expander initialized in worker');
     });
   }
-  
+
   await initPromise;
-  
+
   if (!macroExpander) {
     throw new Error('Failed to initialize WASM macro expander');
   }
-  
+
   return macroExpander;
 }
 
 // Handle messages from main thread
 self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
   const message = event.data;
-  
+
   switch (message.type) {
     case 'expand':
       try {
@@ -55,18 +61,19 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
         const response: ResultMessage = {
           type: 'result',
           id: message.id,
-          result
+          result,
         };
         self.postMessage(response);
       } catch (error) {
         console.error('Macro expansion error in WASM worker:', error);
-        const errorMessage = error instanceof Error 
-          ? `${error.message}\n${error.stack}` 
-          : 'Unknown error';
+        const errorMessage =
+          error instanceof Error
+            ? `${error.message}\n${error.stack}`
+            : 'Unknown error';
         const response: ErrorMessage = {
           type: 'error',
           id: message.id,
-          error: errorMessage
+          error: errorMessage,
         };
         self.postMessage(response);
       }

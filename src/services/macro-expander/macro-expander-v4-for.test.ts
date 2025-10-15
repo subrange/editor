@@ -6,7 +6,7 @@ describe('Macro Expander V4 - For Loop', () => {
     const expander = createMacroExpanderV4();
     const input = `{for(x in {1, 2, 3}, x )}`;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('1 2 3');
   });
@@ -15,7 +15,7 @@ describe('Macro Expander V4 - For Loop', () => {
     const expander = createMacroExpanderV4();
     const input = `{for(x in {a, b, c}, x )}`;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('a b c');
   });
@@ -24,7 +24,7 @@ describe('Macro Expander V4 - For Loop', () => {
     const expander = createMacroExpanderV4();
     const input = `{for(i in {1, 2}, {for(j in {a, b}, i j )})}`;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('1 a 1 b 2 a 2 b');
   });
@@ -40,7 +40,7 @@ describe('Macro Expander V4 - For Loop', () => {
       @generatePairs({A, B}, {1, 2, 3})
     `;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('A 1 A 2 A 3 B 1 B 2 B 3');
   });
@@ -54,7 +54,7 @@ describe('Macro Expander V4 - For Loop', () => {
       {for(x in {foo, bar, baz}, @processItem(x))}
     `;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('STARTfooEND STARTbarEND STARTbazEND');
   });
@@ -63,7 +63,7 @@ describe('Macro Expander V4 - For Loop', () => {
     const expander = createMacroExpanderV4();
     const input = `{for(x in {}, x )}`;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('');
   });
@@ -72,7 +72,7 @@ describe('Macro Expander V4 - For Loop', () => {
     const expander = createMacroExpanderV4();
     const input = `{for(123 in {1, 2, 3}, x )}`;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(2);
     expect(result.errors[0].message).toContain('variable name');
   });
@@ -81,7 +81,7 @@ describe('Macro Expander V4 - For Loop', () => {
     const expander = createMacroExpanderV4();
     const input = `{for(x in notArray, x )}`;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].message).toContain('array');
   });
@@ -95,7 +95,7 @@ describe('Macro Expander V4 - For Loop', () => {
       @iterate({X, Y, Z}, VALUE_)
     `;
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('VALUE_ X VALUE_ Y VALUE_ Z');
   });

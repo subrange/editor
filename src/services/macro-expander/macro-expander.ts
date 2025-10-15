@@ -10,7 +10,11 @@ export interface MacroDefinition {
 }
 
 export interface MacroExpansionError {
-  type: 'undefined' | 'parameter_mismatch' | 'circular_dependency' | 'syntax_error';
+  type:
+    | 'undefined'
+    | 'parameter_mismatch'
+    | 'circular_dependency'
+    | 'syntax_error';
   message: string;
   location?: {
     line: number;
@@ -49,7 +53,10 @@ export interface MacroExpander {
 
 // Import the implementations
 import { MacroExpanderV3 } from './macro-expander-v3.ts';
-import { createMacroExpanderWasm, initializeWasm } from './macro-expander-wasm.ts';
+// import {
+//   createMacroExpanderWasm,
+//   initializeWasm,
+// } from './macro-expander-wasm.ts';
 
 export function createMacroExpander(): MacroExpander {
   return createMacroExpanderV3();
@@ -59,8 +66,8 @@ export function createMacroExpanderV3(): MacroExpander {
   return new MacroExpanderV3();
 }
 
-export function createMacroExpanderRust(): MacroExpander {
-  return createMacroExpanderWasm();
-}
+// export function createMacroExpanderRust(): MacroExpander {
+//   return createMacroExpanderWasm();
+// }
 
-export { initializeWasm };
+// export { initializeWasm };

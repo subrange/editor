@@ -1,5 +1,0 @@
-{
-  "use_runtime": false,
-  "description": "Test inline assembly support",
-  "expected": "Y\n"
-}

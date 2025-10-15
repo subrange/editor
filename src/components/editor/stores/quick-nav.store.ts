@@ -1,4 +1,4 @@
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject } from 'rxjs';
 
 export interface NavigationItem {
   type: 'macro' | 'mark';
@@ -48,7 +48,7 @@ export class QuickNavStore {
   setQuery(query: string) {
     const items = this.state.value.items;
     const filteredItems = this.fuzzyFilter(items, query);
-    
+
     this.state.next({
       ...this.state.value,
       query,
@@ -59,7 +59,7 @@ export class QuickNavStore {
 
   setItems(items: NavigationItem[]) {
     const filteredItems = this.fuzzyFilter(items, this.state.value.query);
-    
+
     this.state.next({
       ...this.state.value,
       items,
@@ -93,7 +93,10 @@ export class QuickNavStore {
     return filteredItems[selectedIndex] || null;
   }
 
-  private fuzzyFilter(items: NavigationItem[], query: string): NavigationItem[] {
+  private fuzzyFilter(
+    items: NavigationItem[],
+    query: string,
+  ): NavigationItem[] {
     if (!query.trim()) {
       return items;
     }
@@ -102,7 +105,7 @@ export class QuickNavStore {
     const queryChars = lowerQuery.split('');
 
     return items
-      .map(item => {
+      .map((item) => {
         const lowerName = item.name.toLowerCase();
         let score = 0;
         let lastMatchIndex = -1;
@@ -111,13 +114,16 @@ export class QuickNavStore {
         for (let i = 0; i < queryChars.length; i++) {
           const char = queryChars[i];
           const matchIndex = lowerName.indexOf(char, lastMatchIndex + 1);
-          
+
           if (matchIndex === -1) {
             return null;
           }
 
           // Bonus for matching at start of word
-          if (matchIndex === 0 || (matchIndex > 0 && lowerName[matchIndex - 1] === ' ')) {
+          if (
+            matchIndex === 0 ||
+            (matchIndex > 0 && lowerName[matchIndex - 1] === ' ')
+          ) {
             score += 10;
           }
 
@@ -142,8 +148,8 @@ export class QuickNavStore {
 
         return { item, score };
       })
-      .filter(result => result !== null)
+      .filter((result) => result !== null)
       .sort((a, b) => b!.score - a!.score)
-      .map(result => result!.item);
+      .map((result) => result!.item);
   }
 }

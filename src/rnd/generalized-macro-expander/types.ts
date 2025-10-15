@@ -1,19 +1,23 @@
 // Core types for the generalized macro expander
 
-import type { ASTNode, ContentNode, BodyNode } from '../../services/macro-expander/macro-parser.ts';
+import type {
+  ASTNode,
+  ContentNode,
+  BodyNode,
+} from '../../services/macro-expander/macro-parser.ts';
 
 export interface MacroBackend {
   name: string;
   fileExtension: string;
-  
+
   // Transform expanded content to target language
   generateOutput(expandedNodes: ContentNode[]): string;
-  
+
   // Backend-specific builtin functions
   builtins?: {
     [name: string]: (args: any[], context: any) => ContentNode[];
   };
-  
+
   // Validation rules
   validateNode?(node: ASTNode): ValidationError[];
 }

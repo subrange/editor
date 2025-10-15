@@ -1,68 +1,66 @@
-import { favicons } from "favicons";
-import fs from "fs";
-import path from "path";
+import { favicons } from 'favicons';
+import fs from 'fs';
+import path from 'path';
 
-const source = "src/favicon_huge.png"; // Source image(s). `string`, `buffer` or array of `string`
+const source = 'src/favicon_huge.png'; // Source image(s). `string`, `buffer` or array of `string`
 
 const configuration = {
-    path: "/", // Path for overriding default icons path. `string`
-    appName: null, // Your application's name. `string`
-    appShortName: null, // Your application's short_name. `string`. Optional. If not set, appName will be used
-    appDescription: null, // Your application's description. `string`
-    developerName: null, // Your (or your developer's) name. `string`
-    developerURL: null, // Your (or your developer's) URL. `string`
-    cacheBustingQueryParam: null, // Query parameter added to all URLs that acts as a cache busting system. `string | null`
-    dir: "auto", // Primary text direction for name, short_name, and description
-    lang: "en-US", // Primary language for name and short_name
-    background: "#fff", // Background colour for flattened icons. `string`
-    theme_color: "#fff", // Theme color user for example in Android's task switcher. `string`
-    appleStatusBarStyle: "black-translucent", // Style for Apple status bar: "black-translucent", "default", "black". `string`
-    display: "standalone", // Preferred display mode: "fullscreen", "standalone", "minimal-ui" or "browser". `string`
-    orientation: "any", // Default orientation: "any", "natural", "portrait" or "landscape". `string`
-    scope: "/", // set of URLs that the browser considers within your app
-    start_url: "/?homescreen=1", // Start URL when launching the application from a device. `string`
-    preferRelatedApplications: false, // Should the browser prompt the user to install the native companion app. `boolean`
-    relatedApplications: undefined, // Information about the native companion apps. This will only be used if `preferRelatedApplications` is `true`. `Array<{ id: string, url: string, platform: string }>`
-    version: "1.0", // Your application's version string. `string`
-    pixel_art: false, // Keeps pixels "sharp" when scaling up, for pixel art.  Only supported in offline mode.
-    loadManifestWithCredentials: false, // Browsers don't send cookies when fetching a manifest, enable this to fix that. `boolean`
-    manifestMaskable: false, // Maskable source image(s) for manifest.json. "true" to use default source. More information at https://web.dev/maskable-icon/. `boolean`, `string`, `buffer` or array of `string`
-    icons: {
-        favicons: true, // Create regular favicons. `boolean` or `{ offset, background }` or an array of sources
+  path: '/', // Path for overriding default icons path. `string`
+  appName: null, // Your application's name. `string`
+  appShortName: null, // Your application's short_name. `string`. Optional. If not set, appName will be used
+  appDescription: null, // Your application's description. `string`
+  developerName: null, // Your (or your developer's) name. `string`
+  developerURL: null, // Your (or your developer's) URL. `string`
+  cacheBustingQueryParam: null, // Query parameter added to all URLs that acts as a cache busting system. `string | null`
+  dir: 'auto', // Primary text direction for name, short_name, and description
+  lang: 'en-US', // Primary language for name and short_name
+  background: '#fff', // Background colour for flattened icons. `string`
+  theme_color: '#fff', // Theme color user for example in Android's task switcher. `string`
+  appleStatusBarStyle: 'black-translucent', // Style for Apple status bar: "black-translucent", "default", "black". `string`
+  display: 'standalone', // Preferred display mode: "fullscreen", "standalone", "minimal-ui" or "browser". `string`
+  orientation: 'any', // Default orientation: "any", "natural", "portrait" or "landscape". `string`
+  scope: '/', // set of URLs that the browser considers within your app
+  start_url: '/?homescreen=1', // Start URL when launching the application from a device. `string`
+  preferRelatedApplications: false, // Should the browser prompt the user to install the native companion app. `boolean`
+  relatedApplications: undefined, // Information about the native companion apps. This will only be used if `preferRelatedApplications` is `true`. `Array<{ id: string, url: string, platform: string }>`
+  version: '1.0', // Your application's version string. `string`
+  pixel_art: false, // Keeps pixels "sharp" when scaling up, for pixel art.  Only supported in offline mode.
+  loadManifestWithCredentials: false, // Browsers don't send cookies when fetching a manifest, enable this to fix that. `boolean`
+  manifestMaskable: false, // Maskable source image(s) for manifest.json. "true" to use default source. More information at https://web.dev/maskable-icon/. `boolean`, `string`, `buffer` or array of `string`
+  icons: {
+    favicons: true, // Create regular favicons. `boolean` or `{ offset, background }` or an array of sources
 
-        android: false, // Create Android homescreen icon. `boolean` or `{ offset, background }` or an array of sources
-        appleIcon: false, // Create Apple touch icons. `boolean` or `{ offset, background }` or an array of sources
-        appleStartup: false, // Create Apple startup images. `boolean` or `{ offset, background }` or an array of sources
-        windows: false, // Create Windows 8 tile icons. `boolean` or `{ offset, background }` or an array of sources
-        yandex: false, //
-    },
-    shortcuts: [
-    ],
+    android: false, // Create Android homescreen icon. `boolean` or `{ offset, background }` or an array of sources
+    appleIcon: false, // Create Apple touch icons. `boolean` or `{ offset, background }` or an array of sources
+    appleStartup: false, // Create Apple startup images. `boolean` or `{ offset, background }` or an array of sources
+    windows: false, // Create Windows 8 tile icons. `boolean` or `{ offset, background }` or an array of sources
+    yandex: false, //
+  },
+  shortcuts: [],
 };
 
 try {
-    const response = await favicons(source, configuration);
+  const response = await favicons(source, configuration);
 
-    // console.log(response.images); // Array of { name: string, contents: <buffer> }
-    // console.log(response.files); // Array of { name: string, contents: <string> }
-    // console.log(response.html); // Array of strings (html elements)
+  // console.log(response.images); // Array of { name: string, contents: <buffer> }
+  // console.log(response.files); // Array of { name: string, contents: <string> }
+  // console.log(response.html); // Array of strings (html elements)
 
-    // Save the generated files to public directory
-    for (const file of response.files) {
-        const outputPath = path.join('public', file.name);
-        fs.writeFileSync(outputPath, file.contents);
+  // Save the generated files to public directory
+  for (const file of response.files) {
+    const outputPath = path.join('public', file.name);
+    fs.writeFileSync(outputPath, file.contents);
 
-        console.log(`File saved: ${outputPath}`);
-    }
+    console.log(`File saved: ${outputPath}`);
+  }
 
-    // Save the generated images to public directory
-    for (const image of response.images) {
-        const outputPath = path.join('public', image.name);
-        fs.writeFileSync(outputPath, image.contents);
+  // Save the generated images to public directory
+  for (const image of response.images) {
+    const outputPath = path.join('public', image.name);
+    fs.writeFileSync(outputPath, image.contents);
 
-        console.log(`Image saved: ${outputPath}`);
-    }
-
+    console.log(`Image saved: ${outputPath}`);
+  }
 } catch (error) {
-    console.log(error.message); // Error description e.g. "An unknown error has occurred"
+  console.log(error.message); // Error description e.g. "An unknown error has occurred"
 }

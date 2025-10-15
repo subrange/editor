@@ -16,7 +16,10 @@ class VMOutputService {
   }
 
   private setupCallback() {
-    const callback = (tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => {
+    const callback = (
+      tape: Uint8Array | Uint16Array | Uint32Array,
+      pointer: number,
+    ) => {
       const config = vmTerminalStore.state.getValue().config;
       const { outCellIndex, outFlagCellIndex, clearOnRead, enabled } = config;
 
@@ -35,7 +38,7 @@ class VMOutputService {
         const charCode = tape[outCellIndex];
         const char = String.fromCharCode(charCode);
         vmTerminalStore.appendOutput(char);
-        
+
         // Clear the flag if clearOnRead is enabled
         if (clearOnRead) {
           tape[outFlagCellIndex] = 0;
@@ -49,9 +52,10 @@ class VMOutputService {
 
   private subscribeToConfigChanges() {
     // Subscribe to VM terminal config changes
-    this.unsubscribe = vmTerminalStore.state.subscribe(state => {
-      const { outCellIndex, outFlagCellIndex, clearOnRead, enabled } = state.config;
-      
+    this.unsubscribe = vmTerminalStore.state.subscribe((state) => {
+      const { outCellIndex, outFlagCellIndex, clearOnRead, enabled } =
+        state.config;
+
       // Update the VM output config in the interpreter
       interpreterStore.setVMOutputConfig({
         outCellIndex,
@@ -60,8 +64,8 @@ class VMOutputService {
         sparseCellPattern: {
           start: Math.min(outCellIndex, outFlagCellIndex),
           step: 1,
-          count: Math.abs(outCellIndex - outFlagCellIndex) + 1
-        }
+          count: Math.abs(outCellIndex - outFlagCellIndex) + 1,
+        },
       });
     });
   }

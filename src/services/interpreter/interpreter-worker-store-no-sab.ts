@@ -2,7 +2,10 @@
 // This version uses efficient chunked transfers for large tapes
 
 import { BehaviorSubject, Subscription } from 'rxjs';
-import type { Line, Position } from '../../components/editor/stores/editor.store';
+import type {
+  Line,
+  Position,
+} from '../../components/editor/stores/editor.store';
 import type { TapeSnapshot } from '../../components/debugger/interpreter.store';
 import type { SourceMap } from '../macro-expander/source-map';
 import { editorManager } from '../editor-manager.service';
@@ -42,9 +45,11 @@ interface TapeRegionMessage {
 export class InterpreterWorkerStoreNoSAB {
   private worker: Worker;
   private code: Line[] = [];
-  private vmOutputCallback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null = null;
+  private vmOutputCallback:
+    | ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void)
+    | null = null;
   private editorSubscription: Subscription | null = null;
-  
+
   // Local tape copy - only update modified regions
   private localTape: Uint8Array | Uint16Array | Uint32Array;
   private modifiedRegions = new Set<number>(); // Track modified regions
@@ -60,7 +65,7 @@ export class InterpreterWorkerStoreNoSAB {
   constructor() {
     // Initialize local tape
     this.localTape = new Uint8Array(this.tapeSize.getValue());
-    
+
     // Initialize state
     this.state = new BehaviorSubject<InterpreterState>({
       tape: this.localTape,
@@ -72,19 +77,19 @@ export class InterpreterWorkerStoreNoSAB {
       sourceBreakpoints: [],
       output: '',
       laneCount: 1,
-      lastExecutionMode: 'turbo'
+      lastExecutionMode: 'turbo',
     });
 
     // Create worker without special requirements
     this.worker = new Worker(
       new URL('./interpreter-worker-no-sab.ts', import.meta.url),
-      { type: 'module' }
+      { type: 'module' },
     );
 
     // Handle worker messages
     this.worker.onmessage = (event) => {
       const message = event.data;
-      
+
       switch (message.type) {
         case 'stateUpdate':
           this.handleStateUpdate(message);
@@ -113,7 +118,7 @@ export class InterpreterWorkerStoreNoSAB {
 
     // Load settings from localStorage
     this.loadSettings();
-    
+
     // Subscribe to editor updates
     this.subscribeToEditor();
   }
@@ -150,7 +155,7 @@ export class InterpreterWorkerStoreNoSAB {
   private recreateTape() {
     const tapeSize = this.tapeSize.getValue();
     const cellSize = this.cellSize.getValue();
-    
+
     if (cellSize === 256) {
       this.localTape = new Uint8Array(tapeSize);
     } else if (cellSize === 65536) {
@@ -158,17 +163,17 @@ export class InterpreterWorkerStoreNoSAB {
     } else {
       this.localTape = new Uint32Array(tapeSize);
     }
-    
+
     const currentState = this.state.getValue();
     this.state.next({
       ...currentState,
-      tape: this.localTape
+      tape: this.localTape,
     });
   }
 
   private handleStateUpdate(message: any) {
     const currentState = this.state.getValue();
-    
+
     // Update state without tape (tape updates come separately)
     this.state.next({
       ...currentState,
@@ -178,17 +183,17 @@ export class InterpreterWorkerStoreNoSAB {
       isStopped: message.isStopped,
       output: message.output,
       currentSourcePosition: message.currentSourcePosition,
-      macroContext: message.macroContext
+      macroContext: message.macroContext,
     });
 
     this.currentChar.next(message.currentChar);
-    
+
     if (message.currentSourcePosition) {
       this.currentSourceChar.next(message.currentSourcePosition);
     } else {
       this.currentSourceChar.next(null);
     }
-    
+
     // Track modified regions if provided
     if (message.modifiedRegions) {
       message.modifiedRegions.forEach((region: number) => {
@@ -202,22 +207,25 @@ export class InterpreterWorkerStoreNoSAB {
     const view = new Uint8Array(message.data);
     const targetArray = new Uint8Array(this.localTape.buffer, message.start);
     targetArray.set(view);
-    
+
     // Trigger state update
     const currentState = this.state.getValue();
     this.state.next({
       ...currentState,
-      tape: this.localTape
+      tape: this.localTape,
     });
   }
 
   private sendTapeRegion(start: number, length: number) {
     const region = this.localTape.slice(start, start + length);
-    this.worker.postMessage({
-      type: 'tapeRegion',
-      start,
-      data: region.buffer
-    }, [region.buffer]);
+    this.worker.postMessage(
+      {
+        type: 'tapeRegion',
+        start,
+        data: region.buffer,
+      },
+      [region.buffer],
+    );
   }
 
   private handleVMOutput(message: any) {

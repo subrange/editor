@@ -1,5 +1,0 @@
-{
-  "use_runtime": true,
-  "description": "Test struct assignment copies all fields",
-  "expected": "Y\n"
-}

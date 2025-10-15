@@ -1,5 +1,0 @@
-{
-  "use_runtime": true,
-  "expected": "ABCD\n",
-  "description": "Test basic typedef functionality"
-}

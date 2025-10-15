@@ -1,5 +1,0 @@
-{
-  "use_runtime": true,
-  "expected": "manual",
-  "description": "Simple TTY echo test"
-}

@@ -30,23 +30,27 @@ class RustWasmInterpreterService {
   private pendingRequests = new Map<string, RunRequest>();
   private requestIdCounter = 0;
   private currentRunId: string | null = null;
-  
+
   // Observable for service status
-  public status$ = new BehaviorSubject<'initializing' | 'ready' | 'error'>('initializing');
+  public status$ = new BehaviorSubject<'initializing' | 'ready' | 'error'>(
+    'initializing',
+  );
   public isRunning$ = new BehaviorSubject<boolean>(false);
   public isWaitingForInput$ = new BehaviorSubject<boolean>(false);
-  
+
   constructor() {
     this.initializeWorker();
   }
-  
+
   private initializeWorker() {
     try {
-      this.worker = new Worker('/wasm-interpreter.worker.js', { type: 'module' });
-      
+      this.worker = new Worker('/wasm-interpreter.worker.js', {
+        type: 'module',
+      });
+
       this.worker.onmessage = (e) => {
         const { type, id, char, charCode, result, error, code } = e.data;
-        
+
         switch (type) {
           case 'waiting_for_input':
             this.isWaitingForInput$.next(true);
@@ -55,7 +59,7 @@ class RustWasmInterpreterService {
             interpreterStore.state.next({
               ...currentState,
               isWaitingForInput: true,
-              isPaused: true
+              isPaused: true,
             });
             break;
           case 'ready':
@@ -63,14 +67,14 @@ class RustWasmInterpreterService {
             this.status$.next('ready');
             console.log('Rust WASM interpreter ready');
             break;
-            
+
           case 'output':
             const outputRequest = this.pendingRequests.get(id);
             if (outputRequest?.outputCallback) {
               outputRequest.outputCallback(char, charCode);
             }
             break;
-            
+
           case 'complete':
             const completeRequest = this.pendingRequests.get(id);
             if (completeRequest) {
@@ -80,7 +84,7 @@ class RustWasmInterpreterService {
                 this.currentRunId = null;
                 this.isRunning$.next(false);
                 this.isWaitingForInput$.next(false);
-                
+
                 // Clear the waiting state in the interpreter store as well
                 const currentState = interpreterStore.state.getValue();
                 if (currentState.isWaitingForInput) {
@@ -88,13 +92,13 @@ class RustWasmInterpreterService {
                     ...currentState,
                     isWaitingForInput: false,
                     isPaused: false,
-                    isStopped: true
+                    isStopped: true,
                   });
                 }
               }
             }
             break;
-            
+
           case 'error':
             if (id) {
               const errorRequest = this.pendingRequests.get(id);
@@ -105,7 +109,7 @@ class RustWasmInterpreterService {
                   this.currentRunId = null;
                   this.isRunning$.next(false);
                   this.isWaitingForInput$.next(false);
-                  
+
                   // Clear the waiting state in the interpreter store as well
                   const currentState = interpreterStore.state.getValue();
                   if (currentState.isWaitingForInput) {
@@ -113,7 +117,7 @@ class RustWasmInterpreterService {
                       ...currentState,
                       isWaitingForInput: false,
                       isPaused: false,
-                      isStopped: true
+                      isStopped: true,
                     });
                   }
                 }
@@ -123,7 +127,7 @@ class RustWasmInterpreterService {
               this.status$.next('error');
             }
             break;
-            
+
           case 'optimized':
             const optimizeRequest = this.pendingRequests.get(id);
             if (optimizeRequest) {
@@ -133,47 +137,46 @@ class RustWasmInterpreterService {
             break;
         }
       };
-      
+
       this.worker.onerror = (error) => {
         console.error('Worker error:', error);
         this.status$.next('error');
         this.isRunning$.next(false);
         this.currentRunId = null;
-        
+
         // Reject all pending requests
         for (const request of this.pendingRequests.values()) {
           request.reject(new Error('Worker crashed'));
         }
         this.pendingRequests.clear();
       };
-      
+
       // Initialize the WASM module
       this.worker.postMessage({ type: 'init' });
-      
     } catch (error) {
       console.error('Failed to create worker:', error);
       this.status$.next('error');
     }
   }
-  
+
   /**
    * Run Brainfuck code with optional real-time output callback
    */
   async runProgram(
-    code: string, 
+    code: string,
     input: string = '',
     options?: RustWasmOptions,
-    outputCallback?: (char: string, charCode: number) => void
+    outputCallback?: (char: string, charCode: number) => void,
   ): Promise<RustWasmResult> {
     if (!this.worker) {
       throw new Error('Worker not initialized');
     }
-    
+
     // Stop any currently running program
     if (this.currentRunId) {
       this.stop();
     }
-    
+
     if (!this.isReady) {
       // Wait for ready state
       await new Promise<void>((resolve, reject) => {
@@ -187,7 +190,7 @@ class RustWasmInterpreterService {
             reject(new Error('WASM initialization failed'));
           }
         }, 100);
-        
+
         // Timeout after 10 seconds
         setTimeout(() => {
           clearInterval(checkReady);
@@ -195,29 +198,29 @@ class RustWasmInterpreterService {
         }, 10000);
       });
     }
-    
+
     return new Promise((resolve, reject) => {
       const id = `run_${++this.requestIdCounter}`;
       this.currentRunId = id;
       this.isRunning$.next(true);
-      
+
       this.pendingRequests.set(id, {
         id,
         resolve,
         reject,
-        outputCallback
+        outputCallback,
       });
-      
+
       this.worker!.postMessage({
         type: 'run',
         id,
         code,
         input,
-        options
+        options,
       });
     });
   }
-  
+
   /**
    * Stop the currently running program
    */
@@ -231,7 +234,7 @@ class RustWasmInterpreterService {
       this.currentRunId = null;
       this.isRunning$.next(false);
       this.isWaitingForInput$.next(false);
-      
+
       // Clear the waiting state in the interpreter store as well
       const currentState = interpreterStore.state.getValue();
       if (currentState.isWaitingForInput) {
@@ -239,15 +242,15 @@ class RustWasmInterpreterService {
           ...currentState,
           isWaitingForInput: false,
           isPaused: false,
-          isStopped: true
+          isStopped: true,
         });
       }
-      
+
       // Restart worker to ensure clean state
       this.restart();
     }
   }
-  
+
   /**
    * Optimize Brainfuck code
    */
@@ -255,28 +258,28 @@ class RustWasmInterpreterService {
     if (!this.worker) {
       throw new Error('Worker not initialized');
     }
-    
+
     if (!this.isReady) {
       throw new Error('WASM not ready');
     }
-    
+
     return new Promise((resolve, reject) => {
       const id = `optimize_${++this.requestIdCounter}`;
-      
+
       this.pendingRequests.set(id, {
         id,
         resolve: (result) => resolve(result.output),
         reject,
       });
-      
+
       this.worker!.postMessage({
         type: 'optimize',
         id,
-        code
+        code,
       });
     });
   }
-  
+
   /**
    * Terminate the worker
    */
@@ -289,44 +292,47 @@ class RustWasmInterpreterService {
       this.isRunning$.next(false);
       this.currentRunId = null;
     }
-    
+
     // Reject all pending requests
     for (const request of this.pendingRequests.values()) {
       request.reject(new Error('Worker terminated'));
     }
     this.pendingRequests.clear();
   }
-  
+
   /**
    * Provide input to the interpreter when it's waiting
    */
   provideInput(char: string) {
-    if (!this.worker || !this.currentRunId || !this.isWaitingForInput$.getValue()) {
+    if (
+      !this.worker ||
+      !this.currentRunId ||
+      !this.isWaitingForInput$.getValue()
+    ) {
       console.warn('Cannot provide input: interpreter not waiting for input');
       return;
     }
-    
+
     const charCode = char.charCodeAt(0);
     this.isWaitingForInput$.next(false);
-    
+
     // Clear the waiting state in the interpreter store immediately
     const currentState = interpreterStore.state.getValue();
     if (currentState.isWaitingForInput) {
       interpreterStore.state.next({
         ...currentState,
         isWaitingForInput: false,
-        isPaused: false
+        isPaused: false,
       });
     }
-    
+
     this.worker.postMessage({
       type: 'provide_input',
       id: this.currentRunId,
-      charCode
+      charCode,
     });
   }
-  
-  
+
   /**
    * Restart the worker
    */

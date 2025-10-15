@@ -4,26 +4,29 @@ import { MacroExpanderV4 } from '../../services/macro-expander/macro-expander-v4
 // Extend the class to add logging
 class TracingMacroExpanderV4 extends MacroExpanderV4 {
   protected expandBodyWithSubstitutions(
-    body: any[], 
+    body: any[],
     substitutions: Record<string, string>,
-    context: any
+    context: any,
   ): void {
     console.log('expandBodyWithSubstitutions called');
-    console.log('Body nodes:', body.map(n => ({ type: n.type, value: n.value || n.commands })));
-    console.log('Context:', { 
+    console.log(
+      'Body nodes:',
+      body.map((n) => ({ type: n.type, value: n.value || n.commands })),
+    );
+    console.log('Context:', {
       invocationCounter: context.invocationCounter,
       macroName: context.currentMacroName,
-      depth: context.expansionDepth
+      depth: context.expansionDepth,
     });
     super.expandBodyWithSubstitutions(body, substitutions, context);
   }
-  
+
   protected expandMetaVariables(text: string, context: any): string {
     console.log('expandMetaVariables called');
     console.log('Input text:', JSON.stringify(text));
     console.log('Context:', {
       invocationCounter: context.invocationCounter,
-      currentMacroName: context.currentMacroName
+      currentMacroName: context.currentMacroName,
     });
     const result = super.expandMetaVariables(text, context);
     console.log('Output text:', JSON.stringify(result));
