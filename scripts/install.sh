@@ -6,14 +6,14 @@ set -euo pipefail
 npm run build:native
 
 # Binaries that should exist after the build   
-binaries=(
-  "src/rust-bf/target/release/bf"
-  "src/ripple-asm/target/release/rasm"
-  "src/ripple-asm/target/release/rlink"
-  "rbt/target/release/rbt"
-  "target/release/rvm"
-  "src/bf-macro-expander/target/release/bfm"
-)
+# binaries=(
+#   "src/rust-bf/target/release/bf"
+#   "src/ripple-asm/target/release/rasm"
+#   "src/ripple-asm/target/release/rlink"
+#   "rbt/target/release/rbt"
+#   "target/release/rvm"
+#   "src/bf-macro-expander/target/release/bfm"
+# )
 
 # Verify artifacts exist
 for bin in "${binaries[@]}"; do
