@@ -1,5 +1,0 @@
-{
-      "use_runtime": true,
-      "expected": "YYYY\n",
-      "description": "Compound literals in expressions"
-}

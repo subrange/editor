@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { BrainfuckCodeBlock } from './brainfuck-code-block';
+// import { BrainfuckCodeBlock } from './brainfuck-code-block';
 import { AssemblyCodeBlock } from './assembly-code-block';
 
 interface MarkdownViewerProps {

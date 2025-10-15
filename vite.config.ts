@@ -16,26 +16,11 @@ export default defineConfig({
       'Cross-Origin-Resource-Policy': 'cross-origin',
     },
     watch: {
-      ignored: [
-        '**/src/bf-macro-expander/**',
-        '**/src/rust-bf/**',
-        '**/src/ripple-asm/**',
-        '**/c-code/**',
-        '**/c-test/**',
-        '**/rcc-ir/**',
-        '**/rcc-frontend/**',
-        '**/rcc-driver/**',
-        '**/rcc-common/**',
-        '**/rcc-codegen/**',
-        '*.asm',
-        '*.bf',
-        '*.asm',
-        '*.pobj',
-      ],
+      ignored: ['*.asm'],
     },
   },
   worker: {
     format: 'es',
   },
-  assetsInclude: ['**/*.bfm'],
+  assetsInclude: [],
 });

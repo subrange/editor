@@ -1,8 +1,8 @@
 import { type ITokenizer } from '../../../services/editor-manager.service.ts';
-import {
-  getAvailableMnemonics,
-  getAvailableRegisters,
-} from '../../../services/ripple-assembler/assembler.ts';
+// import {
+//   getAvailableMnemonics,
+//   getAvailableRegisters,
+// } from '../../../services/ripple-assembler/assembler.ts';
 import { BehaviorSubject } from 'rxjs';
 
 // Token types for assembly syntax
@@ -161,14 +161,14 @@ async function initializeSets() {
   if (state.initialized) return;
 
   try {
-    const [mnemonics, registers] = await Promise.all([
-      getAvailableMnemonics(),
-      getAvailableRegisters(),
-    ]);
+    // const [mnemonics, registers] = await Promise.all([
+    //   getAvailableMnemonics(),
+    //   getAvailableRegisters(),
+    // ]);
 
     // Update with dynamic values from WASM
-    INSTRUCTIONS = new Set(mnemonics.map((m) => m.toUpperCase()));
-    REGISTERS = new Set(registers.map((r) => r.toUpperCase()));
+    // INSTRUCTIONS = new Set(mnemonics.map((m) => m.toUpperCase()));
+    // REGISTERS = new Set(registers.map((r) => r.toUpperCase()));
 
     // Update the store
     tokenizerState$.next({

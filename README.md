@@ -1,5 +1,8 @@
 - install npm
-- install cargo
+- install rust
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+Braintease IDE, assembler, unfinished and buggy C compiler, etc etc etc
 
 # Brainfuck IDE
 
@@ -1457,56 +1460,38 @@ M4 implementation checklist (fat pointers)
    • 0 = Global (.rodata/.data)
    • 1 = Stack (frame/alloca)
    • Reserve 2 = Heap (later)
-   • Keep tag in a full word for simplicity right now.
-
-   2. IR type & value model
+   • Keep tag in a full word for simplicity right now. 2. IR type & value model
 
    • Make IR ptr<T> physically {addr: word, bank: word}.
    • GEP: addr' = addr + index\*eltsize; bank' = bank.
    • Addr-of global/label: bank=Global, addr=label_addr.
-   • Alloca: bank=Stack, addr=FP+offset (addr is a normal SSA temp computed in prologue or on demand).
-
-   3. SSA ops
+   • Alloca: bank=Stack, addr=FP+offset (addr is a normal SSA temp computed in prologue or on demand). 3. SSA ops
 
    • PHI/Select on pointers = PHI/Select both fields independently.
-   • Bitcast/Copy = copy both fields.
-
-   4. ABI (calls/returns)
+   • Bitcast/Copy = copy both fields. 4. ABI (calls/returns)
 
    • Pass pointer params as two args: (addr, bank) (choose order and stick to it).
    • Return pointer as two regs.
-   • In your prologue/epilogue, no special casing beyond spill/restore of the extra arg if needed.
-
-   5. Memory layout
+   • In your prologue/epilogue, no special casing beyond spill/restore of the extra arg if needed. 5. Memory layout
 
    • Structs/arrays containing pointers allocate 2 words per pointer.
    • Emitting a pointer constant to .data: two consecutive words {addr, bank}.
-   • Loading/storing a pointer variable uses two LOAD/STOREs.
-
-   6. Codegen rules
+   • Loading/storing a pointer variable uses two LOAD/STOREs. 6. Codegen rules
 
    • Deref load: LOAD rd, bankReg, addrReg.
    • Deref store: STORE rs, bankReg, addrReg.
    • GEP: arithmetic on addrReg only; keep bankReg unchanged.
-   • Passing/returning: move both regs; for spills, spill both.
-
-   7. Front-end lowering
+   • Passing/returning: move both regs; for spills, spill both. 7. Front-end lowering
 
    • Alloca produces {addr=(FP + k), bank=STACK_TAG} (emit addr as an SSA temp).
    • &global_symbol produces {addr=imm(label), bank=GLOBAL_TAG} (load imm as needed).
-   • String literals: same as global.
-
-   8. Assembler/linker
+   • String literals: same as global. 8. Assembler/linker
 
    • No ISA changes! Just ensure your assembler supports emitting two words for pointer initializers in .data.
-   • Linker keeps labels intact; you already have banks at runtime.
-
-   9. Delete the “Unknown/Mixed” pain
+   • Linker keeps labels intact; you already have banks at runtime. 9. Delete the “Unknown/Mixed” pain
 
    • You can drop the provenance lattice for codegen. (It’s still useful for diagnostics, but no longer required for correctness.)
-   • Loading pointers from memory is now precise—no shadow maps.
-
-   10. Tests to close the loop
+   • Loading pointers from memory is now precise—no shadow maps. 10. Tests to close the loop
 
    • Param: int f(int *p){return *p;} called with &local and with &global (both must work).
    • Store/load pointer: int *p = &local; int *q = p; \*q = 7;
@@ -2139,54 +2124,45 @@ The current calling convention implementation in `rcc-backend/src/v2/function/ca
 ### Core Functions in calling_convention.rs
 
 1. **`analyze_placement`** (private, lines 30-63)
-
    - Core logic for determining register vs stack placement
    - Takes a closure to identify fat pointers
    - Returns `(register_items_with_slots, first_stack_item_index)`
    - **Good**: Reusable core logic
 
 2. **`analyze_arg_placement`** (private, lines 66-68)
-
    - Wrapper around `analyze_placement` for CallArg types
    - Used by `setup_call_args`
 
 3. **`analyze_param_placement`** (private, lines 71-74)
-
    - Wrapper around `analyze_placement` for IrType parameters
    - Used by `load_param`
 
 4. **`setup_call_args`** (public, lines 80-192)
-
    - Sets up arguments before a function call
    - Handles both register (A0-A3) and stack arguments
    - Returns instructions but does NOT spill registers
    - **Issue**: Caller must handle spilling before calling this
 
 5. **`emit_call`** (public, lines 195-221)
-
    - Generates the actual JAL instruction
    - Handles cross-bank calls by setting PCB
    - Simple and focused
 
 6. **`handle_return_value`** (public, lines 225-260)
-
    - Binds return value to Rv0/Rv1 registers
    - Updates register manager with result name
    - Handles both scalar and fat pointer returns
 
 7. **`cleanup_stack`** (public, lines 263-274)
-
    - Adjusts SP after call to remove arguments
    - Simple SP adjustment
 
 8. **`make_complete_call`** (public, lines 278-335)
-
    - Combines setup_call_args + emit_call + handle_return_value + cleanup_stack
    - Takes numeric function address
    - **Good**: All-in-one solution
 
 9. **`make_complete_call_by_label`** (public, lines 339-394)
-
    - Same as `make_complete_call` but uses label instead of address
    - **Duplication**: 90% identical to `make_complete_call`
 
@@ -2337,13 +2313,11 @@ fn calculate_stack_param_offset(
 ## Implementation Priority
 
 1. **Immediate** (Week 1):
-
    - Merge duplicate `make_complete_call` functions
    - Fix spilling in `setup_call_args`
    - Add helper for stack offset calculations
 
 2. **Short-term** (Week 2):
-
    - Make individual call functions private
    - Update all call sites to use unified interface
    - Add comprehensive tests
@@ -2780,14 +2754,12 @@ impl FloatABI {
 ### Phase 1: Basic Float Support (Week 1-2)
 
 1. **Frontend**
-
    - [ ] Add float/double types to type system
    - [ ] Parse float literals
    - [ ] Type checking for float operations
    - [ ] Generate float IR instructions
 
 2. **Backend**
-
    - [ ] Float storage layout
    - [ ] Lower FAdd, FSub to runtime calls
    - [ ] Load/store float values
@@ -2801,13 +2773,11 @@ impl FloatABI {
 ### Phase 2: Conversions (Week 3)
 
 1. **Frontend**
-
    - [ ] Implicit conversions (int promotion)
    - [ ] Explicit casts
    - [ ] Type coercion rules
 
 2. **Backend**
-
    - [ ] Lower conversion instructions
    - [ ] Optimize trivial conversions
 
@@ -2819,7 +2789,6 @@ impl FloatABI {
 ### Phase 3: Math Library (Week 4-5)
 
 1. **Standard Functions**
-
    - [ ] sqrt, cbrt
    - [ ] sin, cos, tan
    - [ ] exp, log, pow
@@ -2833,13 +2802,11 @@ impl FloatABI {
 ### Phase 4: Advanced Features (Week 6)
 
 1. **Compiler Optimizations**
-
    - [ ] Constant folding
    - [ ] Strength reduction
    - [ ] Common subexpression elimination
 
 2. **Vectorization**
-
    - [ ] SIMD-style operations on float arrays
    - [ ] Loop optimizations
 
@@ -5498,17 +5465,14 @@ void test_bank_operations() {
 Based on initial analysis, these features may need implementation:
 
 1. **Fat Pointer Arithmetic Enhancement**
-
    - Ensure pointer difference works correctly with fat pointers
    - Verify comparison operators preserve provenance
 
 2. **Static Variable Support**
-
    - Implement if missing
    - Verify initialization order
 
 3. **Union Support**
-
    - Full union implementation if missing
    - Verify memory overlay semantics
 
@@ -5630,13 +5594,11 @@ typedef struct {
 ### Components
 
 1. **Enhanced printf**
-
    - Varargs support (if compiler ready)
    - Additional format specifiers (%u, %o, %p)
    - Field width support
 
 2. **Input Functions**
-
    - `getchar()` - via MMIO
    - `gets()` - Line input (with safety warnings)
    - Basic `scanf()` - Integer and string parsing
@@ -5651,13 +5613,11 @@ typedef struct {
 ### Standard Library Additions
 
 1. **Conversion Functions**
-
    - `atoi()`, `atol()` - String to integer
    - `itoa()` - Integer to string (non-standard)
    - `strtol()`, `strtoul()` - Advanced parsing
 
 2. **Math Utilities**
-
    - `abs()`, `labs()` - Absolute value
    - `div()`, `ldiv()` - Division with remainder
    - `rand()`, `srand()` - Already implemented
@@ -5981,13 +5941,11 @@ Since the compiler's GEP implementation is already bank-aware:
 The RCC compiler follows the LLVM model where all pointer arithmetic is handled through GetElementPtr (GEP) instructions in the frontend IR. This provides several advantages for the standard library implementation:
 
 1. **Separation of Concerns**
-
    - Frontend: Handles all type-aware pointer arithmetic
    - Backend: Handles bank boundary crossing and fat pointer management
    - Runtime: Can focus on allocation strategy without pointer arithmetic complexity
 
 2. **Type Safety**
-
    - GEP ensures type-correct pointer arithmetic
    - Element sizes are computed at compile time
    - Array bounds can be checked statically when possible
@@ -6185,21 +6143,18 @@ Before implementing the pointer arithmetic features outlined in POINTER_ARITHMET
 ### ✅ What Already Exists (More Than Expected!)
 
 1. **Symbol Type Tracking**
-
    - `SemanticAnalyzer` has `symbol_types: HashMap<SymbolId, Type>`
    - Stores types for all functions, globals, parameters, and local variables
    - `ExpressionAnalyzer::analyze()` (in `semantic/expressions/analyzer.rs`) fills in `expr_type` on all expressions
    - Symbol lookup and type assignment works during semantic analysis
 
 2. **Typedef Support**
-
    - `type_definitions: HashMap<String, Type>` stores typedef mappings
    - `SymbolManager::declare_global_variable()` handles `typedef` storage class
    - `TypeAnalyzer::resolve_type()` resolves typedef names to concrete types
    - Already functional in semantic analysis!
 
 3. **Symbol Resolution**
-
    - `SymbolTable` from rcc_common provides scoped symbol management
    - Symbols are properly tracked with enter_scope()/exit_scope()
    - Symbol IDs are assigned and stored in AST nodes
@@ -6213,12 +6168,10 @@ Before implementing the pointer arithmetic features outlined in POINTER_ARITHMET
 ### ✅ Resolved Issues (January 2025)
 
 1. **TypeEnvironment Connection** ✅ FIXED
-
    - `TypeEnvironment` properly accesses `symbol_types` from semantic analysis
    - Type information flows correctly through compilation pipeline
 
 2. **Cast Expression Support** ✅ COMPLETED
-
    - Parser fully supports cast expressions `(type)expression`
    - Type name parsing for abstract declarators
    - Codegen for all cast types (pointer, integer, void\*)
@@ -6233,7 +6186,6 @@ Before implementing the pointer arithmetic features outlined in POINTER_ARITHMET
 ### 🟡 Partial Implementations
 
 1. **Advanced Struct Features**
-
    - ❌ Array fields in structs (causes type errors)
    - ❌ Complex struct scenarios (test_struct_evil.c)
    - ✅ Basic/intermediate struct patterns work perfectly
@@ -6333,31 +6285,26 @@ The parser sees `myint` as an identifier (potential variable/function name), not
 #### Completed Tasks:
 
 1. **Struct Layout Calculation** ✅ Fully implemented in `semantic/struct_layout.rs`
-
    - Handles field offsets and total size calculation
    - **Critical Fix**: Added `calculate_struct_layout_with_defs()` to resolve named struct references
    - Proper error handling for incomplete types, overflow, recursive structs
    - 9 comprehensive unit tests, all passing
 
 2. **Member Access Parsing** ✅ Already exists in `parser/expressions/postfix.rs`
-
    - Handles both `.` and `->` operators correctly
    - Supports chained member access (e.g., `obj.inner.field`)
 
 3. **Type Definition Processing** ✅ FIXED
-
    - Semantic analyzer properly processes struct type definitions
    - Typed AST conversion skips TypeDefinition items (no code generation needed)
    - Struct types available during compilation
 
 4. **Member Access Implementation** ✅ COMPLETED
-
    - Typed AST conversion converts Member to MemberAccess with correct offsets
    - IR generation uses GEP instructions (per POINTER_ARITHMETIC_ROADMAP.md)
    - Both rvalue and lvalue contexts supported
 
 5. **Nested Struct Support** ✅ FIXED
-
    - Resolved issue where nested struct fields had size 0
    - Properly calculates offsets for nested structures
    - Chained member access works correctly
@@ -6693,19 +6640,16 @@ Parser needs to distinguish typedef names from regular identifiers.
 ### Recommended Sequence
 
 1. **Phase 1**: Connect TypeEnvironment (1-2 days!)
-
    - Just wire existing symbol_types to TypeEnvironment
    - Immediately unblocks type lookups
    - Typedef support already works!
 
 2. **Phase 2**: Cast Expressions (3-4 days)
-
    - Parser changes to recognize cast syntax
    - Codegen implementation for type conversions
    - Makes test_pointers_evil.c progress further
 
 3. **Phase 3**: Struct Support (1 week)
-
    - Struct layout calculation
    - Complete member access parsing
    - Required for GEP field access
@@ -6891,19 +6835,16 @@ This allows programs larger than 64K while maintaining 16-bit efficiency.
 V1 had fundamental ABI violations that made it completely non-functional:
 
 1. **Stack Bank Never Initialized**
-
    - R13 (stack bank register) was never set to 1
    - ALL stack operations used random memory
    - Programs would corrupt random memory instead of using stack
 
 2. **Calling Convention Violations**
-
    - Used R3-R8 for parameters
    - But R3-R4 are reserved for return values!
    - This caused parameter/return value collisions
 
 3. **Incomplete Pointer Returns**
-
    - Only returned address in R3
    - Forgot to return bank in R4
    - Made all returned pointers unusable
@@ -7001,7 +6942,6 @@ For calling functions in different banks:
 ### Test Coverage (23 tests)
 
 - **Register Allocation** (9 tests)
-
   - R13 initialization
   - Register allocation order
   - Spilling and reloading
@@ -7009,7 +6949,6 @@ For calling functions in different banks:
   - Pinning mechanism
 
 - **Function Generation** (6 tests)
-
   - Prologue with R13 init
   - Epilogue with bank restore
   - Scalar returns
@@ -7071,12 +7010,10 @@ Generates Ripple VM assembly:
 ### Immediate TODOs
 
 1. **Memory Operations**
-
    - Implement Load/Store instruction generation
    - Ensure correct bank usage
 
 2. **GEP (GetElementPtr)**
-
    - Implement bank-aware pointer arithmetic
    - Handle bank overflow correctly
 
@@ -7087,13 +7024,11 @@ Generates Ripple VM assembly:
 ### Long-term Improvements
 
 1. **Optimization**
-
    - Better register allocation (graph coloring?)
    - Peephole optimizations
    - Dead code elimination
 
 2. **Debugging Support**
-
    - Source location tracking
    - Better error messages
    - Debug symbol generation
@@ -7865,7 +7800,7 @@ That spits out all your settings as a text string. Copy it, save it somewhere sa
 Got that settings string? In the console, type:
 
 ```javascript
-Object.assign(localStorage, JSON.parse("your-settings-string-here"));
+Object.assign(localStorage, JSON.parse('your-settings-string-here'));
 ```
 
 Refresh the page and boom – your IDE is exactly as you left it. It's like teleporting your workspace to a new computer.
@@ -8659,7 +8594,6 @@ This roadmap provides a complete guide for implementing the remaining components
 **MANDATORY**: All new code MUST include comprehensive logging using the `log` crate:
 
 1. **Use appropriate log levels**:
-
    - `trace!()` - Detailed execution flow, variable states, intermediate values
    - `debug!()` - Key decisions, register allocations, spills, important state changes
    - `info!()` - High-level operation summaries (reserved for major milestones)
@@ -8667,7 +8601,6 @@ This roadmap provides a complete guide for implementing the remaining components
    - `error!()` - Unrecoverable errors before panicking
 
 2. **What to log**:
-
    - **Entry/exit of major functions**: `debug!("lower_load: ptr={:?}, type={:?}", ptr, ty);`
    - **Register allocation decisions**: `debug!("Allocated {:?} for '{}'", reg, value);`
    - **Spill/reload operations**: `debug!("Spilling '{}' to slot {}", value, slot);`
@@ -9112,13 +9045,11 @@ Create test files:
 **Test progression**:
 
 1. Start with simplest tests from `c-test/tests/`:
-
    - `test_return_42.c` - Just return a constant
    - `test_add.c` - Simple arithmetic
    - `test_local_var.c` - Local variable access
 
 2. Progress to more complex:
-
    - `test_array.c` - Array access (tests GEP)
    - `test_pointer.c` - Pointer operations
    - `test_function_call.c` - Function calls
@@ -9260,18 +9191,15 @@ debug!("Doing GEP stuff");
 ### When things go wrong:
 
 1. **Check R13 initialization**:
-
    - Look for `LI R13, 1` in generated assembly
    - Must appear before ANY stack operation
 
 2. **Verify bank registers**:
-
    - Global access should use R0
    - Stack access should use R13
    - Check with `rvm --verbose` to see actual banks used
 
 3. **Trace pointer operations**:
-
    - Fat pointers need TWO registers (addr + bank)
    - GEP must update BOTH components
    - Check bank overflow calculations
@@ -10374,7 +10302,7 @@ wasm-pack build --target web --out-dir pkg --no-opt
 ## Using in JavaScript
 
 ```javascript
-import init, { BrainfuckInterpreter } from "./pkg/bf_wasm.js";
+import init, { BrainfuckInterpreter } from './pkg/bf_wasm.js';
 
 // Initialize the WASM module
 await init();
@@ -10388,12 +10316,12 @@ const interpreter = BrainfuckInterpreter.with_options(
   8, // cell_size (8, 16, or 32)
   true, // wrap (cell values)
   true, // wrap_tape (pointer wrapping)
-  true // optimize (enable optimizations)
+  true, // optimize (enable optimizations)
 );
 
 // Run a Brainfuck program
 const code =
-  "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.";
+  '++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.';
 const input = new Uint8Array([]); // Optional input
 const result = interpreter.run_program(code, input);
 
@@ -10402,9 +10330,9 @@ const result = interpreter.run_program(code, input);
 // - pointer: Current pointer position
 // - output: String output from the program
 
-console.log("Output:", result.output);
-console.log("Pointer:", result.pointer);
-console.log("Tape:", result.tape);
+console.log('Output:', result.output);
+console.log('Pointer:', result.pointer);
+console.log('Tape:', result.tape);
 ```
 
 ## Testing
@@ -10458,7 +10386,7 @@ const outputCallback = (char, charCode) => {
 const result = interpreter.run_program_with_callback(
   code,
   inputBytes,
-  outputCallback
+  outputCallback,
 );
 ```
 
@@ -11716,8 +11644,8 @@ If you want me to wire in the exact code for load_param and the exact push seque
 ## How to Use (Current Implementation)
 
 ```typescript
-import { GeneralizedMacroExpander } from "./generalized-expander.ts";
-import { AssemblyBackend } from "./assembly-backend.ts";
+import { GeneralizedMacroExpander } from './generalized-expander.ts';
+import { AssemblyBackend } from './assembly-backend.ts';
 
 const backend = new AssemblyBackend();
 const expander = GeneralizedMacroExpander.createWithBackend(backend);
@@ -12355,7 +12283,6 @@ ADDI R4, R4, 1
 4. **Persist Last Opened Panel** - Remember and restore the last opened panel in the assembly editor
 
 5. **Cmd+Click Navigation**
-
    - On label references: Jump to label definition
    - On label definitions: Show usages modal (similar to macro usages modal)
 

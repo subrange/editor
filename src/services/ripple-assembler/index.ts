@@ -1,9 +1,9 @@
 // Export the new Rust WASM assembler
-export {
-  RippleAssembler,
-  createAssembler,
-  initAssembler,
-} from './assembler.ts';
+// export {
+//   RippleAssembler,
+//   createAssembler,
+//   initAssembler,
+// } from './assembler.ts';
 
 // Export other utilities that are still needed
 export { MacroFormatter } from './macro-formatter.ts';

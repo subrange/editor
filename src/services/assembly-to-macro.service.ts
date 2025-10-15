@@ -1,5 +1,5 @@
 import { BehaviorSubject } from 'rxjs';
-import { CPU_HEADER, CPU_FOOTER } from '../cpu/template';
+// import { CPU_HEADER, CPU_FOOTER } from '../cpu/template';
 import { formatMacro } from './ripple-assembler';
 import { type Instruction } from './ripple-assembler/types';
 import { editorManager } from './editor-manager.service';

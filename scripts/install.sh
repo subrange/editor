@@ -11,9 +11,7 @@ binaries=(
   "src/ripple-asm/target/release/rasm"
   "src/ripple-asm/target/release/rlink"
   "rbt/target/release/rbt"
-  "target/release/rcc"
   "target/release/rvm"
-  "target/release/rct"
   "src/bf-macro-expander/target/release/bfm"
 )
 

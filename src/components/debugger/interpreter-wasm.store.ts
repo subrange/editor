@@ -71,7 +71,7 @@ class WasmInterpreterStore {
   private editorSubscription: Subscription | null = null;
 
   constructor() {
-    this.initializeWasm();
+    // this.initializeWasm();
 
     const checkMainEditor = () => {
       const mainEditor = editorManager.getEditor('main');

@@ -18,10 +18,10 @@ import { AssemblyOutput } from './assembly-output.tsx';
 import { DraggableVSep } from '../ui/draggable-vsep.tsx';
 import { useLocalStorageState } from '../../hooks/use-local-storage-state.tsx';
 import { EditorStore } from '../editor/stores/editor.store.ts';
-import {
-  createAssembler,
-  initAssembler,
-} from '../../services/ripple-assembler/assembler.ts';
+// import {
+//   createAssembler,
+//   initAssembler,
+// } from '../../services/ripple-assembler/assembler.ts';
 import {
   AssemblyQuickNavStore,
   type AssemblyNavigationItem,
@@ -161,42 +161,42 @@ export function AssemblyEditor() {
   const assembleCode = useCallback(async () => {
     if (!assemblyEditor) return;
 
-    const code = assemblyEditor.getText();
+    // const code = assemblyEditor.getText();
 
-    try {
-      // Use Rust WASM assembler
-      const assembler = createAssembler({
-        bankSize: settings?.assembly?.bankSize,
-        maxImmediate: settings?.assembly?.maxImmediate,
-        memoryOffset: settings?.assembly?.memoryOffset,
-      });
+    // try {
+    //   // Use Rust WASM assembler
+    //   const assembler = createAssembler({
+    //     bankSize: settings?.assembly?.bankSize,
+    //     maxImmediate: settings?.assembly?.maxImmediate,
+    //     memoryOffset: settings?.assembly?.memoryOffset,
+    //   });
 
-      const result = await assembler.assemble(code);
+    //   const result = await assembler.assemble(code);
 
-      if (result.errors.length > 0) {
-        // Report errors
-        assemblyOutputStore.setError(result.errors.join('\n'));
+    //   if (result.errors.length > 0) {
+    //     // Report errors
+    //     assemblyOutputStore.setError(result.errors.join('\n'));
 
-        // TODO: Add inline error reporting
-        console.error('Assembly errors:', result.errors);
-      } else {
-        // Set successful output
-        assemblyOutputStore.setOutput({
-          instructions: result.instructions,
-          labels: result.labels,
-          dataLabels: result.dataLabels,
-          memoryData: result.memoryData,
-        });
+    //     // TODO: Add inline error reporting
+    //     console.error('Assembly errors:', result.errors);
+    //   } else {
+    //     // Set successful output
+    //     assemblyOutputStore.setOutput({
+    //       instructions: result.instructions,
+    //       labels: result.labels,
+    //       dataLabels: result.dataLabels,
+    //       memoryData: result.memoryData,
+    //     });
 
-        // Auto-open output panel if configured
-        if (autoOpenOutput && !showOutput) {
-          setShowOutput(true);
-        }
-      }
-    } catch (error) {
-      assemblyOutputStore.setError(`Assembly failed: ${error}`);
-      console.error('Assembly error:', error);
-    }
+    //     // Auto-open output panel if configured
+    //     if (autoOpenOutput && !showOutput) {
+    //       setShowOutput(true);
+    //     }
+    //   }
+    // } catch (error) {
+    //   assemblyOutputStore.setError(`Assembly failed: ${error}`);
+    //   console.error('Assembly error:', error);
+    // }
   }, [
     assemblyEditor,
     autoOpenOutput,
@@ -211,24 +211,23 @@ export function AssemblyEditor() {
   useEffect(() => {
     if (!autoCompile || !assemblyEditor) return;
 
-    let timeoutId: number;
+    // let timeoutId: number;
 
     // Subscribe to editor changes
     const subscription = assemblyEditor.editorState.subscribe(() => {
       // Clear previous timeout
-      clearTimeout(timeoutId);
-
+      // clearTimeout(timeoutId);
       // Debounce the compilation
-      timeoutId = setTimeout(() => {
-        assembleCode();
-      }, 500); // 500ms delay for more responsive feedback
+      // timeoutId = setTimeout(() => {
+      //   assembleCode();
+      // }, 500); // 500ms delay for more responsive feedback
     });
 
     // Initial compilation
     assembleCode();
 
     return () => {
-      clearTimeout(timeoutId);
+      // clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, [autoCompile, assemblyEditor, assembleCode]);
