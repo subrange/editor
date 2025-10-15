@@ -1,5 +1,10 @@
 import type { Instruction } from './types.ts';
-import { Opcode, InstructionFormat, opcodeInfo, DEFAULT_MAX_IMMEDIATE } from './types.ts';
+import {
+  Opcode,
+  InstructionFormat,
+  opcodeInfo,
+  DEFAULT_MAX_IMMEDIATE,
+} from './types.ts';
 
 export class InstructionEncoder {
   private maxImmediate: number;
@@ -13,49 +18,62 @@ export class InstructionEncoder {
       word0: opcode,
       word1: rd,
       word2: rs,
-      word3: rt
+      word3: rt,
     };
   }
 
   encodeI(opcode: Opcode, rd: number, rs: number, imm: number): Instruction {
     if (imm > this.maxImmediate || imm < 0) {
-      throw new Error(`Immediate value ${imm} out of range (0-${this.maxImmediate})`);
+      throw new Error(
+        `Immediate value ${imm} out of range (0-${this.maxImmediate})`,
+      );
     }
     return {
       opcode,
       word0: opcode,
       word1: rd,
       word2: rs,
-      word3: imm
+      word3: imm,
     };
   }
 
   encodeI1(opcode: Opcode, rd: number, imm: number): Instruction {
     if (imm > this.maxImmediate || imm < 0) {
-      throw new Error(`Immediate value ${imm} out of range (0-${this.maxImmediate})`);
+      throw new Error(
+        `Immediate value ${imm} out of range (0-${this.maxImmediate})`,
+      );
     }
     return {
       opcode,
       word0: opcode,
       word1: rd,
       word2: imm,
-      word3: 0
+      word3: 0,
     };
   }
 
-  encodeI2(opcode: Opcode, rd: number, imm1: number, imm2: number): Instruction {
+  encodeI2(
+    opcode: Opcode,
+    rd: number,
+    imm1: number,
+    imm2: number,
+  ): Instruction {
     if (imm1 > this.maxImmediate || imm1 < 0) {
-      throw new Error(`Immediate value ${imm1} out of range (0-${this.maxImmediate})`);
+      throw new Error(
+        `Immediate value ${imm1} out of range (0-${this.maxImmediate})`,
+      );
     }
     if (imm2 > this.maxImmediate || imm2 < 0) {
-      throw new Error(`Immediate value ${imm2} out of range (0-${this.maxImmediate})`);
+      throw new Error(
+        `Immediate value ${imm2} out of range (0-${this.maxImmediate})`,
+      );
     }
     return {
       opcode,
       word0: opcode,
       word1: rd,
       word2: imm1,
-      word3: imm2
+      word3: imm2,
     };
   }
 
@@ -68,7 +86,7 @@ export class InstructionEncoder {
       word0: opcode,
       word1: addr,
       word2: 0,
-      word3: 0
+      word3: 0,
     };
   }
 
@@ -81,31 +99,41 @@ export class InstructionEncoder {
     switch (info.format) {
       case InstructionFormat.R:
         if (operands.length !== 3) {
-          throw new Error(`${info.mnemonic} requires 3 operands, got ${operands.length}`);
+          throw new Error(
+            `${info.mnemonic} requires 3 operands, got ${operands.length}`,
+          );
         }
         return this.encodeR(opcode, operands[0], operands[1], operands[2]);
 
       case InstructionFormat.I:
         if (operands.length !== 3) {
-          throw new Error(`${info.mnemonic} requires 3 operands, got ${operands.length}`);
+          throw new Error(
+            `${info.mnemonic} requires 3 operands, got ${operands.length}`,
+          );
         }
         return this.encodeI(opcode, operands[0], operands[1], operands[2]);
 
       case InstructionFormat.I1:
         if (operands.length !== 2) {
-          throw new Error(`${info.mnemonic} requires 2 operands, got ${operands.length}`);
+          throw new Error(
+            `${info.mnemonic} requires 2 operands, got ${operands.length}`,
+          );
         }
         return this.encodeI1(opcode, operands[0], operands[1]);
 
       case InstructionFormat.I2:
         if (operands.length !== 3) {
-          throw new Error(`${info.mnemonic} requires 3 operands, got ${operands.length}`);
+          throw new Error(
+            `${info.mnemonic} requires 3 operands, got ${operands.length}`,
+          );
         }
         return this.encodeI2(opcode, operands[0], operands[1], operands[2]);
 
       case InstructionFormat.J:
         if (operands.length !== 1) {
-          throw new Error(`${info.mnemonic} requires 1 operand, got ${operands.length}`);
+          throw new Error(
+            `${info.mnemonic} requires 1 operand, got ${operands.length}`,
+          );
         }
         return this.encodeJ(opcode, operands[0]);
 
@@ -116,11 +144,11 @@ export class InstructionEncoder {
 
   encodeSpecial(mnemonic: string, operands: number[]): Instruction | null {
     const upperMnemonic = mnemonic.toUpperCase();
-    
+
     if (upperMnemonic === 'HALT') {
       return this.encodeR(Opcode.NOP, 0, 0, 0);
     }
-    
+
     if (upperMnemonic === 'BRK') {
       return this.encodeR(Opcode.BRK, 0, 0, 0);
     }

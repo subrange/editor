@@ -15,15 +15,15 @@ describe('Generalized Macro Expander - Assembly Backend', () => {
         #define inc(reg) ADDI reg, reg, 1
         @inc(R3)
       `;
-      
+
       // Expected output would be:
       const expected = 'ADDI R3, R3, 1';
-      
+
       // Create expander with assembly backend
       const backend = new AssemblyBackendV4();
       const expander = createMacroExpanderV4(backend);
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe(expected);
     });
@@ -34,18 +34,18 @@ describe('Generalized Macro Expander - Assembly Backend', () => {
         #define move_right(n) {repeat(n, {ADDI R3, R3, 1})}
         @move_right(5)
       `;
-      
+
       // Expected output:
       const expected = `ADDI R3, R3, 1
 ADDI R3, R3, 1
 ADDI R3, R3, 1
 ADDI R3, R3, 1
 ADDI R3, R3, 1`;
-      
+
       const backend = new AssemblyBackendV4();
       const expander = createMacroExpanderV4(backend);
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe(expected);
     });
@@ -57,14 +57,14 @@ ADDI R3, R3, 1`;
         #define log(msg) {if(@DEBUG, {LI R10, msg}, NOP)}
         @log(42)
       `;
-      
+
       // With DEBUG=1, expected:
       const expected = 'LI R10, 42';
-      
+
       const backend = new AssemblyBackendV4();
       const expander = createMacroExpanderV4(backend);
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe(expected);
     });
@@ -84,15 +84,15 @@ ADDI R3, R3, 1`;
           
         @swap(R3, R4)
       `;
-      
+
       const expected = `ADD R8, R3, R0
 ADD R3, R4, R0
 ADD R4, R8, R0`;
-      
+
       const backend = new AssemblyBackendV4();
       const expander = createMacroExpanderV4(backend);
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe(expected);
     });
@@ -113,22 +113,22 @@ ADD R4, R8, R0`;
           ADD R4, R4, R3
         })
       `;
-      
+
       const expected = `LI R3, 0
 loop_1:
 ; Process each iteration
 ADD R4, R4, R3
 ADDI R3, R3, 1
 BNE R3, 10, loop_1`;
-      
+
       const backend = new AssemblyBackendV4();
       const expander = createMacroExpanderV4(backend);
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe(expected);
     });
-    
+
     it('should generate unique labels with V4 meta-variables', () => {
       const input = `
         #define loop(counter, start, end, body) {
@@ -142,7 +142,7 @@ BNE R3, 10, loop_1`;
         @loop(R3, 0, 10, { ADD R4, R4, R3 })
         @loop(R5, 0, 5, { SUB R6, R6, R5 })
       `;
-      
+
       const expected = `LI R3, 0
 loop_1:
 ADD R4, R4, R3
@@ -153,11 +153,11 @@ loop_2:
 SUB R6, R6, R5
 ADDI R5, R5, 1
 BNE R5, 5, loop_2`;
-      
+
       const backend = new AssemblyBackendV4();
       const expander = createMacroExpanderV4(backend);
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe(expected);
     });
@@ -177,12 +177,12 @@ BNE R5, 5, loop_2`;
           
         @bf_to_asm(+++++)
       `;
-      
+
       // BF commands become comments in assembly
       const backend = new AssemblyBackendV4();
       const expander = createMacroExpanderV4(backend);
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toContain('STORE R3, R0, 0');
       expect(result.expanded).toContain('.bf +++++');
@@ -283,14 +283,14 @@ describe('Assembly Backend Implementation Ideas', () => {
         
       @push(R5)
     `;
-    
+
     const expected = `SUBI SP, SP, 1
 STORE R5, SP, 0`;
-    
+
     const backend = new AssemblyBackendV4();
     const expander = createMacroExpanderV4(backend);
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe(expected);
   });

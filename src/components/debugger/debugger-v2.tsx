@@ -1,9 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { interpreterStore } from "./interpreter-facade.store.ts";
-import { useStoreSubscribe } from "../../hooks/use-store-subscribe.tsx";
-import { settingsStore } from "../../stores/settings.store.ts";
-import { IconButton } from "../ui/icon-button.tsx";
-import { Bars3Icon, Bars2Icon, ViewColumnsIcon, CommandLineIcon } from '@heroicons/react/24/solid';
+import { interpreterStore } from './interpreter-facade.store.ts';
+import { useStoreSubscribe } from '../../hooks/use-store-subscribe.tsx';
+import { settingsStore } from '../../stores/settings.store.ts';
+import { IconButton } from '../ui/icon-button.tsx';
+import {
+  Bars3Icon,
+  Bars2Icon,
+  ViewColumnsIcon,
+  CommandLineIcon,
+} from '@heroicons/react/24/solid';
 import { TapeCanvasRenderer } from './tape-canvas-renderer';
 
 export function Debugger() {
@@ -12,23 +17,25 @@ export function Debugger() {
   const interpreterState = useStoreSubscribe(interpreterStore.state);
   const settings = useStoreSubscribe(settingsStore.settings);
   const [showGoToCell, setShowGoToCell] = useState(false);
-  
+
   const tape = interpreterState.tape;
   const pointer = interpreterState.pointer;
   const laneCount = interpreterState.laneCount;
   const viewMode = settings?.debugger.viewMode ?? 'normal';
   const showAssemblyWorkspace = settings?.assembly?.showWorkspace ?? false;
-  const showDisassembly = (settings?.debugger.showDisassembly ?? false) && showAssemblyWorkspace;
-  
+  const showDisassembly =
+    (settings?.debugger.showDisassembly ?? false) && showAssemblyWorkspace;
+
   // Determine cell info
-  const cellInfo = tape instanceof Uint8Array
-    ? { bits: 8, bytes: 1, max: 255 }
-    : tape instanceof Uint16Array
-      ? { bits: 16, bytes: 2, max: 65535 }
-      : tape instanceof Uint32Array
-        ? { bits: 32, bytes: 4, max: 4294967295 }
-        : { bits: 8, bytes: 1, max: 255 };
-  
+  const cellInfo =
+    tape instanceof Uint8Array
+      ? { bits: 8, bytes: 1, max: 255 }
+      : tape instanceof Uint16Array
+        ? { bits: 16, bytes: 2, max: 65535 }
+        : tape instanceof Uint32Array
+          ? { bits: 32, bytes: 4, max: 4294967295 }
+          : { bits: 8, bytes: 1, max: 255 };
+
   // Update container size
   useEffect(() => {
     const updateSize = () => {
@@ -37,21 +44,21 @@ export function Debugger() {
         setContainerSize({ width: rect.width, height: rect.height });
       }
     };
-    
+
     updateSize();
     window.addEventListener('resize', updateSize);
-    
+
     const resizeObserver = new ResizeObserver(updateSize);
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
-    
+
     return () => {
       window.removeEventListener('resize', updateSize);
       resizeObserver.disconnect();
     };
   }, []);
-  
+
   return (
     <div className="flex flex-col h-full bg-zinc-950">
       {/* Header */}
@@ -100,8 +107,10 @@ export function Debugger() {
           {viewMode === 'lane' && laneCount > 1 && showAssemblyWorkspace && (
             <IconButton
               icon={CommandLineIcon}
-              label={showDisassembly ? "Hide Disassembly" : "Show Disassembly"}
-              onClick={() => settingsStore.setDebuggerShowDisassembly(!showDisassembly)}
+              label={showDisassembly ? 'Hide Disassembly' : 'Show Disassembly'}
+              onClick={() =>
+                settingsStore.setDebuggerShowDisassembly(!showDisassembly)
+              }
               variant={showDisassembly ? 'info' : 'default'}
             />
           )}
@@ -110,7 +119,9 @@ export function Debugger() {
             onClick={() => {
               const renderer = containerRef.current?.querySelector('canvas');
               if (renderer) {
-                renderer.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index: 0 } }));
+                renderer.dispatchEvent(
+                  new CustomEvent('scrollToIndex', { detail: { index: 0 } }),
+                );
               }
             }}
             className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
@@ -121,7 +132,11 @@ export function Debugger() {
             onClick={() => {
               const renderer = containerRef.current?.querySelector('canvas');
               if (renderer) {
-                renderer.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index: pointer } }));
+                renderer.dispatchEvent(
+                  new CustomEvent('scrollToIndex', {
+                    detail: { index: pointer },
+                  }),
+                );
               }
             }}
             className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
@@ -132,7 +147,11 @@ export function Debugger() {
             onClick={() => {
               const renderer = containerRef.current?.querySelector('canvas');
               if (renderer) {
-                renderer.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index: tape.length - 1 } }));
+                renderer.dispatchEvent(
+                  new CustomEvent('scrollToIndex', {
+                    detail: { index: tape.length - 1 },
+                  }),
+                );
               }
             }}
             className="text-xs px-3 py-1 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
@@ -147,12 +166,12 @@ export function Debugger() {
           </button>
         </div>
       </div>
-      
+
       {/* Canvas container */}
       <div ref={containerRef} className="flex-1 relative overflow-hidden">
         {containerSize.width > 0 && containerSize.height > 0 && (
           <TapeCanvasRenderer
-            width={containerSize.width} 
+            width={containerSize.width}
             height={containerSize.height}
             viewMode={viewMode}
             laneCount={laneCount}
@@ -160,7 +179,7 @@ export function Debugger() {
           />
         )}
       </div>
-      
+
       {/* Status bar */}
       <div className="flex items-center justify-between border-t border-zinc-800 bg-zinc-900 px-4 py-2 text-xs text-zinc-500">
         <div className="flex items-center gap-3">
@@ -170,16 +189,16 @@ export function Debugger() {
         </div>
         <span>Scroll with mouse wheel or trackpad</span>
       </div>
-      
+
       {/* Go to Cell Modal */}
       {showGoToCell && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/50 z-40" 
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setShowGoToCell(false)}
           />
-          
+
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden">
             {/* Header */}
             <div className="px-4 py-3 bg-zinc-800 border-b border-zinc-700">
@@ -188,7 +207,7 @@ export function Debugger() {
                 Enter a cell number or math expression (0-{tape.length - 1})
               </p>
             </div>
-            
+
             {/* Input section */}
             <div className="p-4">
               <input
@@ -200,7 +219,7 @@ export function Debugger() {
                   if (e.key === 'Enter') {
                     const input = (e.target as HTMLInputElement).value.trim();
                     let value: number;
-                    
+
                     try {
                       // Try to evaluate as a math expression
                       // Only allow numbers and basic math operators for safety
@@ -210,25 +229,38 @@ export function Debugger() {
                         // If not a valid expression, try parsing as number
                         value = parseInt(input, 10);
                       }
-                      
+
                       if (!isNaN(value) && value >= 0 && value < tape.length) {
-                        const renderer = containerRef.current?.querySelector('canvas');
+                        const renderer =
+                          containerRef.current?.querySelector('canvas');
                         if (renderer) {
-                          renderer.dispatchEvent(new CustomEvent('scrollToIndex', { detail: { index: value } }));
+                          renderer.dispatchEvent(
+                            new CustomEvent('scrollToIndex', {
+                              detail: { index: value },
+                            }),
+                          );
                         }
                         setShowGoToCell(false);
                       } else {
                         // Show error in input
-                        (e.target as HTMLInputElement).classList.add('border-red-500');
+                        (e.target as HTMLInputElement).classList.add(
+                          'border-red-500',
+                        );
                         setTimeout(() => {
-                          (e.target as HTMLInputElement).classList.remove('border-red-500');
+                          (e.target as HTMLInputElement).classList.remove(
+                            'border-red-500',
+                          );
                         }, 1000);
                       }
                     } catch {
                       // Invalid expression - show error
-                      (e.target as HTMLInputElement).classList.add('border-red-500');
+                      (e.target as HTMLInputElement).classList.add(
+                        'border-red-500',
+                      );
                       setTimeout(() => {
-                        (e.target as HTMLInputElement).classList.remove('border-red-500');
+                        (e.target as HTMLInputElement).classList.remove(
+                          'border-red-500',
+                        );
                       }, 1000);
                     }
                   } else if (e.key === 'Escape') {
@@ -237,7 +269,8 @@ export function Debugger() {
                 }}
               />
               <p className="text-xs text-zinc-500 mt-2">
-                Examples: 42, 16*4, 256+4, (128*2)-1 • Press Enter to go, Escape to cancel
+                Examples: 42, 16*4, 256+4, (128*2)-1 • Press Enter to go, Escape
+                to cancel
               </p>
             </div>
           </div>

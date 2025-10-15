@@ -40,7 +40,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
 
   // Calculate total size
   const totalSize = useMemo(() => {
-    return paddingStart + (count * itemSize) + paddingEnd;
+    return paddingStart + count * itemSize + paddingEnd;
   }, [count, itemSize, paddingStart, paddingEnd]);
 
   // Calculate visible range based on scroll position
@@ -51,7 +51,9 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
 
     // Direct calculation since all items have the same size
     const startIndex = Math.floor((scrollOffset - paddingStart) / itemSize);
-    const endIndex = Math.ceil((scrollOffset + containerSize - paddingStart) / itemSize);
+    const endIndex = Math.ceil(
+      (scrollOffset + containerSize - paddingStart) / itemSize,
+    );
 
     // Apply overscan and bounds
     const overscanStart = Math.max(0, startIndex - overscan);
@@ -63,10 +65,10 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
   // Get virtual items with their positions
   const getVirtualItems = useCallback(() => {
     const items: VirtualItem[] = [];
-    
+
     for (let i = visibleRange.start; i <= visibleRange.end; i++) {
-      const start = paddingStart + (i * itemSize);
-      
+      const start = paddingStart + i * itemSize;
+
       items.push({
         index: i,
         key: getItemKey(i),
@@ -80,43 +82,60 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
   }, [visibleRange, paddingStart, itemSize, getItemKey]);
 
   // Scroll to index
-  const scrollToIndex = useCallback((index: number, options?: { align?: 'start' | 'center' | 'end' | 'auto' }) => {
-    const scrollElement = scrollElementRef.current;
-    if (!scrollElement || index < 0 || index >= count) return;
+  const scrollToIndex = useCallback(
+    (
+      index: number,
+      options?: { align?: 'start' | 'center' | 'end' | 'auto' },
+    ) => {
+      const scrollElement = scrollElementRef.current;
+      if (!scrollElement || index < 0 || index >= count) return;
 
-    const itemStart = paddingStart + (index * itemSize);
-    const itemEnd = itemStart + itemSize;
-    const align = options?.align || 'auto';
-    
-    let targetOffset = itemStart;
-    
-    if (align === 'center') {
-      targetOffset = itemStart - (containerSize / 2) + (itemSize / 2);
-    } else if (align === 'end') {
-      targetOffset = itemEnd - containerSize;
-    } else if (align === 'auto') {
-      const currentStart = scrollOffset;
-      const currentEnd = scrollOffset + containerSize;
-      
-      if (itemStart >= currentStart && itemEnd <= currentEnd) {
-        return; // Already visible
-      }
-      
-      if (itemStart < currentStart) {
-        targetOffset = itemStart;
-      } else {
+      const itemStart = paddingStart + index * itemSize;
+      const itemEnd = itemStart + itemSize;
+      const align = options?.align || 'auto';
+
+      let targetOffset = itemStart;
+
+      if (align === 'center') {
+        targetOffset = itemStart - containerSize / 2 + itemSize / 2;
+      } else if (align === 'end') {
         targetOffset = itemEnd - containerSize;
+      } else if (align === 'auto') {
+        const currentStart = scrollOffset;
+        const currentEnd = scrollOffset + containerSize;
+
+        if (itemStart >= currentStart && itemEnd <= currentEnd) {
+          return; // Already visible
+        }
+
+        if (itemStart < currentStart) {
+          targetOffset = itemStart;
+        } else {
+          targetOffset = itemEnd - containerSize;
+        }
       }
-    }
 
-    targetOffset = Math.max(0, Math.min(targetOffset, totalSize - containerSize));
+      targetOffset = Math.max(
+        0,
+        Math.min(targetOffset, totalSize - containerSize),
+      );
 
-    if (horizontal) {
-      scrollElement.scrollLeft = targetOffset;
-    } else {
-      scrollElement.scrollTop = targetOffset;
-    }
-  }, [count, containerSize, horizontal, scrollOffset, totalSize, itemSize, paddingStart]);
+      if (horizontal) {
+        scrollElement.scrollLeft = targetOffset;
+      } else {
+        scrollElement.scrollTop = targetOffset;
+      }
+    },
+    [
+      count,
+      containerSize,
+      horizontal,
+      scrollOffset,
+      totalSize,
+      itemSize,
+      paddingStart,
+    ],
+  );
 
   // Handle scroll event
   const handleScroll = useCallback(() => {
@@ -142,7 +161,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
     if (!element) return;
 
     scrollElementRef.current = element;
-    
+
     // Initial setup
     handleResize();
     handleScroll();
@@ -162,14 +181,17 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
   }, [getScrollElement, handleScroll, handleResize]);
 
   // Memoize the return object
-  return useMemo(() => ({
-    getVirtualItems,
-    getTotalSize: () => {
-      // Cap at a safe value to prevent browser issues
-      // 8,999,999 is safely under 1e7 (10,000,000)
-      const MAX_SAFE_CSS_SIZE = 8999999;
-      return Math.min(totalSize, MAX_SAFE_CSS_SIZE);
-    },
-    scrollToIndex,
-  }), [getVirtualItems, totalSize, scrollToIndex]);
+  return useMemo(
+    () => ({
+      getVirtualItems,
+      getTotalSize: () => {
+        // Cap at a safe value to prevent browser issues
+        // 8,999,999 is safely under 1e7 (10,000,000)
+        const MAX_SAFE_CSS_SIZE = 8999999;
+        return Math.min(totalSize, MAX_SAFE_CSS_SIZE);
+      },
+      scrollToIndex,
+    }),
+    [getVirtualItems, totalSize, scrollToIndex],
+  );
 }

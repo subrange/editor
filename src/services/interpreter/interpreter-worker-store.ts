@@ -1,5 +1,8 @@
 import { BehaviorSubject, Subscription } from 'rxjs';
-import type { Line, Position } from '../../components/editor/stores/editor.store';
+import type {
+  Line,
+  Position,
+} from '../../components/editor/stores/editor.store';
 import type { TapeSnapshot } from '../../components/debugger/interpreter.store';
 import type { SourceMap } from '../macro-expander/source-map';
 import { editorManager } from '../editor-manager.service';
@@ -29,7 +32,9 @@ type InterpreterState = {
 export class InterpreterWorkerStore {
   private worker: Worker;
   private code: Line[] = [];
-  private vmOutputCallback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null = null;
+  private vmOutputCallback:
+    | ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void)
+    | null = null;
   private editorSubscription: Subscription | null = null;
   private sharedTapeBuffer: SharedArrayBuffer | null = null;
   private sharedTape: Uint8Array | Uint16Array | Uint32Array | null = null;
@@ -54,7 +59,7 @@ export class InterpreterWorkerStore {
       sourceBreakpoints: [],
       output: '',
       laneCount: 1,
-      lastExecutionMode: 'turbo'
+      lastExecutionMode: 'turbo',
     });
 
     // Create worker
@@ -62,7 +67,7 @@ export class InterpreterWorkerStore {
       console.log('Creating interpreter worker...');
       this.worker = new Worker(
         new URL('./interpreter.worker.ts', import.meta.url),
-        { type: 'module' }
+        { type: 'module' },
       );
       console.log('Interpreter worker created successfully');
     } catch (error) {
@@ -73,7 +78,7 @@ export class InterpreterWorkerStore {
     // Handle worker messages
     this.worker.onmessage = (event) => {
       const message = event.data;
-      
+
       switch (message.type) {
         case 'stateUpdate':
           this.handleStateUpdate(message);
@@ -128,7 +133,7 @@ export class InterpreterWorkerStore {
       this.state.next({
         ...currentState,
         tape: this.sharedTape,
-        laneCount: this.laneCount.getValue()
+        laneCount: this.laneCount.getValue(),
       });
     }
 
@@ -139,7 +144,7 @@ export class InterpreterWorkerStore {
   private initializeSharedTape() {
     const tapeSize = this.tapeSize.getValue();
     const cellSize = this.cellSize.getValue();
-    
+
     let bytesPerCell: number;
     if (cellSize === 256) {
       bytesPerCell = 1;
@@ -148,13 +153,13 @@ export class InterpreterWorkerStore {
     } else {
       bytesPerCell = 4;
     }
-    
+
     const bufferSize = tapeSize * bytesPerCell;
-    
+
     try {
       // Create SharedArrayBuffer
       this.sharedTapeBuffer = new SharedArrayBuffer(bufferSize);
-      
+
       // Create typed array view
       if (cellSize === 256) {
         this.sharedTape = new Uint8Array(this.sharedTapeBuffer);
@@ -163,12 +168,16 @@ export class InterpreterWorkerStore {
       } else {
         this.sharedTape = new Uint32Array(this.sharedTapeBuffer);
       }
-      
+
       console.log('SharedArrayBuffer initialized:', bufferSize, 'bytes');
     } catch (error) {
-      console.warn('SharedArrayBuffer not available. Using regular ArrayBuffer.');
-      console.log('To enable SharedArrayBuffer, configure proper CORS headers.');
-      
+      console.warn(
+        'SharedArrayBuffer not available. Using regular ArrayBuffer.',
+      );
+      console.log(
+        'To enable SharedArrayBuffer, configure proper CORS headers.',
+      );
+
       // Fall back to regular typed array
       if (cellSize === 256) {
         this.sharedTape = new Uint8Array(tapeSize);
@@ -189,9 +198,9 @@ export class InterpreterWorkerStore {
         if (this.editorSubscription) {
           this.editorSubscription.unsubscribe();
         }
-        
+
         // Subscribe to main editor only
-        this.editorSubscription = mainEditor.editorState.subscribe(s => {
+        this.editorSubscription = mainEditor.editorState.subscribe((s) => {
           if (JSON.stringify(s.lines) !== JSON.stringify(this.code)) {
             this.setCode(s.lines);
           }
@@ -201,7 +210,7 @@ export class InterpreterWorkerStore {
         setTimeout(checkMainEditor, 100);
       }
     };
-    
+
     checkMainEditor();
   }
 
@@ -211,15 +220,18 @@ export class InterpreterWorkerStore {
       isPaused: message.isPaused,
       isStopped: message.isStopped,
       lastExecutionTime: message.lastExecutionTime,
-      lastOperationCount: message.lastOperationCount
+      lastOperationCount: message.lastOperationCount,
     });
-    
+
     const currentState = this.state.getValue();
     let tape = this.sharedTape || currentState.tape;
-    
+
     // If tape data is included in the message, update our local tape
     if (message.tapeData) {
-      console.log('Received tape data from worker, size:', message.tapeData.byteLength);
+      console.log(
+        'Received tape data from worker, size:',
+        message.tapeData.byteLength,
+      );
       const cellSize = this.cellSize.getValue();
       if (cellSize === 256) {
         tape = new Uint8Array(message.tapeData);
@@ -228,19 +240,25 @@ export class InterpreterWorkerStore {
       } else {
         tape = new Uint32Array(message.tapeData);
       }
-      
+
       // Update our local reference if not using SharedArrayBuffer
       if (!this.sharedTapeBuffer) {
         this.sharedTape = tape;
       }
-      
+
       // Log some tape values for debugging
-      const nonZeroCount = Array.from(tape.slice(0, 100)).filter(v => v !== 0).length;
-      console.log('Tape values (first 100 cells):', nonZeroCount, 'non-zero cells');
+      const nonZeroCount = Array.from(tape.slice(0, 100)).filter(
+        (v) => v !== 0,
+      ).length;
+      console.log(
+        'Tape values (first 100 cells):',
+        nonZeroCount,
+        'non-zero cells',
+      );
     } else {
       console.log('No tape data in state update');
     }
-    
+
     // Update state
     this.state.next({
       ...currentState,
@@ -254,11 +272,11 @@ export class InterpreterWorkerStore {
       currentSourcePosition: message.currentSourcePosition,
       macroContext: message.macroContext,
       lastExecutionTime: message.lastExecutionTime,
-      lastOperationCount: message.lastOperationCount
+      lastOperationCount: message.lastOperationCount,
     });
 
     this.currentChar.next(message.currentChar);
-    
+
     if (message.currentSourcePosition) {
       this.currentSourceChar.next(message.currentSourcePosition);
     } else {
@@ -270,7 +288,7 @@ export class InterpreterWorkerStore {
     if (this.vmOutputCallback) {
       const currentState = this.state.getValue();
       const tape = currentState.tape;
-      
+
       // If sparse tape data is included, update only those cells
       if (message.sparseTapeData && !this.sharedTapeBuffer) {
         // Update the specific cells directly in the existing tape
@@ -279,15 +297,15 @@ export class InterpreterWorkerStore {
         for (let i = 0; i < indices.length; i++) {
           tape[indices[i]] = values[i];
         }
-        
+
         // Trigger a state update to notify observers
         // We're passing the same tape reference, but React/RxJS will still update
         this.state.next({
           ...currentState,
-          tape: tape
+          tape: tape,
         });
       }
-      
+
       this.vmOutputCallback(tape, message.pointer);
     }
   }
@@ -305,14 +323,14 @@ export class InterpreterWorkerStore {
       tapeSize: this.tapeSize.getValue(),
       cellSize: this.cellSize.getValue(),
       laneCount: this.laneCount.getValue(),
-      sourceMap: currentState.sourceMap
+      sourceMap: currentState.sourceMap,
     };
-    
+
     // Only include sharedTapeBuffer if it exists
     if (this.sharedTapeBuffer) {
       message.sharedTapeBuffer = this.sharedTapeBuffer;
     }
-    
+
     this.worker.postMessage(message);
   }
 
@@ -330,18 +348,18 @@ export class InterpreterWorkerStore {
       currentSourcePosition: undefined,
       macroContext: undefined,
       lastExecutionTime: undefined,
-      lastOperationCount: undefined
+      lastOperationCount: undefined,
     });
-    
+
     // Reset character position to beginning
     this.currentChar.next({ line: 0, column: 0 });
     this.currentSourceChar.next(null);
-    
+
     // Clear the tape
     if (this.sharedTape) {
       this.sharedTape.fill(0);
     }
-    
+
     this.worker.postMessage({ type: 'reset' });
   }
 
@@ -351,32 +369,36 @@ export class InterpreterWorkerStore {
     this.state.next({
       ...currentState,
       isRunning: true,
-      isPaused: false
+      isPaused: false,
     });
-    
+
     this.worker.postMessage({ type: 'step' });
     return true; // Worker will handle completion
   }
 
   public run(delay?: number) {
     // Worker-based interpreter only supports turbo mode
-    console.warn('Worker interpreter only supports turbo mode. Use runTurbo() instead.');
+    console.warn(
+      'Worker interpreter only supports turbo mode. Use runTurbo() instead.',
+    );
     this.runTurbo();
   }
 
   public runSmooth() {
     // Worker-based interpreter only supports turbo mode
-    console.warn('Worker interpreter only supports turbo mode. Use runTurbo() instead.');
+    console.warn(
+      'Worker interpreter only supports turbo mode. Use runTurbo() instead.',
+    );
     this.runTurbo();
   }
 
   public runFromPosition(position: Position) {
     // Set position first
     this.worker.postMessage({ type: 'setPosition', position });
-    
+
     // Update character position locally
     this.currentChar.next(position);
-    
+
     // Then run turbo
     this.runTurbo();
   }
@@ -384,10 +406,10 @@ export class InterpreterWorkerStore {
   public stepToPosition(position: Position) {
     // Set position first
     this.worker.postMessage({ type: 'setPosition', position });
-    
+
     // Update character position locally
     this.currentChar.next(position);
-    
+
     // Then step
     this.step();
   }
@@ -399,7 +421,7 @@ export class InterpreterWorkerStore {
   public async runTurbo() {
     // Update local state immediately to show running indicator
     const currentState = this.state.getValue();
-    
+
     // Clear any previous execution state
     this.state.next({
       ...currentState,
@@ -409,13 +431,13 @@ export class InterpreterWorkerStore {
       lastExecutionMode: 'turbo',
       // Clear these to ensure fresh start
       currentSourcePosition: undefined,
-      macroContext: undefined
+      macroContext: undefined,
     });
-    
+
     // Reset character position for fresh execution
     this.currentChar.next({ line: 0, column: 0 });
     this.currentSourceChar.next(null);
-    
+
     this.worker.postMessage({ type: 'runTurbo' });
   }
 
@@ -426,9 +448,9 @@ export class InterpreterWorkerStore {
       ...currentState,
       isRunning: true,
       isPaused: false,
-      lastExecutionMode: 'turbo'
+      lastExecutionMode: 'turbo',
     });
-    
+
     this.worker.postMessage({ type: 'resumeTurbo' });
   }
 
@@ -437,9 +459,9 @@ export class InterpreterWorkerStore {
     const currentState = this.state.getValue();
     this.state.next({
       ...currentState,
-      isPaused: true
+      isPaused: true,
     });
-    
+
     this.worker.postMessage({ type: 'pause' });
   }
 
@@ -455,51 +477,55 @@ export class InterpreterWorkerStore {
       ...currentState,
       isRunning: false,
       isPaused: false,
-      isStopped: true
+      isStopped: true,
     });
-    
+
     this.worker.postMessage({ type: 'stop' });
   }
 
   public toggleBreakpoint(position: Position) {
     const currentState = this.state.getValue();
     const breakpoints = [...currentState.breakpoints];
-    
-    const index = breakpoints.findIndex(bp => bp.line === position.line && bp.column === position.column);
+
+    const index = breakpoints.findIndex(
+      (bp) => bp.line === position.line && bp.column === position.column,
+    );
     if (index !== -1) {
       breakpoints.splice(index, 1);
     } else {
       breakpoints.push(position);
     }
-    
+
     this.state.next({
       ...currentState,
-      breakpoints
+      breakpoints,
     });
-    
+
     this.worker.postMessage({
       type: 'setBreakpoints',
       breakpoints,
-      sourceBreakpoints: currentState.sourceBreakpoints || []
+      sourceBreakpoints: currentState.sourceBreakpoints || [],
     });
   }
 
   public toggleSourceBreakpoint(position: Position) {
     const currentState = this.state.getValue();
     const sourceBreakpoints = [...(currentState.sourceBreakpoints || [])];
-    
-    const index = sourceBreakpoints.findIndex(bp => bp.line === position.line && bp.column === position.column);
+
+    const index = sourceBreakpoints.findIndex(
+      (bp) => bp.line === position.line && bp.column === position.column,
+    );
     if (index !== -1) {
       sourceBreakpoints.splice(index, 1);
     } else {
       sourceBreakpoints.push(position);
     }
-    
+
     this.state.next({
       ...currentState,
-      sourceBreakpoints
+      sourceBreakpoints,
     });
-    
+
     // For now, also add regular breakpoint.rs
     // TODO: Implement source map lookup for breakpoints
     this.toggleBreakpoint(position);
@@ -510,20 +536,20 @@ export class InterpreterWorkerStore {
     this.state.next({
       ...currentState,
       breakpoints: [],
-      sourceBreakpoints: []
+      sourceBreakpoints: [],
     });
-    
+
     this.worker.postMessage({
       type: 'setBreakpoints',
       breakpoints: [],
-      sourceBreakpoints: []
+      sourceBreakpoints: [],
     });
   }
 
   public hasBreakpointAt(position: Position): boolean {
     const currentState = this.state.getValue();
     return currentState.breakpoints.some(
-      bp => bp.line === position.line && bp.column === position.column
+      (bp) => bp.line === position.line && bp.column === position.column,
     );
   }
 
@@ -531,13 +557,13 @@ export class InterpreterWorkerStore {
     const currentState = this.state.getValue();
     const sourceBreakpoints = currentState.sourceBreakpoints || [];
     return sourceBreakpoints.some(
-      bp => bp.line === position.line && bp.column === position.column
+      (bp) => bp.line === position.line && bp.column === position.column,
     );
   }
 
   public setTapeSize(size: number) {
     if (size <= 0) {
-      throw new Error("Tape size must be a positive integer");
+      throw new Error('Tape size must be a positive integer');
     }
     this.tapeSize.next(size);
     localStorage.setItem('tapeSize', size.toString());
@@ -548,7 +574,7 @@ export class InterpreterWorkerStore {
 
   public setCellSize(size: number) {
     if (![256, 65536, 4294967296].includes(size)) {
-      throw new Error("Unsupported cell size. Use 256, 65536, or 4294967296.");
+      throw new Error('Unsupported cell size. Use 256, 65536, or 4294967296.');
     }
     this.cellSize.next(size);
     localStorage.setItem('cellSize', size.toString());
@@ -559,14 +585,14 @@ export class InterpreterWorkerStore {
 
   public setLaneCount(count: number) {
     if (count < 1 || count > 10) {
-      throw new Error("Lane count must be between 1 and 10");
+      throw new Error('Lane count must be between 1 and 10');
     }
     this.laneCount.next(count);
     localStorage.setItem('brainfuck-ide-lane-count', count.toString());
     const currentState = this.state.getValue();
     this.state.next({
       ...currentState,
-      laneCount: count
+      laneCount: count,
     });
   }
 
@@ -578,26 +604,35 @@ export class InterpreterWorkerStore {
     if (snapshot.cellSize !== this.cellSize.getValue()) {
       this.setCellSize(snapshot.cellSize);
     }
-    
+
     // TODO: Send snapshot data to worker
-    console.warn('Snapshot loading not fully implemented for worker interpreter');
+    console.warn(
+      'Snapshot loading not fully implemented for worker interpreter',
+    );
   }
 
   public setSourceMap(sourceMap: SourceMap | undefined) {
     const currentState = this.state.getValue();
     this.state.next({
       ...currentState,
-      sourceMap
+      sourceMap,
     });
     this.sendInit();
   }
 
-  public setVMOutputCallback(callback: ((tape: Uint8Array | Uint16Array | Uint32Array, pointer: number) => void) | null) {
+  public setVMOutputCallback(
+    callback:
+      | ((
+          tape: Uint8Array | Uint16Array | Uint32Array,
+          pointer: number,
+        ) => void)
+      | null,
+  ) {
     this.vmOutputCallback = callback;
   }
 
-  public setVMOutputConfig(config: { 
-    outCellIndex: number; 
+  public setVMOutputConfig(config: {
+    outCellIndex: number;
     outFlagCellIndex: number;
     clearOnRead?: boolean;
     sparseCellPattern?: {
@@ -608,7 +643,7 @@ export class InterpreterWorkerStore {
   }) {
     this.worker.postMessage({
       type: 'setVMOutputConfig',
-      config
+      config,
     });
   }
 
@@ -616,7 +651,7 @@ export class InterpreterWorkerStore {
     console.log(`Worker: Providing input '${char}'`);
     this.worker.postMessage({
       type: 'provideInput',
-      char
+      char,
     });
   }
 

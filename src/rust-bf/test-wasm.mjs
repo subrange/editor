@@ -11,12 +11,14 @@ const wasmBuffer = readFileSync(wasmPath);
 
 // Import and initialize the module
 const wasmModule = await WebAssembly.instantiate(wasmBuffer, {
-    wbindgen: {
-        __wbindgen_throw: (ptr, len) => {
-            const msg = new TextDecoder().decode(new Uint8Array(memory.buffer, ptr, len));
-            throw new Error(msg);
-        }
-    }
+  wbindgen: {
+    __wbindgen_throw: (ptr, len) => {
+      const msg = new TextDecoder().decode(
+        new Uint8Array(memory.buffer, ptr, len),
+      );
+      throw new Error(msg);
+    },
+  },
 });
 
 console.log('WASM module loaded successfully!');
@@ -28,6 +30,10 @@ const { memory } = wasmModule.instance.exports;
 console.log('\nTest Summary:');
 console.log('✅ WASM module compiled and loaded');
 console.log('✅ Memory export found');
-console.log(`✅ Module exports ${Object.keys(wasmModule.instance.exports).length} functions`);
-console.log('\nTo use in a browser, open test-wasm.html with a local web server');
+console.log(
+  `✅ Module exports ${Object.keys(wasmModule.instance.exports).length} functions`,
+);
+console.log(
+  '\nTo use in a browser, open test-wasm.html with a local web server',
+);
 console.log('For example: python3 -m http.server 8000');

@@ -19,29 +19,33 @@ const result = expander.expand(sourceCode);
 
 ```typescript
 interface MacroExpanderResult {
-  expanded: string;        // The expanded Brainfuck code
-  errors: MacroExpansionError[];  // Array of errors encountered
-  tokens: MacroToken[];    // Tokens for syntax highlighting
-  macros: MacroDefinition[];  // Array of defined macros
+  expanded: string; // The expanded Brainfuck code
+  errors: MacroExpansionError[]; // Array of errors encountered
+  tokens: MacroToken[]; // Tokens for syntax highlighting
+  macros: MacroDefinition[]; // Array of defined macros
 }
 
 interface MacroExpansionError {
-  type: 'undefined' | 'parameter_mismatch' | 'circular_dependency' | 'syntax_error';
+  type:
+    | 'undefined'
+    | 'parameter_mismatch'
+    | 'circular_dependency'
+    | 'syntax_error';
   message: string;
   location?: {
-    line: number;      // 0-based line number
-    column: number;    // 0-based column number
-    length: number;    // Length of the error span
+    line: number; // 0-based line number
+    column: number; // 0-based column number
+    length: number; // Length of the error span
   };
 }
 
 interface MacroToken {
   type: 'macro_definition' | 'macro_invocation' | 'builtin_function';
   range: {
-    start: number;     // Start position in the source
-    end: number;       // End position in the source
+    start: number; // Start position in the source
+    end: number; // End position in the source
   };
-  name: string;        // Name of the macro or function
+  name: string; // Name of the macro or function
 }
 ```
 
@@ -55,6 +59,7 @@ interface MacroToken {
 ```
 
 **Multiline Macros**: Use backslash (`\`) for line continuation:
+
 ```brainfuck
 #define longMacro first_part \
   second_part \
@@ -77,15 +82,19 @@ interface MacroToken {
 ### Built-in Functions
 
 #### repeat(n, content)
+
 Repeats the content n times.
 
 #### if(condition, true_branch, false_branch)
+
 Conditional expansion where non-zero values are considered true.
 
 #### for(var in array, body)
+
 Iterates over array values, substituting the variable in the body for each value.
 
 #### reverse(array)
+
 Reverses an array literal. The input must be an array literal or a macro that expands to one.
 
 ```brainfuck
@@ -290,12 +299,14 @@ Reverses an array literal. The input must be an array literal or a macro that ex
 The expander provides detailed error messages with location information:
 
 ### Undefined Macro
+
 ```brainfuck
 @undefined_macro(5)
 // Error: Macro 'undefined_macro' is not defined at line 1, column 0
 ```
 
 ### Parameter Mismatch
+
 ```brainfuck
 #define inc(n) {repeat(n, +)}
 @inc()      // Error: Macro 'inc' expects 1 parameter(s), got 0
@@ -303,6 +314,7 @@ The expander provides detailed error messages with location information:
 ```
 
 ### Circular Dependencies
+
 ```brainfuck
 #define a @b
 #define b @a
@@ -310,6 +322,7 @@ The expander provides detailed error messages with location information:
 ```
 
 ### Duplicate Definitions
+
 ```brainfuck
 #define test +
 #define test -  // Error: Duplicate macro definition: 'test'
@@ -318,12 +331,14 @@ The expander provides detailed error messages with location information:
 ## Edge Cases
 
 ### Email Patterns
+
 ```brainfuck
 // Email addresses are NOT treated as macros
 user@domain.com  // Remains unchanged
 ```
 
 ### Standalone @ Symbol
+
 ```brainfuck
 @ alone    // @ symbol preserved
 @@@@       // All @ symbols preserved
@@ -331,6 +346,7 @@ user@domain.com  // Remains unchanged
 ```
 
 ### Mixed Content
+
 ```brainfuck
 #define inc(n) {repeat(n, +)}
 
@@ -343,6 +359,7 @@ user@domain.com  // Remains unchanged
 ### Reverse Function
 
 The `reverse` builtin reverses array literals:
+
 ```brainfuck
 // Basic reverse
 {reverse({1, 2, 3})}  // Returns {3, 2, 1}
@@ -365,6 +382,7 @@ The `reverse` builtin reverses array literals:
 ### Array Literals
 
 Array literals can be used with the {for} builtin:
+
 ```brainfuck
 // Array literal syntax: {value1, value2, ...}
 {for(i in {1, 2, 3}, content)}  // Direct array literal
@@ -380,6 +398,7 @@ Array literals can be used with the {for} builtin:
 ### Variable Substitution in For Loops
 
 The loop variable is substituted throughout the body:
+
 ```brainfuck
 // Simple substitution
 {for(n in {1, 2, 3}, n)}  // Expands to 123
@@ -400,7 +419,7 @@ The macro expander provides token information that can be used for syntax highli
 const result = expander.expand(sourceCode);
 
 // Use tokens for syntax highlighting
-result.tokens.forEach(token => {
+result.tokens.forEach((token) => {
   if (token.type === 'macro_definition') {
     // Highlight macro definitions
   } else if (token.type === 'macro_invocation') {
@@ -411,10 +430,14 @@ result.tokens.forEach(token => {
 });
 
 // Display errors in the editor
-result.errors.forEach(error => {
+result.errors.forEach((error) => {
   if (error.location) {
     // Highlight error at specific location
-    highlightError(error.location.line, error.location.column, error.location.length);
+    highlightError(
+      error.location.line,
+      error.location.column,
+      error.location.length,
+    );
   }
 });
 ```
@@ -428,22 +451,25 @@ result.errors.forEach(error => {
 ## Best Practices
 
 1. **Naming Conventions**: Use descriptive macro names
+
    ```brainfuck
    #define clear_cell [-]     // Good
    #define c [-]              // Less clear
    ```
 
 2. **Parameter Names**: Use meaningful parameter names
+
    ```brainfuck
    #define move(direction, count) {repeat(count, direction)}
    ```
 
 3. **Organization**: Group related macros together
+
    ```brainfuck
    // Movement macros
    #define right(n) {repeat(n, >)}
    #define left(n) {repeat(n, <)}
-   
+
    // Arithmetic macros
    #define inc(n) {repeat(n, +)}
    #define dec(n) {repeat(n, -)}

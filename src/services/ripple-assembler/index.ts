@@ -1,5 +1,9 @@
 // Export the new Rust WASM assembler
-export { RippleAssembler, createAssembler, initAssembler } from './assembler.ts';
+export {
+  RippleAssembler,
+  createAssembler,
+  initAssembler,
+} from './assembler.ts';
 
 // Export other utilities that are still needed
 export { MacroFormatter } from './macro-formatter.ts';
@@ -12,6 +16,9 @@ import { MacroFormatter } from './macro-formatter.ts';
 import type { Instruction } from './types.ts';
 
 const formatter = new MacroFormatter();
-export function formatMacro(instructions: Instruction[], memoryData: number[]): string {
-    return formatter.formatFullProgram(instructions, memoryData);
+export function formatMacro(
+  instructions: Instruction[],
+  memoryData: number[],
+): string {
+  return formatter.formatFullProgram(instructions, memoryData);
 }

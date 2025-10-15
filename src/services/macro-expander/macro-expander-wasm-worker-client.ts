@@ -1,4 +1,7 @@
-import type { MacroExpanderOptions, MacroExpanderResult } from './macro-expander';
+import type {
+  MacroExpanderOptions,
+  MacroExpanderResult,
+} from './macro-expander';
 
 interface PendingRequest {
   resolve: (result: MacroExpanderResult) => void;
@@ -14,13 +17,13 @@ export class MacroExpanderWasmWorkerClient {
     // Import WASM worker with Vite's special syntax
     this.worker = new Worker(
       new URL('./macro-expander-wasm.worker.ts', import.meta.url),
-      { type: 'module' }
+      { type: 'module' },
     );
 
     this.worker.onmessage = (event) => {
       const message = event.data;
       const pending = this.pendingRequests.get(message.id);
-      
+
       if (!pending) {
         console.warn('Received response for unknown request:', message.id);
         return;
@@ -45,24 +48,32 @@ export class MacroExpanderWasmWorkerClient {
     };
   }
 
-  async expand(input: string, options?: MacroExpanderOptions): Promise<MacroExpanderResult> {
+  async expand(
+    input: string,
+    options?: MacroExpanderOptions,
+  ): Promise<MacroExpanderResult> {
     const id = String(this.requestId++);
-    
+
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });
-      
+
       this.worker.postMessage({
         type: 'expand',
         id,
         input,
-        options
+        options,
       });
     });
   }
 
   // For backward compatibility - synchronous version that throws
-  expandSync(_input: string, _options?: MacroExpanderOptions): MacroExpanderResult {
-    throw new Error('Synchronous expansion not supported in WASM worker mode. Use expand() instead.');
+  expandSync(
+    _input: string,
+    _options?: MacroExpanderOptions,
+  ): MacroExpanderResult {
+    throw new Error(
+      'Synchronous expansion not supported in WASM worker mode. Use expand() instead.',
+    );
   }
 
   destroy() {

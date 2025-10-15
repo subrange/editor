@@ -23,17 +23,17 @@ export class Parser {
 
   private parseLine(line: string, lineNumber: number): ParsedLine {
     const raw = line;
-    
+
     const commentIndex = line.indexOf(';');
     if (commentIndex !== -1) {
       line = line.substring(0, commentIndex);
     }
-    
+
     const hashCommentIndex = line.indexOf('#');
     if (hashCommentIndex !== -1) {
       line = line.substring(0, hashCommentIndex);
     }
-    
+
     const doubleSlashIndex = line.indexOf('//');
     if (doubleSlashIndex !== -1) {
       line = line.substring(0, doubleSlashIndex);
@@ -44,7 +44,7 @@ export class Parser {
     const result: ParsedLine = {
       operands: [],
       lineNumber,
-      raw
+      raw,
     };
 
     if (!line) {
@@ -83,7 +83,9 @@ export class Parser {
 
     const tokens = this.tokenize(line);
     if (tokens.length > 0) {
-      result.mnemonic = this.caseInsensitive ? tokens[0].toUpperCase() : tokens[0];
+      result.mnemonic = this.caseInsensitive
+        ? tokens[0].toUpperCase()
+        : tokens[0];
       result.operands = tokens.slice(1);
     }
 
@@ -131,7 +133,7 @@ export class Parser {
 
   parseDirective(line: string): { directive: string; args: string[] } | null {
     const trimmed = line.trim();
-    
+
     if (!trimmed.startsWith('.') && !trimmed.startsWith('@')) {
       return null;
     }
@@ -143,7 +145,7 @@ export class Parser {
 
     return {
       directive: tokens[0],
-      args: tokens.slice(1)
+      args: tokens.slice(1),
     };
   }
 
@@ -155,9 +157,9 @@ export class Parser {
 
     const name = match[1];
     const argsString = match[2];
-    
+
     const args = this.parseMacroArgs(argsString);
-    
+
     return { name, args };
   }
 

@@ -7,16 +7,16 @@ export interface MacroBackend {
   name: string;
   description: string;
   fileExtensions: string[];
-  
+
   // Convert expanded AST nodes to target language
   generate(nodes: ExpandedNode[]): string;
-  
+
   // Backend-specific builtin functions
   builtins?: Map<string, BuiltinFunction>;
-  
+
   // Validation for backend-specific constraints
   validate?(nodes: ExpandedNode[]): ValidationError[];
-  
+
   // Optional source map support
   generateWithSourceMap?(nodes: ExpandedNode[]): {
     code: string;
@@ -52,14 +52,14 @@ export class BrainfuckBackend implements MacroBackend {
   name = 'brainfuck';
   description = 'Classic Brainfuck language';
   fileExtensions = ['.bf', '.b'];
-  
+
   generate(nodes: ExpandedNode[]): string {
     return nodes
-      .filter(n => n.type === 'Instruction')
-      .map(n => n.value)
+      .filter((n) => n.type === 'Instruction')
+      .map((n) => n.value)
       .join('');
   }
-  
+
   validate(nodes: ExpandedNode[]): ValidationError[] {
     const errors: ValidationError[] = [];
     for (const node of nodes) {
@@ -69,7 +69,7 @@ export class BrainfuckBackend implements MacroBackend {
           errors.push({
             type: 'error',
             message: `Invalid Brainfuck characters: ${invalidChars}`,
-            location: node.metadata?.sourceLocation
+            location: node.metadata?.sourceLocation,
           });
         }
       }
@@ -82,33 +82,39 @@ export class RippleAssemblyBackend implements MacroBackend {
   name = 'ripple-asm';
   description = 'Ripple VM Assembly Language';
   fileExtensions = ['.asm', '.s'];
-  
+
   private labelCounter = 0;
-  
+
   builtins = new Map<string, BuiltinFunction>([
-    ['align', {
-      name: 'align',
-      minArgs: 1,
-      expand: (args) => {
-        const alignment = args[0];
-        return [{ type: 'Directive', value: `.align ${alignment}` }];
-      }
-    }],
-    ['local_label', {
-      name: 'local_label',
-      minArgs: 0,
-      maxArgs: 1,
-      expand: (args) => {
-        const prefix = args[0] || 'L';
-        const label = `${prefix}_${this.labelCounter++}`;
-        return [{ type: 'Label', value: `${label}:` }];
-      }
-    }]
+    [
+      'align',
+      {
+        name: 'align',
+        minArgs: 1,
+        expand: (args) => {
+          const alignment = args[0];
+          return [{ type: 'Directive', value: `.align ${alignment}` }];
+        },
+      },
+    ],
+    [
+      'local_label',
+      {
+        name: 'local_label',
+        minArgs: 0,
+        maxArgs: 1,
+        expand: (args) => {
+          const prefix = args[0] || 'L';
+          const label = `${prefix}_${this.labelCounter++}`;
+          return [{ type: 'Label', value: `${label}:` }];
+        },
+      },
+    ],
   ]);
-  
+
   generate(nodes: ExpandedNode[]): string {
     const lines: string[] = [];
-    
+
     for (const node of nodes) {
       switch (node.type) {
         case 'Instruction':
@@ -129,20 +135,20 @@ export class RippleAssemblyBackend implements MacroBackend {
           break;
       }
     }
-    
+
     return lines.join('\n');
   }
-  
+
   private looksLikeInstruction(value: string): boolean {
     // Simple heuristic - starts with uppercase letter or dot
     return /^[A-Z.]/.test(value.trim());
   }
-  
+
   validate(nodes: ExpandedNode[]): ValidationError[] {
     const errors: ValidationError[] = [];
     const definedLabels = new Set<string>();
     const usedLabels = new Set<string>();
-    
+
     // First pass: collect labels
     for (const node of nodes) {
       if (node.type === 'Label') {
@@ -151,16 +157,16 @@ export class RippleAssemblyBackend implements MacroBackend {
           errors.push({
             type: 'error',
             message: `Duplicate label: ${label}`,
-            location: node.metadata?.sourceLocation
+            location: node.metadata?.sourceLocation,
           });
         }
         definedLabels.add(label);
       }
     }
-    
+
     // Second pass: check label references
     // (simplified - real implementation would parse instruction operands)
-    
+
     return errors;
   }
 }
@@ -169,12 +175,16 @@ export class RippleAssemblyBackend implements MacroBackend {
 
 export class GeneralizedMacroExpander {
   private backends = new Map<string, MacroBackend>();
-  
+
   registerBackend(backend: MacroBackend): void {
     this.backends.set(backend.name, backend);
   }
-  
-  expand(input: string, backendName: string, options?: any): {
+
+  expand(
+    input: string,
+    backendName: string,
+    options?: any,
+  ): {
     output: string;
     errors: any[];
     sourceMap?: any;
@@ -183,35 +193,35 @@ export class GeneralizedMacroExpander {
     if (!backend) {
       throw new Error(`Unknown backend: ${backendName}`);
     }
-    
+
     // Use the existing macro parser and expander
     // but inject backend-specific builtins
     const expandedNodes = this.expandToNodes(input, backend);
-    
+
     // Validate if backend supports it
     const validationErrors = backend.validate?.(expandedNodes) || [];
-    
+
     // Generate output
     const output = backend.generate(expandedNodes);
-    
+
     return {
       output,
       errors: validationErrors,
     };
   }
-  
+
   private expandToNodes(input: string, backend: MacroBackend): ExpandedNode[] {
     // This would integrate with the existing macro expander
     // but return ExpandedNode[] instead of string
-    
+
     // Simplified for demonstration:
     const lines = input.split('\n');
     const nodes: ExpandedNode[] = [];
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
-      
+
       if (trimmed.endsWith(':')) {
         nodes.push({ type: 'Label', value: trimmed });
       } else if (trimmed.startsWith('.')) {
@@ -222,7 +232,7 @@ export class GeneralizedMacroExpander {
         nodes.push({ type: 'Instruction', value: trimmed });
       }
     }
-    
+
     return nodes;
   }
 }
@@ -231,11 +241,11 @@ export class GeneralizedMacroExpander {
 
 export function demonstrateUsage() {
   const expander = new GeneralizedMacroExpander();
-  
+
   // Register backends
   expander.registerBackend(new BrainfuckBackend());
   expander.registerBackend(new RippleAssemblyBackend());
-  
+
   // Same macro source
   const macroSource = `
     #define TIMES 5
@@ -244,11 +254,11 @@ export function demonstrateUsage() {
     ; Increment by TIMES
     @inc(@TIMES)
   `;
-  
+
   // Generate for different backends
   const bfResult = expander.expand(macroSource, 'brainfuck');
   console.log('Brainfuck output:', bfResult.output); // "++++"
-  
+
   const asmResult = expander.expand(macroSource, 'ripple-asm');
   console.log('Assembly output:', asmResult.output); // "ADDI R3, R3, 5"
 }
@@ -258,13 +268,13 @@ export function demonstrateUsage() {
 interface AdvancedFeatures {
   // Multi-pass expansion for complex transformations
   multiPass?: boolean;
-  
+
   // Plugin system for extending backends
   plugins?: MacroPlugin[];
-  
+
   // Cross-backend optimization
   optimize?: boolean;
-  
+
   // Debugging support
   debug?: {
     traceExpansion?: boolean;
@@ -274,14 +284,14 @@ interface AdvancedFeatures {
 
 interface MacroPlugin {
   name: string;
-  
+
   // Hook into expansion process
   beforeExpand?(ast: any): any;
   afterExpand?(nodes: ExpandedNode[]): ExpandedNode[];
-  
+
   // Add custom builtins
   builtins?: Map<string, BuiltinFunction>;
-  
+
   // Transform output
   transformOutput?(output: string, backend: MacroBackend): string;
 }

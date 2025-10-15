@@ -9,7 +9,7 @@ describe('RippleAssembler', () => {
     it('should assemble NOP instruction', () => {
       const source = 'NOP';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(1);
       expect(result.instructions[0]).toEqual({
@@ -17,14 +17,14 @@ describe('RippleAssembler', () => {
         word0: 0x00,
         word1: 0,
         word2: 0,
-        word3: 0
+        word3: 0,
       });
     });
 
     it('should assemble ADD instruction', () => {
       const source = 'ADD R3, R4, R5';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(1);
       expect(result.instructions[0]).toEqual({
@@ -32,29 +32,29 @@ describe('RippleAssembler', () => {
         word0: 0x01,
         word1: 5,
         word2: 6,
-        word3: 7
+        word3: 7,
       });
     });
 
     it('should assemble LI instruction', () => {
       const source = 'LI R3, 42';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(1);
       expect(result.instructions[0]).toEqual({
         opcode: Opcode.LI,
-        word0: 0x0E,
+        word0: 0x0e,
         word1: 5,
         word2: 42,
-        word3: 0
+        word3: 0,
       });
     });
 
     it('should assemble HALT as NOP', () => {
       const source = 'HALT';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(1);
       expect(result.instructions[0]).toEqual({
@@ -62,7 +62,7 @@ describe('RippleAssembler', () => {
         word0: 0x00,
         word1: 0,
         word2: 0,
-        word3: 0
+        word3: 0,
       });
     });
   });
@@ -71,21 +71,21 @@ describe('RippleAssembler', () => {
     it('should parse named registers', () => {
       const source = 'ADD PC, RA, R0';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions[0]).toEqual({
         opcode: Opcode.ADD,
         word0: 0x01,
         word1: Register.PC,
         word2: Register.RA,
-        word3: Register.R0
+        word3: Register.R0,
       });
     });
 
     it('should handle case-insensitive registers', () => {
       const source = 'ADD r3, R4, r5';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions[0].word1).toBe(5);
       expect(result.instructions[0].word2).toBe(6);
@@ -103,7 +103,7 @@ describe('RippleAssembler', () => {
         SUB R3, R3, R4
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.labels.get('loop')).toBeDefined();
       expect(result.labels.get('loop')!.offset).toBe(3);
@@ -112,7 +112,7 @@ describe('RippleAssembler', () => {
         word0: 0x13,
         word1: 3,
         word2: 0,
-        word3: 0
+        word3: 0,
       });
     });
 
@@ -124,14 +124,14 @@ describe('RippleAssembler', () => {
         BNE R4, R0, loop
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions[2]).toEqual({
         opcode: Opcode.BNE,
         word0: 0x16,
         word1: 6,
         word2: 0,
-        word3: 65533
+        word3: 65533,
       });
     });
   });
@@ -140,7 +140,7 @@ describe('RippleAssembler', () => {
     it('should handle decimal immediates', () => {
       const source = 'ADDI R3, R4, 1234';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions[0].word3).toBe(1234);
     });
@@ -148,7 +148,7 @@ describe('RippleAssembler', () => {
     it('should handle hexadecimal immediates', () => {
       const source = 'ADDI R3, R4, 0xFF';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions[0].word3).toBe(255);
     });
@@ -156,7 +156,7 @@ describe('RippleAssembler', () => {
     it('should handle negative immediates', () => {
       const source = 'ADDI R3, R4, -1';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions[0].word3).toBe(65535);
     });
@@ -166,14 +166,14 @@ describe('RippleAssembler', () => {
     it('should handle JALR with two operands', () => {
       const source = 'JALR R4, R5';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions[0]).toEqual({
         opcode: Opcode.JALR,
         word0: 0x14,
         word1: 6,
         word2: 0,
-        word3: 7
+        word3: 7,
       });
     });
   });
@@ -187,7 +187,7 @@ describe('RippleAssembler', () => {
         NOP
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0]).toContain('Duplicate label');
     });
@@ -195,7 +195,7 @@ describe('RippleAssembler', () => {
     it('should report undefined labels', () => {
       const source = 'JAL undefined_label';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0]).toContain('Unresolved label');
     });
@@ -203,7 +203,7 @@ describe('RippleAssembler', () => {
     it('should report out-of-range immediates', () => {
       const source = 'LI R3, 70000';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0]).toContain('out of range');
     });
@@ -216,7 +216,7 @@ describe('RippleAssembler', () => {
         BEQ R3, R4, target
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0]).toContain('crosses bank boundary');
     });
@@ -227,15 +227,15 @@ describe('RippleAssembler', () => {
       const source = 'LI R3, 42';
       const result = assembler.assemble(source);
       const machineCode = assembler.toMachineCode(result.instructions);
-      
-      expect(machineCode).toEqual([0x0E, 5, 42, 0]);
+
+      expect(machineCode).toEqual([0x0e, 5, 42, 0]);
     });
 
     it('should generate correct binary output', () => {
       const source = 'ADD R3, R4, R5';
       const result = assembler.assemble(source);
       const binary = assembler.toBinary(result.instructions);
-      
+
       expect(binary).toBeInstanceOf(Uint16Array);
       expect(binary.length).toBe(4);
       expect(binary[0]).toBe(0x01);
@@ -249,7 +249,7 @@ describe('RippleAssembler', () => {
     it('should ignore semicolon comments', () => {
       const source = 'LI R3, 42 ; Load 42 into R3';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(1);
     });
@@ -257,7 +257,7 @@ describe('RippleAssembler', () => {
     it('should ignore hash comments', () => {
       const source = 'LI R3, 42 # Load 42 into R3';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(1);
     });
@@ -265,7 +265,7 @@ describe('RippleAssembler', () => {
     it('should ignore double-slash comments', () => {
       const source = 'LI R3, 42 // Load 42 into R3';
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(1);
     });
@@ -280,7 +280,7 @@ describe('RippleAssembler', () => {
         LI R3, 42
       `;
       const result = customAssembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(9);
       // Check that the LI instruction is in bank 1
@@ -292,7 +292,7 @@ describe('RippleAssembler', () => {
       const customAssembler = new RippleAssembler({ maxImmediate: 255 });
       const source = 'LI R3, 256';
       const result = customAssembler.assemble(source);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0]).toContain('out of range');
     });
@@ -309,7 +309,7 @@ describe('RippleAssembler', () => {
         BEQ R3, R4, target
       `;
       const result = customAssembler.assemble(source);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0]).toContain('crosses bank boundary');
     });
@@ -326,10 +326,10 @@ describe('RippleAssembler', () => {
         LI R4, 0
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.memoryData).toEqual([
-        72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33, 0
+        72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33, 0,
       ]);
       expect(result.instructions).toHaveLength(2);
     });
@@ -344,7 +344,7 @@ describe('RippleAssembler', () => {
         LI R3, 0
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.memoryData).toEqual([72, 101, 108, 108, 111, 33, 0]);
     });
@@ -359,7 +359,7 @@ describe('RippleAssembler', () => {
         NOP
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.memoryData).toEqual([0x1234, 0x5678, 1000, 2000]);
     });
@@ -374,9 +374,9 @@ describe('RippleAssembler', () => {
         NOP
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
-      expect(result.memoryData).toEqual([0, 0, 0, 0, 0, 0xFF]);
+      expect(result.memoryData).toEqual([0, 0, 0, 0, 0, 0xff]);
     });
 
     it('should handle escape sequences in strings', () => {
@@ -388,10 +388,10 @@ describe('RippleAssembler', () => {
         NOP
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.memoryData).toEqual([
-        72, 101, 108, 108, 111, 10, 87, 111, 114, 108, 100, 9, 33, 0, 0
+        72, 101, 108, 108, 111, 10, 87, 111, 114, 108, 100, 9, 33, 0, 0,
       ]);
     });
 
@@ -408,14 +408,16 @@ describe('RippleAssembler', () => {
         result.instructions,
         result.memoryData,
         undefined,
-        'Test with sections'
+        'Test with sections',
       );
-      
+
       expect(output).toContain('// Test with sections');
       expect(output).toContain('@prg(');
       expect(output).toContain('// Memory');
       expect(output).toContain('@lane(#L_MEM,');
-      expect(output).toContain("{for(s in {'H','i','!',0}, @set(s) @nextword)}");
+      expect(output).toContain(
+        "{for(s in {'H','i','!',0}, @set(s) @nextword)}",
+      );
       expect(output).toContain('),');
       expect(output).toContain('// Program');
       expect(output).toContain('@program_start(@OP_LI');
@@ -443,13 +445,23 @@ describe('RippleAssembler', () => {
           HALT
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       // "Hello\nWorld\n\0" = 72,101,108,108,111,10,87,111,114,108,100,10,0
       expect(result.memoryData).toEqual([
-        72, 101, 108, 108, 111, 10,  // Hello\n
-        87, 111, 114, 108, 100, 10,  // World\n
-        0                            // null terminator
+        72,
+        101,
+        108,
+        108,
+        111,
+        10, // Hello\n
+        87,
+        111,
+        114,
+        108,
+        100,
+        10, // World\n
+        0, // null terminator
       ]);
       expect(result.instructions).toHaveLength(8);
     });
@@ -477,13 +489,20 @@ describe('RippleAssembler', () => {
           HALT
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.memoryData).toEqual([
-        72, 105, 0,           // "Hi\0"
-        0xFF, 0x00, 0xAA,     // bytes
-        0x1234, 0x5678,       // words
-        0, 0, 0               // space
+        72,
+        105,
+        0, // "Hi\0"
+        0xff,
+        0x00,
+        0xaa, // bytes
+        0x1234,
+        0x5678, // words
+        0,
+        0,
+        0, // space
       ]);
     });
 
@@ -506,16 +525,16 @@ describe('RippleAssembler', () => {
           HALT
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       // Check for correct escape sequence handling
       const expectedData = [];
-      const str = "Tab:\tValue\nQuote:\"Hello\"\nBackslash:\\\n";
+      const str = 'Tab:\tValue\nQuote:"Hello"\nBackslash:\\\n';
       for (const char of str) {
         expectedData.push(char.charCodeAt(0));
       }
       expectedData.push(0); // Manual null terminator
-      
+
       expect(result.memoryData).toEqual(expectedData);
     });
 
@@ -533,11 +552,19 @@ describe('RippleAssembler', () => {
           HALT
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.memoryData).toEqual([
-        65, 66, 67, 10, 0,    // Character literals
-        65, 66, 67, 10, 0     // Same as decimals
+        65,
+        66,
+        67,
+        10,
+        0, // Character literals
+        65,
+        66,
+        67,
+        10,
+        0, // Same as decimals
       ]);
     });
 
@@ -554,11 +581,15 @@ describe('RippleAssembler', () => {
           HALT
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.memoryData).toEqual([
-        255, 0, 170,                    // Binary values
-        0xDEAD, 0xBEEF, 0xCAFE         // Hex values
+        255,
+        0,
+        170, // Binary values
+        0xdead,
+        0xbeef,
+        0xcafe, // Hex values
       ]);
     });
 
@@ -583,23 +614,23 @@ describe('RippleAssembler', () => {
           HALT
       `;
       const result = assembler.assemble(source);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.instructions).toHaveLength(8);
-      
+
       // Verify the generated code structure
-      expect(result.instructions[0].opcode).toBe(Opcode.LI);  // LI R3, 0
-      expect(result.instructions[1].opcode).toBe(Opcode.LI);  // LI R4, 0
+      expect(result.instructions[0].opcode).toBe(Opcode.LI); // LI R3, 0
+      expect(result.instructions[1].opcode).toBe(Opcode.LI); // LI R4, 0
       expect(result.instructions[2].opcode).toBe(Opcode.LOAD); // LOAD R5, R3, 0
-      expect(result.instructions[3].opcode).toBe(Opcode.BEQ);  // BEQ R5, R0, done
+      expect(result.instructions[3].opcode).toBe(Opcode.BEQ); // BEQ R5, R0, done
       expect(result.instructions[4].opcode).toBe(Opcode.STORE); // STORE R5, R4, 0
       expect(result.instructions[5].opcode).toBe(Opcode.ADDI); // ADDI R3, R3, 1
-      expect(result.instructions[6].opcode).toBe(Opcode.JAL);  // JAL print_loop
+      expect(result.instructions[6].opcode).toBe(Opcode.JAL); // JAL print_loop
       expect(result.instructions[7].opcode).toBe(Opcode.NOP); // HALT (encoded as NOP)
-      
+
       // Verify data
-      const expectedMessage = "Hello, Ripple VM!\n";
-      const expectedData = [...expectedMessage].map(c => c.charCodeAt(0));
+      const expectedMessage = 'Hello, Ripple VM!\n';
+      const expectedData = [...expectedMessage].map((c) => c.charCodeAt(0));
       expectedData.push(0); // null terminator
       expect(result.memoryData).toEqual(expectedData);
     });
@@ -614,7 +645,7 @@ describe('RippleAssembler', () => {
       `;
       const result = assembler.assemble(source);
       const macroOutput = assembler.toMacroFormat(result.instructions);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(macroOutput).toContain('@program_start(@OP_LI');
       expect(macroOutput).toContain('@cmd(@OP_LI');
@@ -637,9 +668,11 @@ describe('RippleAssembler', () => {
       `;
       const result = assembler.assemble(source);
       const macroOutput = assembler.toMacroFormat(result.instructions);
-      
+
       expect(result.errors).toHaveLength(0);
-      expect(macroOutput).toContain('@program_start(@OP_LI    , @R3 , 5   , 0)');
+      expect(macroOutput).toContain(
+        '@program_start(@OP_LI    , @R3 , 5   , 0)',
+      );
       expect(macroOutput).toContain('@cmd(@OP_SUB   , @R3 , @R3 , @R6)');
       expect(macroOutput).toContain('@cmd(@OP_HALT  , 0   , 0   , 0)');
       expect(macroOutput).toContain('@program_end');
@@ -653,14 +686,16 @@ describe('RippleAssembler', () => {
         result.instructions,
         data,
         new Map([[0, 'Initialize pointer']]),
-        'Hello World Program'
+        'Hello World Program',
       );
-      
+
       expect(fullOutput).toContain('// Hello World Program');
       expect(fullOutput).toContain('@prg(');
       expect(fullOutput).toContain('// Memory');
       expect(fullOutput).toContain('@lane(#L_MEM,');
-      expect(fullOutput).toContain("{for(s in {'H','e','l','l','o',0}, @set(s) @nextword)}");
+      expect(fullOutput).toContain(
+        "{for(s in {'H','e','l','l','o',0}, @set(s) @nextword)}",
+      );
       expect(fullOutput).toContain('),');
       expect(fullOutput).toContain('// Program');
       expect(fullOutput).toContain('// Initialize pointer');

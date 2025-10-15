@@ -7,7 +7,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
       const input = `{reverse({1, 2, 3})}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toBe('{3, 2, 1}');
     });
@@ -16,7 +16,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
       const input = `{reverse({a, b, c, d})}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toBe('{d, c, b, a}');
     });
@@ -25,7 +25,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
       const input = `{for(i in {reverse({1, 2, 3})}, i)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toBe('321');
     });
@@ -35,7 +35,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
 {reverse(@nums)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('{5, 4, 3, 2, 1}');
     });
@@ -44,7 +44,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
       const input = `{reverse({})}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toBe('{}');
     });
@@ -53,7 +53,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
       const input = `{reverse({42})}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toBe('{42}');
     });
@@ -62,7 +62,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
       const input = `{reverse(123)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('array literal');
     });
@@ -71,7 +71,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
       const input = `{reverse({1, 2}, {3, 4})}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('expects exactly 1 argument');
     });
@@ -82,7 +82,7 @@ describe('MacroExpander V3 - Reverse Builtin Support', () => {
 @process({1, 2, 3})`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++++++'); // 3+2+1 = 6 pluses
     });
@@ -95,7 +95,7 @@ describe('MacroExpander V3 - For Loop Support', () => {
       const input = `{for(i in {1, 2, 3}, +)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toBe('+++');
     });
@@ -105,7 +105,7 @@ describe('MacroExpander V3 - For Loop Support', () => {
 {for(v in {1, 2, 3}, @inc(v))}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++++++'); // 1 + 2 + 3 = 6 pluses
     });
@@ -115,7 +115,7 @@ describe('MacroExpander V3 - For Loop Support', () => {
 {for(v in {3, 5}, @set(v) >)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('[-]+++>[-]+++++>');
     });
@@ -125,7 +125,7 @@ describe('MacroExpander V3 - For Loop Support', () => {
 {for(x in @nums, <)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('<<<<<');
     });
@@ -134,7 +134,7 @@ describe('MacroExpander V3 - For Loop Support', () => {
       const input = `{for(i in {1, 2}, {for(j in {3, 4}, i j)})}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toBe('13142324');
     });
@@ -143,7 +143,7 @@ describe('MacroExpander V3 - For Loop Support', () => {
       const input = `{for(123 in {1, 2, 3}, +)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('Expected variable name');
     });
@@ -152,7 +152,7 @@ describe('MacroExpander V3 - For Loop Support', () => {
       const input = `{for(i {1, 2, 3}, +)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('in');
     });
@@ -161,7 +161,7 @@ describe('MacroExpander V3 - For Loop Support', () => {
       const input = `{for(i in {}, +)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded).toBe('');
     });
@@ -174,7 +174,7 @@ describe('MacroExpander V3 - Validation Features', () => {
       const input = `  #define test +\n@test`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+');
     });
@@ -183,7 +183,7 @@ describe('MacroExpander V3 - Validation Features', () => {
       const input = `\t#define test -\n@test`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('-');
     });
@@ -193,7 +193,7 @@ describe('MacroExpander V3 - Validation Features', () => {
       const input = `#define a @unknown`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toMatchObject({
         type: 'undefined',
@@ -201,8 +201,8 @@ describe('MacroExpander V3 - Validation Features', () => {
         location: {
           line: 0,
           column: 10,
-          length: 8
-        }
+          length: 8,
+        },
       });
     });
 
@@ -211,7 +211,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 #define b +`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.macros).toHaveLength(2);
     });
@@ -220,7 +220,7 @@ describe('MacroExpander V3 - Validation Features', () => {
       const input = `#define bad {repeat(xyz, +)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       // 'xyz' could be a parameter or future macro, so no error
       expect(result.errors).toHaveLength(0);
     });
@@ -229,7 +229,7 @@ describe('MacroExpander V3 - Validation Features', () => {
       const input = `#define inc(n) {repeat(n, +)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
     });
 
@@ -238,7 +238,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 #define inner(x) {repeat(x, +)}`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
     });
 
@@ -246,13 +246,13 @@ describe('MacroExpander V3 - Validation Features', () => {
       const input = `#define test @foo @bar @baz`;
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(3);
-      expect(result.errors.every(e => e.type === 'undefined')).toBe(true);
-      expect(result.errors.map(e => e.message)).toEqual([
+      expect(result.errors.every((e) => e.type === 'undefined')).toBe(true);
+      expect(result.errors.map((e) => e.message)).toEqual([
         "Macro 'foo' is not defined",
         "Macro 'bar' is not defined",
-        "Macro 'baz' is not defined"
+        "Macro 'baz' is not defined",
       ]);
     });
   });
@@ -267,7 +267,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('>');
     });
@@ -278,9 +278,9 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
-      expect(result.expanded).toBe('\n>>>');  // Default is collapseEmptyLines: false
+      expect(result.expanded).toBe('\n>>>'); // Default is collapseEmptyLines: false
     });
 
     it('should handle complex parameter substitution chains', () => {
@@ -292,7 +292,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('++');
     });
@@ -303,7 +303,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('-----');
     });
@@ -316,9 +316,9 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
-      expect(result.expanded).toBe('\n>');  // Default is collapseEmptyLines: false
+      expect(result.expanded).toBe('\n>'); // Default is collapseEmptyLines: false
     });
 
     it('should handle if builtin with zero condition', () => {
@@ -327,9 +327,9 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
-      expect(result.expanded).toBe('\n<');  // Default is collapseEmptyLines: false
+      expect(result.expanded).toBe('\n<'); // Default is collapseEmptyLines: false
     });
 
     it('should handle nested if conditions', () => {
@@ -340,9 +340,9 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
-      expect(result.expanded).toBe('\n\n\n-');  // Default is collapseEmptyLines: false
+      expect(result.expanded).toBe('\n\n\n-'); // Default is collapseEmptyLines: false
     });
   });
 
@@ -354,12 +354,12 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].location).toEqual({
-        line: 1,  // Second line (0-indexed)
+        line: 1, // Second line (0-indexed)
         column: 10,
-        length: 10
+        length: 10,
       });
     });
 
@@ -371,10 +371,10 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.message.includes('foo'))).toBe(true);
-      expect(result.errors.some(e => e.message.includes('bar'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('foo'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('bar'))).toBe(true);
     });
   });
 
@@ -386,7 +386,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+');
     });
@@ -398,13 +398,17 @@ describe('MacroExpander V3 - Validation Features', () => {
 @a`;
 
       const expander = createMacroExpanderV3();
-      const result = expander.expand(input, { enableCircularDependencyDetection: true });
-      
+      const result = expander.expand(input, {
+        enableCircularDependencyDetection: true,
+      });
+
       // Should not crash during validation, but will error during expansion
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.type === 'circular_dependency')).toBe(true);
+      expect(result.errors.some((e) => e.type === 'circular_dependency')).toBe(
+        true,
+      );
     });
-    
+
     it('should not detect circular dependencies when flag is disabled', () => {
       const input = `#define a @b
 #define b @c
@@ -413,9 +417,11 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input); // Default is disabled
-      
+
       // Should not have circular dependency errors
-      expect(result.errors.some(e => e.type === 'circular_dependency')).toBe(false);
+      expect(result.errors.some((e) => e.type === 'circular_dependency')).toBe(
+        false,
+      );
     });
 
     it('should validate macros with mixed valid and invalid references', () => {
@@ -425,7 +431,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('invalid');
       expect(result.expanded).toContain('+ @invalid +');
@@ -438,7 +444,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('+');
     });
@@ -451,7 +457,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       // During definition, 'abc' could be a parameter, so no error
       // But during expansion, it will fail
       expect(result.errors.length).toBeGreaterThan(0);
@@ -464,7 +470,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('Invalid if condition');
     });
@@ -476,7 +482,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input, { collapseEmptyLines: false });
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('*****');
     });
@@ -487,7 +493,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input);
-      
+
       expect(result.errors).toHaveLength(0);
       expect(result.expanded.trim()).toBe('<');
     });
@@ -504,7 +510,7 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input, { stripComments: true });
-      
+
       expect(result.expanded).not.toContain('//');
       expect(result.expanded).not.toContain('/*');
       expect(result.expanded.trim()).toBe('+');
@@ -516,8 +522,11 @@ describe('MacroExpander V3 - Validation Features', () => {
 @test // usage`;
 
       const expander = createMacroExpanderV3();
-      const result = expander.expand(input, { stripComments: false, collapseEmptyLines: false });
-      
+      const result = expander.expand(input, {
+        stripComments: false,
+        collapseEmptyLines: false,
+      });
+
       expect(result.expanded).toContain('// Comment');
       expect(result.expanded).toContain('// usage');
     });
@@ -532,9 +541,9 @@ describe('MacroExpander V3 - Validation Features', () => {
 
       const expander = createMacroExpanderV3();
       const result = expander.expand(input, { collapseEmptyLines: true });
-      
+
       // Should only have lines with BF commands
-      const lines = result.expanded.split('\n').filter(l => l.trim());
+      const lines = result.expanded.split('\n').filter((l) => l.trim());
       expect(lines).toEqual(['+', '-']);
     });
   });
@@ -545,10 +554,10 @@ describe('MacroExpander V3 - Nested Array Support', () => {
     const input = `#define PROGRAM {{1}, {2}}
 #define set(v) +
 {for(a in @PROGRAM, {for(v in a, @set(v))})}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('++');
   });
@@ -557,20 +566,20 @@ describe('MacroExpander V3 - Nested Array Support', () => {
     const input = `#define ARRAYS {{1, 2}, {3, 4, 5}}
 #define process(x) {repeat(x, -)}
 {for(arr in @ARRAYS, {for(val in arr, @process(val))})}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('---------------'); // 1+2+3+4+5 = 15 dashes
   });
 
   it('should handle direct nested array literals in for loops', () => {
     const input = `{for(a in {{1, 2}, {3}}, {for(v in a, v)})}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded).toBe('123');
   });
@@ -582,10 +591,10 @@ describe('MacroExpander V3 - Tuple Destructuring in For Loops', () => {
 #define set(a) +
 #define next(b) >
 {for((a, b) in {@PROGRAM}, @set(a) @next(b))}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('+>');
   });
@@ -594,10 +603,10 @@ describe('MacroExpander V3 - Tuple Destructuring in For Loops', () => {
     const input = `#define PAIRS {{1, 2}, {3, 4}, {5, 6}}
 #define process(x, y) {repeat(x, +)}{repeat(y, -)}
 {for((a, b) in @PAIRS, @process(a, b))}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('+--+++----+++++------');
   });
@@ -605,20 +614,20 @@ describe('MacroExpander V3 - Tuple Destructuring in For Loops', () => {
   it('should support tuple destructuring with three or more variables', () => {
     const input = `#define TRIPLES {{1, 2, 3}, {4, 5, 6}}
 {for((x, y, z) in @TRIPLES, xyz)}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('123456');
   });
 
   it('should handle direct tuple literals', () => {
     const input = `{for((a, b) in {{10, 20}, {30, 40}}, a-b)}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded).toBe('10-2030-40');
   });
@@ -626,10 +635,10 @@ describe('MacroExpander V3 - Tuple Destructuring in For Loops', () => {
   it('should handle tuples with missing elements gracefully', () => {
     const input = `#define MIXED {{1}, {2, 3}, {4, 5, 6}}
 {for((a, b, c) in @MIXED, abc)}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('123456');
   });
@@ -638,10 +647,10 @@ describe('MacroExpander V3 - Tuple Destructuring in For Loops', () => {
     const input = `#define OUTER {{1, 2}, {3, 4}}
 #define INNER {a, b}
 {for((x, y) in @OUTER, {for(z in @INNER, xyz)})}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     // When (x,y) = (1,2), we iterate z over {a,b} giving: 12a, 12b
     // When (x,y) = (3,4), we iterate z over {a,b} giving: 34a, 34b
@@ -661,10 +670,10 @@ describe('MacroExpander V3 - Nested Array and Tuple Iteration', () => {
 }
 
 {for(a in @PROGRAM, {for((type, val, flf) in {a}, @fillword(type, val, flf))})}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     // First tuple: type=1, val=0, flf=1 -> +>
     // Second tuple: type=1, val=0, flf=2 -> +>>
@@ -674,10 +683,10 @@ describe('MacroExpander V3 - Nested Array and Tuple Iteration', () => {
   it('should handle direct nested iteration', () => {
     const input = `#define show(x, y) x:y
 {for(item in {{a, b}, {c, d}}, {for((x, y) in {item}, @show(x, y))})}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('a:bc:d');
   });
@@ -690,10 +699,10 @@ describe('MacroExpander V3 - Nested Array and Tuple Iteration', () => {
 }
 #define process(a, b, c) [abc]
 {for(row in @DATA, {for((a, b, c) in {row}, @process(a, b, c))})}`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('[123][456][789]');
   });
@@ -704,33 +713,37 @@ describe('MacroExpander V3 - Parameter Validation', () => {
     const expander = createMacroExpanderV3();
     const input = `#define goword >
 @goword(5)`;
-    
+
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].type).toBe('parameter_mismatch');
-    expect(result.errors[0].message).toBe("Macro 'goword' expects 0 parameter(s), got 1");
+    expect(result.errors[0].message).toBe(
+      "Macro 'goword' expects 0 parameter(s), got 1",
+    );
   });
 
   it('should error when macro with parameters is called without arguments', () => {
     const expander = createMacroExpanderV3();
     const input = `#define move(n) {repeat(n, >)}
 @move`;
-    
+
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].type).toBe('parameter_mismatch');
-    expect(result.errors[0].message).toBe("Macro 'move' expects 1 parameter(s), got 0");
+    expect(result.errors[0].message).toBe(
+      "Macro 'move' expects 1 parameter(s), got 0",
+    );
   });
 
   it('should not error when macro without parameters is called correctly', () => {
     const expander = createMacroExpanderV3();
     const input = `#define right >
 @right`;
-    
+
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('>');
   });
@@ -739,9 +752,9 @@ describe('MacroExpander V3 - Parameter Validation', () => {
     const expander = createMacroExpanderV3();
     const input = `#define move(n) {repeat(n, >)}
 @move(5)`;
-    
+
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.expanded.trim()).toBe('>>>>>');
   });
@@ -750,21 +763,23 @@ describe('MacroExpander V3 - Parameter Validation', () => {
     const expander = createMacroExpanderV3();
     const input = `#define add(a, b) a+b
 @add(1)`;
-    
+
     const result = expander.expand(input);
-    
+
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].type).toBe('parameter_mismatch');
-    expect(result.errors[0].message).toBe("Macro 'add' expects 2 parameter(s), got 1");
+    expect(result.errors[0].message).toBe(
+      "Macro 'add' expects 2 parameter(s), got 1",
+    );
   });
 
   it('should not expand macro body when parameter count mismatches', () => {
     const expander = createMacroExpanderV3();
     const input = `#define print(msg) msg!!!
 @print()`;
-    
+
     const result = expander.expand(input);
-    
+
     // The macro should not be expanded at all
     expect(result.expanded.trim()).toBe('');
     expect(result.errors).toHaveLength(1);
@@ -776,10 +791,10 @@ describe('MacroExpander V3 - Source Map Support', () => {
   it('should generate source maps when requested', () => {
     const input = `#define inc(n) {repeat(n, +)}
 @inc(3)`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input, { generateSourceMap: true });
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.sourceMap).toBeDefined();
     expect(result.sourceMap!.entries.length).toBeGreaterThan(0);
@@ -788,10 +803,10 @@ describe('MacroExpander V3 - Source Map Support', () => {
   it('should not generate source maps by default', () => {
     const input = `#define test +
 @test`;
-    
+
     const expander = createMacroExpanderV3();
     const result = expander.expand(input);
-    
+
     expect(result.sourceMap).toBeUndefined();
   });
 });

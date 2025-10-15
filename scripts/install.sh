@@ -5,7 +5,7 @@ set -euo pipefail
 # This avoids creating root-owned files under ./target which will break `cargo test`.
 npm run build:native
 
-# Binaries that should exist after the build
+# Binaries that should exist after the build   
 binaries=(
   "src/rust-bf/target/release/bf"
   "src/ripple-asm/target/release/rasm"
@@ -26,8 +26,9 @@ for bin in "${binaries[@]}"; do
 done
 
 # Use sudo ONLY for the install step
-DEST="/usr/local/bin"
-echo "Installing to $DEST (you may be prompted for your password)…"
-sudo install -m 0755 "${binaries[@]}" "$DEST"
+# TODO: Don't force user to install.
+# DEST="/usr/local/bin"
+# echo "Installing to $DEST (you may be prompted for your password)…"
+# sudo install -m 0755 "${binaries[@]}" "$DEST"
 
 echo "Done."

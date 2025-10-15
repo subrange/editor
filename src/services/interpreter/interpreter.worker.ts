@@ -1,6 +1,9 @@
 console.log('Interpreter worker loading...');
 
-import type { Line, Position } from '../../components/editor/stores/editor.store';
+import type {
+  Line,
+  Position,
+} from '../../components/editor/stores/editor.store';
 import type { SourceMap, SourceMapEntry } from '../macro-expander/source-map';
 import { SourceMapLookup } from '../macro-expander/source-map';
 
@@ -59,20 +62,29 @@ interface SetPositionMessage {
 
 interface SetVMOutputConfigMessage {
   type: 'setVMOutputConfig';
-  config: { 
-    outCellIndex: number; 
+  config: {
+    outCellIndex: number;
     outFlagCellIndex: number;
     sparseCellPattern?: {
-      start: number;  // Starting index (e.g., 4)
-      step: number;   // Step between indices (e.g., 8)
+      start: number; // Starting index (e.g., 4)
+      step: number; // Step between indices (e.g., 8)
       count?: number; // Max number of cells to send (default 1024)
     };
   };
 }
 
-type WorkerMessage = InitMessage | ResetMessage | StepMessage | RunTurboMessage | 
-  ResumeTurboMessage | PauseMessage | StopMessage | SetBreakpointsMessage | 
-  SetPositionMessage | SetVMOutputConfigMessage | ProvideInputMessage;
+type WorkerMessage =
+  | InitMessage
+  | ResetMessage
+  | StepMessage
+  | RunTurboMessage
+  | ResumeTurboMessage
+  | PauseMessage
+  | StopMessage
+  | SetBreakpointsMessage
+  | SetPositionMessage
+  | SetVMOutputConfigMessage
+  | ProvideInputMessage;
 
 // State update message sent to main thread
 interface StateUpdateMessage {
@@ -94,7 +106,6 @@ interface StateUpdateMessage {
   lastExecutionTime?: number;
   lastOperationCount?: number;
 }
-
 
 interface ErrorMessage {
   type: 'error';
@@ -126,9 +137,12 @@ class WorkerInterpreter {
   private laneCount: number;
   private sourceMapLookup: SourceMapLookup | null = null;
   private currentSourcePosition?: Position;
-  private macroContext?: Array<{ macroName: string; parameters?: Record<string, string> }>;
-  private vmOutputConfig: { 
-    outCellIndex: number; 
+  private macroContext?: Array<{
+    macroName: string;
+    parameters?: Record<string, string>;
+  }>;
+  private vmOutputConfig: {
+    outCellIndex: number;
     outFlagCellIndex: number;
     clearOnRead?: boolean;
     sparseCellPattern?: {
@@ -142,7 +156,7 @@ class WorkerInterpreter {
   private outputUpdateInterval = 100; // Send output updates every 100 chars
   private lastOutputUpdateTime = 0;
   private outputUpdateTimeInterval = 100; // Send output updates every 100ms (10fps) to avoid interfering with VM output
-  
+
   // Execution tracking
   private lastExecutionTime?: number;
   private lastOperationCount?: number;
@@ -160,21 +174,29 @@ class WorkerInterpreter {
     this.tapeSize = message.tapeSize;
     this.cellSize = message.cellSize;
     this.laneCount = message.laneCount;
-    
+
     // Use SharedArrayBuffer if provided, otherwise create a new tape
     if (message.sharedTapeBuffer) {
-      this.tape = this.createTapeFromSharedBuffer(message.sharedTapeBuffer, message.cellSize);
+      this.tape = this.createTapeFromSharedBuffer(
+        message.sharedTapeBuffer,
+        message.cellSize,
+      );
     } else {
       this.tape = this.createTape(message.cellSize, message.tapeSize);
     }
-    
-    this.sourceMapLookup = message.sourceMap ? new SourceMapLookup(message.sourceMap) : null;
+
+    this.sourceMapLookup = message.sourceMap
+      ? new SourceMapLookup(message.sourceMap)
+      : null;
     this.buildLoopMap();
     // Send initial state with tape data
     this.sendStateUpdate(true);
   }
 
-  private createTapeFromSharedBuffer(buffer: SharedArrayBuffer, cellSize: number): Uint8Array | Uint16Array | Uint32Array {
+  private createTapeFromSharedBuffer(
+    buffer: SharedArrayBuffer,
+    cellSize: number,
+  ): Uint8Array | Uint16Array | Uint32Array {
     switch (cellSize) {
       case 256:
         return new Uint8Array(buffer);
@@ -187,7 +209,10 @@ class WorkerInterpreter {
     }
   }
 
-  private createTape(cellSize: number, tapeSize: number): Uint8Array | Uint16Array | Uint32Array {
+  private createTape(
+    cellSize: number,
+    tapeSize: number,
+  ): Uint8Array | Uint16Array | Uint32Array {
     switch (cellSize) {
       case 256:
         return new Uint8Array(tapeSize).fill(0);
@@ -202,8 +227,10 @@ class WorkerInterpreter {
 
   reset() {
     // Check if SharedArrayBuffer exists before using instanceof
-    const isSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' && this.tape.buffer instanceof SharedArrayBuffer;
-    
+    const isSharedArrayBuffer =
+      typeof SharedArrayBuffer !== 'undefined' &&
+      this.tape.buffer instanceof SharedArrayBuffer;
+
     // If we're using SharedArrayBuffer, just clear it instead of creating new
     if (isSharedArrayBuffer) {
       this.tape.fill(0);
@@ -225,14 +252,14 @@ class WorkerInterpreter {
     this.lastExecutionTime = undefined;
     this.lastOperationCount = undefined;
     this.wasInTurboMode = false;
-    
+
     // Reset VM output state
     this.lastVMFlagValue = 0;
     // Note: We intentionally keep vmOutputConfig as it's a configuration that should persist
-    
+
     // Rebuild loop map to ensure it's fresh
     this.buildLoopMap();
-    
+
     // Send tape data after reset
     this.sendStateUpdate(true);
   }
@@ -282,30 +309,33 @@ class WorkerInterpreter {
   }
 
   private moveToNextChar(): boolean {
-    if (this.currentChar.column < this.code[this.currentChar.line].text.length - 1) {
+    if (
+      this.currentChar.column <
+      this.code[this.currentChar.line].text.length - 1
+    ) {
       this.currentChar = {
         line: this.currentChar.line,
-        column: this.currentChar.column + 1
+        column: this.currentChar.column + 1,
       };
     } else if (this.currentChar.line < this.code.length - 1) {
       this.currentChar = {
         line: this.currentChar.line + 1,
-        column: 0
+        column: 0,
       };
     } else {
       return false;
     }
-    
+
     if (this.sourceMapLookup) {
       this.updateSourcePosition();
     }
-    
+
     return true;
   }
 
   private shouldPauseAtBreakpoint(position: Position): boolean {
     return this.breakpoints.some(
-      bp => bp.line === position.line && bp.column === position.column
+      (bp) => bp.line === position.line && bp.column === position.column,
     );
   }
 
@@ -315,7 +345,9 @@ class WorkerInterpreter {
 
     // Check for $ in-code breakpoint.rs
     if (char === '$') {
-      this.log(`Hit in-code breakpoint $ at line ${currentPos.line}, column ${currentPos.column}`);
+      this.log(
+        `Hit in-code breakpoint $ at line ${currentPos.line}, column ${currentPos.column}`,
+      );
       this.pause();
       const hasMore = this.moveToNextChar();
       if (!hasMore) {
@@ -326,22 +358,31 @@ class WorkerInterpreter {
     }
 
     // Check for breakpoint.rs
-    if (char && '><+-[].,'.includes(char) && this.shouldPauseAtBreakpoint(currentPos)) {
-      const isSameBreakpoint = this.lastPausedBreakpoint &&
+    if (
+      char &&
+      '><+-[].,'.includes(char) &&
+      this.shouldPauseAtBreakpoint(currentPos)
+    ) {
+      const isSameBreakpoint =
+        this.lastPausedBreakpoint &&
         this.lastPausedBreakpoint.line === currentPos.line &&
         this.lastPausedBreakpoint.column === currentPos.column;
 
       if (!isSameBreakpoint) {
-        this.log(`Hit breakpoint at line ${currentPos.line}, column ${currentPos.column}`);
+        this.log(
+          `Hit breakpoint at line ${currentPos.line}, column ${currentPos.column}`,
+        );
         this.lastPausedBreakpoint = { ...currentPos };
         this.pause();
         return true;
       }
     }
 
-    if (this.lastPausedBreakpoint &&
-        (this.lastPausedBreakpoint.line !== currentPos.line ||
-         this.lastPausedBreakpoint.column !== currentPos.column)) {
+    if (
+      this.lastPausedBreakpoint &&
+      (this.lastPausedBreakpoint.line !== currentPos.line ||
+        this.lastPausedBreakpoint.column !== currentPos.column)
+    ) {
       this.lastPausedBreakpoint = null;
     }
 
@@ -349,7 +390,7 @@ class WorkerInterpreter {
     if (char === null || (char && !'><+-[].,'.includes(char))) {
       const hasMore = this.moveToNextChar();
       if (!hasMore) {
-        this.log("Program finished.");
+        this.log('Program finished.');
         this.stop();
         return false;
       }
@@ -370,7 +411,8 @@ class WorkerInterpreter {
         this.tape[this.pointer] = (this.tape[this.pointer] + 1) % this.cellSize;
         break;
       case '-':
-        this.tape[this.pointer] = (this.tape[this.pointer] - 1 + this.cellSize) % this.cellSize;
+        this.tape[this.pointer] =
+          (this.tape[this.pointer] - 1 + this.cellSize) % this.cellSize;
         break;
       case '[':
         if (this.tape[this.pointer] === 0) {
@@ -423,7 +465,7 @@ class WorkerInterpreter {
     if (shouldMoveNext) {
       const hasMore = this.moveToNextChar();
       if (!hasMore) {
-        this.log("Program finished.");
+        this.log('Program finished.');
         this.stop();
         return false;
       }
@@ -436,7 +478,7 @@ class WorkerInterpreter {
     this.log('Compiling program for turbo execution...');
     this.wasInTurboMode = true;
 
-    const ops: Array<{type: string, position: Position}> = [];
+    const ops: Array<{ type: string; position: Position }> = [];
     const jumpTable: Map<number, number> = new Map();
     const jumpStack: number[] = [];
 
@@ -485,7 +527,7 @@ class WorkerInterpreter {
     const startTime = performance.now();
     const UPDATE_INTERVAL = 50_000_000; // Match main thread interval
     let opsExecuted = 0;
-    
+
     // Cache frequently accessed values as locals for performance
     let pointer = this.pointer;
     const tape = this.tape;
@@ -498,10 +540,18 @@ class WorkerInterpreter {
       const op = ops[pc];
 
       switch (op.type) {
-        case '>': pointer = (pointer + 1) % tapeSize; break;
-        case '<': pointer = (pointer - 1 + tapeSize) % tapeSize; break;
-        case '+': tape[pointer] = (tape[pointer] + 1) % cellSize; break;
-        case '-': tape[pointer] = (tape[pointer] - 1 + cellSize) % cellSize; break;
+        case '>':
+          pointer = (pointer + 1) % tapeSize;
+          break;
+        case '<':
+          pointer = (pointer - 1 + tapeSize) % tapeSize;
+          break;
+        case '+':
+          tape[pointer] = (tape[pointer] + 1) % cellSize;
+          break;
+        case '-':
+          tape[pointer] = (tape[pointer] - 1 + cellSize) % cellSize;
+          break;
         case '[':
           if (tape[pointer] === 0) {
             pc = jumpTable.get(pc) || pc;
@@ -525,7 +575,7 @@ class WorkerInterpreter {
           //   this.output = output;
           //   this.lastOutputLength = output.length;
           //   this.lastOutputUpdateTime = now;
-            this.sendStateUpdate(false); // Don't send tape data for output updates
+          this.sendStateUpdate(false); // Don't send tape data for output updates
           // }
           break;
         }
@@ -596,37 +646,39 @@ class WorkerInterpreter {
         this.sendStateUpdate(false);
 
         // Yield to allow message processing
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
       }
     }
 
     // Update instance variables with final state
     this.pointer = pointer;
     this.output = output;
-    
+
     this.isRunning = false;
-    this.isStopped = true;  // Mark as finished/stopped
+    this.isStopped = true; // Mark as finished/stopped
     // Send final state with tape data
     this.sendStateUpdate(true);
-    
+
     const totalTime = (performance.now() - startTime) / 1000;
     this.lastExecutionTime = totalTime;
     this.lastOperationCount = opsExecuted;
-    this.log(`Turbo execution completed: ${opsExecuted} operations in ${totalTime}s`);
+    this.log(
+      `Turbo execution completed: ${opsExecuted} operations in ${totalTime}s`,
+    );
   }
 
   async resumeTurbo() {
     this.lastPausedBreakpoint = null;
     this.isPaused = false;
     this.isRunning = true;
-    this.isStopped = false;  // Clear stopped state when resuming
+    this.isStopped = false; // Clear stopped state when resuming
     this.isWaitingForInput = false;
     this.wasInTurboMode = true;
-    
+
     this.log('Resuming turbo execution from current position...');
-    
+
     // Compile the program
-    const ops: Array<{type: string, position: Position}> = [];
+    const ops: Array<{ type: string; position: Position }> = [];
     const jumpTable: Map<number, number> = new Map();
     const jumpStack: number[] = [];
 
@@ -653,44 +705,55 @@ class WorkerInterpreter {
         }
       }
     }
-    
+
     // Find the operation index for current position
     const currentPos = this.currentChar;
     let startPc = 0;
     for (let i = 0; i < ops.length; i++) {
       const op = ops[i];
-      if (op.position.line === currentPos.line && op.position.column === currentPos.column) {
+      if (
+        op.position.line === currentPos.line &&
+        op.position.column === currentPos.column
+      ) {
         startPc = i;
         break;
       }
     }
-    
+
     this.log(`Starting turbo from operation ${startPc} of ${ops.length}`);
-    
+
     // Continue execution from current position
     let pc = startPc;
     const startTime = performance.now();
     const UPDATE_INTERVAL = 50_000_000; // Match main thread interval
     let opsExecuted = 0;
-    
+
     // Reset output tracking for resume
     this.lastOutputLength = this.output.length;
     this.lastOutputUpdateTime = performance.now();
-    
+
     // Cache frequently accessed values as locals for performance
     let pointer = this.pointer;
     const tape = this.tape;
     const tapeSize = this.tapeSize;
     const cellSize = this.cellSize;
-    
+
     while (pc < ops.length && this.isRunning && !this.isPaused) {
       const op = ops[pc];
 
       switch (op.type) {
-        case '>': pointer = (pointer + 1) % tapeSize; break;
-        case '<': pointer = (pointer - 1 + tapeSize) % tapeSize; break;
-        case '+': tape[pointer] = (tape[pointer] + 1) % cellSize; break;
-        case '-': tape[pointer] = (tape[pointer] - 1 + cellSize) % cellSize; break;
+        case '>':
+          pointer = (pointer + 1) % tapeSize;
+          break;
+        case '<':
+          pointer = (pointer - 1 + tapeSize) % tapeSize;
+          break;
+        case '+':
+          tape[pointer] = (tape[pointer] + 1) % cellSize;
+          break;
+        case '-':
+          tape[pointer] = (tape[pointer] - 1 + cellSize) % cellSize;
+          break;
         case '[':
           if (tape[pointer] === 0) {
             pc = jumpTable.get(pc) || pc;
@@ -775,23 +838,25 @@ class WorkerInterpreter {
         this.sendStateUpdate(false);
 
         // Yield to allow message processing
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
       }
     }
 
     // Update instance variables with final state
     this.pointer = pointer;
     this.output = output;
-    
+
     this.isRunning = false;
-    this.isStopped = true;  // Mark as finished/stopped
+    this.isStopped = true; // Mark as finished/stopped
     // Send final state with tape data
     this.sendStateUpdate(true);
-    
+
     const totalTime = (performance.now() - startTime) / 1000;
     this.lastExecutionTime = totalTime;
     this.lastOperationCount = opsExecuted;
-    this.log(`Turbo execution completed: ${opsExecuted} operations in ${totalTime}s from position ${startPc}`);
+    this.log(
+      `Turbo execution completed: ${opsExecuted} operations in ${totalTime}s from position ${startPc}`,
+    );
   }
 
   pause() {
@@ -804,7 +869,7 @@ class WorkerInterpreter {
     this.isRunning = false;
     this.isPaused = false;
     this.isStopped = true;
-    this.wasInTurboMode = false;  // Clear turbo mode flag
+    this.wasInTurboMode = false; // Clear turbo mode flag
     // Send tape data when stopping
     this.sendStateUpdate(true);
   }
@@ -822,8 +887,8 @@ class WorkerInterpreter {
     this.sendStateUpdate();
   }
 
-  setVMOutputConfig(config: { 
-    outCellIndex: number; 
+  setVMOutputConfig(config: {
+    outCellIndex: number;
     outFlagCellIndex: number;
     clearOnRead?: boolean;
     sparseCellPattern?: {
@@ -842,28 +907,30 @@ class WorkerInterpreter {
       this.macroContext = undefined;
       return;
     }
-    
+
     const currentPos = this.currentChar;
     const entry = this.sourceMapLookup.getSourcePosition(
       currentPos.line + 1,
-      currentPos.column + 1
+      currentPos.column + 1,
     );
-    
+
     if (entry) {
       this.currentSourcePosition = {
         line: entry.sourceRange.start.line - 1,
-        column: entry.sourceRange.start.column - 1
+        column: entry.sourceRange.start.column - 1,
       };
-      
+
       const context = this.sourceMapLookup.getMacroContext(
         currentPos.line + 1,
-        currentPos.column + 1
+        currentPos.column + 1,
       );
-      
-      this.macroContext = context.map(e => ({
-        macroName: e.macroName || '',
-        parameters: e.parameterValues
-      })).filter(c => c.macroName);
+
+      this.macroContext = context
+        .map((e) => ({
+          macroName: e.macroName || '',
+          parameters: e.parameterValues,
+        }))
+        .filter((c) => c.macroName);
     } else {
       this.currentSourcePosition = undefined;
       this.macroContext = undefined;
@@ -873,9 +940,11 @@ class WorkerInterpreter {
   private sendStateUpdate(includeTapeData = false) {
     // Debug log when finishing
     if (this.isStopped && this.lastExecutionTime !== undefined) {
-      this.log(`Sending finished state with metrics: time=${this.lastExecutionTime}s, ops=${this.lastOperationCount}`);
+      this.log(
+        `Sending finished state with metrics: time=${this.lastExecutionTime}s, ops=${this.lastOperationCount}`,
+      );
     }
-    
+
     const message: StateUpdateMessage = {
       type: 'stateUpdate',
       pointer: this.pointer,
@@ -888,21 +957,25 @@ class WorkerInterpreter {
       currentSourcePosition: this.currentSourcePosition,
       macroContext: this.macroContext,
       lastExecutionTime: this.lastExecutionTime,
-      lastOperationCount: this.lastOperationCount
+      lastOperationCount: this.lastOperationCount,
     };
-    
+
     // Include tape data when requested or when not using SharedArrayBuffer
     // Check if SharedArrayBuffer exists before using instanceof
-    const isSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' && this.tape.buffer instanceof SharedArrayBuffer;
-    
+    const isSharedArrayBuffer =
+      typeof SharedArrayBuffer !== 'undefined' &&
+      this.tape.buffer instanceof SharedArrayBuffer;
+
     // Always send tape data when paused, stopped, or explicitly requested
-    const shouldSendTape = !isSharedArrayBuffer && (includeTapeData || this.isPaused || this.isStopped || !this.isRunning);
-    
+    const shouldSendTape =
+      !isSharedArrayBuffer &&
+      (includeTapeData || this.isPaused || this.isStopped || !this.isRunning);
+
     if (shouldSendTape) {
       // Send a copy of the tape buffer
       const bufferCopy = this.tape.buffer.slice(0);
       message.tapeData = bufferCopy;
-      
+
       // Use transferable for efficiency
       self.postMessage(message, [bufferCopy]);
     } else {
@@ -911,43 +984,45 @@ class WorkerInterpreter {
   }
 
   private sendVMOutput() {
-    const isSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' && this.tape.buffer instanceof SharedArrayBuffer;
-    
+    const isSharedArrayBuffer =
+      typeof SharedArrayBuffer !== 'undefined' &&
+      this.tape.buffer instanceof SharedArrayBuffer;
+
     // If using SharedArrayBuffer, we can send a minimal message
     if (isSharedArrayBuffer) {
       self.postMessage({
         type: 'vmOutput',
-        pointer: this.pointer
+        pointer: this.pointer,
       });
       return;
     }
-    
+
     // Only send sparse data if not using SharedArrayBuffer
     if (this.vmOutputConfig) {
       const values: number[] = [];
       const indices: number[] = [];
-      
+
       // Use configured pattern or default to 4, 12, 20, 28...
       const pattern = this.vmOutputConfig.sparseCellPattern || {
         start: 4,
         step: 8,
-        count: 1024
+        count: 1024,
       };
-      
+
       const maxCells = pattern.count || 1024;
-      
+
       for (let i = 0; i < maxCells; i++) {
-        const index = pattern.start + (i * pattern.step);
+        const index = pattern.start + i * pattern.step;
         if (index >= this.tape.length) break;
-        
+
         values.push(this.tape[index]);
         indices.push(index);
       }
-      
+
       self.postMessage({
         type: 'vmOutput',
         pointer: this.pointer,
-        sparseTapeData: { values, indices }
+        sparseTapeData: { values, indices },
       });
     }
   }
@@ -955,7 +1030,7 @@ class WorkerInterpreter {
   private log(message: string) {
     const logMessage: LogMessage = {
       type: 'log',
-      message
+      message,
     };
     self.postMessage(logMessage);
   }
@@ -965,30 +1040,32 @@ class WorkerInterpreter {
       this.log('Input provided but interpreter is not waiting for input');
       return;
     }
-    
+
     // Get ASCII value of the input character
     const asciiValue = char.charCodeAt(0);
-    
+
     // Place the value in the current cell - this completes the ',' instruction
     this.tape[this.pointer] = asciiValue % this.cellSize;
-    
+
     // Clear waiting state
     this.isWaitingForInput = false;
-    
-    this.log(`Input received: '${char}' (ASCII ${asciiValue}) placed at position ${this.pointer}`);
-    
+
+    this.log(
+      `Input received: '${char}' (ASCII ${asciiValue}) placed at position ${this.pointer}`,
+    );
+
     // Now move to the next instruction since ',' is complete
     const hasMore = this.moveToNextChar();
     if (!hasMore) {
       this.stop();
       return;
     }
-    
+
     // Resume execution if we were running
     if (this.isRunning) {
       this.isPaused = false; // Clear pause state
       this.sendStateUpdate(true); // Send state update to reflect the change
-      
+
       // Check if we were in turbo mode
       if (this.wasInTurboMode) {
         // Resume turbo execution from the new position
@@ -1016,7 +1093,7 @@ console.log('WorkerInterpreter instance created');
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   const message = event.data;
   console.log('Worker received message:', message.type);
-  
+
   try {
     switch (message.type) {
       case 'init':
@@ -1041,7 +1118,10 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
         interpreter.stop();
         break;
       case 'setBreakpoints':
-        interpreter.setBreakpoints(message.breakpoints, message.sourceBreakpoints);
+        interpreter.setBreakpoints(
+          message.breakpoints,
+          message.sourceBreakpoints,
+        );
         break;
       case 'setPosition':
         interpreter.setPosition(message.position);
@@ -1056,7 +1136,7 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   } catch (error) {
     const errorMessage: ErrorMessage = {
       type: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
     self.postMessage(errorMessage);
   }

@@ -1,4 +1,7 @@
-import { FastTokenizer, type Token } from '../../components/editor/services/tokenizer.fast.ts';
+import {
+  FastTokenizer,
+  type Token,
+} from '../../components/editor/services/tokenizer.fast.ts';
 
 // Message types for communication with main thread
 interface TokenizeLineMessage {
@@ -35,30 +38,30 @@ const tokenizer = new FastTokenizer();
 // Handle messages from main thread
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   const message = event.data;
-  
+
   try {
     switch (message.type) {
       case 'tokenizeLine': {
         const result = tokenizer.tokenizeLine(
-          message.text, 
-          message.lineIndex, 
-          message.isLastLine
+          message.text,
+          message.lineIndex,
+          message.isLastLine,
         );
         const response: ResultMessage = {
           type: 'result',
           id: message.id,
-          result
+          result,
         };
         self.postMessage(response);
         break;
       }
-      
+
       case 'tokenizeAll': {
         const result = tokenizer.tokenizeAllLines(message.lines);
         const response: ResultMessage = {
           type: 'result',
           id: message.id,
-          result
+          result,
         };
         self.postMessage(response);
         break;
@@ -68,7 +71,7 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
     const response: ErrorMessage = {
       type: 'error',
       id: message.id,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
     self.postMessage(response);
   }

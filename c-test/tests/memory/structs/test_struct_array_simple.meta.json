@@ -1,4 +1,4 @@
 {
-  "use_runtime": true,
-  "expected": "Test struct array\nY\n"
+      "use_runtime": true,
+      "expected": "Test struct array\nY\n"
 }

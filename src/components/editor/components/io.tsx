@@ -1,144 +1,158 @@
-import { useRef, useLayoutEffect, useMemo, useEffect, useState } from "react";
-import { interpreterStore } from "../../debugger/interpreter-facade.store";
-import { outputStore } from "../../../stores/output.store";
+import { useRef, useLayoutEffect, useMemo, useEffect, useState } from 'react';
+import { interpreterStore } from '../../debugger/interpreter-facade.store';
+import { outputStore } from '../../../stores/output.store';
 
 interface IOProps {
-    output: string | undefined;
-    outputRef?: React.RefObject<HTMLDivElement | null>;
-    isActive?: boolean;
-    maxLines?: number | null;
+  output: string | undefined;
+  outputRef?: React.RefObject<HTMLDivElement | null>;
+  isActive?: boolean;
+  maxLines?: number | null;
 }
 
 export function IO({ output, outputRef, isActive = true, maxLines }: IOProps) {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const activeRef = outputRef || containerRef;
-    const [isWaitingForInput, setIsWaitingForInput] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const activeRef = outputRef || containerRef;
+  const [isWaitingForInput, setIsWaitingForInput] = useState(false);
 
-    // Subscribe to interpreter state for input waiting status
-    useEffect(() => {
-        const subscription = interpreterStore.state.subscribe(state => {
-            setIsWaitingForInput(state.isWaitingForInput || false);
-        });
-        return () => subscription.unsubscribe();
-    }, []);
+  // Subscribe to interpreter state for input waiting status
+  useEffect(() => {
+    const subscription = interpreterStore.state.subscribe((state) => {
+      setIsWaitingForInput(state.isWaitingForInput || false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
-    // Process output to handle max lines
-    const processedOutput = useMemo(() => {
-        if (!maxLines || !output) return output;
-        const lines = output.split('\n');
-        if (lines.length <= maxLines) return output;
-        
-        // Keep the last maxLines lines
-        const truncated = lines.slice(-maxLines);
-        return `[... ${lines.length - maxLines} lines truncated ...]\n${truncated.join('\n')}`;
-    }, [output, maxLines]);
+  // Process output to handle max lines
+  const processedOutput = useMemo(() => {
+    if (!maxLines || !output) return output;
+    const lines = output.split('\n');
+    if (lines.length <= maxLines) return output;
 
-    // Auto-scroll to bottom when content changes
-    useLayoutEffect(() => {
-        if (!isActive) return;
-        
-        setTimeout(() => {
-            if (activeRef.current) {
-                activeRef.current.scrollTop = activeRef.current.scrollHeight;
-            }
-        }, 10);
-    }, [processedOutput, isActive, activeRef]);
+    // Keep the last maxLines lines
+    const truncated = lines.slice(-maxLines);
+    return `[... ${lines.length - maxLines} lines truncated ...]\n${truncated.join('\n')}`;
+  }, [output, maxLines]);
 
-    // Handle keyboard input when waiting
-    useEffect(() => {
-        if (!isWaitingForInput) return;
+  // Auto-scroll to bottom when content changes
+  useLayoutEffect(() => {
+    if (!isActive) return;
 
-        console.log('IO: Input requested, checking if need to show panel');
-        
-        // Show output panel if collapsed
-        const outputState = outputStore.state.getValue();
-        if (outputState.collapsed) {
-            console.log('IO: Panel is collapsed, showing it');
-            outputStore.setCollapsed(false);
+    setTimeout(() => {
+      if (activeRef.current) {
+        activeRef.current.scrollTop = activeRef.current.scrollHeight;
+      }
+    }, 10);
+  }, [processedOutput, isActive, activeRef]);
+
+  // Handle keyboard input when waiting
+  useEffect(() => {
+    if (!isWaitingForInput) return;
+
+    console.log('IO: Input requested, checking if need to show panel');
+
+    // Show output panel if collapsed
+    const outputState = outputStore.state.getValue();
+    if (outputState.collapsed) {
+      console.log('IO: Panel is collapsed, showing it');
+      outputStore.setCollapsed(false);
+    }
+
+    // Only handle input if this tab is active
+    if (!isActive) {
+      console.log('IO: Tab not active, not handling input');
+      return;
+    }
+
+    // Focus the container to capture keyboard input
+    if (activeRef.current) {
+      activeRef.current.focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      let charToSend: string | null = null;
+
+      // Handle special keys
+      if (e.key === 'Enter') {
+        charToSend = '\n';
+      } else if (e.key === 'Tab') {
+        charToSend = '\t';
+      } else if (e.key === 'Backspace') {
+        charToSend = '\x08'; // ASCII backspace
+      } else if (e.key === 'Escape') {
+        charToSend = '\x1b'; // ASCII escape
+      }
+
+      if (charToSend) {
+        console.log(
+          `IO: Received special key '${e.key}' sending '${charToSend.charCodeAt(0)}'`,
+        );
+
+        // Check if WASM interpreter is running
+        const rustWasm = (window as any).rustWasmInterpreter;
+        if (
+          rustWasm &&
+          rustWasm.isWaitingForInput$ &&
+          rustWasm.isWaitingForInput$.getValue()
+        ) {
+          console.log('IO: Providing input to WASM interpreter');
+          rustWasm.provideInput(charToSend);
+        } else {
+          console.log('IO: Providing input to JS/Worker interpreter');
+          (interpreterStore as any).provideInput(charToSend);
         }
+        e.preventDefault();
+      }
+    };
 
-        // Only handle input if this tab is active
-        if (!isActive) {
-            console.log('IO: Tab not active, not handling input');
-            return;
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key.length === 1) {
+        console.log(
+          `IO: Received input '${e.key}' (ASCII ${e.key.charCodeAt(0)})`,
+        );
+
+        // Single character input
+        // Check if WASM interpreter is running
+        const rustWasm = (window as any).rustWasmInterpreter;
+        if (
+          rustWasm &&
+          rustWasm.isWaitingForInput$ &&
+          rustWasm.isWaitingForInput$.getValue()
+        ) {
+          console.log('IO: Providing input to WASM interpreter');
+          rustWasm.provideInput(e.key);
+        } else {
+          console.log('IO: Providing input to JS/Worker interpreter');
+          (interpreterStore as any).provideInput(e.key);
         }
+        e.preventDefault();
+      }
+    };
 
-        // Focus the container to capture keyboard input
-        if (activeRef.current) {
-            activeRef.current.focus();
-        }
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keypress', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keypress', handleKeyPress);
+    };
+  }, [isWaitingForInput, isActive, activeRef]);
 
-        const handleKeyDown = (e: KeyboardEvent) => {
-            let charToSend: string | null = null;
-            
-            // Handle special keys
-            if (e.key === 'Enter') {
-                charToSend = '\n';
-            } else if (e.key === 'Tab') {
-                charToSend = '\t';
-            } else if (e.key === 'Backspace') {
-                charToSend = '\x08'; // ASCII backspace
-            } else if (e.key === 'Escape') {
-                charToSend = '\x1b'; // ASCII escape
-            }
-            
-            if (charToSend) {
-                console.log(`IO: Received special key '${e.key}' sending '${charToSend.charCodeAt(0)}'`);
-                
-                // Check if WASM interpreter is running
-                const rustWasm = (window as any).rustWasmInterpreter;
-                if (rustWasm && rustWasm.isWaitingForInput$ && rustWasm.isWaitingForInput$.getValue()) {
-                    console.log('IO: Providing input to WASM interpreter');
-                    rustWasm.provideInput(charToSend);
-                } else {
-                    console.log('IO: Providing input to JS/Worker interpreter');
-                    (interpreterStore as any).provideInput(charToSend);
-                }
-                e.preventDefault();
-            }
-        };
-        
-        const handleKeyPress = (e: KeyboardEvent) => {
-            if (e.key.length === 1) {
-                console.log(`IO: Received input '${e.key}' (ASCII ${e.key.charCodeAt(0)})`);
-                
-                // Single character input
-                // Check if WASM interpreter is running
-                const rustWasm = (window as any).rustWasmInterpreter;
-                if (rustWasm && rustWasm.isWaitingForInput$ && rustWasm.isWaitingForInput$.getValue()) {
-                    console.log('IO: Providing input to WASM interpreter');
-                    rustWasm.provideInput(e.key);
-                } else {
-                    console.log('IO: Providing input to JS/Worker interpreter');
-                    (interpreterStore as any).provideInput(e.key);
-                }
-                e.preventDefault();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keypress', handleKeyPress);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('keypress', handleKeyPress);
-        };
-    }, [isWaitingForInput, isActive, activeRef]);
-
-    return (
-        <div 
-            tabIndex={-1} 
-            ref={containerRef} 
-            className={`outline-none ${isWaitingForInput ? 'ring-0 ring-zinc-500 ring-opacity-50 rounded-sm' : ''}`}
-        >
-            <pre className="text-xs text-white whitespace-pre font-mono">
-                {processedOutput}
-                {isWaitingForInput && (
-                    <>
-                        <span className="animate-pulse text-blue-400">_</span>
-                        <span className="text-zinc-500 ml-2">(Type a character for input)</span>
-                    </>
-                )}
-            </pre>
-        </div>
-    );
+  return (
+    <div
+      tabIndex={-1}
+      ref={containerRef}
+      className={`outline-none ${isWaitingForInput ? 'ring-0 ring-zinc-500 ring-opacity-50 rounded-sm' : ''}`}
+    >
+      <pre className="text-xs text-white whitespace-pre font-mono">
+        {processedOutput}
+        {isWaitingForInput && (
+          <>
+            <span className="animate-pulse text-blue-400">_</span>
+            <span className="text-zinc-500 ml-2">
+              (Type a character for input)
+            </span>
+          </>
+        )}
+      </pre>
+    </div>
+  );
 }

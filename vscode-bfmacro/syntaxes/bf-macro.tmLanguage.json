@@ -1,413 +1,475 @@
 {
-  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-  "name": "Brainfuck Macro",
-  "scopeName": "source.bfmacro",
-  "fileTypes": ["bfm", "bfmacro", "bf"],
-  "patterns": [
-    { "include": "#preprocessor" },
-    { "include": "#comments" },
-    { "include": "#macro-definition" },
-    { "include": "#macro-invocation" },
-    { "include": "#builtin-functions" },
-    { "include": "#brainfuck-operators" },
-    { "include": "#strings" },
-    { "include": "#numbers" },
-    { "include": "#local-variables" },
-    { "include": "#identifiers" }
-  ],
-  "repository": {
-    "preprocessor": {
+      "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+      "name": "Brainfuck Macro",
+      "scopeName": "source.bfmacro",
+      "fileTypes": ["bfm", "bfmacro", "bf"],
       "patterns": [
-        {
-          "name": "meta.preprocessor.include.bfmacro",
-          "match": "(#include)\\s+([\"<])([^\">\n]+)([>\"])",
-          "captures": {
-            "1": { "name": "keyword.control.directive.include.bfmacro" },
-            "2": { "name": "punctuation.definition.string.begin.bfmacro" },
-            "3": { "name": "string.quoted.include.bfmacro" },
-            "4": { "name": "punctuation.definition.string.end.bfmacro" }
-          }
-        },
-        {
-          "name": "meta.preprocessor.pragma.bfmacro",
-          "match": "(#pragma)\\s+(once)\\b",
-          "captures": {
-            "1": { "name": "keyword.control.directive.pragma.bfmacro" },
-            "2": { "name": "keyword.control.directive.pragma.once.bfmacro" }
-          }
-        },
-        {
-          "name": "meta.preprocessor.define.guard.bfmacro",
-          "match": "(#define)\\s+([A-Z_][A-Z0-9_]*(?:_H|_INCLUDED|_GUARD)?)",
-          "captures": {
-            "1": { "name": "keyword.control.directive.define.bfmacro" },
-            "2": { "name": "entity.name.constant.preprocessor.bfmacro" }
-          }
-        },
-        {
-          "name": "meta.preprocessor.conditional.bfmacro",
-          "match": "(#(?:ifndef|ifdef|endif))(?:\\s+([A-Z_][A-Z0-9_]*))?",
-          "captures": {
-            "1": { "name": "keyword.control.directive.conditional.bfmacro" },
-            "2": { "name": "entity.name.constant.preprocessor.bfmacro" }
-          }
-        },
-        {
-          "name": "meta.preprocessor.line.bfmacro",
-          "match": "(#line)\\s+(\\d+)\\s+(\"[^\"]*\")",
-          "captures": {
-            "1": { "name": "keyword.control.directive.line.bfmacro" },
-            "2": { "name": "constant.numeric.line.bfmacro" },
-            "3": { "name": "string.quoted.double.bfmacro" }
-          }
-        }
-      ]
-    },
-    "comments": {
-      "patterns": [
-        {
-          "name": "comment.line.double-slash.bfmacro",
-          "match": "//.*$"
-        },
-        {
-          "name": "comment.block.bfmacro",
-          "begin": "/\\*",
-          "end": "\\*/",
-          "beginCaptures": {
-            "0": { "name": "punctuation.definition.comment.begin.bfmacro" }
-          },
-          "endCaptures": {
-            "0": { "name": "punctuation.definition.comment.end.bfmacro" }
-          }
-        }
-      ]
-    },
-    "macro-definition": {
-      "patterns": [
-        {
-          "match": "(#define)\\s+([a-zA-Z_]\\w*)\\s*(\\(([^)]*)\\))?",
-          "captures": {
-            "1": { "name": "keyword.other.define.bfmacro" },
-            "2": { "name": "entity.name.function.macro.bfmacro" },
-            "3": { "name": "punctuation.definition.parameters.bfmacro" },
-            "4": { 
-              "patterns": [
-                {
-                  "match": "[a-zA-Z_]\\w*",
-                  "name": "variable.parameter.bfmacro"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    "macro-invocation": {
-      "patterns": [
-        {
-          "name": "meta.function-call.macro.bfmacro",
-          "begin": "(@)([a-zA-Z_]\\w*)(\\()",
-          "end": "\\)",
-          "beginCaptures": {
-            "1": { "name": "punctuation.definition.macro.bfmacro" },
-            "2": { "name": "entity.name.function.macro.bfmacro" },
-            "3": { "name": "punctuation.definition.parameters.begin.bfmacro" }
-          },
-          "endCaptures": {
-            "0": { "name": "punctuation.definition.parameters.end.bfmacro" }
-          },
-          "patterns": [
-            { "include": "#macro-arguments" }
-          ]
-        },
-        {
-          "match": "(@)([a-zA-Z_]\\w*)",
-          "captures": {
-            "1": { "name": "punctuation.definition.macro.bfmacro" },
-            "2": { "name": "entity.name.function.macro.bfmacro" }
-          }
-        },
-        {
-          "name": "entity.name.function.macro.hash.bfmacro",
-          "match": "#[a-zA-Z_]\\w*(?!define)"
-        }
-      ]
-    },
-    "macro-arguments": {
-      "patterns": [
-        { "include": "#comments" },
-        { "include": "#macro-invocation" },
-        { "include": "#builtin-functions" },
-        { "include": "#numbers" },
-        { "include": "#local-variables" },
-        { "include": "#identifiers" },
-        {
-          "name": "punctuation.separator.arguments.bfmacro",
-          "match": ","
-        }
-      ]
-    },
-    "builtin-functions": {
-      "patterns": [
-        {
-          "name": "meta.builtin.preserve.bfmacro",
-          "begin": "\\{(:)",
-          "end": "\\}",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.preserve.bfmacro" }
-          },
-          "patterns": [
+            { "include": "#preprocessor" },
+            { "include": "#comments" },
+            { "include": "#macro-definition" },
+            { "include": "#macro-invocation" },
             { "include": "#builtin-functions" },
-            { "include": "#preserve-content" }
-          ]
-        },
-        {
-          "name": "meta.builtin.label.bfmacro",
-          "begin": "\\{(label)\\s+",
-          "end": "\\}",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.label.bfmacro" }
-          },
-          "patterns": [
-            {
-              "match": "[a-zA-Z_]\\w*",
-              "name": "entity.name.label.bfmacro"
-            }
-          ]
-        },
-        {
-          "name": "meta.builtin.br.bfmacro",
-          "match": "\\{(br)\\}",
-          "captures": {
-            "1": { "name": "keyword.control.builtin.br.bfmacro" }
-          }
-        },
-        {
-          "name": "meta.builtin.repeat.bfmacro",
-          "begin": "\\{(repeat)\\s*\\(",
-          "end": "\\)\\s*\\}",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.repeat.bfmacro" }
-          },
-          "patterns": [
-            { "include": "#builtin-arguments" }
-          ]
-        },
-        {
-          "name": "meta.builtin.if.bfmacro",
-          "begin": "\\{(if)\\s*\\(",
-          "end": "\\)\\s*\\}",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.if.bfmacro" }
-          },
-          "patterns": [
-            { "include": "#builtin-arguments" }
-          ]
-        },
-        {
-          "name": "meta.builtin.for.bfmacro",
-          "begin": "\\{(for)\\s*\\(",
-          "end": "\\)\\s*\\}",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.for.bfmacro" }
-          },
-          "patterns": [
-            {
-              "match": "\\b(in)\\b",
-              "name": "keyword.control.in.bfmacro"
+            { "include": "#brainfuck-operators" },
+            { "include": "#strings" },
+            { "include": "#numbers" },
+            { "include": "#local-variables" },
+            { "include": "#identifiers" }
+      ],
+      "repository": {
+            "preprocessor": {
+                  "patterns": [
+                        {
+                              "name": "meta.preprocessor.include.bfmacro",
+                              "match": "(#include)\\s+([\"<])([^\">\n]+)([>\"])",
+                              "captures": {
+                                    "1": {
+                                          "name": "keyword.control.directive.include.bfmacro"
+                                    },
+                                    "2": {
+                                          "name": "punctuation.definition.string.begin.bfmacro"
+                                    },
+                                    "3": {
+                                          "name": "string.quoted.include.bfmacro"
+                                    },
+                                    "4": {
+                                          "name": "punctuation.definition.string.end.bfmacro"
+                                    }
+                              }
+                        },
+                        {
+                              "name": "meta.preprocessor.pragma.bfmacro",
+                              "match": "(#pragma)\\s+(once)\\b",
+                              "captures": {
+                                    "1": {
+                                          "name": "keyword.control.directive.pragma.bfmacro"
+                                    },
+                                    "2": {
+                                          "name": "keyword.control.directive.pragma.once.bfmacro"
+                                    }
+                              }
+                        },
+                        {
+                              "name": "meta.preprocessor.define.guard.bfmacro",
+                              "match": "(#define)\\s+([A-Z_][A-Z0-9_]*(?:_H|_INCLUDED|_GUARD)?)",
+                              "captures": {
+                                    "1": {
+                                          "name": "keyword.control.directive.define.bfmacro"
+                                    },
+                                    "2": {
+                                          "name": "entity.name.constant.preprocessor.bfmacro"
+                                    }
+                              }
+                        },
+                        {
+                              "name": "meta.preprocessor.conditional.bfmacro",
+                              "match": "(#(?:ifndef|ifdef|endif))(?:\\s+([A-Z_][A-Z0-9_]*))?",
+                              "captures": {
+                                    "1": {
+                                          "name": "keyword.control.directive.conditional.bfmacro"
+                                    },
+                                    "2": {
+                                          "name": "entity.name.constant.preprocessor.bfmacro"
+                                    }
+                              }
+                        },
+                        {
+                              "name": "meta.preprocessor.line.bfmacro",
+                              "match": "(#line)\\s+(\\d+)\\s+(\"[^\"]*\")",
+                              "captures": {
+                                    "1": {
+                                          "name": "keyword.control.directive.line.bfmacro"
+                                    },
+                                    "2": {
+                                          "name": "constant.numeric.line.bfmacro"
+                                    },
+                                    "3": {
+                                          "name": "string.quoted.double.bfmacro"
+                                    }
+                              }
+                        }
+                  ]
             },
-            { "include": "#builtin-arguments" }
-          ]
-        },
-        {
-          "name": "meta.builtin.reverse.bfmacro",
-          "begin": "\\{(reverse)\\s*\\(",
-          "end": "\\)\\s*\\}",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.reverse.bfmacro" }
-          },
-          "patterns": [
-            { "include": "#builtin-arguments" }
-          ]
-        },
-        {
-          "name": "meta.builtin.preserve.bfmacro",
-          "begin": "\\{(preserve)\\s*\\(",
-          "end": "\\)\\s*\\}",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.preserve.bfmacro" }
-          },
-          "patterns": [
-            { "include": "#preserve-content" }
-          ]
-        },
-        {
-          "name": "meta.builtin.proc.bfmacro",
-          "begin": "\\{(proc)\\s*\\(",
-          "end": "\\)\\s*\\}",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.proc.bfmacro" }
-          },
-          "patterns": [
-            { "include": "#builtin-arguments" },
-            { "include": "#local-variables" }
-          ]
-        },
-        {
-          "name": "meta.builtin.local.bfmacro",
-          "begin": "\\{(local)(?:\\s*\\(|\\s+)",
-          "end": "(?:\\)|\\})",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.local.bfmacro" }
-          },
-          "patterns": [
-            {
-              "match": "(%[a-zA-Z_]\\w*)",
-              "name": "storage.type.local.bfmacro"
+            "comments": {
+                  "patterns": [
+                        {
+                              "name": "comment.line.double-slash.bfmacro",
+                              "match": "//.*$"
+                        },
+                        {
+                              "name": "comment.block.bfmacro",
+                              "begin": "/\\*",
+                              "end": "\\*/",
+                              "beginCaptures": {
+                                    "0": {
+                                          "name": "punctuation.definition.comment.begin.bfmacro"
+                                    }
+                              },
+                              "endCaptures": {
+                                    "0": {
+                                          "name": "punctuation.definition.comment.end.bfmacro"
+                                    }
+                              }
+                        }
+                  ]
             },
-            { "include": "#numbers" }
-          ]
-        },
-        {
-          "name": "meta.builtin.len.bfmacro",
-          "begin": "\\{(len)(?:\\s*\\(|\\s+)",
-          "end": "(?:\\)|\\})",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.builtin.len.bfmacro" }
-          },
-          "patterns": [
-            {
-              "match": "(%[a-zA-Z_]\\w*)",
-              "name": "storage.type.local.bfmacro"
+            "macro-definition": {
+                  "patterns": [
+                        {
+                              "match": "(#define)\\s+([a-zA-Z_]\\w*)\\s*(\\(([^)]*)\\))?",
+                              "captures": {
+                                    "1": {
+                                          "name": "keyword.other.define.bfmacro"
+                                    },
+                                    "2": {
+                                          "name": "entity.name.function.macro.bfmacro"
+                                    },
+                                    "3": {
+                                          "name": "punctuation.definition.parameters.bfmacro"
+                                    },
+                                    "4": {
+                                          "patterns": [
+                                                {
+                                                      "match": "[a-zA-Z_]\\w*",
+                                                      "name": "variable.parameter.bfmacro"
+                                                }
+                                          ]
+                                    }
+                              }
+                        }
+                  ]
+            },
+            "macro-invocation": {
+                  "patterns": [
+                        {
+                              "name": "meta.function-call.macro.bfmacro",
+                              "begin": "(@)([a-zA-Z_]\\w*)(\\()",
+                              "end": "\\)",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "punctuation.definition.macro.bfmacro"
+                                    },
+                                    "2": {
+                                          "name": "entity.name.function.macro.bfmacro"
+                                    },
+                                    "3": {
+                                          "name": "punctuation.definition.parameters.begin.bfmacro"
+                                    }
+                              },
+                              "endCaptures": {
+                                    "0": {
+                                          "name": "punctuation.definition.parameters.end.bfmacro"
+                                    }
+                              },
+                              "patterns": [{ "include": "#macro-arguments" }]
+                        },
+                        {
+                              "match": "(@)([a-zA-Z_]\\w*)",
+                              "captures": {
+                                    "1": {
+                                          "name": "punctuation.definition.macro.bfmacro"
+                                    },
+                                    "2": {
+                                          "name": "entity.name.function.macro.bfmacro"
+                                    }
+                              }
+                        },
+                        {
+                              "name": "entity.name.function.macro.hash.bfmacro",
+                              "match": "#[a-zA-Z_]\\w*(?!define)"
+                        }
+                  ]
+            },
+            "macro-arguments": {
+                  "patterns": [
+                        { "include": "#comments" },
+                        { "include": "#macro-invocation" },
+                        { "include": "#builtin-functions" },
+                        { "include": "#numbers" },
+                        { "include": "#local-variables" },
+                        { "include": "#identifiers" },
+                        {
+                              "name": "punctuation.separator.arguments.bfmacro",
+                              "match": ","
+                        }
+                  ]
+            },
+            "builtin-functions": {
+                  "patterns": [
+                        {
+                              "name": "meta.builtin.preserve.bfmacro",
+                              "begin": "\\{(:)",
+                              "end": "\\}",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.preserve.bfmacro"
+                                    }
+                              },
+                              "patterns": [
+                                    { "include": "#builtin-functions" },
+                                    { "include": "#preserve-content" }
+                              ]
+                        },
+                        {
+                              "name": "meta.builtin.label.bfmacro",
+                              "begin": "\\{(label)\\s+",
+                              "end": "\\}",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.label.bfmacro"
+                                    }
+                              },
+                              "patterns": [
+                                    {
+                                          "match": "[a-zA-Z_]\\w*",
+                                          "name": "entity.name.label.bfmacro"
+                                    }
+                              ]
+                        },
+                        {
+                              "name": "meta.builtin.br.bfmacro",
+                              "match": "\\{(br)\\}",
+                              "captures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.br.bfmacro"
+                                    }
+                              }
+                        },
+                        {
+                              "name": "meta.builtin.repeat.bfmacro",
+                              "begin": "\\{(repeat)\\s*\\(",
+                              "end": "\\)\\s*\\}",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.repeat.bfmacro"
+                                    }
+                              },
+                              "patterns": [{ "include": "#builtin-arguments" }]
+                        },
+                        {
+                              "name": "meta.builtin.if.bfmacro",
+                              "begin": "\\{(if)\\s*\\(",
+                              "end": "\\)\\s*\\}",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.if.bfmacro"
+                                    }
+                              },
+                              "patterns": [{ "include": "#builtin-arguments" }]
+                        },
+                        {
+                              "name": "meta.builtin.for.bfmacro",
+                              "begin": "\\{(for)\\s*\\(",
+                              "end": "\\)\\s*\\}",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.for.bfmacro"
+                                    }
+                              },
+                              "patterns": [
+                                    {
+                                          "match": "\\b(in)\\b",
+                                          "name": "keyword.control.in.bfmacro"
+                                    },
+                                    { "include": "#builtin-arguments" }
+                              ]
+                        },
+                        {
+                              "name": "meta.builtin.reverse.bfmacro",
+                              "begin": "\\{(reverse)\\s*\\(",
+                              "end": "\\)\\s*\\}",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.reverse.bfmacro"
+                                    }
+                              },
+                              "patterns": [{ "include": "#builtin-arguments" }]
+                        },
+                        {
+                              "name": "meta.builtin.preserve.bfmacro",
+                              "begin": "\\{(preserve)\\s*\\(",
+                              "end": "\\)\\s*\\}",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.preserve.bfmacro"
+                                    }
+                              },
+                              "patterns": [{ "include": "#preserve-content" }]
+                        },
+                        {
+                              "name": "meta.builtin.proc.bfmacro",
+                              "begin": "\\{(proc)\\s*\\(",
+                              "end": "\\)\\s*\\}",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.proc.bfmacro"
+                                    }
+                              },
+                              "patterns": [
+                                    { "include": "#builtin-arguments" },
+                                    { "include": "#local-variables" }
+                              ]
+                        },
+                        {
+                              "name": "meta.builtin.local.bfmacro",
+                              "begin": "\\{(local)(?:\\s*\\(|\\s+)",
+                              "end": "(?:\\)|\\})",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.local.bfmacro"
+                                    }
+                              },
+                              "patterns": [
+                                    {
+                                          "match": "(%[a-zA-Z_]\\w*)",
+                                          "name": "storage.type.local.bfmacro"
+                                    },
+                                    { "include": "#numbers" }
+                              ]
+                        },
+                        {
+                              "name": "meta.builtin.len.bfmacro",
+                              "begin": "\\{(len)(?:\\s*\\(|\\s+)",
+                              "end": "(?:\\)|\\})",
+                              "beginCaptures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.len.bfmacro"
+                                    }
+                              },
+                              "patterns": [
+                                    {
+                                          "match": "(%[a-zA-Z_]\\w*)",
+                                          "name": "storage.type.local.bfmacro"
+                                    }
+                              ]
+                        },
+                        {
+                              "name": "meta.builtin.locals_len.bfmacro",
+                              "match": "\\{(locals_len)\\}",
+                              "captures": {
+                                    "1": {
+                                          "name": "keyword.control.builtin.locals_len.bfmacro"
+                                    }
+                              }
+                        }
+                  ]
+            },
+            "builtin-arguments": {
+                  "patterns": [
+                        { "include": "#comments" },
+                        { "include": "#builtin-functions" },
+                        { "include": "#macro-invocation" },
+                        { "include": "#numbers" },
+                        { "include": "#local-variables" },
+                        { "include": "#identifiers" },
+                        {
+                              "name": "punctuation.separator.arguments.bfmacro",
+                              "match": ","
+                        }
+                  ]
+            },
+            "preserve-content": {
+                  "patterns": [
+                        { "include": "#builtin-functions" },
+                        {
+                              "match": "[^{}]+",
+                              "name": "string.unquoted.preserve.bfmacro"
+                        }
+                  ]
+            },
+            "brainfuck-operators": {
+                  "patterns": [
+                        {
+                              "name": "keyword.operator.increment.bfmacro",
+                              "match": "\\++"
+                        },
+                        {
+                              "name": "keyword.operator.decrement.bfmacro",
+                              "match": "--"
+                        },
+                        {
+                              "name": "keyword.operator.add.bfmacro",
+                              "match": "\\+"
+                        },
+                        {
+                              "name": "keyword.operator.subtract.bfmacro",
+                              "match": "-"
+                        },
+                        {
+                              "name": "keyword.operator.move.left.bfmacro",
+                              "match": "<+"
+                        },
+                        {
+                              "name": "keyword.operator.move.right.bfmacro",
+                              "match": ">+"
+                        },
+                        {
+                              "name": "keyword.operator.input.bfmacro",
+                              "match": ","
+                        },
+                        {
+                              "name": "keyword.operator.output.bfmacro",
+                              "match": "\\."
+                        },
+                        {
+                              "name": "keyword.control.loop.begin.bfmacro",
+                              "match": "\\["
+                        },
+                        {
+                              "name": "keyword.control.loop.end.bfmacro",
+                              "match": "\\]"
+                        },
+                        {
+                              "name": "keyword.control.break.bfmacro",
+                              "match": "\\$"
+                        }
+                  ]
+            },
+            "strings": {
+                  "patterns": [
+                        {
+                              "name": "string.quoted.double.bfmacro",
+                              "begin": "\"",
+                              "end": "\"",
+                              "patterns": [
+                                    {
+                                          "name": "constant.character.escape.bfmacro",
+                                          "match": "\\\\[\"\\\\nrt]"
+                                    }
+                              ]
+                        }
+                  ]
+            },
+            "numbers": {
+                  "patterns": [
+                        {
+                              "name": "constant.character.bfmacro",
+                              "match": "'[^']'"
+                        },
+                        {
+                              "name": "constant.numeric.hex.bfmacro",
+                              "match": "\\b0[xX][0-9a-fA-F]+\\b"
+                        },
+                        {
+                              "name": "constant.numeric.decimal.bfmacro",
+                              "match": "\\b\\d+\\b"
+                        }
+                  ]
+            },
+            "identifiers": {
+                  "patterns": [
+                        {
+                              "name": "variable.other.bfmacro",
+                              "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+                        }
+                  ]
+            },
+            "local-variables": {
+                  "patterns": [
+                        {
+                              "name": "storage.type.local.bfmacro",
+                              "match": "%[a-zA-Z_]\\w*"
+                        }
+                  ]
             }
-          ]
-        },
-        {
-          "name": "meta.builtin.locals_len.bfmacro",
-          "match": "\\{(locals_len)\\}",
-          "captures": {
-            "1": { "name": "keyword.control.builtin.locals_len.bfmacro" }
-          }
-        }
-      ]
-    },
-    "builtin-arguments": {
-      "patterns": [
-        { "include": "#comments" },
-        { "include": "#builtin-functions" },
-        { "include": "#macro-invocation" },
-        { "include": "#numbers" },
-        { "include": "#local-variables" },
-        { "include": "#identifiers" },
-        {
-          "name": "punctuation.separator.arguments.bfmacro",
-          "match": ","
-        }
-      ]
-    },
-    "preserve-content": {
-      "patterns": [
-        { "include": "#builtin-functions" },
-        {
-          "match": "[^{}]+",
-          "name": "string.unquoted.preserve.bfmacro"
-        }
-      ]
-    },
-    "brainfuck-operators": {
-      "patterns": [
-        {
-          "name": "keyword.operator.increment.bfmacro",
-          "match": "\\++"
-        },
-        {
-          "name": "keyword.operator.decrement.bfmacro",
-          "match": "--"
-        },
-        {
-          "name": "keyword.operator.add.bfmacro",
-          "match": "\\+"
-        },
-        {
-          "name": "keyword.operator.subtract.bfmacro",
-          "match": "-"
-        },
-        {
-          "name": "keyword.operator.move.left.bfmacro",
-          "match": "<+"
-        },
-        {
-          "name": "keyword.operator.move.right.bfmacro",
-          "match": ">+"
-        },
-        {
-          "name": "keyword.operator.input.bfmacro",
-          "match": ","
-        },
-        {
-          "name": "keyword.operator.output.bfmacro",
-          "match": "\\."
-        },
-        {
-          "name": "keyword.control.loop.begin.bfmacro",
-          "match": "\\["
-        },
-        {
-          "name": "keyword.control.loop.end.bfmacro",
-          "match": "\\]"
-        },
-        {
-          "name": "keyword.control.break.bfmacro",
-          "match": "\\$"
-        }
-      ]
-    },
-    "strings": {
-      "patterns": [
-        {
-          "name": "string.quoted.double.bfmacro",
-          "begin": "\"",
-          "end": "\"",
-          "patterns": [
-            {
-              "name": "constant.character.escape.bfmacro",
-              "match": "\\\\[\"\\\\nrt]"
-            }
-          ]
-        }
-      ]
-    },
-    "numbers": {
-      "patterns": [
-        {
-          "name": "constant.character.bfmacro",
-          "match": "'[^']'"
-        },
-        {
-          "name": "constant.numeric.hex.bfmacro",
-          "match": "\\b0[xX][0-9a-fA-F]+\\b"
-        },
-        {
-          "name": "constant.numeric.decimal.bfmacro",
-          "match": "\\b\\d+\\b"
-        }
-      ]
-    },
-    "identifiers": {
-      "patterns": [
-        {
-          "name": "variable.other.bfmacro",
-          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
-        }
-      ]
-    },
-    "local-variables": {
-      "patterns": [
-        {
-          "name": "storage.type.local.bfmacro",
-          "match": "%[a-zA-Z_]\\w*"
-        }
-      ]
-    }
-  }
+      }
 }

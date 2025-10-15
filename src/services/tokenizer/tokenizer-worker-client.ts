@@ -1,8 +1,16 @@
 export interface Token {
-    type: 'incdec' | 'brackets' | 'move' | 'dot' | 'comma' | 'whitespace' | 'comment' | 'unknown'
-    value: string;
-    start: number;
-    end: number;
+  type:
+    | 'incdec'
+    | 'brackets'
+    | 'move'
+    | 'dot'
+    | 'comma'
+    | 'whitespace'
+    | 'comment'
+    | 'unknown';
+  value: string;
+  start: number;
+  end: number;
 }
 
 interface PendingRequest {
@@ -19,13 +27,13 @@ export class TokenizerWorkerClient {
     // Import worker with Vite's special syntax
     this.worker = new Worker(
       new URL('./tokenizer.worker.ts', import.meta.url),
-      { type: 'module' }
+      { type: 'module' },
     );
 
     this.worker.onmessage = (event) => {
       const message = event.data;
       const pending = this.pendingRequests.get(message.id);
-      
+
       if (!pending) {
         console.warn('Received response for unknown request:', message.id);
         return;
@@ -51,41 +59,41 @@ export class TokenizerWorkerClient {
   }
 
   async tokenizeLine(
-    text: string, 
-    lineIndex: number, 
-    isLastLine: boolean = false
+    text: string,
+    lineIndex: number,
+    isLastLine: boolean = false,
   ): Promise<Token[]> {
     const id = String(this.requestId++);
-    
+
     return new Promise((resolve, reject) => {
-      this.pendingRequests.set(id, { 
-        resolve: (result) => resolve(result as Token[]), 
-        reject 
+      this.pendingRequests.set(id, {
+        resolve: (result) => resolve(result as Token[]),
+        reject,
       });
-      
+
       this.worker.postMessage({
         type: 'tokenizeLine',
         id,
         text,
         lineIndex,
-        isLastLine
+        isLastLine,
       });
     });
   }
 
   async tokenizeAllLines(lines: string[]): Promise<Token[][]> {
     const id = String(this.requestId++);
-    
+
     return new Promise((resolve, reject) => {
-      this.pendingRequests.set(id, { 
-        resolve: (result) => resolve(result as Token[][]), 
-        reject 
+      this.pendingRequests.set(id, {
+        resolve: (result) => resolve(result as Token[][]),
+        reject,
       });
-      
+
       this.worker.postMessage({
         type: 'tokenizeAll',
         id,
-        lines
+        lines,
       });
     });
   }
